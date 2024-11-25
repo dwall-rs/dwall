@@ -19,7 +19,8 @@
     "@tauri-apps/plugin-shell": "^2.0.1",
     "alley-components": "^0.3.7",
     "solid-icons": "^1.1.0",
-    "solid-js": "^1.9.3"
+    "solid-js": "^1.9.3",
+    "solid-styled-components": "^0.28.5"
   },
   "devDependencies": {
     "@types/node": "^22.9.3",
