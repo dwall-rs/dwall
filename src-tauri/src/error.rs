@@ -6,6 +6,12 @@ pub(super) type DwallResult<T> = std::result::Result<T, DwallError>;
 pub(super) enum DwallError {
     #[error(transparent)]
     Update(#[from] tauri_plugin_updater::Error),
+    #[error(transparent)]
+    Io(#[from] std::io::Error),
+    #[error(transparent)]
+    TomlDe(#[from] toml::de::Error),
+    #[error(transparent)]
+    TomlSer(#[from] toml::ser::Error),
 }
 
 impl Serialize for DwallError {
