@@ -1,0 +1,214 @@
+name: "publish"
+on:
+  push:
+    branches:
+      - release
+
+jobs:
+  create-release:
+    permissions:
+      contents: write
+    runs-on: ubuntu-22.04
+    outputs:
+      release_id: ${{ steps.create-release.outputs.result }}
+      package_version: ${{ env.PACKAGE_VERSION }}
+      latest_version: ${{ steps.latest-version.outputs.result }}
+      changelog: ${{ steps.github_release_changelog.outputs.changelog }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: setup node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: get version
+        run: echo "PACKAGE_VERSION=$(node -p "require('./package.json').version")" >> $GITHUB_ENV
+
+      - name: check latest version
+        uses: actions/github-script@v7
+        id: latest-version
+        with:
+          script: |
+            const { data } = await github.request(
+              'GET /repos/{owner}/{repo}/releases/latest', 
+              {
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                headers: {
+                  'X-GitHub-Api-Version': '2022-11-28'
+                }
+              }
+            )
+
+            const latesVersion = data.tag_name.slice(1)
+
+            if (latesVersion === process.env.PACKAGE_VERSION) throw new Error("当前要发布的版本号与 latest 版本号相同")
+
+            return latesVersion
+
+      - name: build changelog
+        id: github_release_changelog
+        uses: mikepenz/release-changelog-builder-action@v3
+        with:
+          configuration: ".github/changelog-configuration.json"
+          toTag: "refs/heads/main"
+          failOnError: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: create release
+        id: create-release
+        uses: actions/github-script@v7
+        env:
+          changelog: ${{ steps.github_release_changelog.outputs.changelog }}
+        with:
+          script: |
+            const { data } = await github.rest.repos.createRelease({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              tag_name: `v${process.env.PACKAGE_VERSION}`,
+              name: `v${process.env.PACKAGE_VERSION}`,
+              body: process.env.changelog,
+              draft: true,
+            })
+            return data.id
+
+  build-tauri:
+    needs: create-release
+    permissions:
+      contents: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: "windows-latest"
+            args: ""
+
+    runs-on: ${{ matrix.platform }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: setup node
+        uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+
+      - uses: oven-sh/setup-bun@v1
+
+      - name: install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: install frontend dependencies
+        run: bun i
+
+      - uses: tauri-apps/tauri-action@v0
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          releaseId: ${{ needs.create-release.outputs.release_id }}
+          releaseBody: ${{ needs.create-release.outputs.changelog }}
+          updaterJsonPreferNsis: true
+          args: ${{ matrix.args }}
+
+  publish-release:
+    permissions:
+      contents: write
+    runs-on: ubuntu-22.04
+    needs: [create-release, build-tauri]
+
+    steps:
+      - name: publish release
+        id: publish-release
+        uses: actions/github-script@v7
+        env:
+          release_id: ${{ needs.create-release.outputs.release_id }}
+          PACKAGE_VERSION: ${{ needs.create-release.outputs.package_version }}
+        with:
+          script: |
+            github.rest.repos.updateRelease({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              release_id: process.env.release_id,
+              draft: false,
+            })
+
+  upload_mirror_json:
+    permissions:
+      contents: write
+    runs-on: ubuntu-22.04
+    needs: [create-release, publish-release]
+    env:
+      release_id: ${{ needs.create-release.outputs.release_id }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: get latest.json
+        id: get-latest
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { owner, repo } = context.repo;
+            const assets = await github.rest.repos.listReleaseAssets({
+              owner: owner,
+              repo: repo,
+              release_id: process.env.release_id,
+              per_page: 50,
+            });
+            const asset = assets.data.find((e) => e.name === 'latest.json');
+
+            if (!asset) throw new Error("latest.json was not found in release assets");
+
+            const data = await github.request(
+              "GET /repos/{owner}/{repo}/releases/assets/{asset_id}",
+              {
+                owner: owner,
+                repo: repo,
+                asset_id: asset.id,
+                headers: {
+                  accept: "application/octet-stream",
+                },
+              },
+            );
+
+            return Buffer.from(data.data).toString()
+
+      - name: new mirror latest.json
+        env:
+          TEXT: ${{ steps.get-latest.outputs.result }}
+        run: |
+          cd .scripts
+          node mirror-latest-json.js
+
+      - uses: wlixcc/SFTP-Deploy-Action@v1.2.4
+        with:
+          username: thepoy
+          server: thepoy.cc
+          password: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+          local_path: ./.scripts/mirrors/*
+          remote_path: /home/thepoy/app/dwall
+          sftpArgs: "-o ConnectTimeout=5"
+
+  delete-nightly-release-and-tag:
+    permissions:
+      contents: write
+    runs-on: ubuntu-22.04
+    needs: upload_mirror_json
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: get old nightly release id
+        run: |
+          release_id=$(curl -s 'https://api.github.com/repos/thep0y/dwall/releases/tags/nightly' | awk -F'[{},:]+' '/^  "id"/ {print $2}' | xargs)
+          echo "RELEASE_ID=$release_id"  >> $GITHUB_ENV
+
+      - name: delete old nightly release
+        if: env.RELEASE_ID != ''
+        run: gh release delete nightly --cleanup-tag
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} 

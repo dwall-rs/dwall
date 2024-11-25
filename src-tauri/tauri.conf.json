@@ -1,0 +1,55 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "dwall",
+  "version": "../package.json",
+  "identifier": "com.thep0y.dwall",
+  "build": {
+    "beforeDevCommand": "bun run start",
+    "devUrl": "http://localhost:1420",
+    "beforeBuildCommand": "bun run build:vite",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "dwall",
+        "width": 800,
+        "height": 600,
+        "transparent": true,
+        "resizable": false,
+        "maximizable": false,
+        "visible": false
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "nsis",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "windows": {
+      "nsis": {
+        "languages": ["SimpChinese", "English"],
+        "displayLanguageSelector": true
+      }
+    }
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDcxQTQ5NDZBNUIyMEVDRTUKUldUbDdDQmJhcFNrY2RYSkpGNUt0U3cvdEozMXJoN2pXeEFBcUQ4YmZMTi9MS2E2YjNQT1pSbTgK",
+      "endpoints": [
+        "https://app.thepoy.cc/dwall/latest-mirror-1.json",
+        "https://app.thepoy.cc/dwall/latest-mirror-2.json",
+        "https://github.com/thep0y/dwall/releases/latest/download/latest.json"
+      ]
+    }
+  }
+}
