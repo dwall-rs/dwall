@@ -1,7 +1,3 @@
-# Tauri + Solid + Typescript
+# DWALL
 
-This template should help get you started developing with Tauri, Solid and Typescript in Vite.
-
-## Recommended IDE Setup
-
-- [VS Code](https://code.visualstudio.com/) + [Tauri](https://marketplace.visualstudio.com/items?itemName=tauri-apps.tauri-vscode) + [rust-analyzer](https://marketplace.visualstudio.com/items?itemName=rust-lang.rust-analyzer)
+By calculating the solar elevation angle and azimuth angle to simulate the wallpaper switching logic of macOS, implement a smooth dynamic wallpaper switching feature on the Windows system.
