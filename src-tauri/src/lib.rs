@@ -3,6 +3,7 @@ use tauri::{AppHandle, Manager};
 use crate::setup::setup_app;
 
 mod error;
+mod geo;
 mod lazy;
 mod setup;
 mod solar;

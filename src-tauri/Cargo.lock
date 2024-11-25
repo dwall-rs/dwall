@@ -983,6 +983,7 @@ dependencies = [
  "tracing",
  "tracing-subscriber",
  "window-vibrancy",
+ "windows",
 ]
 
 [[package]]

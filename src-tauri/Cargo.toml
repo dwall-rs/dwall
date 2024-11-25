@@ -33,6 +33,7 @@ thiserror = "2"
 toml = "0"
 window-vibrancy = "0"
 dirs = "5"
+windows = { version = "0", features = ["Devices_Geolocation"] }
 
 tauri-plugin-shell = "2"
 tauri-plugin-clipboard-manager = "2"
