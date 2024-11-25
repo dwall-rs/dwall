@@ -4,7 +4,7 @@ use windows::{
 };
 
 pub async fn get_geo_postion() -> windows::Result<()> {
-    let geolcator = Geolocator::new()?;
+    let geolocator = Geolocator::new()?;
     geolocator.SetDesiredAccuracy(PositionAccuracy::High)?;
 
     let geoposition = geolocator.GetGeopositionAsync()?.await?;
