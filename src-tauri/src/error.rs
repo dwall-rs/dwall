@@ -12,6 +12,10 @@ pub(super) enum DwallError {
     TomlDe(#[from] toml::de::Error),
     #[error(transparent)]
     TomlSer(#[from] toml::ser::Error),
+    #[error(transparent)]
+    Request(#[from] reqwest::Error),
+    #[error(transparent)]
+    ZipExtract(#[from] zip_extract::ZipExtractError),
 }
 
 impl Serialize for DwallError {
