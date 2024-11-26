@@ -5,7 +5,9 @@ use crate::{error::DwallResult, lazy::APP_CONFIG_DIR};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Config {
+    #[serde(skip_serializing_if = "Option::is_none")]
     github_mirror_template: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     selected_id: Option<String>,
 
     /// The time interval for detecting the solar elevation
@@ -41,12 +43,13 @@ impl Default for Config {
         Self {
             github_mirror_template: None,
             selected_id: None,
-            interval: 1,
+            interval: if cfg!(debug_assertions) { 1 } else { 30 },
         }
     }
 }
 
-async fn read_config() -> DwallResult<Config> {
+#[tauri::command]
+pub async fn read_config_file() -> DwallResult<Config> {
     let config_path = APP_CONFIG_DIR.join("config.toml");
     if !config_path.exists() && !config_path.is_file() {
         return Ok(Default::default());
@@ -57,7 +60,8 @@ async fn read_config() -> DwallResult<Config> {
     toml::from_str(&content).map_err(Into::into)
 }
 
-async fn write_config(config: Config) -> DwallResult<()> {
+#[tauri::command]
+pub async fn write_config_file(config: Config) -> DwallResult<()> {
     let string = toml::to_string(&config)?;
 
     let config_path = APP_CONFIG_DIR.join("config.toml");

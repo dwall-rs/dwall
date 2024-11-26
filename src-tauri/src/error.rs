@@ -16,6 +16,12 @@ pub(super) enum DwallError {
     Request(#[from] reqwest::Error),
     #[error(transparent)]
     ZipExtract(#[from] zip_extract::ZipExtractError),
+    #[error(transparent)]
+    Windows(#[from] windows::core::Error),
+    #[error(transparent)]
+    Theme(#[from] crate::theme::ThemeError),
+    #[error(transparent)]
+    SerdeJson(#[from] serde_json::Error),
 }
 
 impl Serialize for DwallError {

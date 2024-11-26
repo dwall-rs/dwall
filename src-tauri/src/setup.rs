@@ -1,6 +1,12 @@
+use std::sync::Arc;
+
+use tauri::Manager;
 use time::macros::{format_description, offset};
+use tokio::sync::Mutex;
 use tracing::Level;
 use tracing_subscriber::fmt::time::OffsetTime;
+
+use crate::theme::CloseTaskSender;
 
 pub fn setup_logging() {
     let fmt = if cfg!(debug_assertions) {
@@ -51,6 +57,9 @@ pub fn setup_app(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>>
 
     #[cfg(any(target_os = "macos", target_os = "windows"))]
     apply_window_effect(app)?;
+
+    let channel: CloseTaskSender = Arc::new(Mutex::new(None));
+    app.manage(channel);
 
     info!("Application setup completed");
 

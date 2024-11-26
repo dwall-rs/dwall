@@ -1,22 +1,24 @@
-use windows::{
-    Devices::Geolocation::{Geolocator, PositionAccuracy},
-    Foundation::IAsyncOperation,
-};
+use windows::Devices::Geolocation::{Geolocator, PositionAccuracy};
 
-pub async fn get_geo_postion() -> windows::Result<()> {
+use crate::error::DwallResult;
+
+pub struct Position {
+    pub latitude: f64,
+    pub longitude: f64,
+}
+
+pub fn get_geo_postion() -> DwallResult<Position> {
     let geolocator = Geolocator::new()?;
     geolocator.SetDesiredAccuracy(PositionAccuracy::High)?;
 
-    let geoposition = geolocator.GetGeopositionAsync()?.await?;
+    let geoposition = geolocator.GetGeopositionAsync()?.get()?;
 
     let coordinate = geoposition.Coordinate()?;
     let point = coordinate.Point()?;
     let position = point.Position()?;
 
-    println!(
-        "Longitude: {}, Latitude: {}",
-        position.Longitude, position.Latitude
-    );
-
-    Ok(())
+    Ok(Position {
+        latitude: position.Latitude,
+        longitude: position.Longitude,
+    })
 }

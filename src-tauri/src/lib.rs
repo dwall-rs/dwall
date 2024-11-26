@@ -1,7 +1,11 @@
 use tauri::{AppHandle, Manager};
 
+use crate::config::{read_config_file, write_config_file};
+use crate::geo::get_geo_postion;
 use crate::setup::setup_app;
+use crate::theme::{apply_theme, check_theme_exists, close_last_theme_task};
 
+mod color_mode;
 mod config;
 mod download;
 mod error;
@@ -9,6 +13,7 @@ mod geo;
 mod lazy;
 mod setup;
 mod solar;
+mod theme;
 mod update;
 
 #[macro_use]
@@ -26,6 +31,7 @@ async fn show_main_window(app: AppHandle) {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    get_geo_postion().unwrap();
     tauri::Builder::default()
         .plugin(tauri_plugin_single_instance::init(|app, _argv, _cwd| {
             if let Some(w) = app.get_webview_window("main") {
@@ -37,7 +43,14 @@ pub fn run() {
         .plugin(tauri_plugin_clipboard_manager::init())
         .plugin(tauri_plugin_dialog::init())
         .setup(setup_app)
-        .invoke_handler(tauri::generate_handler![show_main_window])
+        .invoke_handler(tauri::generate_handler![
+            show_main_window,
+            read_config_file,
+            write_config_file,
+            check_theme_exists,
+            apply_theme,
+            close_last_theme_task
+        ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

@@ -33,7 +33,10 @@ thiserror = "2"
 toml = "0"
 window-vibrancy = "0"
 dirs = "5"
-windows = { version = "0", features = ["Devices_Geolocation"] }
+windows = { version = "0", features = [
+  "Devices_Geolocation",
+  "Win32_System_Registry",
+] }
 reqwest = "0"
 futures-util = "0"
 zip-extract = "0"
