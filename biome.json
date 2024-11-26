@@ -13,6 +13,9 @@
       "recommended": true,
       "correctness": {
         "useJsxKeyInIterable": "off"
+      },
+      "a11y": {
+        "useKeyWithClickEvents": "off"
       }
     }
   }
