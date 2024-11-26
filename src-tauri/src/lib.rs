@@ -1,3 +1,5 @@
+use error::DwallResult;
+use event::run_callback;
 use tauri::{AppHandle, Manager};
 
 use crate::config::{read_config_file, write_config_file};
@@ -9,11 +11,13 @@ mod color_mode;
 mod config;
 mod download;
 mod error;
+mod event;
 mod geo;
 mod lazy;
 mod setup;
 mod solar;
 mod theme;
+mod tray;
 mod update;
 
 #[macro_use]
@@ -30,7 +34,7 @@ async fn show_main_window(app: AppHandle) {
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
-pub fn run() {
+pub fn run() -> DwallResult<()> {
     get_geo_postion().unwrap();
     tauri::Builder::default()
         .plugin(tauri_plugin_single_instance::init(|app, _argv, _cwd| {
@@ -51,6 +55,7 @@ pub fn run() {
             apply_theme,
             close_last_theme_task
         ])
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .build(tauri::generate_context!())?
+        .run(run_callback);
+    Ok(())
 }

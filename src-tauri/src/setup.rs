@@ -6,7 +6,7 @@ use tokio::sync::Mutex;
 use tracing::Level;
 use tracing_subscriber::fmt::time::OffsetTime;
 
-use crate::theme::CloseTaskSender;
+use crate::{theme::CloseTaskSender, tray::build_tray};
 
 pub fn setup_logging() {
     let fmt = if cfg!(debug_assertions) {
@@ -51,6 +51,8 @@ pub fn setup_app(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>>
         "Setting up application: version {}",
         app.package_info().version
     );
+
+    build_tray(app)?;
 
     #[cfg(all(desktop, not(debug_assertions)))]
     setup_updater(app)?;

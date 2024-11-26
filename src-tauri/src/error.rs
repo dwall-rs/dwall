@@ -1,9 +1,9 @@
 use serde::{Serialize, Serializer};
 
-pub(super) type DwallResult<T> = std::result::Result<T, DwallError>;
+pub type DwallResult<T> = std::result::Result<T, DwallError>;
 
 #[derive(Debug, thiserror::Error)]
-pub(super) enum DwallError {
+pub enum DwallError {
     #[error(transparent)]
     Update(#[from] tauri_plugin_updater::Error),
     #[error(transparent)]
@@ -22,6 +22,8 @@ pub(super) enum DwallError {
     Theme(#[from] crate::theme::ThemeError),
     #[error(transparent)]
     SerdeJson(#[from] serde_json::Error),
+    #[error(transparent)]
+    Tauri(#[from] tauri::Error),
 }
 
 impl Serialize for DwallError {

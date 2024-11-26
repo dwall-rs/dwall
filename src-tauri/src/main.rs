@@ -2,5 +2,5 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 fn main() {
-    dwall_lib::run()
+    dwall_lib::run().unwrap();
 }
