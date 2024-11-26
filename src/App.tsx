@@ -1,5 +1,10 @@
 import { children, createSignal, onMount } from "solid-js";
-import { showMainWindow } from "./commands";
+import {
+  checkThemeExists,
+  closeLastThemeTask,
+  readConfigFile,
+  showMainWindow,
+} from "./commands";
 import { LazyButton, LazyFlex, LazySpace, LazyText } from "./lazy";
 import Catalina1 from "~/assets/thumbnail/Catalina/1.avif";
 import Catalina2 from "~/assets/thumbnail/Catalina/2.avif";
@@ -19,6 +24,7 @@ import BigSur7 from "~/assets/thumbnail/BigSur/7.avif";
 import BigSur8 from "~/assets/thumbnail/BigSur/8.avif";
 import ImageCarousel from "./components/ImageCarousel";
 import "./App.scss";
+import { invoke } from "@tauri-apps/api/core";
 
 const images = [
   {
@@ -51,15 +57,32 @@ const images = [
 
 const App = () => {
   const [index, setIndex] = createSignal(0);
+  const [themeButtonStatus, setThemeButtonStatus] = createSignal<{
+    exists: boolean;
+    applied: boolean;
+  }>({ exists: false, applied: false });
 
-  onMount(() => {
+  onMount(async () => {
     showMainWindow();
+
+    const config = await readConfigFile();
+    console.log(config);
   });
+
+  const onMenuItemClick = async (index: number) => {
+    setIndex(index);
+    try {
+      await checkThemeExists(images[index].id);
+      setThemeButtonStatus({ exists: true, applied: false });
+    } catch (e) {
+      setThemeButtonStatus({ exists: false, applied: false });
+    }
+  };
 
   const menu = children(() =>
     images.map((item, idx) => (
       <div
-        onClick={() => setIndex(idx)}
+        onClick={() => onMenuItemClick(idx)}
         classList={{ "menu-item": true, active: idx === index() }}
       >
         <LazyFlex direction="vertical" justify="center" align="center">
@@ -92,8 +115,19 @@ const App = () => {
         />
 
         <LazySpace gap={8}>
-          <LazyButton type="primary">下载</LazyButton>
-          <LazyButton type="primary">应用</LazyButton>
+          <LazyButton type="primary" disabled={themeButtonStatus().exists}>
+            下载
+          </LazyButton>
+          <LazyButton
+            type="primary"
+            disabled={!themeButtonStatus().exists}
+            onClick={() =>
+              invoke("apply_theme", { id: images[index()].id, format: "jpg" })
+            }
+          >
+            应用
+          </LazyButton>
+          <LazyButton onClick={() => closeLastThemeTask()}>停止</LazyButton>
         </LazySpace>
       </LazyFlex>
     </LazyFlex>
