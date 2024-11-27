@@ -23,12 +23,12 @@
     "solid-styled-components": "^0.28.5"
   },
   "devDependencies": {
-    "@types/node": "^22.9.3",
+    "@types/node": "^22.10.0",
     "cross-env": "^7.0.3",
     "sass": "^1.81.0",
     "typescript": "^5.7.2",
     "vite": "^5.4.11",
-    "vite-plugin-solid": "^2.10.2",
+    "vite-plugin-solid": "^2.11.0",
     "@tauri-apps/cli": "^2.1.0"
   }
 }

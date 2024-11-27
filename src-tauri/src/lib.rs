@@ -22,14 +22,16 @@ mod update;
 #[macro_use]
 extern crate tracing;
 
-/// 防止启动时闪白屏
 #[tauri::command]
-async fn show_main_window(app: AppHandle) {
+async fn show_main_window(app: AppHandle) -> DwallResult<()> {
     debug!("Showing main window");
 
-    let main_window = app.get_webview_window("main").unwrap();
+    if let Some(main_window) = app.get_webview_window("main") {
+        main_window.show()?;
+        main_window.set_focus()?;
+    }
 
-    main_window.show().unwrap();
+    Ok(())
 }
 
 #[tauri::command]

@@ -25,7 +25,6 @@ import BigSur7 from "~/assets/thumbnail/BigSur/7.avif";
 import BigSur8 from "~/assets/thumbnail/BigSur/8.avif";
 import ImageCarousel from "./components/ImageCarousel";
 import "./App.scss";
-import { invoke } from "@tauri-apps/api/core";
 
 const images = [
   {
