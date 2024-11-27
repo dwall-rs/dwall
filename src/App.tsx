@@ -122,7 +122,10 @@ const App = () => {
             type="primary"
             disabled={!themeButtonStatus().exists}
             onClick={() =>
-              invoke("apply_theme", { id: images[index()].id, format: "jpg" })
+              invoke("apply_theme", {
+                themeId: images[index()].id,
+                imageFormat: "jpg",
+              })
             }
           >
             应用
