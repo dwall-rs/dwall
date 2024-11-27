@@ -1,11 +1,10 @@
-use error::DwallResult;
-use event::run_callback;
 use tauri::{AppHandle, Manager};
 
 use crate::config::{read_config_file, write_config_file};
-use crate::geo::get_geo_postion;
-use crate::setup::setup_app;
-use crate::theme::{apply_theme, check_theme_exists, close_last_theme_task};
+use crate::error::DwallResult;
+use crate::event::run_callback;
+use crate::setup::{setup_app, setup_logging};
+use crate::theme::{apply_theme, close_last_theme_task, ThemeValidator};
 
 mod color_mode;
 mod config;
@@ -33,9 +32,14 @@ async fn show_main_window(app: AppHandle) {
     main_window.show().unwrap();
 }
 
+#[tauri::command]
+async fn check_theme_exists(theme_id: String) -> DwallResult<()> {
+    ThemeValidator::validate_theme(&theme_id).await
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() -> DwallResult<()> {
-    get_geo_postion().unwrap();
+    setup_logging();
     tauri::Builder::default()
         .plugin(tauri_plugin_single_instance::init(|app, _argv, _cwd| {
             if let Some(w) = app.get_webview_window("main") {
