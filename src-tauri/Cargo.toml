@@ -36,6 +36,8 @@ dirs = "5"
 windows = { version = "0", features = [
   "Devices_Geolocation",
   "Win32_System_Registry",
+  "System_UserProfile",
+  "Storage",
 ] }
 reqwest = "0"
 futures-util = "0"

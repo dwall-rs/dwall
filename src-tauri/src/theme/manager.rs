@@ -1,8 +1,14 @@
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
-use windows::Win32::UI::WindowsAndMessaging::{
-    SystemParametersInfoW, SPIF_SENDWININICHANGE, SPIF_UPDATEINIFILE, SPI_GETDESKWALLPAPER,
-    SPI_SETDESKWALLPAPER, SYSTEM_PARAMETERS_INFO_UPDATE_FLAGS,
+use windows::{
+    core::{Interface, HSTRING},
+    Foundation::Uri,
+    Storage::{IStorageFile, StorageFile},
+    System::UserProfile::LockScreen,
+    Win32::UI::WindowsAndMessaging::{
+        SystemParametersInfoW, SPIF_SENDWININICHANGE, SPIF_UPDATEINIFILE, SPI_GETDESKWALLPAPER,
+        SPI_SETDESKWALLPAPER, SYSTEM_PARAMETERS_INFO_UPDATE_FLAGS,
+    },
 };
 
 use crate::{
@@ -15,7 +21,7 @@ pub struct WallpaperManager;
 
 impl WallpaperManager {
     /// Retrieves the current desktop wallpaper path
-    fn get_current_wallpaper() -> DwallResult<PathBuf> {
+    fn get_current_desktop_wallpaper() -> DwallResult<PathBuf> {
         let mut buffer = vec![0u16; 1024];
 
         unsafe {
@@ -24,23 +30,27 @@ impl WallpaperManager {
                 buffer.len() as u32,
                 Some(buffer.as_mut_ptr() as *mut _),
                 SYSTEM_PARAMETERS_INFO_UPDATE_FLAGS(0),
-            )?;
+            )
+            .map_err(|e| {
+                error!("Failed to retrieve desktop wallpaper: {}", e);
+                e
+            })?;
 
             let current_wallpaper = String::from_utf16_lossy(&buffer)
                 .trim_matches('\0')
                 .to_string();
 
-            trace!("Current wallpaper path: {}", current_wallpaper);
+            trace!("Current desktop wallpaper path: {}", current_wallpaper);
             Ok(PathBuf::from(current_wallpaper))
         }
     }
 
     /// Sets the desktop wallpaper
-    pub fn set_wallpaper(image_path: PathBuf) -> DwallResult<()> {
-        let current_wallpaper = Self::get_current_wallpaper()?;
+    pub fn set_desktop_wallpaper(image_path: &Path) -> DwallResult<()> {
+        let current_wallpaper = Self::get_current_desktop_wallpaper()?;
 
         if current_wallpaper == image_path {
-            debug!("Wallpaper already set: {:?}", image_path);
+            debug!("Desktop wallpaper already set: {:?}", image_path);
             return Ok(());
         }
 
@@ -56,14 +66,102 @@ impl WallpaperManager {
                 0,
                 Some(wide_path.as_ptr() as *mut _),
                 SPIF_UPDATEINIFILE | SPIF_SENDWININICHANGE,
-            )?;
+            )
+            .map_err(|e| {
+                error!(
+                    "Failed to set desktop wallpaper: {:?}, Error: {}",
+                    image_path, e
+                );
+                e
+            })?;
         }
 
-        info!("Wallpaper updated: {:?}", image_path);
+        info!("Desktop wallpaper updated: {:?}", image_path);
+        Ok(())
+    }
+
+    fn get_current_lock_screen_image() -> DwallResult<Uri> {
+        let result = LockScreen::OriginalImageFile().map_err(|e| {
+            error!("Failed to retrieve lock screen image: {}", e);
+            e
+        })?;
+
+        trace!("Current lock screen image path: {}", result.DisplayUri()?);
+        Ok(result)
+    }
+
+    pub fn set_lock_screen_image(image_path: &Path) -> DwallResult<()> {
+        let image_path_hstring = HSTRING::from(image_path);
+        let uri = Uri::CreateUri(&image_path_hstring).map_err(|e| {
+            error!(
+                "Failed to create URI for lock screen image: {:?}, Error: {}",
+                image_path, e
+            );
+            e
+        })?;
+
+        let current_lock_screen_image_uri = Self::get_current_lock_screen_image()?;
+
+        if uri == current_lock_screen_image_uri {
+            debug!("Lock screen image already set: {:?}", image_path);
+            return Ok(());
+        }
+
+        let file = StorageFile::GetFileFromPathAsync(&image_path_hstring).map_err(|e| {
+            error!(
+                "Failed to get storage file for lock screen: {:?}, Error: {}",
+                image_path, e
+            );
+            e
+        })?;
+        let file = file.get().map_err(|e| {
+            error!(
+                "Failed to retrieve async storage file: {:?}, Error: {}",
+                image_path, e
+            );
+            e
+        })?;
+
+        let i_storage_file: IStorageFile = file.cast().map_err(|e| {
+            error!(
+                "Failed to cast storage file: {:?}, Error: {}",
+                image_path, e
+            );
+            e
+        })?;
+        let result = LockScreen::SetImageFileAsync(&i_storage_file).map_err(|e| {
+            error!(
+                "Failed to set lock screen image async: {:?}, Error: {}",
+                image_path, e
+            );
+            e
+        })?;
+        result.get().map_err(|e| {
+            error!(
+                "Failed to complete lock screen image setting: {:?}, Error: {}",
+                image_path, e
+            );
+            e
+        })?;
+
+        info!("Lock screen image updated: {:?}", image_path);
         Ok(())
     }
 
     /// Finds the closest matching image based on solar angles
+    ///
+    /// # Arguments
+    /// - `solar_configs`: Slice of predefined solar angle configurations
+    /// - `current_altitude`: Current solar altitude angle
+    /// - `current_azimuth`: Current solar azimuth angle
+    ///
+    /// # Returns
+    /// - `Some(index)` of the closest matching image configuration
+    /// - `None` if no suitable match is found
+    ///
+    /// # Algorithm
+    /// Calculates the angle difference for each configuration and selects
+    /// the configuration with the minimum difference
     pub fn find_closest_image(
         solar_configs: &[SolarAngle],
         current_altitude: f64,

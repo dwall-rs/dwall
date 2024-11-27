@@ -154,7 +154,8 @@ fn process_theme_cycle(theme_id: &str, image_format: &str) -> DwallResult<()> {
         .join(image_format)
         .join(format!("{}.jpg", closest_image_index + 1));
 
-    WallpaperManager::set_wallpaper(wallpaper_path)?;
+    WallpaperManager::set_lock_screen_image(&wallpaper_path)?;
+    WallpaperManager::set_desktop_wallpaper(&wallpaper_path)?;
 
     let color_mode = determine_color_mode(altitude);
     info!("Determined color mode: {:?}", color_mode);
