@@ -4,11 +4,26 @@ use tokio::fs;
 use crate::{error::DwallResult, lazy::APP_CONFIG_DIR};
 
 #[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum ImageFormat {
+    Jpeg,
+}
+
+impl From<&ImageFormat> for &'static str {
+    fn from(val: &ImageFormat) -> Self {
+        match val {
+            ImageFormat::Jpeg => "jpg",
+        }
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Config {
     #[serde(skip_serializing_if = "Option::is_none")]
     github_mirror_template: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    selected_id: Option<String>,
+    selected_theme_id: Option<String>,
+    image_format: ImageFormat,
 
     /// The time interval for detecting the solar elevation
     /// angle and azimuth angle, measured in seconds: [1, 300]
@@ -16,6 +31,18 @@ pub struct Config {
 }
 
 impl Config {
+    pub fn theme_id(&self) -> Option<String> {
+        self.selected_theme_id.clone()
+    }
+
+    pub fn interval(&self) -> u8 {
+        self.interval
+    }
+
+    pub fn image_format(&self) -> &ImageFormat {
+        &self.image_format
+    }
+
     pub fn github_asset_url(&self, github_url: &str) -> String {
         self.github_mirror_template
             .as_ref()
@@ -42,7 +69,8 @@ impl Default for Config {
     fn default() -> Self {
         Self {
             github_mirror_template: None,
-            selected_id: None,
+            selected_theme_id: None,
+            image_format: ImageFormat::Jpeg,
             interval: if cfg!(debug_assertions) { 1 } else { 30 },
         }
     }

@@ -16,6 +16,9 @@
       },
       "a11y": {
         "useKeyWithClickEvents": "off"
+      },
+      "style": {
+        "noNonNullAssertion": "off"
       }
     }
   }

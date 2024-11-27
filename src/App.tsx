@@ -1,5 +1,6 @@
-import { children, createSignal, onMount } from "solid-js";
+import { children, createResource, createSignal, onMount } from "solid-js";
 import {
+  applyTheme,
   checkThemeExists,
   closeLastThemeTask,
   readConfigFile,
@@ -56,6 +57,7 @@ const images = [
 ];
 
 const App = () => {
+  const [config] = createResource(readConfigFile);
   const [index, setIndex] = createSignal(0);
   const [themeButtonStatus, setThemeButtonStatus] = createSignal<{
     exists: boolean;
@@ -64,9 +66,6 @@ const App = () => {
 
   onMount(async () => {
     showMainWindow();
-
-    const config = await readConfigFile();
-    console.log(config);
   });
 
   const onMenuItemClick = async (index: number) => {
@@ -122,9 +121,9 @@ const App = () => {
             type="primary"
             disabled={!themeButtonStatus().exists}
             onClick={() =>
-              invoke("apply_theme", {
-                themeId: images[index()].id,
-                imageFormat: "jpg",
+              applyTheme({
+                ...config()!,
+                selected_theme_id: images[index()].id,
               })
             }
           >

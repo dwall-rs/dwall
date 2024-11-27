@@ -5,7 +5,6 @@ use std::{
     time::Duration,
 };
 
-use manager::WallpaperManager;
 use time::{macros::offset, OffsetDateTime};
 use tokio::{
     sync::{mpsc, Mutex},
@@ -14,11 +13,14 @@ use tokio::{
 
 use crate::{
     color_mode::{determine_color_mode, set_color_mode},
+    config::Config,
     error::{DwallError, DwallResult},
     geo::get_geo_position,
     lazy::APP_CONFIG_DIR,
     solar::{SolarAngle, SunPosition},
 };
+
+use self::manager::WallpaperManager;
 
 pub use self::validator::ThemeValidator;
 
@@ -56,44 +58,49 @@ pub async fn close_last_theme_task(sender: tauri::State<'_, CloseTaskSender>) ->
 
 #[tauri::command]
 pub async fn apply_theme(
-    theme_id: String,
     sender: tauri::State<'_, CloseTaskSender>,
-    image_format: String,
+    config: Config,
 ) -> DwallResult<()> {
-    trace!("Applying theme: {}", theme_id);
-    ThemeValidator::validate_theme(&theme_id).await?;
+    let theme_id = config.theme_id();
 
-    let (tx, mut rx) = mpsc::channel::<()>(1);
+    trace!("Applying theme: {:?}", theme_id);
 
-    tauri::async_runtime::spawn(async move {
-        loop {
-            tokio::select! {
-                _ = sleep(Duration::from_secs(1)) => {
-                    match process_theme_cycle(&theme_id, &image_format) {
-                        Ok(_) => {},
-                        Err(e) => {
-                            error!("Theme processing error: {}", e);
-                            break;
+    if let Some(theme_id) = theme_id {
+        ThemeValidator::validate_theme(&theme_id).await?;
+
+        let (tx, mut rx) = mpsc::channel::<()>(1);
+
+        tauri::async_runtime::spawn(async move {
+            loop {
+                tokio::select! {
+                    _ = sleep(Duration::from_secs(config.interval().into())) => {
+                        match process_theme_cycle(&theme_id, config.image_format()) {
+                            Ok(_) => {},
+                            Err(e) => {
+                                error!("Theme processing error: {}", e);
+                                break;
+                            }
                         }
+                    },
+                    _ = rx.recv() => {
+                        info!("Received exit signal, terminating theme task");
+                        break;
                     }
-                },
-                _ = rx.recv() => {
-                    info!("Received exit signal, terminating theme task");
-                    break;
                 }
             }
-        }
-        Ok::<(), DwallError>(())
-    });
+            Ok::<(), DwallError>(())
+        });
 
-    let sender = sender.clone();
-    let mut sender = sender.lock().await;
-    *sender = Some(tx);
+        let sender = sender.clone();
+        let mut sender = sender.lock().await;
+        *sender = Some(tx);
+    }
 
     Ok(())
 }
 
-fn process_theme_cycle(theme_id: &str, image_format: &str) -> DwallResult<()> {
+fn process_theme_cycle<'a, I: Into<&'a str>>(theme_id: &str, image_format: I) -> DwallResult<()> {
+    let image_format: &'a str = image_format.into();
     let geographic_position = get_geo_position()?;
     debug!("Current geographical position: {:?}", geographic_position);
 

@@ -24,6 +24,7 @@ impl WallpaperManager {
     fn get_current_desktop_wallpaper() -> DwallResult<PathBuf> {
         let mut buffer = vec![0u16; 1024];
 
+        // TODO: `windows::Win32::UI::Shell::IDesktopWallpaper::GetWallpaper` may be better
         unsafe {
             SystemParametersInfoW(
                 SPI_GETDESKWALLPAPER,
@@ -60,6 +61,7 @@ impl WallpaperManager {
             .chain(std::iter::once(0))
             .collect();
 
+        // TODO: `windows::Win32::UI::Shell::IDesktopWallpaper::SetWallpaper` may be better
         unsafe {
             SystemParametersInfoW(
                 SPI_SETDESKWALLPAPER,
