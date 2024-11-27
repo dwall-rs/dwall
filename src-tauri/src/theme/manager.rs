@@ -1,5 +1,6 @@
 use std::path::{Path, PathBuf};
 
+use time::OffsetDateTime;
 use windows::{
     core::{Interface, HSTRING},
     Foundation::Uri,
@@ -175,12 +176,19 @@ impl WallpaperManager {
         solar_configs: &[SolarAngle],
         current_altitude: f64,
         current_azimuth: f64,
+        current_latitude: f64,
+        datetime: OffsetDateTime,
     ) -> Option<u8> {
         solar_configs
             .iter()
             .map(|config| {
-                let angle_difference =
-                    calculate_angle_difference(config, current_altitude, current_azimuth);
+                let angle_difference = calculate_angle_difference(
+                    config,
+                    current_altitude,
+                    current_azimuth,
+                    current_latitude,
+                    datetime,
+                );
                 (config.index, angle_difference)
             })
             .min_by(|a, b| a.1.partial_cmp(&b.1).unwrap())

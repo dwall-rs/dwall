@@ -152,13 +152,17 @@ fn process_theme_cycle<'a, I: Into<&'a str>>(theme_id: &str, image_format: I) ->
         altitude, azimuth
     );
 
-    let closest_image_index =
-        WallpaperManager::find_closest_image(&solar_angles, altitude, azimuth).ok_or_else(
-            || {
-                error!("No suitable image found");
-                ThemeError::ImageCountMismatch
-            },
-        )?;
+    let closest_image_index = WallpaperManager::find_closest_image(
+        &solar_angles,
+        altitude,
+        azimuth,
+        geographic_position.latitude,
+        current_time,
+    )
+    .ok_or_else(|| {
+        error!("No suitable image found");
+        ThemeError::ImageCountMismatch
+    })?;
 
     let wallpaper_path = theme_dir
         .join(image_format)

@@ -104,23 +104,52 @@ impl SunPosition {
     }
 }
 
-/// Calculate the smallest difference between two angles considering the 360-degree cycle
-fn angle_difference(angle1: f64, angle2: f64) -> f64 {
-    let diff = (angle1 - angle2).abs();
-    if diff > 180.0 {
-        360.0 - diff
-    } else {
-        diff
-    }
-}
-
 /// Calculate the overall difference between two solar angle configurations
-pub fn calculate_angle_difference(config: &SolarAngle, elevation: f64, azimuth: f64) -> f64 {
-    let azimuth_weight = 1.0;
-    let elevation_weight = 2.0;
+// FIXME: The current angle difference algorithm is not accurate and needs further improvement.
+pub fn calculate_angle_difference(
+    config: &SolarAngle,
+    elevation: f64,
+    azimuth: f64,
+    latitude: f64,
+    datetime: OffsetDateTime,
+) -> f64 {
+    // 1. Seasonal weight factor (non-linear)
+    let seasonal_factor = match datetime.month() as u8 {
+        12 | 1 | 2 => 0.2, // Winter
+        3..=5 => 0.4,      // Spring
+        6..=8 => 0.8,      // Summer
+        9..=11 => 0.5,     // Autumn
+        _ => 0.5,
+    };
 
-    let azimuth_diff = angle_difference(config.azimuth, azimuth);
+    // 2. Latitude weight factor (using sine function for smoother transition)
+    let latitude_factor = (latitude.abs() / 90.0 * std::f64::consts::PI / 2.0).sin();
+
+    // 3. Time weight factor (modeled using a Gaussian function)
+    let time_factor = {
+        let hour = datetime.hour() as f64 + datetime.minute() as f64 / 60.0;
+        let noon_deviation = (hour - 12.0).abs();
+        let gaussian_width = 3.0; // Adjustable Gaussian width
+        (-0.5 * (noon_deviation / gaussian_width).powi(2)).exp()
+    };
+
+    // 4. Independent difference calculation for elevation and azimuth
     let elevation_diff = (config.altitude - elevation).abs();
+    let azimuth_diff = {
+        let diff = (config.azimuth - azimuth).abs();
+        diff.min(360.0 - diff)
+    };
 
-    azimuth_diff * azimuth_weight + elevation_diff * elevation_weight
+    // 5. Weights for elevation and azimuth (can be adjusted based on actual conditions)
+    let elevation_weight = 0.6;
+    let azimuth_weight = 0.4;
+
+    // 6. Combined angle difference and weights
+    let weighted_difference = elevation_diff * elevation_weight + azimuth_diff * azimuth_weight;
+
+    // 7. Comprehensive weight calculation
+    let comprehensive_weight = seasonal_factor * latitude_factor * time_factor;
+
+    // 8. Final difference calculation
+    weighted_difference * (1.0 - comprehensive_weight)
 }
