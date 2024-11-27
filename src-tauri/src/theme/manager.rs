@@ -51,7 +51,7 @@ impl WallpaperManager {
         let current_wallpaper = Self::get_current_desktop_wallpaper()?;
 
         if current_wallpaper == image_path {
-            debug!("Desktop wallpaper already set: {:?}", image_path);
+            debug!("Desktop wallpaper already set: {}", image_path.display());
             return Ok(());
         }
 
@@ -71,14 +71,15 @@ impl WallpaperManager {
             )
             .map_err(|e| {
                 error!(
-                    "Failed to set desktop wallpaper: {:?}, Error: {}",
-                    image_path, e
+                    "Failed to set desktop wallpaper: {}, Error: {}",
+                    image_path.display(),
+                    e
                 );
                 e
             })?;
         }
 
-        info!("Desktop wallpaper updated: {:?}", image_path);
+        info!("Desktop wallpaper updated: {}", image_path.display());
         Ok(())
     }
 
@@ -96,8 +97,9 @@ impl WallpaperManager {
         let image_path_hstring = HSTRING::from(image_path);
         let uri = Uri::CreateUri(&image_path_hstring).map_err(|e| {
             error!(
-                "Failed to create URI for lock screen image: {:?}, Error: {}",
-                image_path, e
+                "Failed to create URI for lock screen image: {}, Error: {}",
+                image_path.display(),
+                e
             );
             e
         })?;
@@ -105,48 +107,53 @@ impl WallpaperManager {
         let current_lock_screen_image_uri = Self::get_current_lock_screen_image()?;
 
         if uri == current_lock_screen_image_uri {
-            debug!("Lock screen image already set: {:?}", image_path);
+            debug!("Lock screen image already set: {}", image_path.display());
             return Ok(());
         }
 
         let file = StorageFile::GetFileFromPathAsync(&image_path_hstring).map_err(|e| {
             error!(
-                "Failed to get storage file for lock screen: {:?}, Error: {}",
-                image_path, e
+                "Failed to get storage file for lock screen: {}, Error: {}",
+                image_path.display(),
+                e
             );
             e
         })?;
         let file = file.get().map_err(|e| {
             error!(
-                "Failed to retrieve async storage file: {:?}, Error: {}",
-                image_path, e
+                "Failed to retrieve async storage file: {}, Error: {}",
+                image_path.display(),
+                e
             );
             e
         })?;
 
         let i_storage_file: IStorageFile = file.cast().map_err(|e| {
             error!(
-                "Failed to cast storage file: {:?}, Error: {}",
-                image_path, e
+                "Failed to cast storage file: {}, Error: {}",
+                image_path.display(),
+                e
             );
             e
         })?;
         let result = LockScreen::SetImageFileAsync(&i_storage_file).map_err(|e| {
             error!(
-                "Failed to set lock screen image async: {:?}, Error: {}",
-                image_path, e
+                "Failed to set lock screen image async: {}, Error: {}",
+                image_path.display(),
+                e
             );
             e
         })?;
         result.get().map_err(|e| {
             error!(
-                "Failed to complete lock screen image setting: {:?}, Error: {}",
-                image_path, e
+                "Failed to complete lock screen image setting: {}, Error: {}",
+                image_path.display(),
+                e
             );
             e
         })?;
 
-        info!("Lock screen image updated: {:?}", image_path);
+        info!("Lock screen image updated: {}", image_path.display());
         Ok(())
     }
 

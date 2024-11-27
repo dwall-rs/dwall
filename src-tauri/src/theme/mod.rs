@@ -110,7 +110,10 @@ fn process_theme_cycle<'a, I: Into<&'a str>>(theme_id: &str, image_format: I) ->
         let solar_config_path = theme_dir.join("solar.json");
 
         if !solar_config_path.exists() {
-            error!("Solar configuration file missing: {:?}", solar_config_path);
+            error!(
+                "Solar configuration file missing: {}",
+                solar_config_path.display()
+            );
             return Err(ThemeError::MissingSolarConfigFile.into());
         }
 
