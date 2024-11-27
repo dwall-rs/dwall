@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use serde_valid::Validate;
 use tokio::fs;
 
 use crate::{error::DwallResult, lazy::APP_CONFIG_DIR};
@@ -17,7 +18,7 @@ impl From<&ImageFormat> for &'static str {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Validate)]
 pub struct Config {
     #[serde(skip_serializing_if = "Option::is_none")]
     github_mirror_template: Option<String>,
@@ -26,8 +27,10 @@ pub struct Config {
     image_format: ImageFormat,
 
     /// The time interval for detecting the solar elevation
-    /// angle and azimuth angle, measured in seconds: [1, 300]
-    interval: u8,
+    /// angle and azimuth angle, measured in seconds: [1, 600]
+    #[validate(minimum = 1)]
+    #[validate(maximum = 600)]
+    interval: u16,
 }
 
 impl Config {
@@ -35,7 +38,7 @@ impl Config {
         self.selected_theme_id.clone()
     }
 
-    pub fn interval(&self) -> u8 {
+    pub fn interval(&self) -> u16 {
         self.interval
     }
 

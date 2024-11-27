@@ -43,6 +43,7 @@ reqwest = "0"
 futures-util = "0"
 zip-extract = "0"
 regex = "1"
+serde_valid = "0"
 
 tauri-plugin-shell = "2"
 tauri-plugin-clipboard-manager = "2"
