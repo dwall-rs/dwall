@@ -63,6 +63,7 @@ pub fn build_tray(app: &mut tauri::App) -> DwallResult<()> {
                 println!("unhandled event {event:?}");
             }
         })
+        .tooltip(&app.package_info().name)
         .build(app)?;
     Ok(())
 }
