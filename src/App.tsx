@@ -13,15 +13,17 @@ import "./App.scss";
 import { useDark } from "alley-components";
 
 const images = {
-  Catalina: Object.keys(
+  Catalina: Object.values(
     import.meta.glob("~/assets/thumbnail/Catalina/*.avif", {
+      import: "default",
       eager: true,
-    }),
+    }) as Record<string, string>,
   ),
-  "Big Sur": Object.keys(
+  "Big Sur": Object.values(
     import.meta.glob("~/assets/thumbnail/BigSur/*.avif", {
+      import: "default",
       eager: true,
-    }),
+    }) as Record<string, string>,
   ),
 };
 
