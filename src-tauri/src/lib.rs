@@ -1,11 +1,13 @@
 use tauri::{AppHandle, Manager};
 
+use crate::auto_start::{check_auto_start, disable_auto_start, enable_auto_start};
 use crate::config::{read_config_file, write_config_file};
 use crate::error::DwallResult;
 use crate::event::run_callback;
 use crate::setup::{setup_app, setup_logging};
 use crate::theme::{apply_theme, close_last_theme_task, CloseTaskSender, ThemeValidator};
 
+mod auto_start;
 mod color_mode;
 mod config;
 mod download;
@@ -76,7 +78,10 @@ pub fn run() -> DwallResult<()> {
             check_theme_exists,
             apply_theme,
             close_last_theme_task,
-            get_applied_theme_id
+            get_applied_theme_id,
+            check_auto_start,
+            disable_auto_start,
+            enable_auto_start,
         ])
         .build(tauri::generate_context!())?
         .run(run_callback);
