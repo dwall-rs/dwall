@@ -4,7 +4,7 @@ use crate::config::{read_config_file, write_config_file};
 use crate::error::DwallResult;
 use crate::event::run_callback;
 use crate::setup::{setup_app, setup_logging};
-use crate::theme::{apply_theme, close_last_theme_task, ThemeValidator};
+use crate::theme::{apply_theme, close_last_theme_task, CloseTaskSender, ThemeValidator};
 
 mod color_mode;
 mod config;
@@ -39,6 +39,21 @@ async fn check_theme_exists(theme_id: String) -> DwallResult<()> {
     ThemeValidator::validate_theme(&theme_id).await
 }
 
+#[tauri::command]
+async fn get_applied_theme_id(
+    sender: tauri::State<'_, CloseTaskSender>,
+) -> DwallResult<Option<String>> {
+    let sender = sender.clone();
+    let sender = sender.lock().await;
+    if sender.is_none() {
+        return Ok(None);
+    }
+
+    let config = read_config_file().await?;
+
+    Ok(config.theme_id())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() -> DwallResult<()> {
     setup_logging();
@@ -59,7 +74,8 @@ pub fn run() -> DwallResult<()> {
             write_config_file,
             check_theme_exists,
             apply_theme,
-            close_last_theme_task
+            close_last_theme_task,
+            get_applied_theme_id
         ])
         .build(tauri::generate_context!())?
         .run(run_callback);
