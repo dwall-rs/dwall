@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{env, sync::Arc};
 
 use tauri::Manager;
 use time::macros::{format_description, offset};
@@ -57,7 +57,13 @@ pub fn setup_app(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>>
     #[cfg(all(desktop, not(debug_assertions)))]
     setup_updater(app)?;
 
-    new_main_window(app.app_handle())?;
+    let args: Vec<String> = env::args().collect(); // Collect command-line arguments.
+    debug!("Launch parameters: {:?}", args); // Log the launch parameters.
+    if args.contains(&"--auto-start".to_string()) {
+        info!("Auto-start enabled, no window will be created"); // Log that auto-start is enabled.
+    } else {
+        new_main_window(app.app_handle())?; // Create the main window if auto-start is not enabled.
+    }
 
     let channel: CloseTaskSender = Arc::new(Mutex::new(None));
     app.manage(channel);
