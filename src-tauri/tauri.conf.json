@@ -13,7 +13,7 @@
     "windows": [
       {
         "title": "Dwall",
-        "width": 800,
+        "width": 660,
         "height": 600,
         "transparent": true,
         "resizable": false,
