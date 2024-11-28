@@ -12,3 +12,6 @@ export const closeLastThemeTask = async () =>
 
 export const applyTheme = async (config: Config) =>
   invoke("apply_theme", { config });
+
+export const getAppliedThemeID = async () =>
+  invoke<string | null>("get_applied_theme_id");
