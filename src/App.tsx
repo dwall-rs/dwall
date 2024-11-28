@@ -1,4 +1,4 @@
-import { children, createResource, createSignal, onMount } from "solid-js";
+import { children, createSignal, onMount } from "solid-js";
 import {
   applyTheme,
   checkThemeExists,
@@ -56,15 +56,36 @@ const images = [
 ];
 
 const App = () => {
-  const [config] = createResource(readConfigFile);
+  const [config, setConfig] = createSignal<Config>();
   const [index, setIndex] = createSignal(0);
   const [themeButtonStatus, setThemeButtonStatus] = createSignal<{
     exists: boolean;
     applied: boolean;
   }>({ exists: false, applied: false });
 
+  const autoRun = async (config: Config) => {
+    const {
+      selected_theme_id,
+      image_format,
+      interval,
+      github_mirror_template,
+    } = config;
+    if (!selected_theme_id) return;
+
+    await applyTheme({
+      selected_theme_id,
+      image_format,
+      interval,
+      github_mirror_template,
+    });
+  };
+
   onMount(async () => {
     showMainWindow();
+
+    const config = await readConfigFile();
+    setConfig(config);
+    autoRun(config);
   });
 
   const onMenuItemClick = async (index: number) => {
