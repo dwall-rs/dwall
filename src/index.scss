@@ -1,3 +1,13 @@
+:root {
+  --alley-color-bg: transparent;
+  --alley-color-mask: radial-gradient(
+    closest-side,
+    rgb(255 255 255),
+    transparent
+  );
+  --alley-color-info-bg: rgb(234 236 255 / 30%);
+}
+
 body {
   overflow: hidden;
 }
