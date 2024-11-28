@@ -65,3 +65,11 @@ export const LazyToast = lazy(
 export const LazyAlert = lazy(
   () => import("alley-components/lib/components/alert"),
 );
+
+export const LazySwitch = lazy(
+  () => import("alley-components/lib/components/switch"),
+);
+
+export const LazyInputNumber = lazy(
+  () => import("alley-components/lib/components/input-number"),
+);

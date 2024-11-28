@@ -15,3 +15,9 @@ export const applyTheme = async (config: Config) =>
 
 export const getAppliedThemeID = async () =>
   invoke<string | null>("get_applied_theme_id");
+
+export const checkAutoStart = async () => invoke<boolean>("check_auto_start");
+
+export const enableAutoStart = async () => invoke<void>("enable_auto_start");
+
+export const disableAutoStart = async () => invoke<void>("disable_auto_start");
