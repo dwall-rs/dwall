@@ -9,10 +9,6 @@ pub enum DwallError {
     #[error(transparent)]
     Io(#[from] std::io::Error),
     #[error(transparent)]
-    TomlDe(#[from] toml::de::Error),
-    #[error(transparent)]
-    TomlSer(#[from] toml::ser::Error),
-    #[error(transparent)]
     Request(#[from] reqwest::Error),
     #[error(transparent)]
     ZipExtract(#[from] zip_extract::ZipExtractError),
@@ -24,6 +20,8 @@ pub enum DwallError {
     SerdeJson(#[from] serde_json::Error),
     #[error(transparent)]
     Tauri(#[from] tauri::Error),
+    #[error(transparent)]
+    Config(#[from] crate::config::ConfigError),
 }
 
 impl Serialize for DwallError {

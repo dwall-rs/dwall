@@ -1,10 +1,33 @@
+use std::{
+    path::{Path, PathBuf},
+    sync::Arc,
+};
+
 use serde::{Deserialize, Serialize};
 use serde_valid::Validate;
-use tokio::fs;
+use thiserror::Error;
 
 use crate::{error::DwallResult, lazy::APP_CONFIG_DIR};
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Error, Debug)]
+pub enum ConfigError {
+    #[error("IO error occurred: {0}")]
+    Io(#[from] std::io::Error),
+
+    #[error("Deserialization error: {0}")]
+    Deserialization(#[from] toml::de::Error),
+
+    #[error("Serialization error: {0}")]
+    Serialization(#[from] toml::ser::Error),
+
+    #[error("Configuration validation failed")]
+    Validation,
+
+    #[error("Config file not found or inaccessible")]
+    FileNotFound,
+}
+
+#[derive(Debug, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "lowercase")]
 pub enum ImageFormat {
     Jpeg,
@@ -22,18 +45,28 @@ impl From<&ImageFormat> for &'static str {
 pub struct Config {
     #[serde(skip_serializing_if = "Option::is_none")]
     github_mirror_template: Option<String>,
+
     #[serde(skip_serializing_if = "Option::is_none")]
     selected_theme_id: Option<String>,
+
     image_format: ImageFormat,
 
-    /// The time interval for detecting the solar elevation
-    /// angle and azimuth angle, measured in seconds: [1, 600]
+    /// Time interval for detecting solar elevation angle and azimuth angle
+    /// Measured in seconds, range: [1, 600]
     #[validate(minimum = 1)]
     #[validate(maximum = 600)]
     interval: u16,
 }
 
 impl Config {
+    pub fn validate(&self) -> DwallResult<()> {
+        if self.interval < 1 || self.interval > 600 {
+            error!(interval = self.interval, "Interval validation failed");
+            return Err(ConfigError::Validation.into());
+        }
+        Ok(())
+    }
+
     pub fn theme_id(&self) -> Option<String> {
         self.selected_theme_id.clone()
     }
@@ -79,24 +112,93 @@ impl Default for Config {
     }
 }
 
-#[tauri::command]
-pub async fn read_config_file() -> DwallResult<Config> {
-    let config_path = APP_CONFIG_DIR.join("config.toml");
-    if !config_path.exists() && !config_path.is_file() {
-        return Ok(Default::default());
+impl PartialEq for Config {
+    fn eq(&self, other: &Self) -> bool {
+        self.github_mirror_template == other.github_mirror_template
+            && self.selected_theme_id == other.selected_theme_id
+            && self.image_format == other.image_format
+            && self.interval == other.interval
+    }
+}
+
+pub struct ConfigManager {
+    config_path: PathBuf,
+}
+
+impl ConfigManager {
+    pub fn new(config_dir: &Path) -> Self {
+        Self {
+            config_path: config_dir.join("config.toml"),
+        }
     }
 
-    let content = fs::read_to_string(config_path).await?;
+    pub async fn read_config(&self) -> DwallResult<Config> {
+        // Return default configuration if config file does not exist
+        if !self.config_path.exists() {
+            warn!("Config file not found, using default configuration");
+            return Ok(Config::default());
+        }
 
-    toml::from_str(&content).map_err(Into::into)
+        info!(path = %self.config_path.display(), "Reading configuration file");
+
+        let content = tokio::fs::read_to_string(&self.config_path).await?;
+
+        let config: Config = match toml::from_str(&content) {
+            Ok(config) => config,
+            Err(e) => {
+                error!(error = %e, "Failed to parse configuration");
+                return Err(ConfigError::Deserialization(e).into());
+            }
+        };
+
+        // Validate configuration
+        config.validate()?;
+
+        Ok(config)
+    }
+
+    pub async fn write_config(&self, config: &Config) -> DwallResult<()> {
+        // Validate configuration before writing
+        config.validate()?;
+
+        if !self.config_path.exists() {
+            return self.write_config_to_file(config).await;
+        }
+
+        let existing_config = self.read_config().await?;
+
+        if existing_config == *config {
+            debug!("Configuration unchanged, skipping write");
+            return Ok(());
+        }
+
+        self.write_config_to_file(config).await
+    }
+
+    async fn write_config_to_file(&self, config: &Config) -> DwallResult<()> {
+        let toml_string = match toml::to_string(config) {
+            Ok(s) => s,
+            Err(e) => {
+                error!(error = %e, "Failed to serialize configuration");
+                return Err(ConfigError::Serialization(e).into());
+            }
+        };
+
+        info!(path = %self.config_path.display(), "Writing configuration file");
+
+        tokio::fs::write(&self.config_path, toml_string.as_bytes()).await?;
+        Ok(())
+    }
 }
 
 #[tauri::command]
-pub async fn write_config_file(config: Config) -> DwallResult<()> {
-    let string = toml::to_string(&config)?;
+pub async fn read_config_file() -> DwallResult<Config> {
+    let config_manager = ConfigManager::new(&APP_CONFIG_DIR);
+    config_manager.read_config().await
+}
 
-    let config_path = APP_CONFIG_DIR.join("config.toml");
-    tokio::fs::write(config_path, string.as_bytes())
-        .await
-        .map_err(Into::into)
+#[tauri::command]
+pub async fn write_config_file(config: Arc<Config>) -> DwallResult<()> {
+    let config_manager = ConfigManager::new(&APP_CONFIG_DIR);
+    config_manager.write_config(&config).await
 }
