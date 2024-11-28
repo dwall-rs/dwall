@@ -107,7 +107,15 @@ impl Default for Config {
             github_mirror_template: None,
             selected_theme_id: None,
             image_format: ImageFormat::Jpeg,
-            interval: if cfg!(debug_assertions) { 1 } else { 30 },
+            // On the equator, an azimuth change of 0.1 degrees takes
+            // approximately 12 seconds, and an altitude change of 0.1
+            // degrees takes about 24 seconds.
+            // Set the default time interval to 15 seconds based on the
+            // rate of change of the azimuth.
+            // FIXME: This default value is a rough estimate; a more
+            // precise algorithm should be used to calculate the time
+            // interval required for each 0.1 degree change.
+            interval: 15,
         }
     }
 }
@@ -139,7 +147,7 @@ impl ConfigManager {
             return Ok(Config::default());
         }
 
-        info!(path = %self.config_path.display(), "Reading configuration file");
+        debug!(path = %self.config_path.display(), "Reading configuration file");
 
         let content = tokio::fs::read_to_string(&self.config_path).await?;
 
