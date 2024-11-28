@@ -18,6 +18,7 @@ mod solar;
 mod theme;
 mod tray;
 mod update;
+mod window;
 
 #[macro_use]
 extern crate tracing;

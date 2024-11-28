@@ -6,7 +6,7 @@ use tokio::sync::Mutex;
 use tracing::Level;
 use tracing_subscriber::fmt::time::OffsetTime;
 
-use crate::{theme::CloseTaskSender, tray::build_tray};
+use crate::{theme::CloseTaskSender, tray::build_tray, window::new_main_window};
 
 pub fn setup_logging() {
     let fmt = if cfg!(debug_assertions) {
@@ -57,8 +57,7 @@ pub fn setup_app(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>>
     #[cfg(all(desktop, not(debug_assertions)))]
     setup_updater(app)?;
 
-    #[cfg(any(target_os = "macos", target_os = "windows"))]
-    apply_window_effect(app)?;
+    new_main_window(app.app_handle())?;
 
     let channel: CloseTaskSender = Arc::new(Mutex::new(None));
     app.manage(channel);
@@ -81,29 +80,6 @@ fn setup_updater(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>>
             error!("Failed to check for updates: {:?}", e);
         }
     });
-
-    Ok(())
-}
-
-#[cfg(any(target_os = "macos", target_os = "windows"))]
-fn apply_window_effect(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>> {
-    use tauri::Manager;
-
-    let window = app.get_webview_window("main").unwrap();
-
-    #[cfg(target_os = "macos")]
-    {
-        info!("Applying vibrancy effect on macOS");
-        use window_vibrancy::{apply_vibrancy, NSVisualEffectMaterial};
-        apply_vibrancy(&window, NSVisualEffectMaterial::HudWindow, None, None)?;
-    }
-
-    #[cfg(target_os = "windows")]
-    {
-        info!("Applying acrylic effect on Windows");
-        use window_vibrancy::apply_acrylic;
-        apply_acrylic(&window, Some((18, 18, 18, 125)))?;
-    }
 
     Ok(())
 }

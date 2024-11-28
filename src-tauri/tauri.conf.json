@@ -10,17 +10,6 @@
     "frontendDist": "../dist"
   },
   "app": {
-    "windows": [
-      {
-        "title": "Dwall",
-        "width": 660,
-        "height": 600,
-        "transparent": true,
-        "resizable": false,
-        "maximizable": false,
-        "visible": false
-      }
-    ],
     "security": {
       "csp": null
     }

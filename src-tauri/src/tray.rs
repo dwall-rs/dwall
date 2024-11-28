@@ -1,22 +1,10 @@
 use tauri::{
     menu::{Menu, MenuItem},
     tray::{TrayIconBuilder, TrayIconEvent},
-    Manager, WebviewUrl, WebviewWindowBuilder,
+    Manager,
 };
 
-use crate::error::DwallResult;
-
-fn new_main_window(app: &tauri::AppHandle) {
-    let win_builder = WebviewWindowBuilder::new(app, "main", WebviewUrl::default())
-        .title("Dwall")
-        .transparent(true)
-        .shadow(true)
-        .visible(false);
-
-    let window = win_builder.build().unwrap();
-    //window.set_focus().unwrap();
-    //window.hide().unwrap();
-}
+use crate::{error::DwallResult, window::new_main_window};
 
 pub fn build_tray(app: &mut tauri::App) -> DwallResult<()> {
     let quit_i = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
@@ -56,7 +44,7 @@ pub fn build_tray(app: &mut tauri::App) -> DwallResult<()> {
                     let _ = window.show();
                     let _ = window.set_focus();
                 } else {
-                    new_main_window(app);
+                    new_main_window(app).unwrap();
                 }
             }
             _ => {}
