@@ -13,7 +13,7 @@ use tokio::{
 
 use crate::{
     color_mode::{determine_color_mode, set_color_mode},
-    config::Config,
+    config::{write_config_file, Config},
     error::{DwallError, DwallResult},
     geo::get_geo_position,
     lazy::APP_CONFIG_DIR,
@@ -63,6 +63,8 @@ pub async fn apply_theme(
 ) -> DwallResult<()> {
     let theme_id = config.theme_id();
 
+    let config = Arc::new(config);
+
     trace!("Applying theme: {:?}", theme_id);
 
     if let Some(theme_id) = theme_id {
@@ -72,10 +74,16 @@ pub async fn apply_theme(
 
         tauri::async_runtime::spawn(async move {
             loop {
+                let config = Arc::clone(&config);
                 tokio::select! {
                     _ = sleep(Duration::from_secs(config.interval().into())) => {
                         match process_theme_cycle(&theme_id, config.image_format()) {
-                            Ok(_) => {},
+                            Ok(_) => {
+                                write_config_file(config).await.map_err(|e| {
+                                    error!("Failed to save configuration: {}", e);
+                                    e
+                                }).unwrap();
+                            },
                             Err(e) => {
                                 error!("Theme processing error: {}", e);
                                 break;
