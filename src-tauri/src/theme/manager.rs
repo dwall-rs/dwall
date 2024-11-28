@@ -42,17 +42,22 @@ impl WallpaperManager {
                 .trim_matches('\0')
                 .to_string();
 
-            trace!("Current desktop wallpaper path: {}", current_wallpaper);
+            debug!("Current desktop wallpaper path: {}", current_wallpaper);
             Ok(PathBuf::from(current_wallpaper))
         }
     }
 
     /// Sets the desktop wallpaper
     pub fn set_desktop_wallpaper(image_path: &Path) -> DwallResult<()> {
+        debug!(
+            "Target desktop wallpaper image path: {}",
+            image_path.display()
+        );
+
         let current_wallpaper = Self::get_current_desktop_wallpaper()?;
 
         if current_wallpaper == image_path {
-            debug!("Desktop wallpaper already set: {}", image_path.display());
+            info!("Desktop wallpaper already set: {}", image_path.display());
             return Ok(());
         }
 
@@ -90,7 +95,7 @@ impl WallpaperManager {
             e
         })?;
 
-        trace!("Current lock screen image path: {}", result.DisplayUri()?);
+        debug!("Current lock screen image path: {}", result.DisplayUri()?);
         Ok(result)
     }
 
@@ -104,11 +109,12 @@ impl WallpaperManager {
             );
             e
         })?;
+        debug!("Target lock screen image path: {}", uri.DisplayUri()?);
 
         let current_lock_screen_image_uri = Self::get_current_lock_screen_image()?;
 
-        if uri == current_lock_screen_image_uri {
-            debug!("Lock screen image already set: {}", image_path.display());
+        if uri.Equals(&current_lock_screen_image_uri)? {
+            info!("Lock screen image already set: {}", image_path.display());
             return Ok(());
         }
 
