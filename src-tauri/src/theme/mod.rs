@@ -104,6 +104,15 @@ pub async fn apply_theme(
         let sender = sender.clone();
         let mut sender = sender.lock().await;
         *sender = Some(tx);
+    } else {
+        let sender = sender.clone();
+        let mut sender = sender.lock().await;
+        *sender = None;
+
+        write_config_file(config).await.map_err(|e| {
+            error!("Failed to save configuration: {}", e);
+            e
+        })?;
     }
 
     Ok(())
