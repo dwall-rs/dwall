@@ -11,4 +11,32 @@
   &.active {
     box-shadow: 0 0 5px 1px var(--menu-item-color-shadow);
   }
+
+  &.applied {
+    position: relative;
+
+    &::before {
+      content: "";
+      color: #fff;
+      font-weight: bold;
+      font-size: 0.8rem;
+      position: absolute;
+      top: 4px;
+      left: 4px;
+      width: 24px;
+      height: 24px;
+      background-color: var(--alley-color-success);
+      clip-path: polygon(0 0, 100% 0, 0 100%);
+    }
+
+    &::after {
+      content: "✓";
+      font-weight: bold;
+      position: absolute;
+      top: 4px;
+      left: 7px;
+      color: white;
+      font-size: 0.8rem;
+    }
+  }
 }
