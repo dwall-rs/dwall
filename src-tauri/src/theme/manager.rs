@@ -1,6 +1,5 @@
 use std::path::{Path, PathBuf};
 
-use time::OffsetDateTime;
 use windows::{
     core::{Interface, HSTRING},
     Foundation::Uri,
@@ -12,10 +11,7 @@ use windows::{
     },
 };
 
-use crate::{
-    error::DwallResult,
-    solar::{calculate_angle_difference, SolarAngle},
-};
+use crate::{error::DwallResult, solar::SolarAngle};
 
 /// Wallpaper management utilities
 pub struct WallpaperManager;
@@ -165,39 +161,33 @@ impl WallpaperManager {
     }
 
     /// Finds the closest matching image based on solar angles
-    ///
-    /// # Arguments
-    /// - `solar_configs`: Slice of predefined solar angle configurations
-    /// - `current_altitude`: Current solar altitude angle
-    /// - `current_azimuth`: Current solar azimuth angle
-    ///
-    /// # Returns
-    /// - `Some(index)` of the closest matching image configuration
-    /// - `None` if no suitable match is found
-    ///
-    /// # Algorithm
-    /// Calculates the angle difference for each configuration and selects
-    /// the configuration with the minimum difference
     pub fn find_closest_image(
         solar_configs: &[SolarAngle],
         current_altitude: f64,
         current_azimuth: f64,
-        current_latitude: f64,
-        datetime: OffsetDateTime,
     ) -> Option<u8> {
-        solar_configs
+        let min_altitude_diff = solar_configs
             .iter()
-            .map(|config| {
-                let angle_difference = calculate_angle_difference(
-                    config,
-                    current_altitude,
-                    current_azimuth,
-                    current_latitude,
-                    datetime,
-                );
-                (config.index, angle_difference)
+            .map(|sa| (sa.altitude - current_altitude).abs())
+            .min_by(|a, b| a.partial_cmp(b).unwrap())?;
+
+        let closest_altitude_matches: Vec<&SolarAngle> = solar_configs
+            .iter()
+            .filter(|sa| (sa.altitude - current_altitude).abs() == min_altitude_diff)
+            .collect();
+
+        if closest_altitude_matches.len() == 1 {
+            return closest_altitude_matches[0].index.into();
+        }
+
+        closest_altitude_matches
+            .iter()
+            .min_by(|&&a, &&b| {
+                (a.azimuth - current_azimuth)
+                    .abs()
+                    .partial_cmp(&(b.azimuth - current_azimuth).abs())
+                    .unwrap()
             })
-            .min_by(|a, b| a.1.partial_cmp(&b.1).unwrap())
-            .map(|(index, _)| index)
+            .map(|&sa| sa.index)
     }
 }
