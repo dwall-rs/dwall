@@ -1,14 +1,16 @@
 use windows::{
-    core::{Result, PCWSTR},
+    core::PCWSTR,
     Win32::{
-        Foundation::{LPARAM, WPARAM},
+        Foundation::{ERROR_SUCCESS, LPARAM, WPARAM},
         System::Registry::{
-            RegOpenKeyExW, RegQueryValueExW, RegSetValueExW, HKEY, HKEY_CURRENT_USER,
+            RegCloseKey, RegOpenKeyExW, RegQueryValueExW, RegSetValueExW, HKEY, HKEY_CURRENT_USER,
             KEY_QUERY_VALUE, KEY_SET_VALUE, REG_DWORD,
         },
         UI::WindowsAndMessaging::{SendNotifyMessageW, HWND_BROADCAST, WM_SETTINGCHANGE},
     },
 };
+
+use crate::error::{DwallResult, RegistryError};
 
 #[derive(Debug, PartialEq)]
 pub enum ColorMode {
@@ -35,7 +37,7 @@ pub fn determine_color_mode(altitude: f64) -> ColorMode {
     }
 }
 
-pub fn get_current_color_mode() -> Result<ColorMode> {
+pub fn get_current_color_mode() -> DwallResult<ColorMode> {
     let key_path: Vec<u16> = "Software\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize\0"
         .encode_utf16()
         .collect();
@@ -50,8 +52,8 @@ pub fn get_current_color_mode() -> Result<ColorMode> {
             KEY_QUERY_VALUE,
             &mut hkey,
         );
-        if r.0 != 0 {
-            return Err(windows::core::Error::from_win32());
+        if r != ERROR_SUCCESS {
+            return Err(RegistryError::Open(r).into());
         }
 
         let mut value: u32 = 0;
@@ -65,8 +67,13 @@ pub fn get_current_color_mode() -> Result<ColorMode> {
             Some(&mut size),
         );
 
-        if r.0 != 0 {
-            return Err(windows::core::Error::from_win32());
+        if r != ERROR_SUCCESS {
+            return Err(RegistryError::Query(r).into());
+        }
+
+        let r = RegCloseKey(hkey);
+        if r != ERROR_SUCCESS {
+            return Err(RegistryError::Close(r).into());
         }
 
         Ok(if value == 1 {
@@ -77,7 +84,7 @@ pub fn get_current_color_mode() -> Result<ColorMode> {
     }
 }
 
-pub fn set_color_mode(mode: ColorMode) -> Result<()> {
+pub fn set_color_mode(mode: ColorMode) -> DwallResult<()> {
     let current_mode = get_current_color_mode()?;
     if current_mode == mode {
         return Ok(());
@@ -99,8 +106,8 @@ pub fn set_color_mode(mode: ColorMode) -> Result<()> {
             KEY_SET_VALUE,
             &mut hkey,
         );
-        if r.0 != 0 {
-            panic!("some error");
+        if r != ERROR_SUCCESS {
+            return Err(RegistryError::Open(r).into());
         }
 
         let value: [u8; 4] = match mode {
@@ -115,8 +122,8 @@ pub fn set_color_mode(mode: ColorMode) -> Result<()> {
             REG_DWORD,
             Some(&value),
         );
-        if r.0 != 0 {
-            panic!("some error");
+        if r != ERROR_SUCCESS {
+            return Err(RegistryError::Set(r).into());
         }
 
         let r = RegSetValueExW(
@@ -126,8 +133,13 @@ pub fn set_color_mode(mode: ColorMode) -> Result<()> {
             REG_DWORD,
             Some(&value),
         );
-        if r.0 != 0 {
-            panic!("some error");
+        if r != ERROR_SUCCESS {
+            return Err(RegistryError::Set(r).into());
+        }
+
+        let r = RegCloseKey(hkey);
+        if r != ERROR_SUCCESS {
+            return Err(RegistryError::Close(r).into());
         }
 
         let theme_name: Vec<u16> = "ImmersiveColorSet\0".encode_utf16().collect();
