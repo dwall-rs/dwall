@@ -158,7 +158,6 @@ fn load_solar_angles(theme_dir: &Path) -> DwallResult<Vec<SolarAngle>> {
 fn process_theme_cycle<'a, I: Into<&'a str>>(theme_id: &str, image_format: I) -> DwallResult<()> {
     let image_format: &'a str = image_format.into();
     let geographic_position = get_geo_position()?;
-    info!("Current geographical position: {:?}", geographic_position);
 
     let theme_dir = THEMES_DIR.join(theme_id);
     let solar_angles = load_solar_angles(&theme_dir)?;
