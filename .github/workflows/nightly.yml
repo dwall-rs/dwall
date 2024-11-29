@@ -46,12 +46,20 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: |
-            const { data } = await github.rest.repos.getReleaseByTag({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              tag: "nightly",
-            })
-            return data.id
+            try {
+              const { data } = await github.rest.repos.getReleaseByTag({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                tag: "nightly",
+                })
+                return data.id
+            } catch (error) {
+              if (error.status === 404) {
+                core.info(`Release nightly not found`)
+              } else {
+                throw error
+              }
+            }
 
       - name: delete old nightly release
         if: steps.get-release.outputs.result != ''
