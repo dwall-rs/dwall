@@ -19,6 +19,7 @@ mod setup;
 mod solar;
 mod theme;
 mod tray;
+#[cfg(not(debug_assertions))]
 mod update;
 mod window;
 
