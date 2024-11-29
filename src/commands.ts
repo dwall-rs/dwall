@@ -22,3 +22,8 @@ export const checkAutoStart = async () => invoke<boolean>("check_auto_start");
 export const enableAutoStart = async () => invoke<void>("enable_auto_start");
 
 export const disableAutoStart = async () => invoke<void>("disable_auto_start");
+
+export const downloadThemeAndExtract = async (
+  config: Config,
+  themeId: string,
+) => invoke<void>("download_theme_and_extract", { config, themeId });
