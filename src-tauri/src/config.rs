@@ -163,6 +163,8 @@ impl<'a> ConfigManager {
         // Validate configuration
         config.validate()?;
 
+        info!("Local configuration: {:?}", config);
+
         Ok(config)
     }
 

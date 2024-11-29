@@ -1,5 +1,6 @@
 use std::borrow::Cow;
 
+use download::download_theme_and_extract;
 use tauri::{AppHandle, Manager};
 
 use crate::auto_start::{check_auto_start, disable_auto_start, enable_auto_start};
@@ -85,6 +86,7 @@ pub fn run() -> DwallResult<()> {
             check_auto_start,
             disable_auto_start,
             enable_auto_start,
+            download_theme_and_extract
         ])
         .build(tauri::generate_context!())?
         .run(run_callback);
