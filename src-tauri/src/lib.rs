@@ -2,6 +2,7 @@ use std::borrow::Cow;
 
 use download::download_theme_and_extract;
 use tauri::{AppHandle, Manager};
+use window::new_main_window;
 
 use crate::auto_start::{check_auto_start, disable_auto_start, enable_auto_start};
 use crate::config::{read_config_file, write_config_file};
@@ -69,6 +70,8 @@ pub fn run() -> DwallResult<()> {
             if let Some(w) = app.get_webview_window("main") {
                 info!("Application instance already running, focusing existing window");
                 w.set_focus().unwrap();
+            } else {
+                new_main_window(app).unwrap();
             }
         }))
         .plugin(tauri_plugin_shell::init())
