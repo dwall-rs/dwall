@@ -1,6 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
 
-export const showMainWindow = async () => invoke<void>("show_main_window");
+export const showWindow = async (label: string) =>
+  invoke<void>("show_window", { label });
 
 export const readConfigFile = async () => invoke<Config>("read_config_file");
 

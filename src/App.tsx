@@ -5,7 +5,7 @@ import {
   closeLastThemeTask,
   getAppliedThemeID,
   readConfigFile,
-  showMainWindow,
+  showWindow,
 } from "./commands";
 import { LazyButton, LazyFlex, LazySpace, LazyTooltip } from "./lazy";
 import ImageCarousel from "./components/ImageCarousel";
@@ -133,7 +133,7 @@ const App = () => {
   useDark();
 
   onMount(async () => {
-    await showMainWindow();
+    await showWindow("main");
 
     const configData = await readConfigFile();
     setConfig(configData);

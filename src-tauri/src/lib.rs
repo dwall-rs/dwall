@@ -1,3 +1,5 @@
+use std::borrow::Cow;
+
 use tauri::{AppHandle, Manager};
 
 use crate::auto_start::{check_auto_start, disable_auto_start, enable_auto_start};
@@ -27,26 +29,26 @@ mod window;
 extern crate tracing;
 
 #[tauri::command]
-async fn show_main_window(app: AppHandle) -> DwallResult<()> {
-    debug!("Showing main window");
+fn show_window<'a>(app: AppHandle, label: &'a str) -> DwallResult<()> {
+    debug!("Showing window: {}", label);
 
-    if let Some(main_window) = app.get_webview_window("main") {
-        main_window.show()?;
-        main_window.set_focus()?;
+    if let Some(window) = app.get_webview_window(label) {
+        window.show()?;
+        window.set_focus()?;
     }
 
     Ok(())
 }
 
 #[tauri::command]
-async fn check_theme_exists(theme_id: String) -> DwallResult<()> {
-    ThemeValidator::validate_theme(&theme_id).await
+async fn check_theme_exists<'a>(theme_id: &'a str) -> DwallResult<()> {
+    ThemeValidator::validate_theme(theme_id).await
 }
 
 #[tauri::command]
 async fn get_applied_theme_id(
     sender: tauri::State<'_, CloseTaskSender>,
-) -> DwallResult<Option<String>> {
+) -> DwallResult<Option<Cow<'_, str>>> {
     let sender = sender.clone();
     let sender = sender.lock().await;
     if sender.is_none() {
@@ -73,7 +75,7 @@ pub fn run() -> DwallResult<()> {
         .plugin(tauri_plugin_dialog::init())
         .setup(setup_app)
         .invoke_handler(tauri::generate_handler![
-            show_main_window,
+            show_window,
             read_config_file,
             write_config_file,
             check_theme_exists,
