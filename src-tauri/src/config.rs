@@ -51,7 +51,7 @@ pub struct Config {
 
     image_format: ImageFormat,
 
-    /// Time interval for detecting solar elevation angle and azimuth angle
+    /// Time interval for detecting solar altitude angle and azimuth angle
     /// Measured in seconds, range: [1, 600]
     #[validate(minimum = 1)]
     #[validate(maximum = 600)]

@@ -184,7 +184,7 @@ fn process_theme_cycle<'a, I: Into<&'a str>>(theme_id: &str, image_format: I) ->
     let altitude = sun_position.altitude();
     let azimuth = sun_position.azimuth();
     info!(
-        "Solar angles - Elevation: {:.1}°, Azimuth: {:.1}°",
+        "Solar angles - Altitude: {:.1}°, Azimuth: {:.1}°",
         altitude, azimuth
     );
 
