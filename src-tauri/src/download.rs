@@ -5,7 +5,7 @@ use tokio::{fs, io::AsyncWriteExt};
 
 use crate::{config::Config, error::DwallResult, lazy::APP_CONFIG_DIR, theme::THEMES_DIR};
 
-async fn download_theme(config: &Config, id: &str) -> DwallResult<PathBuf> {
+async fn download_theme<'a>(config: &Config<'a>, id: &str) -> DwallResult<PathBuf> {
     let github_url = format!(
         "https://github.com/thep0y/dwall-assets/releases/download/v0.1.0/{}.zip",
         id.replace(" ", ".")
@@ -26,7 +26,7 @@ async fn download_theme(config: &Config, id: &str) -> DwallResult<PathBuf> {
     Ok(theme_zip_file)
 }
 
-pub async fn download_theme_and_extract(config: &Config, id: &str) -> DwallResult<()> {
+pub async fn download_theme_and_extract<'a>(config: &Config<'a>, id: &str) -> DwallResult<()> {
     let file_path = download_theme(config, id).await?;
     let archive = fs::read(file_path).await?;
 

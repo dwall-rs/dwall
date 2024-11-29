@@ -1,4 +1,5 @@
 use std::{
+    borrow::Cow,
     path::{Path, PathBuf},
     sync::Arc,
 };
@@ -42,23 +43,23 @@ impl From<&ImageFormat> for &'static str {
 }
 
 #[derive(Debug, Serialize, Deserialize, Validate)]
-pub struct Config {
+pub struct Config<'a> {
     #[serde(skip_serializing_if = "Option::is_none")]
-    github_mirror_template: Option<String>,
+    pub github_mirror_template: Option<Cow<'a, str>>,
 
     #[serde(skip_serializing_if = "Option::is_none")]
-    selected_theme_id: Option<String>,
+    pub selected_theme_id: Option<Cow<'a, str>>,
 
-    image_format: ImageFormat,
+    pub image_format: ImageFormat,
 
     /// Time interval for detecting solar altitude angle and azimuth angle
     /// Measured in seconds, range: [1, 600]
     #[validate(minimum = 1)]
     #[validate(maximum = 600)]
-    interval: u16,
+    pub interval: u16,
 }
 
-impl Config {
+impl<'a> Config<'a> {
     pub fn validate(&self) -> DwallResult<()> {
         if self.interval < 1 || self.interval > 600 {
             error!(interval = self.interval, "Interval validation failed");
@@ -67,7 +68,7 @@ impl Config {
         Ok(())
     }
 
-    pub fn theme_id(&self) -> Option<String> {
+    pub fn theme_id(&self) -> Option<Cow<'a, str>> {
         self.selected_theme_id.clone()
     }
 
@@ -79,7 +80,7 @@ impl Config {
         &self.image_format
     }
 
-    pub fn github_asset_url(&self, github_url: &str) -> String {
+    pub fn github_asset_url(&self, github_url: &'a str) -> String {
         self.github_mirror_template
             .as_ref()
             .and_then(|template| {
@@ -101,7 +102,7 @@ impl Config {
     }
 }
 
-impl Default for Config {
+impl<'a> Default for Config<'a> {
     fn default() -> Self {
         Self {
             github_mirror_template: None,
@@ -120,7 +121,7 @@ impl Default for Config {
     }
 }
 
-impl PartialEq for Config {
+impl<'a> PartialEq for Config<'a> {
     fn eq(&self, other: &Self) -> bool {
         self.github_mirror_template == other.github_mirror_template
             && self.selected_theme_id == other.selected_theme_id
@@ -133,14 +134,14 @@ pub struct ConfigManager {
     config_path: PathBuf,
 }
 
-impl ConfigManager {
-    pub fn new(config_dir: &Path) -> Self {
+impl<'a> ConfigManager {
+    pub fn new(config_dir: &'a Path) -> Self {
         Self {
             config_path: config_dir.join("config.toml"),
         }
     }
 
-    pub async fn read_config(&self) -> DwallResult<Config> {
+    pub async fn read_config(&self) -> DwallResult<Config<'a>> {
         // Return default configuration if config file does not exist
         if !self.config_path.exists() {
             warn!("Config file not found, using default configuration");
@@ -165,7 +166,7 @@ impl ConfigManager {
         Ok(config)
     }
 
-    pub async fn write_config(&self, config: &Config) -> DwallResult<()> {
+    pub async fn write_config(&self, config: &Config<'a>) -> DwallResult<()> {
         // Validate configuration before writing
         config.validate()?;
 
@@ -183,7 +184,7 @@ impl ConfigManager {
         self.write_config_to_file(config).await
     }
 
-    async fn write_config_to_file(&self, config: &Config) -> DwallResult<()> {
+    async fn write_config_to_file(&self, config: &Config<'a>) -> DwallResult<()> {
         let toml_string = match toml::to_string(config) {
             Ok(s) => s,
             Err(e) => {
@@ -200,13 +201,13 @@ impl ConfigManager {
 }
 
 #[tauri::command]
-pub async fn read_config_file() -> DwallResult<Config> {
+pub async fn read_config_file<'a>() -> DwallResult<Config<'a>> {
     let config_manager = ConfigManager::new(&APP_CONFIG_DIR);
     config_manager.read_config().await
 }
 
 #[tauri::command]
-pub async fn write_config_file(config: Arc<Config>) -> DwallResult<()> {
+pub async fn write_config_file<'a>(config: Arc<Config<'a>>) -> DwallResult<()> {
     let config_manager = ConfigManager::new(&APP_CONFIG_DIR);
     config_manager.write_config(&config).await
 }

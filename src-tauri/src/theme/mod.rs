@@ -1,4 +1,5 @@
 use std::{
+    borrow::Cow,
     fs,
     path::{Path, PathBuf},
     sync::{Arc, LazyLock},
@@ -64,10 +65,19 @@ pub async fn close_last_theme_task(sender: tauri::State<'_, CloseTaskSender>) ->
 #[tauri::command]
 pub async fn apply_theme(
     sender: tauri::State<'_, CloseTaskSender>,
-    config: Config,
+    config: Config<'_>,
 ) -> DwallResult<()> {
-    let theme_id = config.theme_id();
-    let config = Arc::new(config);
+    let owned_config = Config {
+        github_mirror_template: config
+            .github_mirror_template
+            .map(|c| Cow::Owned(c.into_owned())),
+        selected_theme_id: config.selected_theme_id.map(|c| Cow::Owned(c.into_owned())),
+        image_format: config.image_format,
+        interval: config.interval,
+    };
+
+    let theme_id = owned_config.theme_id();
+    let config = Arc::new(owned_config);
 
     trace!("Applying theme: {:?}", theme_id);
 
@@ -119,9 +129,9 @@ pub async fn apply_theme(
 }
 
 /// Process theme cycle and save configuration
-async fn process_theme_cycle_and_save_config(
+async fn process_theme_cycle_and_save_config<'a>(
     theme_id: &str,
-    config: Arc<Config>,
+    config: Arc<Config<'a>>,
 ) -> DwallResult<()> {
     match process_theme_cycle(theme_id, config.image_format()) {
         Ok(_) => write_config_file(config).await.map_err(|e| {
