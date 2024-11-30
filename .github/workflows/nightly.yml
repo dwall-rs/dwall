@@ -126,13 +126,14 @@ jobs:
     needs: [create-release, build-tauri]
 
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
       - name: Get meaningful commit message
         id: get-commit-message
         run: |
-          # 获取最后一次非合并提交消息
           LAST_COMMIT_MESSAGE=$(git log --pretty=format:"%s" -n 1 --skip=0 | grep -v "^Merge pull request")
           if [ -z "$LAST_COMMIT_MESSAGE" ]; then
-            # 如果最新的提交是合并消息，则获取前一条提交
             LAST_COMMIT_MESSAGE=$(git log --pretty=format:"%s" -n 1 --skip=1)
           fi
           echo "LAST_COMMIT_MESSAGE=$LAST_COMMIT_MESSAGE" >> $GITHUB_ENV
