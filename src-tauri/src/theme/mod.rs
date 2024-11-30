@@ -1,5 +1,4 @@
 use std::{
-    borrow::Cow,
     fs,
     path::{Path, PathBuf},
     sync::{Arc, LazyLock},
@@ -67,14 +66,7 @@ pub async fn apply_theme(
     sender: tauri::State<'_, CloseTaskSender>,
     config: Config<'_>,
 ) -> DwallResult<()> {
-    let owned_config = Config {
-        github_mirror_template: config
-            .github_mirror_template
-            .map(|c| Cow::Owned(c.into_owned())),
-        selected_theme_id: config.selected_theme_id.map(|c| Cow::Owned(c.into_owned())),
-        image_format: config.image_format,
-        interval: config.interval,
-    };
+    let owned_config = config.owned();
 
     let theme_id = owned_config.theme_id();
     let config = Arc::new(owned_config);
@@ -133,7 +125,11 @@ async fn process_theme_cycle_and_save_config<'a>(
     theme_id: &str,
     config: Arc<Config<'a>>,
 ) -> DwallResult<()> {
-    match process_theme_cycle(theme_id, config.image_format()) {
+    match process_theme_cycle(
+        theme_id,
+        config.auto_detect_color_mode(),
+        config.image_format(),
+    ) {
         Ok(_) => write_config_file(config).await.map_err(|e| {
             error!("Failed to save configuration: {}", e);
             e
@@ -174,7 +170,11 @@ fn load_solar_angles(theme_dir: &Path) -> DwallResult<Vec<SolarAngle>> {
 }
 
 /// Core theme processing function
-fn process_theme_cycle<'a, I: Into<&'a str>>(theme_id: &str, image_format: I) -> DwallResult<()> {
+fn process_theme_cycle<'a, I: Into<&'a str>>(
+    theme_id: &str,
+    auto_detect_color_mode: bool,
+    image_format: I,
+) -> DwallResult<()> {
     let image_format: &'a str = image_format.into();
     let geographic_position = get_geo_position()?;
 
@@ -216,9 +216,11 @@ fn process_theme_cycle<'a, I: Into<&'a str>>(theme_id: &str, image_format: I) ->
     WallpaperManager::set_lock_screen_image(&wallpaper_path)?;
     WallpaperManager::set_desktop_wallpaper(&wallpaper_path)?;
 
-    let color_mode = determine_color_mode(altitude);
-    info!("Determined color mode: {:?}", color_mode);
-    set_color_mode(color_mode)?;
+    if auto_detect_color_mode {
+        let color_mode = determine_color_mode(altitude);
+        info!("Determined color mode: {:?}", color_mode);
+        set_color_mode(color_mode)?;
+    }
 
     Ok(())
 }
