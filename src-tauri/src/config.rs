@@ -45,21 +45,45 @@ impl<'a> From<&ImageFormat> for &'a str {
 #[derive(Debug, Serialize, Deserialize, Validate)]
 pub struct Config<'a> {
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub github_mirror_template: Option<Cow<'a, str>>,
+    github_mirror_template: Option<Cow<'a, str>>,
 
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub selected_theme_id: Option<Cow<'a, str>>,
+    selected_theme_id: Option<Cow<'a, str>>,
 
-    pub image_format: ImageFormat,
+    image_format: ImageFormat,
+
+    #[serde(default = "default_auto_detect_color_mode")]
+    auto_detect_color_mode: bool,
 
     /// Time interval for detecting solar altitude angle and azimuth angle
     /// Measured in seconds, range: [1, 600]
+    #[serde(default = "default_interval")]
     #[validate(minimum = 1)]
     #[validate(maximum = 600)]
-    pub interval: u16,
+    interval: u16,
+}
+
+fn default_auto_detect_color_mode() -> bool {
+    true
+}
+
+fn default_interval() -> u16 {
+    15
 }
 
 impl<'a> Config<'a> {
+    pub fn owned<'c>(self) -> Config<'c> {
+        Config {
+            github_mirror_template: self
+                .github_mirror_template
+                .map(|c| Cow::Owned(c.into_owned())),
+            selected_theme_id: self.selected_theme_id.map(|c| Cow::Owned(c.into_owned())),
+            image_format: self.image_format,
+            interval: self.interval,
+            auto_detect_color_mode: self.auto_detect_color_mode,
+        }
+    }
+
     pub fn validate(&self) -> DwallResult<()> {
         if self.interval < 1 || self.interval > 600 {
             error!(interval = self.interval, "Interval validation failed");
@@ -78,6 +102,10 @@ impl<'a> Config<'a> {
 
     pub fn image_format(&self) -> &ImageFormat {
         &self.image_format
+    }
+
+    pub fn auto_detect_color_mode(&self) -> bool {
+        self.auto_detect_color_mode
     }
 
     pub fn github_asset_url(&self, github_url: &'a str) -> String {
@@ -108,6 +136,7 @@ impl<'a> Default for Config<'a> {
             github_mirror_template: None,
             selected_theme_id: None,
             image_format: ImageFormat::Jpeg,
+            auto_detect_color_mode: true,
             // On the equator, an azimuth change of 0.1 degrees takes
             // approximately 12 seconds, and an altitude change of 0.1
             // degrees takes about 24 seconds.
