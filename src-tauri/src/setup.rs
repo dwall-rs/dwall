@@ -4,7 +4,7 @@ use tauri::Manager;
 use time::macros::{format_description, offset};
 use tokio::sync::Mutex;
 use tracing::Level;
-use tracing_subscriber::fmt::time::OffsetTime;
+use tracing_subscriber::{fmt::time::OffsetTime, EnvFilter};
 
 use crate::{
     config::read_config_file,
@@ -42,6 +42,7 @@ pub fn setup_logging() {
         .with_env_filter("dwall_lib")
         .with_target(false)
         .with_timer(timer)
+        .with_env_filter(EnvFilter::from_default_env())
         .with_writer(writer);
 
     if cfg!(debug_assertions) {
