@@ -129,7 +129,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          fetch-depth: 5
+          fetch-depth: 0
 
       - name: Get meaningful commit message
         id: get-commit-message
@@ -137,10 +137,16 @@ jobs:
           echo "DEBUG: Current branch: $(git branch --show-current)"
           echo "DEBUG: Last commit: $(git log --pretty=format:'%s' -n 1 || echo 'No commits found')"
 
-          LAST_COMMIT_MESSAGE=$(git log --pretty=format:"%s" -n 1 --skip=0 | grep -v "^Merge pull request")
+          LAST_COMMIT_MESSAGE=$(git log --pretty=format:"%s" -n 1 --skip=0 | grep -v "^Merge pull request" || true)
           if [ -z "$LAST_COMMIT_MESSAGE" ]; then
-            LAST_COMMIT_MESSAGE=$(git log --pretty=format:"%s" -n 1 --skip=1)
+            LAST_COMMIT_MESSAGE=$(git log --pretty=format:"%s" -n 1 --skip=1 || echo 'No meaningful commit found')
           fi
+
+          if [ -z "$LAST_COMMIT_MESSAGE" ]; then
+            echo "Error: No meaningful commit message found"
+            exit 1
+          fi
+
           echo "LAST_COMMIT_MESSAGE=$LAST_COMMIT_MESSAGE" >> $GITHUB_ENV
 
       - name: publish release
