@@ -49,7 +49,6 @@ const App = () => {
     setIndex,
     themeExists,
     currentTheme,
-    autoRun,
     onMenuItemClick,
     onCloseTask,
     onApply,
@@ -76,8 +75,6 @@ const App = () => {
         return;
       }
     }
-
-    autoRun(configData);
   });
 
   return (

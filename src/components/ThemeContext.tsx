@@ -10,18 +10,18 @@ export const useThemeSelector = (themes: ThemeItem[]) => {
 
   const currentTheme = createMemo(() => themes[index()]);
 
-  const autoRun = async (config: Config) => {
-    const { selected_theme_id, ...themeParams } = config;
-    if (!selected_theme_id) return;
+  // const autoRun = async (config: Config) => {
+  //   const { selected_theme_id, ...themeParams } = config;
+  //   if (!selected_theme_id) return;
 
-    await applyTheme({
-      selected_theme_id,
-      ...themeParams,
-    });
+  //   await applyTheme({
+  //     selected_theme_id,
+  //     ...themeParams,
+  //   });
 
-    setAppliedThemeID(selected_theme_id);
-    setIndex(themes.findIndex((t) => t.id === selected_theme_id));
-  };
+  //   setAppliedThemeID(selected_theme_id);
+  //   setIndex(themes.findIndex((t) => t.id === selected_theme_id));
+  // };
 
   const onMenuItemClick = async (idx: number) => {
     setIndex(idx);
@@ -64,7 +64,6 @@ export const useThemeSelector = (themes: ThemeItem[]) => {
     setIndex,
     themeExists,
     currentTheme,
-    autoRun,
     onMenuItemClick,
     onCloseTask,
     onApply,

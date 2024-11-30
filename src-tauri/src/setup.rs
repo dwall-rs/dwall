@@ -6,7 +6,12 @@ use tokio::sync::Mutex;
 use tracing::Level;
 use tracing_subscriber::fmt::time::OffsetTime;
 
-use crate::{theme::CloseTaskSender, tray::build_tray, window::new_main_window};
+use crate::{
+    config::read_config_file,
+    theme::{apply_theme, CloseTaskSender},
+    tray::build_tray,
+    window::new_main_window,
+};
 
 pub fn setup_logging() {
     let fmt = if cfg!(debug_assertions) {
@@ -48,8 +53,13 @@ pub fn setup_logging() {
 
 pub fn setup_app(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
     info!(
-        "Setting up application: version {}",
-        app.package_info().version
+        "Starting application: version {}, build mode: {}",
+        app.package_info().version,
+        if cfg!(debug_assertions) {
+            "debug"
+        } else {
+            "release"
+        }
     );
 
     build_tray(app)?;
@@ -57,18 +67,37 @@ pub fn setup_app(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>>
     #[cfg(all(desktop, not(debug_assertions)))]
     setup_updater(app)?;
 
-    let args: Vec<String> = env::args().collect(); // Collect command-line arguments.
-    debug!("Launch parameters: {:?}", args); // Log the launch parameters.
-    if args.contains(&"--auto-start".to_string()) {
-        info!("Auto-start enabled, no window will be created"); // Log that auto-start is enabled.
-    } else {
-        new_main_window(app.app_handle())?; // Create the main window if auto-start is not enabled.
-    }
-
     let channel: CloseTaskSender = Arc::new(Mutex::new(None));
     app.manage(channel);
 
-    info!("Application setup completed");
+    // Apply theme asynchronously
+    info!("Preparing to apply theme on launch");
+    let handle = app.handle().clone();
+    tauri::async_runtime::spawn(async move {
+        match read_config_file().await {
+            Ok(config) => {
+                let sender = handle.state::<CloseTaskSender>();
+                if let Err(e) = apply_theme(sender, config).await {
+                    error!("Failed to apply theme: {}", e);
+                }
+            }
+            Err(e) => error!("Failed to read config file: {}", e),
+        }
+    });
+
+    // Process launch arguments
+    let args: Vec<String> = env::args().collect();
+    debug!("Launch arguments: {:?}", args);
+
+    // Conditionally create main window
+    if !args.contains(&"--auto-start".to_string()) {
+        info!("Auto-start not enabled, creating main window");
+        new_main_window(app.app_handle())?;
+    } else {
+        info!("Auto-start enabled, skipping main window creation");
+    }
+
+    info!("Application setup completed successfully");
 
     Ok(())
 }
@@ -76,14 +105,22 @@ pub fn setup_app(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>>
 #[cfg(all(desktop, not(debug_assertions)))]
 fn setup_updater(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
     info!("Initializing update plugin");
-    app.handle()
-        .plugin(tauri_plugin_updater::Builder::new().build())?;
 
-    info!("Spawning update check task");
+    // Initialize update plugin
+    app.handle()
+        .plugin(tauri_plugin_updater::Builder::new().build())
+        .map_err(|e| {
+            error!("Failed to initialize update plugin: {}", e);
+            e
+        })?;
+
+    // Spawn update check task
+    info!("Scheduling background update check");
     let handle = app.handle().clone();
     tauri::async_runtime::spawn(async move {
-        if let Err(e) = crate::update::update(handle).await {
-            error!("Failed to check for updates: {:?}", e);
+        match crate::update::update(handle).await {
+            Ok(_) => info!("Update check completed successfully"),
+            Err(e) => error!("Update check failed: {}", e),
         }
     });
 
