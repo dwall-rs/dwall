@@ -23,7 +23,7 @@ serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 tokio = { version = "1", features = ["macros"] }
 time = { version = "0", features = ['macros', 'serde'] }
-tracing = { version = "0", features = ["log", "release_max_level_info"] }
+tracing = { version = "0", features = ["log", "release_max_level_warn"] }
 tracing-subscriber = { version = "0", features = [
   'time',
   'env-filter',
