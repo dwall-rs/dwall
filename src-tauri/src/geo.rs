@@ -8,6 +8,15 @@ pub struct Position {
     pub longitude: f64,
 }
 
+impl Position {
+    pub fn new(latitude: f64, longitude: f64) -> Self {
+        Position {
+            latitude,
+            longitude,
+        }
+    }
+}
+
 pub fn get_geo_position() -> DwallResult<Position> {
     trace!("Initializing Geolocator...");
     let geolocator = Geolocator::new().map_err(|e| {

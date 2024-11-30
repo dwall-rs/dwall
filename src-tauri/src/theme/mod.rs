@@ -15,7 +15,7 @@ use crate::{
     color_mode::{determine_color_mode, set_color_mode},
     config::{write_config_file, Config},
     error::{DwallError, DwallResult},
-    geo::get_geo_position,
+    geo::Position,
     lazy::APP_CONFIG_DIR,
     solar::{SolarAngle, SunPosition},
 };
@@ -129,6 +129,7 @@ async fn process_theme_cycle_and_save_config<'a>(
         theme_id,
         config.auto_detect_color_mode(),
         config.image_format(),
+        config.get_position()?,
     ) {
         Ok(_) => write_config_file(config).await.map_err(|e| {
             error!("Failed to save configuration: {}", e);
@@ -174,9 +175,9 @@ fn process_theme_cycle<'a, I: Into<&'a str>>(
     theme_id: &str,
     auto_detect_color_mode: bool,
     image_format: I,
+    geographic_position: Position,
 ) -> DwallResult<()> {
     let image_format: &'a str = image_format.into();
-    let geographic_position = get_geo_position()?;
 
     let theme_dir = THEMES_DIR.join(theme_id);
     let solar_angles = load_solar_angles(&theme_dir)?;

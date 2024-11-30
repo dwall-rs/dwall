@@ -8,7 +8,11 @@ use serde::{Deserialize, Serialize};
 use serde_valid::Validate;
 use thiserror::Error;
 
-use crate::{error::DwallResult, lazy::APP_CONFIG_DIR};
+use crate::{
+    error::DwallResult,
+    geo::{get_geo_position, Position},
+    lazy::APP_CONFIG_DIR,
+};
 
 #[derive(Error, Debug)]
 pub enum ConfigError {
@@ -28,9 +32,10 @@ pub enum ConfigError {
     FileNotFound,
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Default)]
 #[serde(rename_all = "lowercase")]
 pub enum ImageFormat {
+    #[default]
     Jpeg,
 }
 
@@ -38,6 +43,30 @@ impl<'a> From<&ImageFormat> for &'a str {
     fn from(val: &ImageFormat) -> Self {
         match val {
             ImageFormat::Jpeg => "jpg",
+        }
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize, PartialEq, Default)]
+#[serde(rename_all = "UPPERCASE", tag = "type")]
+enum CoordinateSource {
+    #[default]
+    Automatic,
+
+    Manual {
+        latitude: f64,
+        longitude: f64,
+    },
+}
+
+impl CoordinateSource {
+    pub fn validate(&self) -> bool {
+        match *self {
+            CoordinateSource::Automatic => true,
+            CoordinateSource::Manual {
+                latitude,
+                longitude,
+            } => latitude >= -90.0 && latitude <= 90.0 && longitude >= -180.0 && longitude <= 180.0,
         }
     }
 }
@@ -50,7 +79,11 @@ pub struct Config<'a> {
     #[serde(skip_serializing_if = "Option::is_none")]
     selected_theme_id: Option<Cow<'a, str>>,
 
+    #[serde(default = "default_image_format")]
     image_format: ImageFormat,
+
+    #[serde(default = "default_coordinate_source")]
+    coordinate_source: CoordinateSource,
 
     #[serde(default = "default_auto_detect_color_mode")]
     auto_detect_color_mode: bool,
@@ -61,6 +94,14 @@ pub struct Config<'a> {
     #[validate(minimum = 1)]
     #[validate(maximum = 600)]
     interval: u16,
+}
+
+fn default_image_format() -> ImageFormat {
+    Default::default()
+}
+
+fn default_coordinate_source() -> CoordinateSource {
+    Default::default()
 }
 
 fn default_auto_detect_color_mode() -> bool {
@@ -81,6 +122,7 @@ impl<'a> Config<'a> {
             image_format: self.image_format,
             interval: self.interval,
             auto_detect_color_mode: self.auto_detect_color_mode,
+            coordinate_source: self.coordinate_source,
         }
     }
 
@@ -108,6 +150,32 @@ impl<'a> Config<'a> {
         self.auto_detect_color_mode
     }
 
+    pub fn get_position(&self) -> DwallResult<Position> {
+        match self.coordinate_source {
+            CoordinateSource::Automatic => get_geo_position(),
+            CoordinateSource::Manual {
+                latitude,
+                longitude,
+            } => {
+                if self.coordinate_source.validate() {
+                    info!(
+                        latitude = latitude,
+                        longitude = longitude,
+                        "Using manual coordinate values"
+                    );
+                    Ok(Position::new(latitude, longitude))
+                } else {
+                    error!(
+                        latitude = latitude,
+                        longitude = longitude,
+                        "Invalid coordinate values"
+                    );
+                    Err(ConfigError::Validation.into())
+                }
+            }
+        }
+    }
+
     pub fn github_asset_url(&self, github_url: &'a str) -> String {
         self.github_mirror_template
             .as_ref()
@@ -133,9 +201,10 @@ impl<'a> Config<'a> {
 impl<'a> Default for Config<'a> {
     fn default() -> Self {
         Self {
-            github_mirror_template: None,
-            selected_theme_id: None,
-            image_format: ImageFormat::Jpeg,
+            image_format: Default::default(),
+            coordinate_source: Default::default(),
+            github_mirror_template: Default::default(),
+            selected_theme_id: Default::default(),
             auto_detect_color_mode: true,
             // On the equator, an azimuth change of 0.1 degrees takes
             // approximately 12 seconds, and an altitude change of 0.1
@@ -156,6 +225,8 @@ impl<'a> PartialEq for Config<'a> {
             && self.selected_theme_id == other.selected_theme_id
             && self.image_format == other.image_format
             && self.interval == other.interval
+            && self.auto_detect_color_mode == other.auto_detect_color_mode
+            && self.coordinate_source == other.coordinate_source
     }
 }
 
