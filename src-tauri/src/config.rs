@@ -34,7 +34,7 @@ pub enum ImageFormat {
     Jpeg,
 }
 
-impl From<&ImageFormat> for &'static str {
+impl<'a> From<&ImageFormat> for &'a str {
     fn from(val: &ImageFormat) -> Self {
         match val {
             ImageFormat::Jpeg => "jpg",
