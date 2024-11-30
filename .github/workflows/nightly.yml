@@ -128,10 +128,15 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 5
 
       - name: Get meaningful commit message
         id: get-commit-message
         run: |
+          echo "DEBUG: Current branch: $(git branch --show-current)"
+          echo "DEBUG: Last commit: $(git log --pretty=format:'%s' -n 1 || echo 'No commits found')"
+
           LAST_COMMIT_MESSAGE=$(git log --pretty=format:"%s" -n 1 --skip=0 | grep -v "^Merge pull request")
           if [ -z "$LAST_COMMIT_MESSAGE" ]; then
             LAST_COMMIT_MESSAGE=$(git log --pretty=format:"%s" -n 1 --skip=1)
