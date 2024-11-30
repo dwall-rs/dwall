@@ -52,11 +52,23 @@ pub struct Config<'a> {
 
     pub image_format: ImageFormat,
 
+    #[serde(default = "default_auto_detect_color_mode")]
+    auto_detect_color_mode: bool,
+
     /// Time interval for detecting solar altitude angle and azimuth angle
     /// Measured in seconds, range: [1, 600]
+    #[serde(default = "default_interval")]
     #[validate(minimum = 1)]
     #[validate(maximum = 600)]
     pub interval: u16,
+}
+
+fn default_auto_detect_color_mode() -> bool {
+    true
+}
+
+fn default_interval() -> u16 {
+    15
 }
 
 impl<'a> Config<'a> {
@@ -108,6 +120,7 @@ impl<'a> Default for Config<'a> {
             github_mirror_template: None,
             selected_theme_id: None,
             image_format: ImageFormat::Jpeg,
+            auto_detect_color_mode: true,
             // On the equator, an azimuth change of 0.1 degrees takes
             // approximately 12 seconds, and an altitude change of 0.1
             // degrees takes about 24 seconds.
