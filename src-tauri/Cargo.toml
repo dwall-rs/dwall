@@ -11,7 +11,7 @@ version.workspace = true
 # The `_lib` suffix may seem redundant but it is necessary
 # to make the lib name unique and wouldn't conflict with the bin name.
 # This seems to be only an issue on Windows, see https://github.com/rust-lang/cargo/issues/8519
-name = "dwall_lib"
+name = "dwall_settings_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [build-dependencies]
@@ -23,33 +23,27 @@ dwall = { version = "0", path = "../daemon" }
 
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-tokio = { version = "1", features = ["macros"] }
+tokio = { version = "1", features = ["macros", "process"] }
 tracing = { version = "0", features = ["log", "release_max_level_warn"] }
 thiserror = "2"
 window-vibrancy = "0"
 windows = { version = "0", features = [
-  "Devices_Geolocation",
-  "Win32_System_Registry",
-  "System_UserProfile",
-  "Storage",
+    "Win32_System_Registry",
+    "Win32_System_Diagnostics_ToolHelp",
+    "Win32_System_ProcessStatus",
 ] }
 reqwest = "0"
 futures-util = "0"
 zip-extract = "0"
 
-
-# tauri-plugin-shell = "2"
-# tauri-plugin-clipboard-manager = "2"
-# tauri-plugin-dialog = "2"
-
 [target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
 tauri-plugin-single-instance = "2"
 tauri-plugin-updater = "2"
 
-# [profile.release]
-# panic = "abort"
-# codegen-units = 1
-# lto = true
-# incremental = false
-# opt-level = "s"
-# strip = true
+[profile.release]
+panic = "abort"
+codegen-units = 1
+lto = true
+incremental = false
+opt-level = "s"
+strip = true
