@@ -1,18 +1,23 @@
 use std::borrow::Cow;
+use std::path::PathBuf;
+use std::process::Command;
 
-use download::download_theme_and_extract;
 use dwall::config::Config;
 use dwall::{setup_logging, ThemeValidator};
-use tauri::{AppHandle, Manager};
-use window::new_main_window;
+use tauri::{AppHandle, Manager, RunEvent};
+use tokio::sync::OnceCell;
 
 use crate::auto_start::{check_auto_start, disable_auto_start, enable_auto_start};
+use crate::download::download_theme_and_extract;
 use crate::error::DwallSettingsResult;
+use crate::process_manager::{find_daemon_process, kill_daemon};
 use crate::setup::setup_app;
+use crate::window::new_main_window;
 
 mod auto_start;
 mod download;
 mod error;
+mod process_manager;
 mod setup;
 #[cfg(not(debug_assertions))]
 mod update;
@@ -20,6 +25,8 @@ mod window;
 
 #[macro_use]
 extern crate tracing;
+
+pub static DAEMON_EXE_PATH: OnceCell<PathBuf> = OnceCell::const_new();
 
 #[tauri::command]
 fn show_window<'a>(app: AppHandle, label: &'a str) -> DwallSettingsResult<()> {
@@ -42,7 +49,9 @@ async fn check_theme_exists<'a>(theme_id: &'a str) -> DwallSettingsResult<()> {
 
 #[tauri::command]
 async fn get_applied_theme_id<'a>() -> DwallSettingsResult<Option<Cow<'a, str>>> {
-    // TODO: 判断 dwall.exe 进程是否运行
+    if find_daemon_process()?.is_none() {
+        return Ok(None);
+    }
 
     let config = dwall::config::read_config_file().await?;
 
@@ -62,19 +71,23 @@ async fn write_config_file<'a>(config: Config<'a>) -> DwallSettingsResult<()> {
 }
 
 #[tauri::command]
-async fn apply_theme<'a>() {
-    // TODO: 创建 daemon 子进程
-}
+async fn apply_theme(config: Config<'_>) -> DwallSettingsResult<()> {
+    trace!("Spawning daemon...");
+    kill_daemon()?;
+    write_config_file(config).await?;
 
-#[tauri::command]
-async fn close_daemon<'a>() {
-    // TODO: 关闭 daemon 子进程
+    let daemon_path = DAEMON_EXE_PATH.get().unwrap().to_str().unwrap();
+
+    let handle = Command::new(daemon_path).spawn()?;
+    info!(pid = handle.id(), "Spawned daemon using subprocess");
+
+    Ok(())
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() -> DwallSettingsResult<()> {
-    setup_logging(&env!("CARGO_PKG_NAME").replace("-", "_"));
-    tauri::Builder::default()
+    setup_logging("dwall_settings_lib");
+    let builder = tauri::Builder::default()
         .plugin(tauri_plugin_single_instance::init(|app, _argv, _cwd| {
             if let Some(w) = app.get_webview_window("main") {
                 info!("Application instance already running, focusing existing window");
@@ -90,13 +103,21 @@ pub fn run() -> DwallSettingsResult<()> {
             write_config_file,
             check_theme_exists,
             apply_theme,
-            close_daemon,
             get_applied_theme_id,
             check_auto_start,
             disable_auto_start,
             enable_auto_start,
-            download_theme_and_extract
-        ])
-        .run(tauri::generate_context!())?;
+            download_theme_and_extract,
+        ]);
+
+    if cfg!(debug_assertions) {
+        builder.build(tauri::generate_context!())?.run(|_, event| {
+            if let RunEvent::Exit = event {
+                kill_daemon().unwrap();
+            }
+        })
+    } else {
+        builder.run(tauri::generate_context!())?
+    }
     Ok(())
 }
