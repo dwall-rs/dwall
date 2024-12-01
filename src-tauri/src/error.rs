@@ -1,53 +1,35 @@
+use dwall::error::RegistryError;
 use serde::{Serialize, Serializer};
-use windows::Win32::Foundation::WIN32_ERROR;
 
-pub type DwallResult<T> = std::result::Result<T, DwallError>;
+pub type DwallSettingsResult<T> = std::result::Result<T, DwallSettingsError>;
 
 #[derive(Debug, thiserror::Error)]
-pub enum DwallError {
+pub enum DwallSettingsError {
+    #[error(transparent)]
+    Tauri(#[from] tauri::Error),
     #[error(transparent)]
     Update(#[from] tauri_plugin_updater::Error),
-    #[error(transparent)]
-    Io(#[from] std::io::Error),
     #[error(transparent)]
     Request(#[from] reqwest::Error),
     #[error(transparent)]
     ZipExtract(#[from] zip_extract::ZipExtractError),
     #[error(transparent)]
+    Dwall(#[from] dwall::DwallError),
+    #[error(transparent)]
+    Io(#[from] std::io::Error),
+    #[error(transparent)]
     Windows(#[from] windows::core::Error),
-    #[error(transparent)]
-    Theme(#[from] crate::theme::ThemeError),
-    #[error(transparent)]
-    SerdeJson(#[from] serde_json::Error),
-    #[error(transparent)]
-    Tauri(#[from] tauri::Error),
-    #[error(transparent)]
-    Config(#[from] crate::config::ConfigError),
     #[error(transparent)]
     Registry(#[from] RegistryError),
     #[error(transparent)]
     NulError(#[from] std::ffi::NulError),
 }
 
-impl Serialize for DwallError {
+impl Serialize for DwallSettingsError {
     fn serialize<S>(&self, serializer: S) -> std::result::Result<S::Ok, S::Error>
     where
         S: Serializer,
     {
         serializer.serialize_str(self.to_string().as_ref())
     }
-}
-
-#[derive(Debug, thiserror::Error)]
-pub enum RegistryError {
-    #[error("Failed open registry: {0:?}")]
-    Open(WIN32_ERROR),
-    #[error("Failed query registry: {0:?}")]
-    Query(WIN32_ERROR),
-    #[error("Failed set registry: {0:?}")]
-    Set(WIN32_ERROR),
-    #[error("Failed close registry: {0:?}")]
-    Close(WIN32_ERROR),
-    #[error("Failed delete registry: {0:?}")]
-    Delete(WIN32_ERROR),
 }

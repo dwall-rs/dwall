@@ -30,7 +30,7 @@ impl ThemeValidator {
             return Err(ThemeError::ImageCountMismatch.into());
         }
 
-        info!("Theme validation successful: {}", theme_id);
+        debug!("Theme validation successful: {}", theme_id);
         Ok(())
     }
 

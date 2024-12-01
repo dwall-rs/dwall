@@ -1,0 +1,52 @@
+[package]
+name = "dwall"
+description = "Dwall daemon"
+exclude = ["CHANGELOG.md", "/target"]
+readme = "README.md"
+version.workspace = true
+authors.workspace = true
+# homepage.workspace = true
+# repository.workspace = true
+# categories.workspace = true
+# license.workspace = true
+edition.workspace = true
+
+[dependencies]
+windows = { version = "0", features = [
+    "Devices_Geolocation",
+    "Win32_System_Registry",
+    "System_UserProfile",
+    "Storage",
+    "Win32_UI",
+    "Win32_UI_WindowsAndMessaging",
+] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+serde_valid = "0"
+tokio = { version = "1", features = [
+    "macros",
+    "time",
+    "fs",
+    "rt",
+    "rt-multi-thread",
+] }
+time = { version = "0", features = ['macros', 'serde'] }
+tracing = { version = "0", features = ["log", "release_max_level_warn"] }
+tracing-subscriber = { version = "0", features = [
+    'time',
+    "local-time",
+    'env-filter',
+    'json',
+] }
+thiserror = "2"
+toml = "0"
+dirs = "5"
+regex = "1"
+
+[profile.release]
+panic = "abort"
+codegen-units = 1
+lto = true
+incremental = false
+opt-level = "s"
+strip = true

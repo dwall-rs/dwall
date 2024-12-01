@@ -1,11 +1,11 @@
 {
-  "name": "dwall",
+  "name": "dwall-settings",
   "version": "0.1.0",
   "description": "",
   "type": "module",
   "scripts": {
     "start": "vite",
-    "build:vite": "vite build",
+    "build:vite": "cargo build -p dwall -r && vite build",
     "build": "tauri build",
     "serve": "vite preview",
     "tauri": "tauri",
