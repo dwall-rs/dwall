@@ -1,8 +1,11 @@
-use std::env;
+use std::{env, path::PathBuf, str::FromStr};
 
 use tauri::Manager;
 
-use crate::window::new_main_window;
+use crate::{
+    auto_start::AutoStartManager, error::DwallSettingsError, window::new_main_window,
+    DAEMON_EXE_PATH,
+};
 
 pub fn setup_app(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
     info!(
@@ -22,13 +25,23 @@ pub fn setup_app(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>>
     let args: Vec<String> = env::args().collect();
     debug!("Launch arguments: {:?}", args);
 
-    // Conditionally create main window
-    if !args.contains(&"--auto-start".to_string()) {
-        info!("Auto-start not enabled, creating main window");
-        new_main_window(app.app_handle())?;
-    } else {
-        info!("Auto-start enabled, skipping main window creation");
+    let settings_exe_path = PathBuf::from_str(&args[0])?;
+    let daemon_exe_path = settings_exe_path
+        .parent()
+        .ok_or(DwallSettingsError::Io(std::io::ErrorKind::NotFound.into()))?
+        .join("dwall.exe");
+    if !daemon_exe_path.exists() || !daemon_exe_path.is_file() {
+        error!("Daemon exe is not exists");
+        return Err(Box::new(std::io::Error::from(std::io::ErrorKind::NotFound)));
     }
+    info!(path = %daemon_exe_path.display(), "Found daemon exe");
+    DAEMON_EXE_PATH.set(daemon_exe_path)?;
+
+    let auto_start_manager = AutoStartManager::new();
+    app.manage(auto_start_manager);
+
+    info!("Creating main window");
+    new_main_window(app.app_handle())?;
 
     info!("Application setup completed successfully");
 
