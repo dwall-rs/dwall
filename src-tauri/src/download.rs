@@ -1,11 +1,13 @@
 use std::{io::Cursor, path::PathBuf};
 
+use dwall::config::Config;
+use dwall::{APP_CONFIG_DIR, THEMES_DIR};
 use futures_util::StreamExt;
 use serde::Serialize;
 use tauri::{Emitter, WebviewWindow};
 use tokio::{fs, io::AsyncWriteExt};
 
-use crate::{config::Config, error::DwallResult, lazy::APP_CONFIG_DIR, theme::THEMES_DIR};
+use crate::error::DwallSettingsResult;
 
 #[derive(Serialize, Clone)]
 struct ProgressPayload<'a> {
@@ -18,7 +20,7 @@ async fn download_theme<'a>(
     window: WebviewWindow,
     config: &Config<'a>,
     theme_id: &str,
-) -> DwallResult<PathBuf> {
+) -> DwallSettingsResult<PathBuf> {
     trace!("Starting theme download process for theme: {}", theme_id);
 
     // Construct GitHub download URL
@@ -121,7 +123,7 @@ pub async fn download_theme_and_extract<'a>(
     window: WebviewWindow,
     config: Config<'a>,
     theme_id: &str,
-) -> DwallResult<()> {
+) -> DwallSettingsResult<()> {
     info!("Starting theme download and extraction for: {}", theme_id);
 
     // Download theme

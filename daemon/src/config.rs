@@ -1,7 +1,7 @@
+use std::sync::Arc;
 use std::{
     borrow::Cow,
     path::{Path, PathBuf},
-    sync::Arc,
 };
 
 use serde::{Deserialize, Serialize};
@@ -302,13 +302,11 @@ impl<'a> ConfigManager {
     }
 }
 
-#[tauri::command]
 pub async fn read_config_file<'a>() -> DwallResult<Config<'a>> {
     let config_manager = ConfigManager::new(&APP_CONFIG_DIR);
     config_manager.read_config().await
 }
 
-#[tauri::command]
 pub async fn write_config_file<'a>(config: Arc<Config<'a>>) -> DwallResult<()> {
     let config_manager = ConfigManager::new(&APP_CONFIG_DIR);
     config_manager.write_config(&config).await

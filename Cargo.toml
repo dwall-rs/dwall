@@ -1,0 +1,21 @@
+[workspace]
+resolver = "2"
+members = ["src-tauri", "daemon"]
+
+[workspace.package]
+authors = ["thep0y"]
+version = "0.1.0"
+# homepage = "https://tauri.app/"
+# repository = "https://github.com/tauri-apps/tauri"
+# categories = ["gui", "web-programming"]
+# license = "Apache-2.0 OR MIT"
+edition = "2021"
+# rust-version = "1.77.2"
+
+[profile.release]
+panic = "abort"
+codegen-units = 1
+lto = true
+incremental = false
+opt-level = "s"
+strip = true

@@ -1,5 +1,6 @@
 use std::{env, ffi::CString, sync::LazyLock};
 
+use dwall::error::RegistryError;
 use windows::{
     core::PCSTR,
     Win32::{
@@ -11,7 +12,7 @@ use windows::{
     },
 };
 
-use crate::error::{DwallResult, RegistryError};
+use crate::error::DwallSettingsResult;
 
 static APP_NAME: LazyLock<CString> = LazyLock::new(|| CString::new("Dwall").unwrap());
 
@@ -19,7 +20,7 @@ static KEY_PATH: LazyLock<CString> =
     LazyLock::new(|| CString::new("Software\\Microsoft\\Windows\\CurrentVersion\\Run").unwrap());
 
 #[tauri::command]
-pub fn enable_auto_start() -> DwallResult<()> {
+pub fn enable_auto_start() -> DwallSettingsResult<()> {
     // 获取当前可执行文件路径
     let exe_path = env::current_exe()?;
     let exe_path_str = exe_path.to_str().unwrap();
@@ -58,7 +59,7 @@ pub fn enable_auto_start() -> DwallResult<()> {
 }
 
 #[tauri::command]
-pub fn disable_auto_start() -> DwallResult<()> {
+pub fn disable_auto_start() -> DwallSettingsResult<()> {
     let mut hkey = HKEY::default();
     unsafe {
         let reg_result = RegOpenKeyExA(
@@ -85,7 +86,7 @@ pub fn disable_auto_start() -> DwallResult<()> {
 }
 
 #[tauri::command]
-pub fn check_auto_start() -> DwallResult<bool> {
+pub fn check_auto_start() -> DwallSettingsResult<bool> {
     let mut hkey = HKEY::default();
 
     unsafe {
@@ -151,7 +152,7 @@ pub fn check_auto_start() -> DwallResult<bool> {
     }
 }
 
-fn close_key(hkey: HKEY) -> DwallResult<()> {
+fn close_key(hkey: HKEY) -> DwallSettingsResult<()> {
     let r = unsafe { RegCloseKey(hkey) };
     if r != ERROR_SUCCESS {
         return Err(RegistryError::Close(r).into());

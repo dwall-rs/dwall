@@ -6,15 +6,12 @@ use std::{
 };
 
 use time::{macros::offset, OffsetDateTime};
-use tokio::{
-    sync::{mpsc, Mutex},
-    time::sleep,
-};
+use tokio::time::sleep;
 
 use crate::{
     color_mode::{determine_color_mode, set_color_mode},
     config::{write_config_file, Config},
-    error::{DwallError, DwallResult},
+    error::DwallResult,
     geo::Position,
     lazy::APP_CONFIG_DIR,
     solar::{SolarAngle, SunPosition},
@@ -39,78 +36,36 @@ pub enum ThemeError {
     MissingSolarConfigFile,
     #[error("Image count does not match solar configuration")]
     ImageCountMismatch,
-    #[error("Channel communication error: {0}")]
-    ChannelSend(String),
-}
-
-/// Type alias for the task closure sender
-pub type CloseTaskSender = Arc<Mutex<Option<mpsc::Sender<()>>>>;
-
-/// Closes the current theme task if one is running
-#[tauri::command]
-pub async fn close_last_theme_task(sender: tauri::State<'_, CloseTaskSender>) -> DwallResult<()> {
-    if let Some(tx) = sender.lock().await.take() {
-        trace!("Sending close signal to theme task");
-        tx.send(()).await.map_err(|e| {
-            error!("Failed to send close signal: {}", e);
-            ThemeError::ChannelSend(e.to_string())
-        })?;
-    }
-
-    Ok(())
 }
 
 /// Applies a theme and starts a background task for periodic wallpaper updates
-#[tauri::command]
-pub async fn apply_theme(
-    sender: tauri::State<'_, CloseTaskSender>,
-    config: Config<'_>,
-) -> DwallResult<()> {
+pub async fn apply_theme(config: Config<'_>) -> DwallResult<()> {
     let owned_config = config.owned();
 
     let theme_id = owned_config.theme_id();
     let config = Arc::new(owned_config);
 
-    trace!("Applying theme: {:?}", theme_id);
+    info!("Applying theme: {:?}", theme_id);
 
     if let Some(theme_id) = theme_id {
         ThemeValidator::validate_theme(&theme_id).await?;
 
-        let (tx, mut rx) = mpsc::channel::<()>(1);
+        // Process initial theme cycle
+        if let Err(e) = process_theme_cycle_and_save_config(&theme_id, config.clone()).await {
+            error!("Initial theme cycle error: {}", e);
+            return Err(e);
+        }
 
-        tauri::async_runtime::spawn(async move {
-            // Process initial theme cycle
+        loop {
+            let config = Arc::clone(&config);
+
+            sleep(Duration::from_secs(config.interval().into())).await;
             if let Err(e) = process_theme_cycle_and_save_config(&theme_id, config.clone()).await {
-                error!("Initial theme cycle error: {}", e);
-                return Err(e);
+                error!("Periodic theme cycle error: {}", e);
+                break;
             }
-
-            loop {
-                let config = Arc::clone(&config);
-                tokio::select! {
-                    _ = sleep(Duration::from_secs(config.interval().into())) => {
-                       if let Err(e) = process_theme_cycle_and_save_config(&theme_id, config.clone()).await {
-                            error!("Periodic theme cycle error: {}", e);
-                            break;
-                       }
-                    },
-                    _ = rx.recv() => {
-                        info!("Received exit signal, terminating theme task");
-                        break;
-                    }
-                }
-            }
-            Ok::<(), DwallError>(())
-        });
-
-        let sender = sender.clone();
-        let mut sender = sender.lock().await;
-        *sender = Some(tx);
+        }
     } else {
-        let sender = sender.clone();
-        let mut sender = sender.lock().await;
-        *sender = None;
-
         write_config_file(config).await.map_err(|e| {
             error!("Failed to save configuration: {}", e);
             e

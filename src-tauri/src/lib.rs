@@ -1,28 +1,19 @@
 use std::borrow::Cow;
 
 use download::download_theme_and_extract;
+use dwall::config::Config;
+use dwall::{setup_logging, ThemeValidator};
 use tauri::{AppHandle, Manager};
 use window::new_main_window;
 
 use crate::auto_start::{check_auto_start, disable_auto_start, enable_auto_start};
-use crate::config::{read_config_file, write_config_file};
-use crate::error::DwallResult;
-use crate::event::run_callback;
-use crate::setup::{setup_app, setup_logging};
-use crate::theme::{apply_theme, close_last_theme_task, CloseTaskSender, ThemeValidator};
+use crate::error::DwallSettingsResult;
+use crate::setup::setup_app;
 
 mod auto_start;
-mod color_mode;
-mod config;
 mod download;
 mod error;
-mod event;
-mod geo;
-mod lazy;
 mod setup;
-mod solar;
-mod theme;
-mod tray;
 #[cfg(not(debug_assertions))]
 mod update;
 mod window;
@@ -31,7 +22,7 @@ mod window;
 extern crate tracing;
 
 #[tauri::command]
-fn show_window<'a>(app: AppHandle, label: &'a str) -> DwallResult<()> {
+fn show_window<'a>(app: AppHandle, label: &'a str) -> DwallSettingsResult<()> {
     debug!("Showing window: {}", label);
 
     if let Some(window) = app.get_webview_window(label) {
@@ -43,28 +34,46 @@ fn show_window<'a>(app: AppHandle, label: &'a str) -> DwallResult<()> {
 }
 
 #[tauri::command]
-async fn check_theme_exists<'a>(theme_id: &'a str) -> DwallResult<()> {
-    ThemeValidator::validate_theme(theme_id).await
+async fn check_theme_exists<'a>(theme_id: &'a str) -> DwallSettingsResult<()> {
+    ThemeValidator::validate_theme(theme_id)
+        .await
+        .map_err(Into::into)
 }
 
 #[tauri::command]
-async fn get_applied_theme_id(
-    sender: tauri::State<'_, CloseTaskSender>,
-) -> DwallResult<Option<Cow<'_, str>>> {
-    let sender = sender.clone();
-    let sender = sender.lock().await;
-    if sender.is_none() {
-        return Ok(None);
-    }
+async fn get_applied_theme_id<'a>() -> DwallSettingsResult<Option<Cow<'a, str>>> {
+    // TODO: 判断 dwall.exe 进程是否运行
 
-    let config = read_config_file().await?;
+    let config = dwall::config::read_config_file().await?;
 
     Ok(config.theme_id())
 }
 
+#[tauri::command]
+async fn read_config_file<'a>() -> DwallSettingsResult<Config<'a>> {
+    dwall::config::read_config_file().await.map_err(Into::into)
+}
+
+#[tauri::command]
+async fn write_config_file<'a>(config: Config<'a>) -> DwallSettingsResult<()> {
+    dwall::config::write_config_file(config.into())
+        .await
+        .map_err(Into::into)
+}
+
+#[tauri::command]
+async fn apply_theme<'a>() {
+    // TODO: 创建 daemon 子进程
+}
+
+#[tauri::command]
+async fn close_daemon<'a>() {
+    // TODO: 关闭 daemon 子进程
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
-pub fn run() -> DwallResult<()> {
-    setup_logging();
+pub fn run() -> DwallSettingsResult<()> {
+    setup_logging(&env!("CARGO_PKG_NAME").replace("-", "_"));
     tauri::Builder::default()
         .plugin(tauri_plugin_single_instance::init(|app, _argv, _cwd| {
             if let Some(w) = app.get_webview_window("main") {
@@ -74,9 +83,6 @@ pub fn run() -> DwallResult<()> {
                 new_main_window(app).unwrap();
             }
         }))
-        .plugin(tauri_plugin_shell::init())
-        .plugin(tauri_plugin_clipboard_manager::init())
-        .plugin(tauri_plugin_dialog::init())
         .setup(setup_app)
         .invoke_handler(tauri::generate_handler![
             show_window,
@@ -84,14 +90,13 @@ pub fn run() -> DwallResult<()> {
             write_config_file,
             check_theme_exists,
             apply_theme,
-            close_last_theme_task,
+            close_daemon,
             get_applied_theme_id,
             check_auto_start,
             disable_auto_start,
             enable_auto_start,
             download_theme_and_extract
         ])
-        .build(tauri::generate_context!())?
-        .run(run_callback);
+        .run(tauri::generate_context!())?;
     Ok(())
 }

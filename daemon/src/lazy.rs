@@ -1,6 +1,6 @@
 use std::{fs, path::PathBuf, sync::LazyLock};
 
-pub(super) static APP_CONFIG_DIR: LazyLock<PathBuf> = LazyLock::new(|| {
+pub static APP_CONFIG_DIR: LazyLock<PathBuf> = LazyLock::new(|| {
     let config_dir = dirs::config_dir().unwrap();
 
     let app_config_dir = config_dir.join("dwall");
