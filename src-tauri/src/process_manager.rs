@@ -1,5 +1,6 @@
 use std::ffi::OsString;
 use std::os::windows::ffi::OsStringExt;
+
 use windows::Win32::System::ProcessStatus::GetModuleFileNameExW;
 use windows::Win32::System::{
     Diagnostics::ToolHelp::{
@@ -85,12 +86,25 @@ pub fn find_daemon_process() -> DwallSettingsResult<Option<u32>> {
                             full_path_str
                         );
 
-                        if full_path_str.eq_ignore_ascii_case(daemon_path_str) {
-                            info!(
-                                "Found matching daemon process. PID: {}",
-                                process_entry.th32ProcessID
-                            );
-                            return Ok(Some(process_entry.th32ProcessID));
+                        if cfg!(debug_assertions) {
+                            use std::ffi::OsStr;
+                            use std::path::Path;
+                            let full_path = Path::new(full_path_str);
+                            if full_path.file_name() == Some(OsStr::new("dwall.exe")) {
+                                info!(
+                                    "Found matching daemon process. PID: {}",
+                                    process_entry.th32ProcessID
+                                );
+                                return Ok(Some(process_entry.th32ProcessID));
+                            }
+                        } else {
+                            if full_path_str.eq_ignore_ascii_case(daemon_path_str) {
+                                info!(
+                                    "Found matching daemon process. PID: {}",
+                                    process_entry.th32ProcessID
+                                );
+                                return Ok(Some(process_entry.th32ProcessID));
+                            }
                         }
                     }
                 }
