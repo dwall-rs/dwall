@@ -6,11 +6,17 @@ use crate::{error::DwallSettingsResult, DAEMON_EXE_PATH};
 
 pub fn spawn_apply_daemon() -> DwallSettingsResult<()> {
     let daemon_path = DAEMON_EXE_PATH.get().unwrap().to_str().unwrap();
-
-    let handle = Command::new(daemon_path)
+    match Command::new(daemon_path)
         .creation_flags(CREATE_NO_WINDOW.0)
-        .spawn()?;
-    info!(pid = handle.id(), "Spawned daemon using subprocess");
-
-    Ok(())
+        .spawn()
+    {
+        Ok(handle) => {
+            info!(pid = handle.id(), "Spawned daemon using subprocess");
+            Ok(())
+        }
+        Err(e) => {
+            error!(error = ?e, path = %daemon_path, "Failed to spawn daemon");
+            Err(e.into())
+        }
+    }
 }
