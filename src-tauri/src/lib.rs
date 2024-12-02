@@ -1,18 +1,16 @@
 use std::borrow::Cow;
-use std::os::windows::process::CommandExt;
 use std::path::PathBuf;
-use std::process::Command;
 
 use dwall::{config::Config, setup_logging, ThemeValidator};
 use tauri::{AppHandle, Manager, RunEvent};
 use tokio::sync::OnceCell;
-use windows::Win32::System::Threading::CREATE_NO_WINDOW;
 
 use crate::auto_start::{check_auto_start, disable_auto_start, enable_auto_start};
 use crate::download::download_theme_and_extract;
 use crate::error::DwallSettingsResult;
 use crate::process_manager::{find_daemon_process, kill_daemon};
 use crate::setup::setup_app;
+use crate::theme::spawn_apply_daemon;
 use crate::window::new_main_window;
 
 mod auto_start;
@@ -20,6 +18,7 @@ mod download;
 mod error;
 mod process_manager;
 mod setup;
+mod theme;
 #[cfg(not(debug_assertions))]
 mod update;
 mod window;
@@ -77,12 +76,7 @@ async fn apply_theme(config: Config<'_>) -> DwallSettingsResult<()> {
     kill_daemon()?;
     write_config_file(config).await?;
 
-    let daemon_path = DAEMON_EXE_PATH.get().unwrap().to_str().unwrap();
-
-    let handle = Command::new(daemon_path)
-        .creation_flags(CREATE_NO_WINDOW.0)
-        .spawn()?;
-    info!(pid = handle.id(), "Spawned daemon using subprocess");
+    spawn_apply_daemon()?;
 
     Ok(())
 }
