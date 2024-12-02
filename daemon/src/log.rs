@@ -51,7 +51,7 @@ pub fn setup_logging(pkg_name: &str) {
         .with_writer(writer);
 
     if cfg!(debug_assertions) {
-        builder.init();
+        builder.with_ansi(true).init();
     } else {
         builder.json().init();
     }

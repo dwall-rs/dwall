@@ -21,13 +21,19 @@ tauri-build = { version = "2", features = [] }
 tauri = { version = "2", features = [] }
 dwall = { version = "0", path = "../daemon" }
 
-serde = { version = "1", features = ["derive"] }
+serde = { version = "1", default-features = false, features = ["derive"] }
 serde_json = "1"
-tokio = { version = "1", features = ["macros", "process"] }
-tracing = { version = "0", features = ["log", "release_max_level_warn"] }
+tokio = { version = "1", default-features = false, features = [
+    "macros",
+    "process",
+] }
+tracing = { version = "0", default-features = false, features = [
+    "log",
+    "release_max_level_info",
+] }
 thiserror = "2"
 window-vibrancy = "0"
-windows = { version = "0", features = [
+windows = { version = "0", default-features = false, features = [
     "Win32_System_Registry",
     "Win32_System_Diagnostics_ToolHelp",
     "Win32_System_ProcessStatus",
@@ -39,6 +45,10 @@ zip-extract = "0"
 [target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
 tauri-plugin-single-instance = "2"
 tauri-plugin-updater = "2"
+
+[features]
+default = []
+log-color = ["dwall/log-color"]
 
 [profile.release]
 panic = "abort"

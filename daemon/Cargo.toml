@@ -12,7 +12,7 @@ authors.workspace = true
 edition.workspace = true
 
 [dependencies]
-windows = { version = "0", features = [
+windows = { version = "0", default-features = false, features = [
     "Devices_Geolocation",
     "Win32_System_Registry",
     "System_UserProfile",
@@ -20,19 +20,26 @@ windows = { version = "0", features = [
     "Win32_UI",
     "Win32_UI_WindowsAndMessaging",
 ] }
-serde = { version = "1", features = ["derive"] }
+serde = { version = "1", default-features = false, features = ["derive"] }
 serde_json = "1"
 serde_valid = "0"
-tokio = { version = "1", features = [
+tokio = { version = "1", default-features = false, features = [
     "macros",
     "time",
     "fs",
     "rt",
     "rt-multi-thread",
 ] }
-time = { version = "0", features = ['macros', 'serde'] }
-tracing = { version = "0", features = ["log", "release_max_level_warn"] }
-tracing-subscriber = { version = "0", features = [
+time = { version = "0", default-features = false, features = [
+    'macros',
+    'serde',
+] }
+tracing = { version = "0", default-features = false, features = [
+    "log",
+    "release_max_level_info",
+] }
+tracing-subscriber = { version = "0", default-features = false, features = [
+    "fmt",
     'time',
     "local-time",
     'env-filter',
@@ -42,6 +49,10 @@ thiserror = "2"
 toml = "0"
 dirs = "5"
 regex = "1"
+
+[features]
+default = []
+log-color = ["tracing-subscriber/ansi"]
 
 [profile.release]
 panic = "abort"
