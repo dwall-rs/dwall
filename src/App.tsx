@@ -1,18 +1,15 @@
-import { createSignal, onMount } from "solid-js";
-import { Show } from "solid-js";
+import { createSignal, onMount, Show } from "solid-js";
 import { LazyFlex, LazyTooltip, LazyButton } from "~/lazy";
 import { AiFillSetting } from "solid-icons/ai";
 import { useDark } from "alley-components";
 
 import { ThemeMenu } from "./components/ThemeMenu";
-import { ThemeActions } from "./components/ThemeActions";
-import ImageCarousel from "./components/ImageCarousel";
-import Download from "./components/Download";
 import Settings from "./components/Settings";
 import { AppContext } from "./context";
-import { showWindow, getAppliedThemeID, readConfigFile } from "~/commands";
+import { showWindow, getAppliedThemeID } from "~/commands";
 import { useThemeSelector } from "./components/ThemeContext";
 import "./App.scss";
+import ThemeShowcase from "./components/ThemeShowcase";
 
 // 图片导入逻辑
 const images = {
@@ -42,6 +39,7 @@ const App = () => {
 
   const {
     config,
+    refetchConfig,
     appliedThemeID,
     downloadThemeID,
     setDownloadThemeID,
@@ -52,7 +50,6 @@ const App = () => {
     onMenuItemClick,
     onCloseTask,
     onApply,
-    setConfig,
     setAppliedThemeID,
   } = useThemeSelector(themes);
 
@@ -60,9 +57,6 @@ const App = () => {
 
   onMount(async () => {
     await showWindow("main");
-
-    const configData = await readConfigFile();
-    setConfig(configData);
 
     onMenuItemClick(index());
 
@@ -81,6 +75,7 @@ const App = () => {
     <AppContext.Provider
       value={{
         config,
+        refetchConfig,
         settings: { show: showSettings, setShow: setShowSettings },
       }}
     >
@@ -99,56 +94,40 @@ const App = () => {
             themes={themes}
             index={index()}
             appliedThemeID={appliedThemeID()}
-            onMenuItemClick={onMenuItemClick}
+            onMenuItemClick={(idx) => {
+              setShowSettings(false);
+              onMenuItemClick(idx);
+            }}
           />
 
           <LazyTooltip placement="right" text="设置" delay={500} showArrow>
             <LazyButton
+              type="plain"
+              shape="circle"
               icon={<AiFillSetting />}
-              onClick={() => setShowSettings(true)}
+              onClick={() => {
+                // setIndex(-1);
+                setShowSettings(true);
+              }}
             />
           </LazyTooltip>
         </LazyFlex>
 
-        <LazyFlex
-          direction="vertical"
-          gap={16}
-          justify="center"
-          align="center"
-          style={{ position: "relative" }}
-        >
-          <ImageCarousel
-            images={currentTheme().thumbnail.map((src) => ({
-              src,
-              alt: currentTheme().id,
-            }))}
-            height="480px"
-            width="480px"
-          />
-
-          <ThemeActions
-            themeExists={themeExists()}
-            appliedThemeID={appliedThemeID()}
-            currentThemeID={currentTheme().id}
+        <Show when={!showSettings()} fallback={<Settings />}>
+          <ThemeShowcase
+            currentTheme={currentTheme}
+            themeExists={themeExists}
+            appliedThemeID={appliedThemeID}
+            downloadThemeID={downloadThemeID}
+            setDownloadThemeID={setDownloadThemeID}
             onDownload={() => setDownloadThemeID(currentTheme().id)}
             onApply={onApply}
             onCloseTask={onCloseTask}
-            downloadThemeID={downloadThemeID()}
+            onMenuItemClick={onMenuItemClick}
+            index={index}
           />
-
-          <Show when={downloadThemeID()}>
-            <Download
-              themeID={downloadThemeID()!}
-              onFinished={() => {
-                setDownloadThemeID();
-                onMenuItemClick(index());
-              }}
-            />
-          </Show>
-        </LazyFlex>
+        </Show>
       </LazyFlex>
-
-      <Settings />
     </AppContext.Provider>
   );
 };
