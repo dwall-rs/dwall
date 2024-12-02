@@ -3,8 +3,8 @@ use std::{env, path::PathBuf, str::FromStr};
 use tauri::Manager;
 
 use crate::{
-    auto_start::AutoStartManager, error::DwallSettingsError, window::new_main_window,
-    DAEMON_EXE_PATH,
+    auto_start::AutoStartManager, error::DwallSettingsError, process_manager::find_daemon_process,
+    read_config_file, theme::spawn_apply_daemon, window::new_main_window, DAEMON_EXE_PATH,
 };
 
 pub fn setup_app(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
@@ -31,7 +31,7 @@ pub fn setup_app(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>>
         .ok_or(DwallSettingsError::Io(std::io::ErrorKind::NotFound.into()))?
         .join("dwall.exe");
     if !daemon_exe_path.exists() || !daemon_exe_path.is_file() {
-        error!("Daemon exe is not exists");
+        error!("Daemon executable does not exist");
         return Err(Box::new(std::io::Error::from(std::io::ErrorKind::NotFound)));
     }
     info!(path = %daemon_exe_path.display(), "Found daemon exe");
@@ -42,6 +42,19 @@ pub fn setup_app(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>>
 
     info!("Creating main window");
     new_main_window(app.app_handle())?;
+
+    // If a theme is configured in the configuration file but the background process is not detected,
+    // then run the background process when this program starts.
+    tauri::async_runtime::spawn(async move {
+        let _ = read_config_file()
+            .await
+            .and_then(|config| {
+                config
+                    .theme_id()
+                    .map_or(Ok(None), |_| find_daemon_process())
+            })
+            .and_then(|pid| pid.map_or_else(|| spawn_apply_daemon().map(|_| ()), |_| Ok(())));
+    });
 
     info!("Application setup completed successfully");
 
