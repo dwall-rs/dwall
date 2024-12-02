@@ -1,11 +1,12 @@
 use std::borrow::Cow;
+use std::os::windows::process::CommandExt;
 use std::path::PathBuf;
 use std::process::Command;
 
-use dwall::config::Config;
-use dwall::{setup_logging, ThemeValidator};
+use dwall::{config::Config, setup_logging, ThemeValidator};
 use tauri::{AppHandle, Manager, RunEvent};
 use tokio::sync::OnceCell;
+use windows::Win32::System::Threading::CREATE_NO_WINDOW;
 
 use crate::auto_start::{check_auto_start, disable_auto_start, enable_auto_start};
 use crate::download::download_theme_and_extract;
@@ -78,7 +79,9 @@ async fn apply_theme(config: Config<'_>) -> DwallSettingsResult<()> {
 
     let daemon_path = DAEMON_EXE_PATH.get().unwrap().to_str().unwrap();
 
-    let handle = Command::new(daemon_path).spawn()?;
+    let handle = Command::new(daemon_path)
+        .creation_flags(CREATE_NO_WINDOW.0)
+        .spawn()?;
     info!(pid = handle.id(), "Spawned daemon using subprocess");
 
     Ok(())
