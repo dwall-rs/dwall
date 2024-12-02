@@ -4,5 +4,6 @@ type Setter<T> = import("solid-js").Setter<T>;
 
 interface AppContext {
   config: Accessor<Config | undefined>;
+  refetchConfig: () => void;
   settings: { show: Accessor<boolean>; setShow: Setter<boolean> };
 }

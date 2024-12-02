@@ -1,7 +1,7 @@
 import { Show } from "solid-js";
 import { LazyButton, LazySpace } from "~/lazy";
 
-interface ThemeActionsProps {
+export interface ThemeActionsProps {
   themeExists: boolean;
   appliedThemeID?: string;
   currentThemeID: string;

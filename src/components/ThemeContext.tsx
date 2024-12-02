@@ -1,8 +1,14 @@
-import { createSignal, createMemo } from "solid-js";
-import { applyTheme, checkThemeExists, closeLastThemeTask } from "~/commands";
+import { createSignal, createMemo, createResource } from "solid-js";
+import {
+  applyTheme,
+  checkThemeExists,
+  closeLastThemeTask,
+  readConfigFile,
+} from "~/commands";
 
 export const useThemeSelector = (themes: ThemeItem[]) => {
-  const [config, setConfig] = createSignal<Config>();
+  const [config, { refetch: refetchConfig }] =
+    createResource<Config>(readConfigFile);
   const [appliedThemeID, setAppliedThemeID] = createSignal<string>();
   const [downloadThemeID, setDownloadThemeID] = createSignal<string>();
   const [index, setIndex] = createSignal(0);
@@ -35,11 +41,11 @@ export const useThemeSelector = (themes: ThemeItem[]) => {
 
   const onCloseTask = async () => {
     closeLastThemeTask();
-    setConfig((prev) => {
-      const stoppedConfig = { ...prev!, selected_theme_id: undefined };
-      applyTheme(stoppedConfig);
-      return stoppedConfig;
-    });
+
+    const stoppedConfig = { ...config()!, selected_theme_id: undefined };
+    applyTheme(stoppedConfig);
+    refetchConfig();
+
     setAppliedThemeID();
   };
 
@@ -49,13 +55,13 @@ export const useThemeSelector = (themes: ThemeItem[]) => {
       selected_theme_id: currentTheme().id,
     };
     await applyTheme(newConfig);
-    setConfig(newConfig);
+    refetchConfig();
     setAppliedThemeID(newConfig.selected_theme_id);
   };
 
   return {
     config,
-    setConfig,
+    refetchConfig,
     appliedThemeID,
     setAppliedThemeID,
     downloadThemeID,
