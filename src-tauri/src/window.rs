@@ -15,10 +15,9 @@ pub fn new_main_window(app: &tauri::AppHandle) -> Result<(), Box<dyn Error>> {
     let window = win_builder.build().unwrap();
 
     info!("Applying acrylic effect on Windows");
-    apply_acrylic(&window, Some((18, 18, 18, 125))).map_err(|e| {
-        error!("Failed to apply acrylic: {}", e);
-        e
-    })?;
+    if let Err(e) = apply_acrylic(&window, Some((18, 18, 18, 125))) {
+        warn!("Failed to apply acrylic: {}", e);
+    };
 
     Ok(())
 }
