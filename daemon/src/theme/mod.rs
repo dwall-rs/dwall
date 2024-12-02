@@ -10,7 +10,7 @@ use tokio::time::sleep;
 
 use crate::{
     color_mode::{determine_color_mode, set_color_mode},
-    config::{write_config_file, Config},
+    config::Config,
     error::DwallResult,
     geo::Position,
     lazy::APP_CONFIG_DIR,
@@ -51,7 +51,12 @@ pub async fn apply_theme(config: Config<'_>) -> DwallResult<()> {
         ThemeValidator::validate_theme(&theme_id).await?;
 
         // Process initial theme cycle
-        if let Err(e) = process_theme_cycle_and_save_config(&theme_id, config.clone()).await {
+        if let Err(e) = process_theme_cycle(
+            &theme_id,
+            config.auto_detect_color_mode(),
+            config.image_format(),
+            config.get_position()?,
+        ) {
             error!("Initial theme cycle error: {}", e);
             return Err(e);
         }
@@ -60,38 +65,19 @@ pub async fn apply_theme(config: Config<'_>) -> DwallResult<()> {
             let config = Arc::clone(&config);
 
             sleep(Duration::from_secs(config.interval().into())).await;
-            if let Err(e) = process_theme_cycle_and_save_config(&theme_id, config.clone()).await {
+            if let Err(e) = process_theme_cycle(
+                &theme_id,
+                config.auto_detect_color_mode(),
+                config.image_format(),
+                config.get_position()?,
+            ) {
                 error!("Periodic theme cycle error: {}", e);
                 break;
             }
         }
-    } else {
-        write_config_file(config).await.map_err(|e| {
-            error!("Failed to save configuration: {}", e);
-            e
-        })?;
     }
 
     Ok(())
-}
-
-/// Process theme cycle and save configuration
-async fn process_theme_cycle_and_save_config<'a>(
-    theme_id: &str,
-    config: Arc<Config<'a>>,
-) -> DwallResult<()> {
-    match process_theme_cycle(
-        theme_id,
-        config.auto_detect_color_mode(),
-        config.image_format(),
-        config.get_position()?,
-    ) {
-        Ok(_) => write_config_file(config).await.map_err(|e| {
-            error!("Failed to save configuration: {}", e);
-            e
-        }),
-        Err(e) => Err(e),
-    }
 }
 
 /// Load solar configuration for a given theme
