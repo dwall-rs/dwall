@@ -65,6 +65,7 @@ const App = () => {
       const themeIndex = themes.findIndex((t) => t.id === applied_theme_id);
       if (themeIndex !== -1) {
         setIndex(themeIndex);
+        onMenuItemClick(themeIndex);
         setAppliedThemeID(applied_theme_id);
         return;
       }
