@@ -1,3 +1,5 @@
+#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
+
 #[tokio::main]
 async fn main() -> dwall::DwallResult<()> {
     dwall::setup_logging(&env!("CARGO_PKG_NAME").replace("-", "_"));
