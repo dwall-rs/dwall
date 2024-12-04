@@ -1,8 +1,9 @@
+use tokio::sync::Mutex;
 use windows::Devices::Geolocation::{Geolocator, PositionAccuracy};
 
-use crate::error::DwallResult;
+use crate::{config::CoordinateSource, error::DwallResult};
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Position {
     pub latitude: f64,
     pub longitude: f64,
@@ -71,4 +72,39 @@ pub fn get_geo_position() -> DwallResult<Position> {
 
     info!("Current geoposition: {:?}", result);
     Ok(result)
+}
+
+pub struct PositionManager {
+    coordinate_source: CoordinateSource,
+    fixed_position: Mutex<Option<Position>>,
+}
+
+impl PositionManager {
+    pub fn new(coordinate_source: CoordinateSource) -> Self {
+        Self {
+            coordinate_source,
+            fixed_position: Mutex::new(None),
+        }
+    }
+
+    pub async fn get_current_position(&self) -> DwallResult<Position> {
+        match &self.coordinate_source {
+            CoordinateSource::Automatic {
+                update_on_each_calculation,
+            } => {
+                if *update_on_each_calculation {
+                    get_geo_position()
+                } else {
+                    let mut position = self.fixed_position.lock().await;
+                    Ok(position
+                        .get_or_insert_with(|| get_geo_position().unwrap())
+                        .clone())
+                }
+            }
+            CoordinateSource::Manual {
+                latitude,
+                longitude,
+            } => Ok(Position::new(*latitude, *longitude)),
+        }
+    }
 }

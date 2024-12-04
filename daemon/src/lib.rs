@@ -1,9 +1,9 @@
 mod color_mode;
 pub mod config;
 pub mod error;
-mod geo;
 mod lazy;
 mod log;
+mod position;
 mod solar;
 mod theme;
 
