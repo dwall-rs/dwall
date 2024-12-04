@@ -8,11 +8,7 @@ use serde::{Deserialize, Serialize};
 use serde_valid::Validate;
 use thiserror::Error;
 
-use crate::{
-    error::DwallResult,
-    geo::{get_geo_position, Position},
-    lazy::APP_CONFIG_DIR,
-};
+use crate::{error::DwallResult, lazy::APP_CONFIG_DIR};
 
 #[derive(Error, Debug)]
 pub enum ConfigError {
@@ -47,11 +43,13 @@ impl<'a> From<&ImageFormat> for &'a str {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq, Default)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 #[serde(rename_all = "UPPERCASE", tag = "type")]
-enum CoordinateSource {
-    #[default]
-    Automatic,
+pub enum CoordinateSource {
+    Automatic {
+        #[serde(default = "default_update_on_each_calculation")]
+        update_on_each_calculation: bool,
+    },
 
     Manual {
         latitude: f64,
@@ -59,10 +57,22 @@ enum CoordinateSource {
     },
 }
 
+impl Default for CoordinateSource {
+    fn default() -> Self {
+        Self::Automatic {
+            update_on_each_calculation: false,
+        }
+    }
+}
+
+fn default_update_on_each_calculation() -> bool {
+    false
+}
+
 impl CoordinateSource {
     pub fn validate(&self) -> bool {
         match *self {
-            CoordinateSource::Automatic => true,
+            CoordinateSource::Automatic { .. } => true,
             CoordinateSource::Manual {
                 latitude,
                 longitude,
@@ -150,30 +160,8 @@ impl<'a> Config<'a> {
         self.auto_detect_color_mode
     }
 
-    pub fn get_position(&self) -> DwallResult<Position> {
-        match self.coordinate_source {
-            CoordinateSource::Automatic => get_geo_position(),
-            CoordinateSource::Manual {
-                latitude,
-                longitude,
-            } => {
-                if self.coordinate_source.validate() {
-                    info!(
-                        latitude = latitude,
-                        longitude = longitude,
-                        "Using manual coordinate values"
-                    );
-                    Ok(Position::new(latitude, longitude))
-                } else {
-                    error!(
-                        latitude = latitude,
-                        longitude = longitude,
-                        "Invalid coordinate values"
-                    );
-                    Err(ConfigError::Validation.into())
-                }
-            }
-        }
+    pub fn coordinate_source(&'a self) -> &'a CoordinateSource {
+        &self.coordinate_source
     }
 
     pub fn github_asset_url(&self, github_url: &'a str) -> String {
