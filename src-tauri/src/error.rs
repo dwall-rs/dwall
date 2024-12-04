@@ -23,6 +23,8 @@ pub enum DwallSettingsError {
     Registry(#[from] RegistryError),
     #[error(transparent)]
     NulError(#[from] std::ffi::NulError),
+    #[error(transparent)]
+    GeolocationAccess(#[from] crate::postion::GeolocationAccessError),
 }
 
 impl Serialize for DwallSettingsError {
