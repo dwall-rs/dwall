@@ -30,3 +30,6 @@ export const downloadThemeAndExtract = async (
   config: Config,
   themeId: string
 ) => invoke<void>("download_theme_and_extract", { config, themeId });
+
+export const requestLocationPermission = async () =>
+  invoke<void>("request_location_permission");

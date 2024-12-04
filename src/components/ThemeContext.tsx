@@ -4,6 +4,7 @@ import {
   checkThemeExists,
   closeLastThemeTask,
   readConfigFile,
+  requestLocationPermission,
 } from "~/commands";
 
 export const useThemeSelector = (themes: ThemeItem[]) => {
@@ -50,6 +51,13 @@ export const useThemeSelector = (themes: ThemeItem[]) => {
   };
 
   const onApply = async () => {
+    try {
+      await requestLocationPermission();
+    } catch (e) {
+      // TODO: handle error
+      return;
+    }
+
     const newConfig = {
       ...config()!,
       selected_theme_id: currentTheme().id,

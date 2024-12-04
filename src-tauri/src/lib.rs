@@ -9,6 +9,7 @@ use tokio::sync::OnceCell;
 use crate::auto_start::{check_auto_start, disable_auto_start, enable_auto_start};
 use crate::download::download_theme_and_extract;
 use crate::error::DwallSettingsResult;
+use crate::postion::request_location_permission;
 use crate::process_manager::{find_daemon_process, kill_daemon};
 use crate::setup::setup_app;
 use crate::theme::spawn_apply_daemon;
@@ -17,6 +18,7 @@ use crate::window::new_main_window;
 mod auto_start;
 mod download;
 mod error;
+mod postion;
 mod process_manager;
 mod setup;
 mod theme;
@@ -173,6 +175,7 @@ pub fn run() -> DwallSettingsResult<()> {
             disable_auto_start,
             enable_auto_start,
             download_theme_and_extract,
+            request_location_permission
         ]);
 
     if cfg!(debug_assertions) {
