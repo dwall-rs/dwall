@@ -18,7 +18,7 @@ jobs:
       - uses: marceloprado/has-changed-path@v1.0.1
         id: changed-front
         with:
-          paths: public src src-tauri static package.json .scripts .github
+          paths: daemon public src src-tauri static package.json .scripts .github
 
   create-release:
     needs: check-changed-paths
