@@ -1,8 +1,12 @@
 import { invoke } from "@tauri-apps/api/core";
 
-export const showMainWindow = async () => invoke<void>("show_main_window");
+export const showWindow = async (label: string) =>
+  invoke<void>("show_window", { label });
 
 export const readConfigFile = async () => invoke<Config>("read_config_file");
+
+export const writeConfigFile = async (config: Config) =>
+  invoke<Config>("write_config_file", { config });
 
 export const checkThemeExists = async (themeId: string) =>
   invoke<void>("check_theme_exists", { themeId });
@@ -21,3 +25,11 @@ export const checkAutoStart = async () => invoke<boolean>("check_auto_start");
 export const enableAutoStart = async () => invoke<void>("enable_auto_start");
 
 export const disableAutoStart = async () => invoke<void>("disable_auto_start");
+
+export const downloadThemeAndExtract = async (
+  config: Config,
+  themeId: string
+) => invoke<void>("download_theme_and_extract", { config, themeId });
+
+export const requestLocationPermission = async () =>
+  invoke<void>("request_location_permission");

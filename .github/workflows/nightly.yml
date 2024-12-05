@@ -9,7 +9,7 @@ jobs:
     runs-on: ubuntu-22.04
     outputs:
       changed: ${{ steps.changed-front.outputs.changed }}
-    
+
     steps:
       - uses: actions/checkout@v4
         with:
@@ -18,7 +18,7 @@ jobs:
       - uses: marceloprado/has-changed-path@v1.0.1
         id: changed-front
         with:
-          paths: public src src-tauri static package.json .scripts .github
+          paths: daemon public src src-tauri static package.json .scripts .github
 
   create-release:
     needs: check-changed-paths
@@ -41,38 +41,31 @@ jobs:
       - name: get version
         run: echo "PACKAGE_VERSION=$(node -p "require('./package.json').version")" >> $GITHUB_ENV
 
-      # - name: check latest version
-      #   uses: actions/github-script@v7
-      #   id: latest-version
-      #   with:
-      #     script: |
-      #       const { data } = await github.request(
-      #         'GET /repos/{owner}/{repo}/releases/latest', 
-      #         {
-      #           owner: context.repo.owner,
-      #           repo: context.repo.repo,
-      #           headers: {
-      #             'X-GitHub-Api-Version': '2022-11-28'
-      #           }
-      #         }
-      #       )
-      #
-      #       const latesVersion = data.tag_name.slice(1)
-      #
-      #       if (latesVersion === process.env.PACKAGE_VERSION) throw new Error("当前要发布的版本号与 latest 版本号相同")
-      #
-      #       return latesVersion
-
       - name: get old nightly release id
-        run: |
-          release_id=$(curl -s 'https://api.github.com/repos/thep0y/dwall/releases/tags/nightly' | awk -F'[{},:]+' '/^  "id"/ {print $2}' | xargs)
-          echo "RELEASE_ID=$release_id"  >> $GITHUB_ENV
+        id: get-release
+        uses: actions/github-script@v7
+        with:
+          script: |
+            try {
+              const { data } = await github.rest.repos.getReleaseByTag({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                tag: "nightly",
+                })
+                return data.id
+            } catch (error) {
+              if (error.status === 404) {
+                core.info(`Release nightly not found`)
+              } else {
+                throw error
+              }
+            }
 
       - name: delete old nightly release
-        if: env.RELEASE_ID != ''
+        if: steps.get-release.outputs.result != ''
         run: gh release delete nightly --cleanup-tag
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} 
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: create release
         id: create-release
@@ -133,13 +126,36 @@ jobs:
     needs: [create-release, build-tauri]
 
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get meaningful commit message
+        id: get-commit-message
+        run: |
+          echo "DEBUG: Current branch: $(git branch --show-current)"
+          echo "DEBUG: Last commit: $(git log --pretty=format:'%s' -n 1 || echo 'No commits found')"
+
+          LAST_COMMIT_MESSAGE=$(git log --pretty=format:"%s" -n 1 --skip=0 | grep -v "^Merge pull request" || true)
+          if [ -z "$LAST_COMMIT_MESSAGE" ]; then
+            LAST_COMMIT_MESSAGE=$(git log --pretty=format:"%s" -n 1 --skip=1 || echo 'No meaningful commit found')
+          fi
+
+          if [ -z "$LAST_COMMIT_MESSAGE" ]; then
+            echo "Error: No meaningful commit message found"
+            exit 1
+          fi
+
+          echo "LAST_COMMIT_MESSAGE=$LAST_COMMIT_MESSAGE" >> $GITHUB_ENV
+
       - name: publish release
         id: publish-release
         uses: actions/github-script@v7
         env:
           release_id: ${{ needs.create-release.outputs.release_id }}
           PACKAGE_VERSION: ${{ needs.create-release.outputs.package_version }}
-          LAST_COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
+          LAST_COMMIT_MESSAGE: ${{ env.LAST_COMMIT_MESSAGE }}
         with:
           script: |
             github.rest.repos.updateRelease({

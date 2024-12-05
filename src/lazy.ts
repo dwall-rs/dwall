@@ -73,3 +73,7 @@ export const LazySwitch = lazy(
 export const LazyInputNumber = lazy(
   () => import("alley-components/lib/components/input-number"),
 );
+
+export const LazyProgress = lazy(
+  () => import("alley-components/lib/components/progress"),
+);

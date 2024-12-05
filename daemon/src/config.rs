@@ -1,6 +1,7 @@
+use std::sync::Arc;
 use std::{
+    borrow::Cow,
     path::{Path, PathBuf},
-    sync::Arc,
 };
 
 use serde::{Deserialize, Serialize};
@@ -27,13 +28,14 @@ pub enum ConfigError {
     FileNotFound,
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Default)]
 #[serde(rename_all = "lowercase")]
 pub enum ImageFormat {
+    #[default]
     Jpeg,
 }
 
-impl From<&ImageFormat> for &'static str {
+impl<'a> From<&ImageFormat> for &'a str {
     fn from(val: &ImageFormat) -> Self {
         match val {
             ImageFormat::Jpeg => "jpg",
@@ -41,24 +43,99 @@ impl From<&ImageFormat> for &'static str {
     }
 }
 
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
+#[serde(rename_all = "UPPERCASE", tag = "type")]
+pub enum CoordinateSource {
+    Automatic {
+        #[serde(default = "default_update_on_each_calculation")]
+        update_on_each_calculation: bool,
+    },
+
+    Manual {
+        latitude: f64,
+        longitude: f64,
+    },
+}
+
+impl Default for CoordinateSource {
+    fn default() -> Self {
+        Self::Automatic {
+            update_on_each_calculation: false,
+        }
+    }
+}
+
+fn default_update_on_each_calculation() -> bool {
+    false
+}
+
+impl CoordinateSource {
+    pub fn validate(&self) -> bool {
+        match *self {
+            CoordinateSource::Automatic { .. } => true,
+            CoordinateSource::Manual {
+                latitude,
+                longitude,
+            } => latitude >= -90.0 && latitude <= 90.0 && longitude >= -180.0 && longitude <= 180.0,
+        }
+    }
+}
+
 #[derive(Debug, Serialize, Deserialize, Validate)]
-pub struct Config {
+pub struct Config<'a> {
     #[serde(skip_serializing_if = "Option::is_none")]
-    github_mirror_template: Option<String>,
+    github_mirror_template: Option<Cow<'a, str>>,
 
     #[serde(skip_serializing_if = "Option::is_none")]
-    selected_theme_id: Option<String>,
+    selected_theme_id: Option<Cow<'a, str>>,
 
+    #[serde(default = "default_image_format")]
     image_format: ImageFormat,
 
-    /// Time interval for detecting solar elevation angle and azimuth angle
+    #[serde(default = "default_coordinate_source")]
+    coordinate_source: CoordinateSource,
+
+    #[serde(default = "default_auto_detect_color_mode")]
+    auto_detect_color_mode: bool,
+
+    /// Time interval for detecting solar altitude angle and azimuth angle
     /// Measured in seconds, range: [1, 600]
+    #[serde(default = "default_interval")]
     #[validate(minimum = 1)]
     #[validate(maximum = 600)]
     interval: u16,
 }
 
-impl Config {
+fn default_image_format() -> ImageFormat {
+    Default::default()
+}
+
+fn default_coordinate_source() -> CoordinateSource {
+    Default::default()
+}
+
+fn default_auto_detect_color_mode() -> bool {
+    true
+}
+
+fn default_interval() -> u16 {
+    15
+}
+
+impl<'a> Config<'a> {
+    pub fn owned<'c>(self) -> Config<'c> {
+        Config {
+            github_mirror_template: self
+                .github_mirror_template
+                .map(|c| Cow::Owned(c.into_owned())),
+            selected_theme_id: self.selected_theme_id.map(|c| Cow::Owned(c.into_owned())),
+            image_format: self.image_format,
+            interval: self.interval,
+            auto_detect_color_mode: self.auto_detect_color_mode,
+            coordinate_source: self.coordinate_source,
+        }
+    }
+
     pub fn validate(&self) -> DwallResult<()> {
         if self.interval < 1 || self.interval > 600 {
             error!(interval = self.interval, "Interval validation failed");
@@ -67,7 +144,7 @@ impl Config {
         Ok(())
     }
 
-    pub fn theme_id(&self) -> Option<String> {
+    pub fn theme_id(&self) -> Option<Cow<'a, str>> {
         self.selected_theme_id.clone()
     }
 
@@ -79,7 +156,15 @@ impl Config {
         &self.image_format
     }
 
-    pub fn github_asset_url(&self, github_url: &str) -> String {
+    pub fn auto_detect_color_mode(&self) -> bool {
+        self.auto_detect_color_mode
+    }
+
+    pub fn coordinate_source(&'a self) -> &'a CoordinateSource {
+        &self.coordinate_source
+    }
+
+    pub fn github_asset_url(&self, github_url: &'a str) -> String {
         self.github_mirror_template
             .as_ref()
             .and_then(|template| {
@@ -101,12 +186,14 @@ impl Config {
     }
 }
 
-impl Default for Config {
+impl<'a> Default for Config<'a> {
     fn default() -> Self {
         Self {
-            github_mirror_template: None,
-            selected_theme_id: None,
-            image_format: ImageFormat::Jpeg,
+            image_format: Default::default(),
+            coordinate_source: Default::default(),
+            github_mirror_template: Default::default(),
+            selected_theme_id: Default::default(),
+            auto_detect_color_mode: true,
             // On the equator, an azimuth change of 0.1 degrees takes
             // approximately 12 seconds, and an altitude change of 0.1
             // degrees takes about 24 seconds.
@@ -120,12 +207,14 @@ impl Default for Config {
     }
 }
 
-impl PartialEq for Config {
+impl<'a> PartialEq for Config<'a> {
     fn eq(&self, other: &Self) -> bool {
         self.github_mirror_template == other.github_mirror_template
             && self.selected_theme_id == other.selected_theme_id
             && self.image_format == other.image_format
             && self.interval == other.interval
+            && self.auto_detect_color_mode == other.auto_detect_color_mode
+            && self.coordinate_source == other.coordinate_source
     }
 }
 
@@ -133,14 +222,14 @@ pub struct ConfigManager {
     config_path: PathBuf,
 }
 
-impl ConfigManager {
-    pub fn new(config_dir: &Path) -> Self {
+impl<'a> ConfigManager {
+    pub fn new(config_dir: &'a Path) -> Self {
         Self {
             config_path: config_dir.join("config.toml"),
         }
     }
 
-    pub async fn read_config(&self) -> DwallResult<Config> {
+    pub async fn read_config(&self) -> DwallResult<Config<'a>> {
         // Return default configuration if config file does not exist
         if !self.config_path.exists() {
             warn!("Config file not found, using default configuration");
@@ -162,10 +251,12 @@ impl ConfigManager {
         // Validate configuration
         config.validate()?;
 
+        info!("Local configuration: {:?}", config);
+
         Ok(config)
     }
 
-    pub async fn write_config(&self, config: &Config) -> DwallResult<()> {
+    pub async fn write_config(&self, config: &Config<'a>) -> DwallResult<()> {
         // Validate configuration before writing
         config.validate()?;
 
@@ -183,7 +274,7 @@ impl ConfigManager {
         self.write_config_to_file(config).await
     }
 
-    async fn write_config_to_file(&self, config: &Config) -> DwallResult<()> {
+    async fn write_config_to_file(&self, config: &Config<'a>) -> DwallResult<()> {
         let toml_string = match toml::to_string(config) {
             Ok(s) => s,
             Err(e) => {
@@ -199,14 +290,12 @@ impl ConfigManager {
     }
 }
 
-#[tauri::command]
-pub async fn read_config_file() -> DwallResult<Config> {
+pub async fn read_config_file<'a>() -> DwallResult<Config<'a>> {
     let config_manager = ConfigManager::new(&APP_CONFIG_DIR);
     config_manager.read_config().await
 }
 
-#[tauri::command]
-pub async fn write_config_file(config: Arc<Config>) -> DwallResult<()> {
+pub async fn write_config_file<'a>(config: Arc<Config<'a>>) -> DwallResult<()> {
     let config_manager = ConfigManager::new(&APP_CONFIG_DIR);
     config_manager.write_config(&config).await
 }

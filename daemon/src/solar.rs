@@ -72,16 +72,16 @@ impl SunPosition {
         15.0 * (local_mean_time - 12.0)
     }
 
-    /// Calculate the sun's altitude angle (elevation)
+    /// Calculate the sun's altitude angle
     pub fn altitude(&self) -> f64 {
         let latitude_rad = Self::degrees_to_radians(self.latitude);
         let declination_rad = Self::degrees_to_radians(self.solar_declination());
         let hour_angle_rad = Self::degrees_to_radians(self.hour_angle());
 
-        let sine_elevation = latitude_rad.sin() * declination_rad.sin()
+        let sine_altitude = latitude_rad.sin() * declination_rad.sin()
             + latitude_rad.cos() * declination_rad.cos() * hour_angle_rad.cos();
 
-        Self::radians_to_degrees(sine_elevation.asin())
+        Self::radians_to_degrees(sine_altitude.asin())
     }
 
     /// Calculate the sun's azimuth angle
@@ -89,10 +89,10 @@ impl SunPosition {
         let latitude_rad = Self::degrees_to_radians(self.latitude);
         let declination_rad = Self::degrees_to_radians(self.solar_declination());
         let hour_angle_rad = Self::degrees_to_radians(self.hour_angle());
-        let elevation_rad = Self::degrees_to_radians(self.altitude());
+        let altitude_rad = Self::degrees_to_radians(self.altitude());
 
-        let cosine_azimuth = (declination_rad.sin() - latitude_rad.sin() * elevation_rad.sin())
-            / (latitude_rad.cos() * elevation_rad.cos());
+        let cosine_azimuth = (declination_rad.sin() - latitude_rad.sin() * altitude_rad.sin())
+            / (latitude_rad.cos() * altitude_rad.cos());
 
         let mut azimuth = Self::radians_to_degrees(cosine_azimuth.acos());
 

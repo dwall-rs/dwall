@@ -1,8 +1,8 @@
 use tauri_plugin_updater::UpdaterExt;
 
-use crate::error::DwallResult;
+use crate::error::DwallSettingsResult;
 
-pub async fn update(app: tauri::AppHandle) -> DwallResult<()> {
+pub async fn update(app: tauri::AppHandle) -> DwallSettingsResult<()> {
     debug!("Checking for updates");
 
     let updater = app.updater().map_err(|e| {

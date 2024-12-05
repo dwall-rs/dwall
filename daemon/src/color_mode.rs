@@ -21,13 +21,13 @@ pub enum ColorMode {
 pub fn determine_color_mode(altitude: f64) -> ColorMode {
     // 定义白天和夜间的判断条件
     // 这里可以根据具体需求调整阈值
-    const DAY_ELEVATION_THRESHOLD: f64 = 0.0; // 太阳高度角大于0度视为白天
-    const TWILIGHT_ELEVATION_THRESHOLD: f64 = -6.0; // 太阳高度角低于-6度视为夜间
+    const DAY_ALTITUDE_THRESHOLD: f64 = 0.0; // 太阳高度角大于0度视为白天
+    const TWILIGHT_ALTITUDE_THRESHOLD: f64 = -6.0; // 太阳高度角低于-6度视为夜间
 
-    if altitude > DAY_ELEVATION_THRESHOLD {
+    if altitude > DAY_ALTITUDE_THRESHOLD {
         // 白天：太阳在地平线以上
         ColorMode::Light
-    } else if altitude < TWILIGHT_ELEVATION_THRESHOLD {
+    } else if altitude < TWILIGHT_ALTITUDE_THRESHOLD {
         // 夜间：太阳在地平线下较低
         ColorMode::Dark
     } else {

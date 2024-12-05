@@ -1,74 +1,62 @@
-use std::{env, sync::Arc};
+use std::{env, path::PathBuf, str::FromStr};
 
 use tauri::Manager;
-use time::macros::{format_description, offset};
-use tokio::sync::Mutex;
-use tracing::Level;
-use tracing_subscriber::fmt::time::OffsetTime;
 
-use crate::{theme::CloseTaskSender, tray::build_tray, window::new_main_window};
-
-pub fn setup_logging() {
-    let fmt = if cfg!(debug_assertions) {
-        format_description!("[hour]:[minute]:[second].[subsecond digits:3]")
-    } else {
-        format_description!("[year]-[month]-[day] [hour]:[minute]:[second].[subsecond digits:3]")
-    };
-
-    let timer = OffsetTime::new(offset!(+8), fmt);
-
-    #[cfg(all(desktop, not(debug_assertions)))]
-    let writer = {
-        use crate::lazy::APP_CONFIG_DIR;
-        use std::{fs::File, sync::Mutex};
-
-        let log_file =
-            File::create(APP_CONFIG_DIR.join("dwall.log")).expect("Failed to create the log file");
-        Mutex::new(log_file)
-    };
-
-    #[cfg(any(debug_assertions, mobile))]
-    let writer = std::io::stderr;
-
-    let builder = tracing_subscriber::fmt()
-        .with_max_level(Level::TRACE)
-        .with_file(true)
-        .with_line_number(true)
-        .with_env_filter("dwall_lib")
-        .with_target(false)
-        .with_timer(timer)
-        .with_writer(writer);
-
-    if cfg!(debug_assertions) {
-        builder.init();
-    } else {
-        builder.json().init();
-    }
-}
+use crate::{
+    auto_start::AutoStartManager, error::DwallSettingsError, process_manager::find_daemon_process,
+    read_config_file, theme::spawn_apply_daemon, window::new_main_window, DAEMON_EXE_PATH,
+};
 
 pub fn setup_app(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
     info!(
-        "Setting up application: version {}",
-        app.package_info().version
+        "Starting application: version {}, build mode: {}",
+        app.package_info().version,
+        if cfg!(debug_assertions) {
+            "debug"
+        } else {
+            "release"
+        }
     );
-
-    build_tray(app)?;
 
     #[cfg(all(desktop, not(debug_assertions)))]
     setup_updater(app)?;
 
-    let args: Vec<String> = env::args().collect(); // Collect command-line arguments.
-    debug!("Launch parameters: {:?}", args); // Log the launch parameters.
-    if args.contains(&"--auto-start".to_string()) {
-        info!("Auto-start enabled, no window will be created"); // Log that auto-start is enabled.
-    } else {
-        new_main_window(app.app_handle())?; // Create the main window if auto-start is not enabled.
+    // Process launch arguments
+    let args: Vec<String> = env::args().collect();
+    debug!("Launch arguments: {:?}", args);
+
+    let settings_exe_path = PathBuf::from_str(&args[0])?;
+    let daemon_exe_path = settings_exe_path
+        .parent()
+        .ok_or(DwallSettingsError::Io(std::io::ErrorKind::NotFound.into()))?
+        .join("dwall.exe");
+    if !daemon_exe_path.exists() || !daemon_exe_path.is_file() {
+        error!("Daemon executable does not exist");
+        return Err(Box::new(std::io::Error::from(std::io::ErrorKind::NotFound)));
     }
+    info!(path = %daemon_exe_path.display(), "Found daemon exe");
+    DAEMON_EXE_PATH.set(daemon_exe_path)?;
 
-    let channel: CloseTaskSender = Arc::new(Mutex::new(None));
-    app.manage(channel);
+    let auto_start_manager = AutoStartManager::new();
+    app.manage(auto_start_manager);
 
-    info!("Application setup completed");
+    info!("Creating main window");
+    new_main_window(app.app_handle())?;
+
+    // If a theme is configured in the configuration file but the background process is not detected,
+    // then run the background process when this program starts.
+    tauri::async_runtime::spawn(async move {
+        let _ = read_config_file()
+            .await
+            .and_then(|config| {
+                config
+                    .theme_id()
+                    .map_or(Ok(None), |_| find_daemon_process())
+            })
+            .and_then(|pid| pid.map_or_else(|| spawn_apply_daemon().map(|_| ()), |_| Ok(())));
+    });
+
+    info!("Application setup completed successfully");
 
     Ok(())
 }
@@ -76,14 +64,22 @@ pub fn setup_app(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>>
 #[cfg(all(desktop, not(debug_assertions)))]
 fn setup_updater(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
     info!("Initializing update plugin");
-    app.handle()
-        .plugin(tauri_plugin_updater::Builder::new().build())?;
 
-    info!("Spawning update check task");
+    // Initialize update plugin
+    app.handle()
+        .plugin(tauri_plugin_updater::Builder::new().build())
+        .map_err(|e| {
+            error!("Failed to initialize update plugin: {}", e);
+            e
+        })?;
+
+    // Spawn update check task
+    info!("Scheduling background update check");
     let handle = app.handle().clone();
     tauri::async_runtime::spawn(async move {
-        if let Err(e) = crate::update::update(handle).await {
-            error!("Failed to check for updates: {:?}", e);
+        match crate::update::update(handle).await {
+            Ok(_) => info!("Update check completed successfully"),
+            Err(e) => error!("Update check failed: {}", e),
         }
     });
 
