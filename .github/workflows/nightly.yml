@@ -67,6 +67,11 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.DWALL_ASSETS_GITHUB_TOKEN }}
 
+      - name: unset http.extraheader options
+        run: |
+          git config -l | grep 'http\..*\.extraheader' | cut -d= -f1 | \
+            xargs -L1 git config --unset-all
+
       - name: create release
         id: create-release
         uses: actions/github-script@v7
