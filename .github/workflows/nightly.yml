@@ -49,7 +49,7 @@ jobs:
             try {
               const { data } = await github.rest.repos.getReleaseByTag({
                 owner: context.repo.owner,
-                repo: context.repo.repo,
+                repo: "dwall-assets",
                 tag: "nightly",
                 })
                 return data.id
@@ -65,16 +65,17 @@ jobs:
         if: steps.get-release.outputs.result != ''
         run: gh release delete nightly --cleanup-tag
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.DWALL_ASSETS_GITHUB_TOKEN }}
 
       - name: create release
         id: create-release
         uses: actions/github-script@v7
         with:
+          github-token: ${{ secrets.DWALL_ASSETS_GITHUB_TOKEN }}
           script: |
             const { data } = await github.rest.repos.createRelease({
               owner: context.repo.owner,
-              repo: context.repo.repo,
+              repo: "dwall-assets",
               tag_name: "nightly",
               name: "Nightly build",
               draft: true,
@@ -114,8 +115,9 @@ jobs:
         env:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.DWALL_ASSETS_GITHUB_TOKEN }}
         with:
+          repo: "dwall-assets"
           releaseId: ${{ needs.create-release.outputs.release_id }}
           args: ${{ matrix.args }}
 
@@ -157,10 +159,11 @@ jobs:
           PACKAGE_VERSION: ${{ needs.create-release.outputs.package_version }}
           LAST_COMMIT_MESSAGE: ${{ env.LAST_COMMIT_MESSAGE }}
         with:
+          github-token: ${{ secrets.DWALL_ASSETS_GITHUB_TOKEN }}
           script: |
             github.rest.repos.updateRelease({
               owner: context.repo.owner,
-              repo: context.repo.repo,
+              repo: "dwall-assets",
               release_id: parseInt(process.env.release_id),
               body: `> [!WARNING]\n> 每夜版可能无法自动升级。/The nightly version may not auto-update.\n\n## Last Commit\n\n${process.env.LAST_COMMIT_MESSAGE}`,
               draft: false
