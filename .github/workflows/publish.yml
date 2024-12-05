@@ -134,9 +134,23 @@ jobs:
           script: |
             github.rest.repos.updateRelease({
               owner: context.repo.owner,
-              repo: context.repo.repo,
+              repo: "dwall-assets",
               release_id: process.env.release_id,
               draft: false,
+            })
+
+      - name: create new tag
+        uses: actions/github-script@v7
+        env:
+          PACKAGE_VERSION: ${{ needs.create-release.outputs.package_version }}
+        with:
+          github-token: ${{ secrets.DWALL_ASSETS_GITHUB_TOKEN }}
+          script: |
+            github.rest.git.createRef({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref: 'refs/tags/v${process.env.PACKAGE_VERSION}',
+              sha: context.sha
             })
 
   upload_mirror_json:
