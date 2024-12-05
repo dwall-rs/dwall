@@ -65,11 +65,13 @@ jobs:
         if: steps.get-release.outputs.result != ''
         run: gh release delete nightly --cleanup-tag
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.DWALL_ASSETS_GITHUB_TOKEN }}
 
       - name: create release
         id: create-release
         uses: actions/github-script@v7
+        env:
+          GITHUB_TOKEN: ${{ secrets.DWALL_ASSETS_GITHUB_TOKEN }}
         with:
           script: |
             const { data } = await github.rest.repos.createRelease({
@@ -156,6 +158,7 @@ jobs:
           release_id: ${{ needs.create-release.outputs.release_id }}
           PACKAGE_VERSION: ${{ needs.create-release.outputs.package_version }}
           LAST_COMMIT_MESSAGE: ${{ env.LAST_COMMIT_MESSAGE }}
+          GITHUB_TOKEN: ${{ secrets.DWALL_ASSETS_GITHUB_TOKEN }}
         with:
           script: |
             github.rest.repos.updateRelease({
