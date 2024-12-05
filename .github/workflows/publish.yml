@@ -67,7 +67,7 @@ jobs:
           script: |
             const { data } = await github.rest.repos.createRelease({
               owner: context.repo.owner,
-              repo: context.repo.repo,
+              repo: "dwall-assets",
               tag_name: `v${process.env.PACKAGE_VERSION}`,
               name: `v${process.env.PACKAGE_VERSION}`,
               body: process.env.changelog,
@@ -167,7 +167,7 @@ jobs:
               "GET /repos/{owner}/{repo}/releases/assets/{asset_id}",
               {
                 owner: owner,
-                repo: repo,
+                repo: "dwall-assets",
                 asset_id: asset.id,
                 headers: {
                   accept: "application/octet-stream",

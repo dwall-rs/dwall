@@ -49,7 +49,7 @@ jobs:
             try {
               const { data } = await github.rest.repos.getReleaseByTag({
                 owner: context.repo.owner,
-                repo: context.repo.repo,
+                repo: "dwall-assets",
                 tag: "nightly",
                 })
                 return data.id
@@ -160,7 +160,7 @@ jobs:
           script: |
             github.rest.repos.updateRelease({
               owner: context.repo.owner,
-              repo: context.repo.repo,
+              repo: "dwall-assets",
               release_id: parseInt(process.env.release_id),
               body: `> [!WARNING]\n> 每夜版可能无法自动升级。/The nightly version may not auto-update.\n\n## Last Commit\n\n${process.env.LAST_COMMIT_MESSAGE}`,
               draft: false
