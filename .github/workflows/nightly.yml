@@ -74,7 +74,7 @@ jobs:
           script: |
             const { data } = await github.rest.repos.createRelease({
               owner: context.repo.owner,
-              repo: context.repo.repo,
+              repo: "dwall-assets",
               tag_name: "nightly",
               name: "Nightly build",
               draft: true,
