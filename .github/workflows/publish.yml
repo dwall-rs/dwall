@@ -240,6 +240,6 @@ jobs:
 
       - name: delete old nightly tag
         if: env.RELEASE_ID != ''
-        run: gh release delete nightly --cleanup-tag -R dwall-assets
+        run: gh release delete nightly --cleanup-tag -R thep0y/dwall-assets
         env:
           GH_TOKEN: ${{ secrets.DWALL_ASSETS_GITHUB_TOKEN }}
