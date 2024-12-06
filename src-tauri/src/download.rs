@@ -25,7 +25,7 @@ async fn download_theme<'a>(
 
     // Construct GitHub download URL
     let github_url = format!(
-        "https://github.com/thep0y/dwall-assets/releases/download/v0.1.0/{}.zip",
+        "https://github.com/thep0y/dwall-assets/releases/download/themes/{}.zip",
         theme_id.replace(" ", ".")
     );
     debug!("Generated GitHub download URL: {}", github_url);
