@@ -225,8 +225,21 @@ jobs:
           release_id=$(curl -s 'https://api.github.com/repos/thep0y/dwall-assets/releases/tags/nightly' | awk -F'[{},:]+' '/^  "id"/ {print $2}' | xargs)
           echo "RELEASE_ID=$release_id"  >> $GITHUB_ENV
 
-      - name: delete old nightly release
+      # - name: delete old nightly release
+      #   uses: actions/github-script@v7
+      #   env:
+      #     PACKAGE_VERSION: ${{ needs.create-release.outputs.package_version }}
+      #   with:
+      #     github-token: ${{ secrets.DWALL_ASSETS_GITHUB_TOKEN }}
+      #     script: |
+      #       github.rest.repos.deleteRelease({
+      #         owner: context.repo.owner,
+      #         repo: "dwall-assets",
+      #         release_id: process.env.RELEASE_ID,
+      #       })
+
+      - name: delete old nightly tag
         if: env.RELEASE_ID != ''
-        run: gh release delete nightly --cleanup-tag
+        run: gh release delete nightly --cleanup-tag -R thep0y/dwall-assets
         env:
-          GITHUB_TOKEN: ${{ secrets.DWALL_ASSETS_GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.DWALL_ASSETS_GITHUB_TOKEN }}

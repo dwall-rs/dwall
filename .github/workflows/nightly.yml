@@ -63,9 +63,9 @@ jobs:
 
       - name: delete old nightly release
         if: steps.get-release.outputs.result != ''
-        run: gh release delete nightly --cleanup-tag
+        run: gh release delete nightly --cleanup-tag -R thep0y/dwall-assets
         env:
-          GITHUB_TOKEN: ${{ secrets.DWALL_ASSETS_GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.DWALL_ASSETS_GITHUB_TOKEN }}
 
       - name: create release
         id: create-release
