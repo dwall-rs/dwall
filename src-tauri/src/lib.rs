@@ -2,8 +2,9 @@ use std::borrow::Cow;
 use std::path::PathBuf;
 use std::sync::Arc;
 
+use dwall::ColorMode;
 use dwall::{config::Config, setup_logging, ThemeValidator};
-use tauri::{AppHandle, Manager, RunEvent};
+use tauri::{AppHandle, Manager, RunEvent, WebviewWindow};
 use tokio::sync::OnceCell;
 
 use crate::auto_start::{check_auto_start, disable_auto_start, enable_auto_start};
@@ -145,6 +146,22 @@ async fn apply_theme(config: Config<'_>) -> DwallSettingsResult<()> {
     }
 }
 
+#[tauri::command]
+async fn set_titlebar_color_mode(
+    window: WebviewWindow,
+    color_mode: ColorMode,
+) -> DwallSettingsResult<()> {
+    let hwnd = window.hwnd()?;
+
+    let color = match color_mode {
+        ColorMode::Dark => 0x1F1F1F,
+        ColorMode::Light => 0xFAFAFA,
+    };
+
+    crate::window::set_titlebar_color(hwnd, color)?;
+    Ok(())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() -> DwallSettingsResult<()> {
     setup_logging("dwall_settings_lib");
@@ -175,7 +192,8 @@ pub fn run() -> DwallSettingsResult<()> {
             disable_auto_start,
             enable_auto_start,
             download_theme_and_extract,
-            request_location_permission
+            request_location_permission,
+            set_titlebar_color_mode
         ]);
 
     if cfg!(debug_assertions) {
