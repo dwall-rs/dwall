@@ -1,3 +1,4 @@
+use serde::Deserialize;
 use windows::{
     core::PCWSTR,
     Win32::{
@@ -12,7 +13,8 @@ use windows::{
 
 use crate::error::{DwallResult, RegistryError};
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Deserialize)]
+#[serde(rename_all = "UPPERCASE")]
 pub enum ColorMode {
     Light,
     Dark,
