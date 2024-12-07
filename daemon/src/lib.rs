@@ -10,7 +10,7 @@ mod theme;
 #[macro_use]
 extern crate tracing;
 
-pub use color_mode::{get_current_color_mode, ColorMode};
+pub use color_mode::ColorMode;
 pub use error::{DwallError, DwallResult};
 pub use lazy::APP_CONFIG_DIR;
 pub use log::setup_logging;
