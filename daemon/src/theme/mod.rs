@@ -25,6 +25,8 @@ pub enum ThemeError {
     MissingSolarConfigFile,
     #[error("Image count does not match solar configuration")]
     ImageCountMismatch,
+    #[error("Wallpaper file does not exist")]
+    MissingWallpaperFile,
 }
 
 /// Applies a theme and starts a background task for periodic wallpaper updates
