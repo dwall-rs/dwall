@@ -32,11 +32,11 @@ tracing = { version = "0", default-features = false, features = [
     "release_max_level_info",
 ] }
 thiserror = "2"
-window-vibrancy = "0"
 windows = { version = "0", default-features = false, features = [
     "Win32_System_Registry",
     "Win32_System_Diagnostics_ToolHelp",
     "Win32_System_ProcessStatus",
+    "Win32_Graphics_Dwm",
 ] }
 reqwest = "0"
 futures-util = "0"
