@@ -25,7 +25,12 @@ pub struct ThemeProcessor<'a> {
 impl<'a> ThemeProcessor<'a> {
     /// Creates a new ThemeProcessor instance
     pub fn new(theme_id: &str, config: Arc<Config<'a>>) -> Self {
-        debug!(theme_id = theme_id, "Initializing ThemeProcessor for theme");
+        debug!(
+            theme_id = theme_id,
+            auto_detect_color_mode = ?config.auto_detect_color_mode(),
+            image_format = ?config.image_format(),
+            "Initializing ThemeProcessor for theme with configuration"
+        );
 
         Self {
             theme_id: theme_id.to_string(),
@@ -38,7 +43,15 @@ impl<'a> ThemeProcessor<'a> {
     pub async fn start_update_loop(&self) -> DwallResult<()> {
         info!("Starting theme update loop");
 
+        let mut last_update_time = OffsetDateTime::now_local().unwrap_or(OffsetDateTime::now_utc());
         loop {
+            let current_time = OffsetDateTime::now_local().unwrap_or(OffsetDateTime::now_utc());
+            debug!(
+                last_update_time = %last_update_time,
+                current_time = %current_time,
+                "Beginning next theme update cycle"
+            );
+
             match self.position_manager.get_current_position().await {
                 Ok(current_position) => match self.process_theme_cycle(&current_position).await {
                     Ok(_) => {
@@ -68,6 +81,8 @@ impl<'a> ThemeProcessor<'a> {
                 sleep_seconds = sleep_duration.as_secs(),
                 "Waiting before next theme update"
             );
+
+            last_update_time = current_time;
             sleep(sleep_duration).await;
         }
 
@@ -142,6 +157,16 @@ async fn process_theme_cycle<'a, I: Into<&'a str>>(
     geographic_position: &Position,
 ) -> DwallResult<()> {
     let image_format: &'a str = image_format.into();
+
+    debug!(
+        theme_id = theme_id,
+        auto_detect_color_mode = auto_detect_color_mode,
+        image_format = ?image_format,
+        latitude = geographic_position.latitude,
+        longitude = geographic_position.longitude,
+        "Processing theme cycle with parameters"
+    );
+
     let theme_directory = THEMES_DIR.join(theme_id);
 
     // Load solar angles for the theme
@@ -193,6 +218,14 @@ async fn process_theme_cycle<'a, I: Into<&'a str>>(
         image_index = closest_image_index,
         "Selected wallpaper for current sun position"
     );
+
+    if !wallpaper_path.exists() {
+        error!(
+            wallpaper_path = %wallpaper_path.display(),
+            "Wallpaper file does not exist"
+        );
+        return Err(ThemeError::MissingWallpaperFile.into());
+    }
 
     // Update wallpapers
     WallpaperManager::set_lock_screen_image(&wallpaper_path)?;
