@@ -1,5 +1,7 @@
 use windows::Win32::Foundation::WIN32_ERROR;
 
+use crate::color_mode::ColorModeError;
+
 pub type DwallResult<T> = std::result::Result<T, DwallError>;
 
 #[derive(Debug, thiserror::Error)]
@@ -15,19 +17,12 @@ pub enum DwallError {
     #[error(transparent)]
     Config(#[from] crate::config::ConfigError),
     #[error(transparent)]
-    Registry(#[from] RegistryError),
+    ColorMode(#[from] ColorModeError),
     #[error(transparent)]
     NulError(#[from] std::ffi::NulError),
+    #[error(transparent)]
+    TimeIndeterminateOffset(#[from] time::error::IndeterminateOffset),
 }
-
-// impl Serialize for DwallError {
-//     fn serialize<S>(&self, serializer: S) -> std::result::Result<S::Ok, S::Error>
-//     where
-//         S: Serializer,
-//     {
-//         serializer.serialize_str(self.to_string().as_ref())
-//     }
-// }
 
 #[derive(Debug, thiserror::Error)]
 pub enum RegistryError {
