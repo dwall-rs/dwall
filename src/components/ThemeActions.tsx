@@ -18,7 +18,6 @@ export const ThemeActions = (props: ThemeActionsProps) => {
         when={props.themeExists}
         fallback={
           <LazyButton
-            type="primary"
             onClick={props.onDownload}
             disabled={!!props.downloadThemeID}
           >
@@ -35,7 +34,6 @@ export const ThemeActions = (props: ThemeActionsProps) => {
           }
         >
           <LazyButton
-            type="primary"
             disabled={!props.themeExists}
             onClick={props.onApply}
           >

@@ -4,15 +4,8 @@ export const LazyFlex = lazy(
   () => import("alley-components/lib/components/flex"),
 );
 
-export const LazyInput = lazy(
-  () => import("alley-components/lib/components/input"),
-);
 export const LazyTextArea = lazy(
   () => import("alley-components/lib/components/input/text-area"),
-);
-
-export const LazyButton = lazy(
-  () => import("alley-components/lib/components/button"),
 );
 
 export const LazyCol = lazy(
@@ -54,10 +47,6 @@ export const LazyDialog = lazy(
   () => import("alley-components/lib/components/dialog"),
 );
 
-export const LazyLabel = lazy(
-  () => import("alley-components/lib/components/label"),
-);
-
 export const LazyToast = lazy(
   () => import("alley-components/lib/components/toast"),
 );
@@ -66,14 +55,32 @@ export const LazyAlert = lazy(
   () => import("alley-components/lib/components/alert"),
 );
 
-export const LazySwitch = lazy(
-  () => import("alley-components/lib/components/switch"),
-);
-
 export const LazyInputNumber = lazy(
   () => import("alley-components/lib/components/input-number"),
 );
 
+// ------ fluent -----
+
+export const LazyButton = lazy(
+  () => import("fluent-solid/lib/components/button"),
+);
+
 export const LazyProgress = lazy(
-  () => import("alley-components/lib/components/progress"),
+  () => import("fluent-solid/lib/components/progress"),
+);
+
+export const LazyLabel = lazy(
+  () => import("fluent-solid/lib/components/label"),
+);
+
+export const LazySwitch = lazy(
+  () => import("fluent-solid/lib/components/switch"),
+);
+
+export const LazyInput = lazy(
+  () => import("fluent-solid/lib/components/input"),
+);
+
+export const LazySlider = lazy(
+  () => import("fluent-solid/lib/components/slider"),
 );
