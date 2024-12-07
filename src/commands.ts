@@ -33,3 +33,6 @@ export const downloadThemeAndExtract = async (
 
 export const requestLocationPermission = async () =>
   invoke<void>("request_location_permission");
+
+export const setTitlebarColorMode = async (colorMode: ColorMode) =>
+  invoke<void>("set_titlebar_color_mode", { colorMode });

@@ -47,7 +47,7 @@ const Download = (props: DownloadProps) => {
   //  }
   //});
 
-  return <LazyProgress class="download-progress" percent={percent()} />;
+  return <LazyProgress class="download-progress" value={percent()} />;
 };
 
 export default Download;

@@ -6,10 +6,15 @@ import { useDark } from "alley-components";
 import { ThemeMenu } from "./components/ThemeMenu";
 import Settings from "./components/Settings";
 import { AppContext } from "./context";
-import { showWindow, getAppliedThemeID } from "~/commands";
+import {
+  showWindow,
+  getAppliedThemeID,
+  setTitlebarColorMode,
+} from "~/commands";
 import { useThemeSelector } from "./components/ThemeContext";
 import "./App.scss";
 import ThemeShowcase from "./components/ThemeShowcase";
+import { detectColorMode } from "./utils/color";
 
 // 图片导入逻辑
 const images = {
@@ -17,13 +22,13 @@ const images = {
     import.meta.glob("~/assets/thumbnail/Catalina/*.avif", {
       import: "default",
       eager: true,
-    }) as Record<string, string>,
+    }) as Record<string, string>
   ),
   "Big Sur": Object.values(
     import.meta.glob("~/assets/thumbnail/BigSur/*.avif", {
       import: "default",
       eager: true,
-    }) as Record<string, string>,
+    }) as Record<string, string>
   ),
 };
 
@@ -32,7 +37,7 @@ const App = () => {
     ([id, thumbnails]) => ({
       id,
       thumbnail: thumbnails,
-    }),
+    })
   );
 
   const [showSettings, setShowSettings] = createSignal(false);
@@ -56,6 +61,8 @@ const App = () => {
   useDark();
 
   onMount(async () => {
+    await setTitlebarColorMode(detectColorMode());
+
     await showWindow("main");
 
     onMenuItemClick(index());
@@ -103,8 +110,8 @@ const App = () => {
 
           <LazyTooltip placement="right" text="设置" delay={500} showArrow>
             <LazyButton
-              type="plain"
-              shape="circle"
+              appearance="transparent"
+              shape="circular"
               icon={<AiFillSetting />}
               onClick={() => {
                 // setIndex(-1);

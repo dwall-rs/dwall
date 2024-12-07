@@ -23,12 +23,7 @@ const AutoStart = () => {
 
   return (
     <SettingsItem label="开机自启">
-      <LazySwitch
-        checked={autoStartState()}
-        setChecked={onSwitchAutoStart}
-        checkedChild={<AiOutlineCheck />}
-        uncheckedChild={<AiOutlineClose />}
-      />
+      <LazySwitch checked={autoStartState()} onChange={onSwitchAutoStart} />
     </SettingsItem>
   );
 };
