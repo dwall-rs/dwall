@@ -1,5 +1,7 @@
+import { BiSolidChevronLeft, BiSolidChevronRight } from "solid-icons/bi";
 import { createSignal, createEffect, onCleanup } from "solid-js";
 import { styled } from "solid-styled-components";
+import { LazyButton } from "~/lazy";
 
 interface ImageCarouselProps {
   images: Array<{
@@ -28,26 +30,6 @@ const ImageWrapper = styled("div")`
   transition: opacity 0.5s ease-in-out;
   &.active {
     opacity: 1;
-  }
-`;
-
-const Button = styled("button")`
-  position: absolute;
-  top: 50%;
-  transform: translateY(-50%);
-  background: rgba(255, 255, 255, 0.5);
-  border: none;
-  padding: 10px;
-  cursor: pointer;
-  z-index: 2;
-  &:hover {
-    background: rgba(255, 255, 255, 0.8);
-  }
-  &.prev {
-    left: 10px;
-  }
-  &.next {
-    right: 10px;
   }
 `;
 
@@ -92,14 +74,14 @@ export default function ImageCarousel(props: ImageCarouselProps) {
   // 切换到下一张图片
   const nextImage = () => {
     setCurrentIndex((current) =>
-      current === props.images.length - 1 ? 0 : current + 1,
+      current === props.images.length - 1 ? 0 : current + 1
     );
   };
 
   // 切换到上一张图片
   const prevImage = () => {
     setCurrentIndex((current) =>
-      current === 0 ? props.images.length - 1 : current - 1,
+      current === 0 ? props.images.length - 1 : current - 1
     );
   };
 
@@ -138,12 +120,30 @@ export default function ImageCarousel(props: ImageCarouselProps) {
         </ImageWrapper>
       ))}
 
-      <Button class="prev" onClick={prevImage}>
-        ←
-      </Button>
-      <Button class="next" onClick={nextImage}>
-        →
-      </Button>
+      <LazyButton
+        style={{
+          "z-index": 2,
+          position: "absolute",
+          top: "50%",
+          transform: "translateY(-50%)",
+        }}
+        icon={<BiSolidChevronLeft />}
+        shape="circular"
+        onClick={prevImage}
+      />
+
+      <LazyButton
+        style={{
+          "z-index": 2,
+          position: "absolute",
+          top: "50%",
+          transform: "translateY(-50%)",
+          right: 0,
+        }}
+        icon={<BiSolidChevronRight />}
+        shape="circular"
+        onClick={nextImage}
+      />
 
       <Indicators>
         {props.images.map((_, index) => (

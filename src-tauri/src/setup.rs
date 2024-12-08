@@ -18,7 +18,7 @@ pub fn setup_app(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>>
         }
     );
 
-    #[cfg(all(desktop, not(debug_assertions)))]
+    //#[cfg(all(desktop, not(debug_assertions)))]
     setup_updater(app)?;
 
     // Process launch arguments
@@ -61,7 +61,7 @@ pub fn setup_app(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>>
     Ok(())
 }
 
-#[cfg(all(desktop, not(debug_assertions)))]
+//#[cfg(all(desktop, not(debug_assertions)))]
 fn setup_updater(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
     info!("Initializing update plugin");
 
@@ -72,16 +72,6 @@ fn setup_updater(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>>
             error!("Failed to initialize update plugin: {}", e);
             e
         })?;
-
-    // Spawn update check task
-    info!("Scheduling background update check");
-    let handle = app.handle().clone();
-    tauri::async_runtime::spawn(async move {
-        match crate::update::update(handle).await {
-            Ok(_) => info!("Update check completed successfully"),
-            Err(e) => error!("Update check failed: {}", e),
-        }
-    });
 
     Ok(())
 }

@@ -1,4 +1,4 @@
-import { LazyInputNumber, LazySpace } from "~/lazy";
+import { LazySlider, LazySpace } from "~/lazy";
 import SettingsItem from "./item";
 import { useAppContext } from "~/context";
 import { createSignal } from "solid-js";
@@ -18,13 +18,14 @@ const Interval = () => {
   return (
     <SettingsItem label="检测间隔">
       <LazySpace gap={8}>
-        <LazyInputNumber
-          min={1}
-          max={600}
-          value={value()}
+        <LazySlider
+          min={15}
+          max={300}
           onChange={onChange}
+          value={value()}
+          style={{ width: "240px" }}
         />
-        秒
+        {value()}秒
       </LazySpace>
     </SettingsItem>
   );

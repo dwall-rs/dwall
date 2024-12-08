@@ -3,7 +3,8 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use dwall::{config::Config, setup_logging, ThemeValidator};
-use tauri::{AppHandle, Manager, RunEvent};
+use dwall::{ColorMode, APP_CONFIG_DIR};
+use tauri::{AppHandle, Manager, RunEvent, WebviewWindow};
 use tokio::sync::OnceCell;
 
 use crate::auto_start::{check_auto_start, disable_auto_start, enable_auto_start};
@@ -22,8 +23,6 @@ mod postion;
 mod process_manager;
 mod setup;
 mod theme;
-#[cfg(not(debug_assertions))]
-mod update;
 mod window;
 
 #[macro_use]
@@ -32,7 +31,7 @@ extern crate tracing;
 pub static DAEMON_EXE_PATH: OnceCell<PathBuf> = OnceCell::const_new();
 
 #[tauri::command]
-fn show_window<'a>(app: AppHandle, label: &'a str) -> DwallSettingsResult<()> {
+fn show_window(app: AppHandle, label: &str) -> DwallSettingsResult<()> {
     debug!("Showing window: {}", label);
 
     if let Some(window) = app.get_webview_window(label) {
@@ -53,7 +52,7 @@ fn show_window<'a>(app: AppHandle, label: &'a str) -> DwallSettingsResult<()> {
 }
 
 #[tauri::command]
-async fn check_theme_exists<'a>(theme_id: &'a str) -> DwallSettingsResult<()> {
+async fn check_theme_exists(theme_id: &str) -> DwallSettingsResult<()> {
     trace!("Checking theme existence for theme_id: {}", theme_id);
     match ThemeValidator::validate_theme(theme_id).await {
         Ok(_) => {
@@ -106,7 +105,7 @@ async fn read_config_file<'a>() -> DwallSettingsResult<Config<'a>> {
 }
 
 #[tauri::command]
-async fn write_config_file<'a>(config: Config<'a>) -> DwallSettingsResult<()> {
+async fn write_config_file(config: Config<'_>) -> DwallSettingsResult<()> {
     let config = Arc::new(config);
 
     trace!("Writing configuration file");
@@ -145,10 +144,36 @@ async fn apply_theme(config: Config<'_>) -> DwallSettingsResult<()> {
     }
 }
 
+#[tauri::command]
+async fn open_config_dir() -> DwallSettingsResult<()> {
+    open::that(APP_CONFIG_DIR.as_os_str()).map_err(|e| {
+        error!("Failed to open app config directory: {}", e);
+        e.into()
+    })
+}
+
+#[tauri::command]
+async fn set_titlebar_color_mode(
+    window: WebviewWindow,
+    color_mode: ColorMode,
+) -> DwallSettingsResult<()> {
+    let hwnd = window.hwnd()?;
+
+    let color = match color_mode {
+        ColorMode::Dark => 0x1F1F1F,
+        ColorMode::Light => 0xFAFAFA,
+    };
+
+    crate::window::set_titlebar_color(hwnd, color)?;
+    Ok(())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() -> DwallSettingsResult<()> {
     setup_logging("dwall_settings_lib");
     let builder = tauri::Builder::default()
+        .plugin(tauri_plugin_process::init())
+        .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_single_instance::init(|app, _argv, _cwd| {
             trace!("Handling single instance application launch");
             if let Some(w) = app.get_webview_window("main") {
@@ -175,7 +200,10 @@ pub fn run() -> DwallSettingsResult<()> {
             disable_auto_start,
             enable_auto_start,
             download_theme_and_extract,
-            request_location_permission
+            request_location_permission,
+            open_config_dir,
+            set_titlebar_color_mode,
+            kill_daemon
         ]);
 
     if cfg!(debug_assertions) {

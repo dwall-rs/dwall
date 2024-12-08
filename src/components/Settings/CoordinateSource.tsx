@@ -1,9 +1,9 @@
 import { LazyButton, LazySpace, LazySwitch } from "~/lazy";
 import SettingsItem from "./item";
-import { AiOutlineCheck, AiOutlineClose } from "solid-icons/ai";
+import { AiOutlineCheck } from "solid-icons/ai";
 import { useAppContext } from "~/context";
 import { writeConfigFile } from "~/commands";
-import { createEffect, createMemo, createSignal, Show } from "solid-js";
+import { createMemo, createSignal, Show } from "solid-js";
 import { InputNumber } from "alley-components";
 
 interface CoordinateInputProps {
@@ -40,8 +40,6 @@ const CoordinateSource = () => {
     config()?.coordinate_source.type === "AUTOMATIC",
   );
 
-  createEffect(() => console.log(config()));
-
   const [position, setPosition] = createSignal<{
     latitude?: number;
     longitude?: number;
@@ -49,11 +47,11 @@ const CoordinateSource = () => {
     config()?.coordinate_source.type === "AUTOMATIC"
       ? {}
       : {
-          latitude: (config()?.coordinate_source as CoordinateSourceManual)
-            .latitude,
-          longitude: (config()?.coordinate_source as CoordinateSourceManual)
-            .longitude,
-        },
+        latitude: (config()?.coordinate_source as CoordinateSourceManual)
+          .latitude,
+        longitude: (config()?.coordinate_source as CoordinateSourceManual)
+          .longitude,
+      },
   );
 
   const onSwitchCoordinateSource = async () => {
@@ -95,12 +93,7 @@ const CoordinateSource = () => {
   return (
     <SettingsItem label="自动获取坐标">
       <LazySpace gap={8}>
-        <LazySwitch
-          checked={auto()}
-          setChecked={onSwitchCoordinateSource}
-          checkedChild={<AiOutlineCheck />}
-          uncheckedChild={<AiOutlineClose />}
-        />
+        <LazySwitch checked={auto()} onChange={onSwitchCoordinateSource} />
 
         <Show when={!auto()}>
           <LazySpace gap={8}>

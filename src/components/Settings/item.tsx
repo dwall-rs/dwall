@@ -11,14 +11,23 @@ const SettingsItem = (props: SettingsItemProps) => {
   const resolved = children(() =>
     props.vertical ? (
       <LazyFlex direction="vertical" gap={8}>
-        <LazyLabel>{props.label}</LazyLabel>
+        <LazyLabel weight="semibold">{props.label}</LazyLabel>
 
         {props.children}
       </LazyFlex>
     ) : (
       <LazyRow>
         <LazyCol span={8}>
-          <LazyLabel>{props.label}</LazyLabel>
+          <LazyLabel
+            weight="semibold"
+            style={{
+              display: "flex",
+              "justify-items": "center",
+              "align-items": "center",
+            }}
+          >
+            {props.label}
+          </LazyLabel>
         </LazyCol>
 
         <LazyCol span={16}>{props.children}</LazyCol>
