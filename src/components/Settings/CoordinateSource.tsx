@@ -3,7 +3,7 @@ import SettingsItem from "./item";
 import { AiOutlineCheck } from "solid-icons/ai";
 import { useAppContext } from "~/context";
 import { writeConfigFile } from "~/commands";
-import { createEffect, createMemo, createSignal, Show } from "solid-js";
+import { createMemo, createSignal, Show } from "solid-js";
 import { InputNumber } from "alley-components";
 
 interface CoordinateInputProps {
@@ -39,8 +39,6 @@ const CoordinateSource = () => {
   const [auto, setAuto] = createSignal(
     config()?.coordinate_source.type === "AUTOMATIC",
   );
-
-  createEffect(() => console.log(config()));
 
   const [position, setPosition] = createSignal<{
     latitude?: number;

@@ -24,27 +24,30 @@ dwall = { version = "0", path = "../daemon" }
 serde = { version = "1", default-features = false, features = ["derive"] }
 serde_json = "1"
 tokio = { version = "1", default-features = false, features = [
-    "macros",
-    "process",
+  "macros",
+  "process",
 ] }
 tracing = { version = "0", default-features = false, features = [
-    "log",
-    "release_max_level_info",
+  "log",
+  "release_max_level_info",
 ] }
 thiserror = "2"
 windows = { version = "0", default-features = false, features = [
-    "Win32_System_Registry",
-    "Win32_System_Diagnostics_ToolHelp",
-    "Win32_System_ProcessStatus",
-    "Win32_Graphics_Dwm",
+  "Win32_System_Registry",
+  "Win32_System_Diagnostics_ToolHelp",
+  "Win32_System_ProcessStatus",
+  "Win32_Graphics_Dwm",
 ] }
 reqwest = "0"
 futures-util = "0"
 zip-extract = "0"
+open = "5"
 
 [target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
 tauri-plugin-single-instance = "2"
 tauri-plugin-updater = "2"
+tauri-plugin-dialog = "2"
+tauri-plugin-process = "2"
 
 [features]
 default = []

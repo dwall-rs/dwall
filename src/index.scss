@@ -1,13 +1,3 @@
-:root {
-  --alley-color-bg: transparent;
-  --alley-color-mask: radial-gradient(
-    closest-side,
-    rgb(255 255 255),
-    transparent
-  );
-  --alley-color-info-bg: rgb(234 236 255 / 30%);
-}
-
 body {
   overflow: hidden;
 }
@@ -20,10 +10,6 @@ body {
   overflow: hidden;
 }
 
-.alley-dialog-mask {
-  background: var(--alley-color-mask);
-}
-
 @media (prefers-color-scheme: dark) {
   :root {
     --alley-color-text: #fff;
@@ -34,9 +20,6 @@ body {
 
     --alley-color-border: #000;
 
-    --alley-color-mask: rgba(0, 0, 0, 0.5);
-
-    --alley-color-info-bg: rgb(41 44 104 / 30%);
     --alley-color-info-border: #4045a3;
 
     --alley-color-success: #297000;

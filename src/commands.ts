@@ -28,7 +28,7 @@ export const disableAutoStart = async () => invoke<void>("disable_auto_start");
 
 export const downloadThemeAndExtract = async (
   config: Config,
-  themeId: string
+  themeId: string,
 ) => invoke<void>("download_theme_and_extract", { config, themeId });
 
 export const requestLocationPermission = async () =>
@@ -36,3 +36,7 @@ export const requestLocationPermission = async () =>
 
 export const setTitlebarColorMode = async (colorMode: ColorMode) =>
   invoke<void>("set_titlebar_color_mode", { colorMode });
+
+export const openConfigDir = async () => invoke<void>("open_config_dir");
+
+export const killDaemon = async () => invoke<void>("kill_daemon");

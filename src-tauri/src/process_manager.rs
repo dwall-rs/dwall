@@ -127,6 +127,7 @@ pub fn find_daemon_process() -> DwallSettingsResult<Option<u32>> {
     Ok(None)
 }
 
+#[tauri::command]
 pub fn kill_daemon() -> DwallSettingsResult<()> {
     // Find the daemon process
     match find_daemon_process()? {
