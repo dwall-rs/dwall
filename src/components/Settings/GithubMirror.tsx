@@ -1,8 +1,8 @@
-import { LazyButton, LazyFlex, LazyInput } from "~/lazy";
+import { LazyButton, LazyInput } from "~/lazy";
 import SettingsItem from "./item";
 import { useAppContext } from "~/context";
 import { createSignal } from "solid-js";
-import { AiOutlineCheck } from "solid-icons/ai";
+import { AiFillSave } from "solid-icons/ai";
 import { writeConfigFile } from "~/commands";
 
 const GithubMirror = () => {
@@ -21,12 +21,19 @@ const GithubMirror = () => {
 
   return (
     <SettingsItem label="Github 镜像模板" vertical>
-      <LazyFlex flex={1} justify="round">
-        <LazyInput style={{ flex: 15 }} value={value()} onChange={onChange} />
-        <LazyFlex flex={1}>
-          <LazyButton icon={<AiOutlineCheck />} onClick={onConfirm} />
-        </LazyFlex>
-      </LazyFlex>
+      <LazyInput
+        style={{ flex: 15 }}
+        value={value()}
+        onChange={onChange}
+        contentAfter={
+          <LazyButton
+            appearance="transparent"
+            icon={<AiFillSave />}
+            onClick={onConfirm}
+            size="small"
+          />
+        }
+      />
     </SettingsItem>
   );
 };
