@@ -31,7 +31,7 @@ const ThemeShowcase = (props: ThemeShowcaseProps) => {
           src,
           alt: props.currentTheme().id,
         }))}
-        height="480px"
+        height="auto"
         width="480px"
       />
 
