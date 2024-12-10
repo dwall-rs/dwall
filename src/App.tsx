@@ -62,6 +62,8 @@ const App = () => {
     onCloseTask,
     onApply,
     setAppliedThemeID,
+    update,
+    recheckUpdate,
   } = useThemeSelector(themes);
 
   useDark();
@@ -88,6 +90,7 @@ const App = () => {
   return (
     <AppContext.Provider
       value={{
+        update: { resource: update, refetch: recheckUpdate },
         config,
         refetchConfig,
         settings: { show: showSettings, setShow: setShowSettings },
