@@ -3,6 +3,10 @@
 
   padding: 4px;
   border-radius: 5px;
+  height: 64px;
+  width: 64px;
+  display: flex;
+  align-items: center;
 
   &:hover {
     box-shadow: 0 0 5px 1px var(--menu-item-color-shadow);

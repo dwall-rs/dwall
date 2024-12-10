@@ -1,4 +1,5 @@
 import { createSignal, createMemo, createResource } from "solid-js";
+import { check } from "@tauri-apps/plugin-updater";
 import {
   applyTheme,
   checkThemeExists,
@@ -14,6 +15,7 @@ export const useThemeSelector = (themes: ThemeItem[]) => {
   const [downloadThemeID, setDownloadThemeID] = createSignal<string>();
   const [index, setIndex] = createSignal(0);
   const [themeExists, setThemeExists] = createSignal(false);
+  const [update, { refetch: recheckUpdate }] = createResource(() => check());
 
   const currentTheme = createMemo(() => themes[index()]);
 
@@ -81,5 +83,7 @@ export const useThemeSelector = (themes: ThemeItem[]) => {
     onMenuItemClick,
     onCloseTask,
     onApply,
+    update,
+    recheckUpdate,
   };
 };
