@@ -53,9 +53,9 @@ jobs:
         uses: mikepenz/release-changelog-builder-action@v5
         with:
           configuration: ".github/changelog-configuration.json"
+          toTag: "refs/heads/main"
           failOnError: true
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.DWALL_ASSETS_GITHUB_TOKEN }}
 
       - name: create release
         id: create-release
