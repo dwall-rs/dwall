@@ -14,7 +14,7 @@ use crate::postion::request_location_permission;
 use crate::process_manager::{find_daemon_process, kill_daemon};
 use crate::setup::setup_app;
 use crate::theme::spawn_apply_daemon;
-use crate::window::new_main_window;
+use crate::window::create_main_window;
 
 mod auto_start;
 mod download;
@@ -159,12 +159,7 @@ async fn set_titlebar_color_mode(
 ) -> DwallSettingsResult<()> {
     let hwnd = window.hwnd()?;
 
-    let color = match color_mode {
-        ColorMode::Dark => 0x1F1F1F,
-        ColorMode::Light => 0xFAFAFA,
-    };
-
-    crate::window::set_titlebar_color(hwnd, color)?;
+    crate::window::set_window_color_mode(hwnd, color_mode)?;
     Ok(())
 }
 
@@ -182,7 +177,7 @@ pub fn run() -> DwallSettingsResult<()> {
                     error!(error = %e, "Failed to set focus on existing window");
                 }
             } else {
-                match new_main_window(app) {
+                match create_main_window(app) {
                     Ok(_) => debug!("New main window created"),
                     Err(e) => error!(error = %e, "Failed to create new main window"),
                 }

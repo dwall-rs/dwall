@@ -4,7 +4,7 @@ use tauri::Manager;
 
 use crate::{
     auto_start::AutoStartManager, error::DwallSettingsError, process_manager::find_daemon_process,
-    read_config_file, theme::spawn_apply_daemon, window::new_main_window, DAEMON_EXE_PATH,
+    read_config_file, theme::spawn_apply_daemon, window::create_main_window, DAEMON_EXE_PATH,
 };
 
 pub fn setup_app(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
@@ -41,7 +41,7 @@ pub fn setup_app(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>>
     app.manage(auto_start_manager);
 
     info!("Creating main window");
-    new_main_window(app.app_handle())?;
+    create_main_window(app.app_handle())?;
 
     // If a theme is configured in the configuration file but the background process is not detected,
     // then run the background process when this program starts.
