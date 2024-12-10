@@ -37,6 +37,8 @@ windows = { version = "0", default-features = false, features = [
   "Win32_System_Diagnostics_ToolHelp",
   "Win32_System_ProcessStatus",
   "Win32_Graphics_Dwm",
+  "Wdk_System_SystemServices",
+  "Win32_System_SystemInformation",
 ] }
 reqwest = "0"
 futures-util = "0"
