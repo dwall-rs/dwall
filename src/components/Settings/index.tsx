@@ -13,20 +13,26 @@ import Interval from "./Interval";
 import GithubMirror from "./GithubMirror";
 import { createResource, createSignal, Show } from "solid-js";
 import { openConfigDir } from "~/commands";
-import { check, type Update } from "@tauri-apps/plugin-updater";
 import { ask, message } from "@tauri-apps/plugin-dialog";
 import UpdateDialog from "./UpdateDialog";
+import { useAppContext } from "~/context";
 
 const Settings = () => {
+  const {
+    update: { resource, refetch },
+  } = useAppContext();
   const [version] = createResource(getVersion);
-  const [update, setUpdate] = createSignal<Update | null>(null);
+  const [downloading, setDownloading] = createSignal(false);
 
   const onOpenLogDir = async () => {
     await openConfigDir();
   };
 
   const onUpdate = async () => {
-    const update = await check();
+    if (!resource()) {
+      refetch();
+    }
+    const update = resource();
     if (!update) {
       await message("当前已经最新版");
       return;
@@ -39,8 +45,7 @@ const Settings = () => {
       "Dwall",
     );
     if (!result) return;
-
-    setUpdate(update);
+    setDownloading(true);
   };
 
   return (
@@ -81,8 +86,8 @@ const Settings = () => {
         </LazyFlex>
       </LazyFlex>
 
-      <Show when={update()}>
-        <UpdateDialog update={update()!} />
+      <Show when={downloading()}>
+        <UpdateDialog update={resource()!} />
       </Show>
     </>
   );

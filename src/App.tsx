@@ -22,13 +22,19 @@ const images = {
     import.meta.glob("~/assets/thumbnail/Catalina/*.avif", {
       import: "default",
       eager: true,
-    }) as Record<string, string>
+    }) as Record<string, string>,
   ),
   "Big Sur": Object.values(
     import.meta.glob("~/assets/thumbnail/BigSur/*.avif", {
       import: "default",
       eager: true,
-    }) as Record<string, string>
+    }) as Record<string, string>,
+  ),
+  Mojave: Object.values(
+    import.meta.glob("~/assets/thumbnail/Mojave/*.avif", {
+      import: "default",
+      eager: true,
+    }) as Record<string, string>,
   ),
 };
 
@@ -37,7 +43,7 @@ const App = () => {
     ([id, thumbnails]) => ({
       id,
       thumbnail: thumbnails,
-    })
+    }),
   );
 
   const [showSettings, setShowSettings] = createSignal(false);
@@ -56,6 +62,8 @@ const App = () => {
     onCloseTask,
     onApply,
     setAppliedThemeID,
+    update,
+    recheckUpdate,
   } = useThemeSelector(themes);
 
   useDark();
@@ -82,6 +90,7 @@ const App = () => {
   return (
     <AppContext.Provider
       value={{
+        update: { resource: update, refetch: recheckUpdate },
         config,
         refetchConfig,
         settings: { show: showSettings, setShow: setShowSettings },

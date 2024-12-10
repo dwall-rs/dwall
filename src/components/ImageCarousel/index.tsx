@@ -28,6 +28,9 @@ const ImageWrapper = styled("div")`
   height: 100%;
   opacity: 0;
   transition: opacity 0.5s ease-in-out;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   &.active {
     opacity: 1;
   }
@@ -74,14 +77,14 @@ export default function ImageCarousel(props: ImageCarouselProps) {
   // 切换到下一张图片
   const nextImage = () => {
     setCurrentIndex((current) =>
-      current === props.images.length - 1 ? 0 : current + 1
+      current === props.images.length - 1 ? 0 : current + 1,
     );
   };
 
   // 切换到上一张图片
   const prevImage = () => {
     setCurrentIndex((current) =>
-      current === 0 ? props.images.length - 1 : current - 1
+      current === 0 ? props.images.length - 1 : current - 1,
     );
   };
 
@@ -102,7 +105,7 @@ export default function ImageCarousel(props: ImageCarouselProps) {
 
   return (
     <Container
-      style={{ width: props.width || "100%", height: props.height || "400px" }}
+      style={{ width: "480px", height: "480px" }}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
     >
@@ -112,8 +115,10 @@ export default function ImageCarousel(props: ImageCarouselProps) {
             src={image.src}
             alt={image.alt || `Slide ${index + 1}`}
             style={{
-              width: "100%",
-              height: "100%",
+              width: props.width || "480px",
+              height: props.height || "auto",
+              //width: "100%",
+              //height: "100%",
               "object-fit": "cover",
             }}
           />
