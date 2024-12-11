@@ -43,16 +43,18 @@ pub fn setup_logging(pkg_name: &str) {
     let level = get_log_level();
 
     let builder = tracing_subscriber::fmt()
-        .with_file(true)
         .with_line_number(true)
-        .with_env_filter(EnvFilter::new(&format!("{pkg_name}={level}")))
-        .with_target(false)
+        .with_env_filter(EnvFilter::new(format!("{pkg_name}={level}")))
         .with_timer(timer)
         .with_writer(writer);
 
     if cfg!(debug_assertions) {
-        builder.with_ansi(true).init();
+        builder
+            .with_file(true)
+            .with_target(false)
+            .with_ansi(true)
+            .init();
     } else {
-        builder.json().init();
+        builder.with_file(false).with_target(true).json().init();
     }
 }

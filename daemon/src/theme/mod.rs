@@ -14,7 +14,18 @@ mod processor;
 mod validator;
 
 /// Directory for storing theme configurations
-pub static THEMES_DIR: LazyLock<PathBuf> = LazyLock::new(|| APP_CONFIG_DIR.join("themes"));
+pub static THEMES_DIR: LazyLock<PathBuf> = LazyLock::new(|| {
+    let path = APP_CONFIG_DIR.join("themes");
+    if !path.exists() {
+        std::fs::create_dir(&path)
+            .map_err(|e| {
+                error!("Failed to create themes directory: {}", e);
+                e
+            })
+            .unwrap();
+    }
+    path
+});
 
 /// Comprehensive error handling for theme-related operations
 #[derive(Debug, thiserror::Error)]

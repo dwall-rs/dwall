@@ -1,6 +1,8 @@
 use dwall::error::RegistryError;
 use serde::{Serialize, Serializer};
 
+use crate::download::DownloadError;
+
 pub type DwallSettingsResult<T> = std::result::Result<T, DwallSettingsError>;
 
 #[derive(Debug, thiserror::Error)]
@@ -25,6 +27,8 @@ pub enum DwallSettingsError {
     NulError(#[from] std::ffi::NulError),
     #[error(transparent)]
     GeolocationAccess(#[from] crate::postion::GeolocationAccessError),
+    #[error(transparent)]
+    Download(#[from] DownloadError),
 }
 
 impl Serialize for DwallSettingsError {

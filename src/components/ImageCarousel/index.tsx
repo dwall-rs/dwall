@@ -1,7 +1,7 @@
 import { BiSolidChevronLeft, BiSolidChevronRight } from "solid-icons/bi";
-import { createSignal, createEffect, onCleanup } from "solid-js";
-import { styled } from "solid-styled-components";
+import { createSignal, createEffect, onCleanup, onMount } from "solid-js";
 import { LazyButton } from "~/lazy";
+import "./index.scss";
 
 interface ImageCarouselProps {
   images: Array<{
@@ -9,59 +9,27 @@ interface ImageCarouselProps {
     alt?: string;
   }>;
   interval?: number; // 切换间隔，单位毫秒
-  width?: string;
-  height?: string;
 }
-
-const Container = styled("div")`
-  position: relative;
-  overflow: hidden;
-  width: 100%;
-  height: 100%;
-`;
-
-const ImageWrapper = styled("div")`
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  opacity: 0;
-  transition: opacity 0.5s ease-in-out;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  &.active {
-    opacity: 1;
-  }
-`;
-
-const Indicators = styled("div")`
-  position: absolute;
-  bottom: 10px;
-  left: 50%;
-  transform: translateX(-50%);
-  display: flex;
-  gap: 8px;
-  z-index: 2;
-`;
-
-const Indicator = styled("button")`
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  border: none;
-  background: rgba(255, 255, 255, 0.5);
-  cursor: pointer;
-  padding: 0;
-  &.active {
-    background: white;
-  }
-`;
 
 export default function ImageCarousel(props: ImageCarouselProps) {
   const [currentIndex, setCurrentIndex] = createSignal(0);
   const [isPlaying, setIsPlaying] = createSignal(true);
+  const [imageHeight, setImageHeight] = createSignal(480);
+
+  let containerRef: HTMLDivElement | undefined;
+
+  const updateImageHeight = () => {
+    const img = containerRef!.querySelector(".carousel-image");
+    setImageHeight(img!.clientHeight);
+  };
+
+  onMount(() => {
+    const observer = new MutationObserver(updateImageHeight);
+
+    observer.observe(containerRef!, { childList: true });
+
+    onCleanup(() => observer.disconnect());
+  });
 
   // 自动播放
   createEffect(() => {
@@ -104,60 +72,51 @@ export default function ImageCarousel(props: ImageCarouselProps) {
   };
 
   return (
-    <Container
+    <div
+      ref={containerRef}
+      class="image-carousel-container"
       style={{ width: "480px", height: "480px" }}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
     >
       {props.images.map((image, index) => (
-        <ImageWrapper class={index === currentIndex() ? "active" : ""}>
+        <div
+          class={`image-wrapper ${index === currentIndex() ? "active" : ""}`}
+        >
           <img
             src={image.src}
             alt={image.alt || `Slide ${index + 1}`}
-            style={{
-              width: props.width || "480px",
-              height: props.height || "auto",
-              //width: "100%",
-              //height: "100%",
-              "object-fit": "cover",
-            }}
+            class="carousel-image"
           />
-        </ImageWrapper>
+        </div>
       ))}
 
       <LazyButton
-        style={{
-          "z-index": 2,
-          position: "absolute",
-          top: "50%",
-          transform: "translateY(-50%)",
-        }}
+        class="prev-button"
         icon={<BiSolidChevronLeft />}
         shape="circular"
         onClick={prevImage}
       />
 
       <LazyButton
-        style={{
-          "z-index": 2,
-          position: "absolute",
-          top: "50%",
-          transform: "translateY(-50%)",
-          right: 0,
-        }}
+        class="next-button"
         icon={<BiSolidChevronRight />}
         shape="circular"
         onClick={nextImage}
       />
 
-      <Indicators>
+      <div
+        class="indicators"
+        style={{ bottom: `${(480 - imageHeight()) / 2 + 10}px` }}
+      >
         {props.images.map((_, index) => (
-          <Indicator
-            class={index === currentIndex() ? "active" : ""}
+          <button
+            type="button"
+            class={`indicator ${index === currentIndex() ? "active" : ""}`}
             onClick={() => goToImage(index)}
           />
         ))}
-      </Indicators>
-    </Container>
+      </div>
+    </div>
   );
 }
