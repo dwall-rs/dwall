@@ -32,7 +32,7 @@ jobs:
       #   with:
       #     script: |
       #       const { data } = await github.request(
-      #         'GET /repos/{owner}/{repo}/releases/latest', 
+      #         'GET /repos/{owner}/{repo}/releases/latest',
       #         {
       #           owner: context.repo.owner,
       #           repo: context.repo.repo,
@@ -103,7 +103,7 @@ jobs:
       - name: install frontend dependencies
         run: bun i
 
-      - uses: tauri-apps/tauri-action@v0
+      - uses: tauri-apps/tauri-action@v0.5.16
         env:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
