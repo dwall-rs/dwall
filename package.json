@@ -20,12 +20,12 @@
     "@tauri-apps/plugin-process": "~2.0.0",
     "@tauri-apps/plugin-updater": "^2.3.0",
     "alley-components": "^0.3.11",
-    "fluent-solid": "^0.1.5",
+    "fluent-solid": "^0.1.6",
     "solid-icons": "^1.1.0",
     "solid-js": "^1.9.3"
   },
   "devDependencies": {
-    "@types/node": "^22.10.1",
+    "@types/node": "^22.10.2",
     "cross-env": "^7.0.3",
     "sass": "^1.82.0",
     "typescript": "^5.7.2",
