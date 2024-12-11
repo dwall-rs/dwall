@@ -6,10 +6,10 @@ import { downloadThemeAndExtract } from "~/commands";
 import { useAppContext } from "~/context";
 import { message } from "@tauri-apps/plugin-dialog";
 
-interface ProgressPayload {
-  id: string;
-  progress: number;
-  total: number;
+interface DownloadProgress {
+  theme_id: string;
+  downloaded_bytes: number;
+  total_bytes: number;
 }
 
 interface DownloadProps {
@@ -24,11 +24,11 @@ const Download = (props: DownloadProps) => {
   const [percent, setPercent] = createSignal<number>();
 
   onMount(async () => {
-    const unlisten = await window.listen<ProgressPayload>(
+    const unlisten = await window.listen<DownloadProgress>(
       "download-theme",
       (e) => {
-        const { total, progress } = e.payload;
-        setPercent(Math.round((progress / total) * 1000) / 10);
+        const { total_bytes, downloaded_bytes } = e.payload;
+        setPercent(Math.round((downloaded_bytes / total_bytes) * 1000) / 10);
       },
     );
 
