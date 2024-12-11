@@ -1,6 +1,8 @@
+use std::borrow::Cow;
 use std::error::Error;
+use std::path::Path;
+use std::path::PathBuf;
 use std::time::Duration;
-use std::{io::Cursor, path::PathBuf};
 
 use dwall::config::Config;
 use dwall::THEMES_DIR;
@@ -50,11 +52,15 @@ pub struct ThemeDownloader<'a> {
 
 impl<'a> ThemeDownloader<'a> {
     /// Create a new downloader instance
-    pub fn new(window: &WebviewWindow) -> Self {
+    pub fn new(window: &'a WebviewWindow) -> Self {
         let client = reqwest::ClientBuilder::new()
             .connect_timeout(Duration::from_secs(10))
             .build()
-            .expect("Failed to create HTTP client");
+            .map_err(|e| {
+                error!("Failed to create HTTP client: {}", e);
+                e
+            })
+            .unwrap();
 
         Self { client, window }
     }
@@ -73,10 +79,9 @@ impl<'a> ThemeDownloader<'a> {
     }
 
     /// Download theme zip file
-    #[instrument(skip(self, config), fields(theme_id = theme_id))]
-    pub async fn download_theme<'a>(
+    pub async fn download_theme(
         &self,
-        config: &Config<'a>,
+        config: &Config<'_>,
         theme_id: &str,
     ) -> DwallSettingsResult<PathBuf> {
         // Construct download URL
@@ -93,29 +98,53 @@ impl<'a> ThemeDownloader<'a> {
         self.prepare_theme_directory(&target_dir).await?;
 
         // Initiate download
-        let response = self
-            .client
-            .get(&asset_url)
-            .send()
-            .await
-            .map_err(|e| DownloadError::ConnectionError(e.to_string()))?;
+        let response = self.client.get(&asset_url).send().await.map_err(|e| {
+            let err = DownloadError::from(e);
+            error!(
+                theme_id = theme_id,
+                url = %asset_url,
+                error = %err,
+                "Failed to establish connection for theme download"
+            );
+            err
+        })?;
 
         let total_size = response.content_length().unwrap_or(0);
         let mut stream = response.bytes_stream();
 
         // Create file for writing
-        let mut file = fs::File::create(&theme_zip_file)
-            .await
-            .map_err(DownloadError::FileError)?;
+        let mut file = fs::File::create(&theme_zip_file).await.map_err(|e| {
+            error!(
+                theme_id = theme_id,
+                file_path = %theme_zip_file.display(),
+                error = %e,
+                "Failed to create theme zip file"
+            );
+            e
+        })?;
 
         // Download and write chunks
         let mut downloaded_bytes: u64 = 0;
         while let Some(chunk_result) = stream.next().await {
-            let chunk = chunk_result.map_err(|e| DownloadError::RequestError(e.to_string()))?;
+            let chunk = chunk_result.map_err(|e| {
+                error!(
+                    theme_id = theme_id,
+                    error = %e,
+                    "Failed to download theme chunk"
+                );
+                e
+            })?;
 
-            file.write_all(&chunk)
-                .await
-                .map_err(DownloadError::FileError)?;
+            file.write_all(&chunk).await.map_err(|e| {
+                error!(
+                    theme_id = theme_id,
+                    downloaded_bytes,
+                    total_bytes = total_size,
+                    error = %e,
+                    "Failed to write theme chunk to file"
+                );
+                e
+            })?;
 
             downloaded_bytes += chunk.len() as u64;
 
@@ -125,30 +154,51 @@ impl<'a> ThemeDownloader<'a> {
                 downloaded_bytes,
                 total_bytes: total_size,
             })
-            .map_err(|e| DownloadError::ProgressError(e.to_string()))?;
+            .map_err(|e| {
+                error!(
+                    theme_id = theme_id,
+                    downloaded_bytes,
+                    total_bytes = total_size,
+                    error = %e,
+                    "Failed to emit download progress"
+                );
+                e
+            })?;
         }
 
         info!(
-            "Successfully downloaded theme {} ({} bytes)",
-            theme_id, downloaded_bytes
+            theme_id = theme_id,
+            downloaded_bytes,
+            total_bytes = total_size,
+            "Successfully downloaded theme"
         );
         Ok(theme_zip_file)
     }
 
     /// Prepare theme directory for download
-    async fn prepare_theme_directory(&self, target_dir: &Path) -> Result<(), DownloadError> {
+    async fn prepare_theme_directory(&self, target_dir: &Path) -> DwallSettingsResult<()> {
         // Remove existing directory if it exists
         if target_dir.exists() {
-            fs::remove_dir_all(target_dir)
-                .await
-                .map_err(DownloadError::FileError)?;
+            fs::remove_dir_all(target_dir).await.map_err(|e| {
+                error!(
+                    dir_path = %target_dir.display(),
+                    error = %e,
+                    "Failed to remove existing theme directory"
+                );
+                e
+            })?;
             trace!("Removed existing theme directory");
         }
 
         // Create new directory
-        fs::create_dir_all(target_dir)
-            .await
-            .map_err(DownloadError::FileError)?;
+        fs::create_dir_all(target_dir).await.map_err(|e| {
+            error!(
+                dir_path = %target_dir.display(),
+                error = %e,
+                "Failed to create theme directory"
+            );
+            e
+        })?;
 
         trace!("Created new theme directory");
         Ok(())
@@ -159,20 +209,49 @@ impl<'a> ThemeDownloader<'a> {
         let target_dir = THEMES_DIR.join(theme_id);
 
         // Read downloaded file
-        let archive = fs::read(zip_path).await.map_err(DownloadError::FileError)?;
+        let archive = fs::read(zip_path).await.map_err(|e| {
+            error!(
+                theme_id = theme_id,
+                zip_path = %zip_path.display(),
+                error = %e,
+                "Failed to read theme archive"
+            );
+            e
+        })?;
 
         // Extract theme
-        zip_extract::extract(std::io::Cursor::new(archive), &target_dir, true)
-            .map_err(|e| DownloadError::ExtractionError(e.to_string()))?;
+        zip_extract::extract(std::io::Cursor::new(archive), &target_dir, true).map_err(|e| {
+            error!(
+                theme_id = theme_id,
+                target_dir = %target_dir.display(),
+                error = %e,
+                "Failed to extract theme archive"
+            );
+            e
+        })?;
 
-        info!("Successfully extracted theme to {:?}", target_dir);
+        info!(
+            theme_id = theme_id,
+            target_dir = %target_dir.display(),
+            "Successfully extracted theme"
+        );
 
         // Clean up zip file
-        fs::remove_file(zip_path)
-            .await
-            .map_err(DownloadError::FileError)?;
+        fs::remove_file(zip_path).await.map_err(|e| {
+            error!(
+                theme_id = theme_id,
+                zip_path = %zip_path.display(),
+                error = %e,
+                "Failed to delete theme archive"
+            );
+            e
+        })?;
 
-        info!("Deleted theme archive");
+        info!(
+            theme_id = theme_id,
+            zip_path = %zip_path.display(),
+            "Deleted theme archive"
+        );
         Ok(())
     }
 }
@@ -181,13 +260,13 @@ impl<'a> ThemeDownloader<'a> {
 pub async fn download_theme_and_extract<'a>(
     window: WebviewWindow,
     config: Config<'a>,
-    theme_id: &str,
+    theme_id: Cow<'a, str>,
 ) -> DwallSettingsResult<()> {
     let downloader = ThemeDownloader::new(&window);
 
     // Download theme
-    let zip_path = downloader.download_theme(&config, theme_id).await?;
+    let zip_path = downloader.download_theme(&config, &theme_id).await?;
 
     // Extract theme
-    downloader.extract_theme(&zip_path, theme_id).await
+    downloader.extract_theme(&zip_path, &theme_id).await
 }
