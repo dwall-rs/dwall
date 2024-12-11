@@ -15,37 +15,9 @@ import { useThemeSelector } from "./components/ThemeContext";
 import "./App.scss";
 import ThemeShowcase from "./components/ThemeShowcase";
 import { detectColorMode } from "./utils/color";
-
-// 图片导入逻辑
-const images = {
-  Catalina: Object.values(
-    import.meta.glob("~/assets/thumbnail/Catalina/*.avif", {
-      import: "default",
-      eager: true,
-    }) as Record<string, string>,
-  ),
-  "Big Sur": Object.values(
-    import.meta.glob("~/assets/thumbnail/BigSur/*.avif", {
-      import: "default",
-      eager: true,
-    }) as Record<string, string>,
-  ),
-  Mojave: Object.values(
-    import.meta.glob("~/assets/thumbnail/Mojave/*.avif", {
-      import: "default",
-      eager: true,
-    }) as Record<string, string>,
-  ),
-};
+import { themes } from "./themes";
 
 const App = () => {
-  const themes: ThemeItem[] = Object.entries(images).map(
-    ([id, thumbnails]) => ({
-      id,
-      thumbnail: thumbnails,
-    }),
-  );
-
   const [showSettings, setShowSettings] = createSignal(false);
 
   const {
