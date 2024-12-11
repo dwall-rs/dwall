@@ -1,3 +1,5 @@
+use std::error::Error;
+use std::time::Duration;
 use std::{io::Cursor, path::PathBuf};
 
 use dwall::config::Config;
@@ -8,6 +10,29 @@ use tauri::{Emitter, WebviewWindow};
 use tokio::{fs, io::AsyncWriteExt};
 
 use crate::error::DwallSettingsResult;
+
+#[derive(Debug, thiserror::Error)]
+pub enum DownloadError {
+    #[error("{0}")]
+    Connect(String),
+    #[error("Unhandled Error: {0}")]
+    Unknown(String),
+}
+
+impl From<reqwest::Error> for DownloadError {
+    fn from(value: reqwest::Error) -> Self {
+        let source = value
+            .source()
+            .map(|e| format!("{:?}", e))
+            .unwrap_or("".to_string());
+
+        if value.is_connect() {
+            Self::Connect(source[43..source.len() - 1].to_string())
+        } else {
+            Self::Unknown(source)
+        }
+    }
+}
 
 #[derive(Serialize, Clone)]
 struct ProgressPayload<'a> {
@@ -33,15 +58,19 @@ async fn download_theme<'a>(
     let asset_url = config.github_asset_url(&github_url);
     info!("Attempting to download theme from URL: {}", asset_url);
 
+    let client = reqwest::ClientBuilder::new()
+        .connect_timeout(Duration::from_secs(5))
+        .build()?;
+
     // Perform download
-    let response = match reqwest::get(asset_url).await {
+    let response = match client.get(asset_url).send().await {
         Ok(resp) => {
             debug!("Successfully initiated download");
             resp
         }
         Err(e) => {
-            error!("Failed to initiate download: {}", e);
-            return Err(e.into());
+            error!("Failed to initiate download: {:?}", e);
+            return Err(DownloadError::from(e).into());
         }
     };
 
