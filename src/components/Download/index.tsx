@@ -1,4 +1,4 @@
-import { createEffect, createSignal, onMount } from "solid-js";
+import { createSignal, onMount } from "solid-js";
 import { LazyProgress } from "~/lazy";
 import "./index.scss";
 import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
@@ -38,14 +38,6 @@ const Download = (props: DownloadProps) => {
 
     unlisten();
   });
-
-  createEffect(() => console.log(percent()));
-  //createEffect(() => {
-  //  if (percent() === 100) {
-  //    props.onFinished();
-  //    setPercent();
-  //  }
-  //});
 
   return <LazyProgress class="download-progress" value={percent()} />;
 };
