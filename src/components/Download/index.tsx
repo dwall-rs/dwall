@@ -4,6 +4,7 @@ import "./index.scss";
 import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
 import { downloadThemeAndExtract } from "~/commands";
 import { useAppContext } from "~/context";
+import { message } from "@tauri-apps/plugin-dialog";
 
 interface ProgressPayload {
   id: string;
@@ -31,12 +32,18 @@ const Download = (props: DownloadProps) => {
       },
     );
 
-    await downloadThemeAndExtract(config()!, props.themeID);
-
-    props.onFinished();
-    setPercent();
-
-    unlisten();
+    try {
+      await downloadThemeAndExtract(config()!, props.themeID);
+    } catch (e) {
+      message(`${e}\n\n具体错误请查看日志：dwall_settings_lib.log`, {
+        title: "下载失败",
+        kind: "error",
+      });
+    } finally {
+      props.onFinished();
+      setPercent();
+      unlisten();
+    }
   });
 
   return <LazyProgress class="download-progress" value={percent()} />;
