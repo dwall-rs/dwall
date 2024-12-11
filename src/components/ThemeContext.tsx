@@ -7,6 +7,7 @@ import {
   readConfigFile,
   requestLocationPermission,
 } from "~/commands";
+import { message } from "@tauri-apps/plugin-dialog";
 
 export const useThemeSelector = (themes: ThemeItem[]) => {
   const [config, { refetch: refetchConfig }] =
@@ -56,7 +57,7 @@ export const useThemeSelector = (themes: ThemeItem[]) => {
     try {
       await requestLocationPermission();
     } catch (e) {
-      // TODO: handle error
+      message("定位权限未打开，请手动开启定位", { kind: "error" });
       return;
     }
 
