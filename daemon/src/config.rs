@@ -167,6 +167,7 @@ impl<'a> Config<'a> {
     pub fn github_asset_url(&self, github_url: &'a str) -> String {
         self.github_mirror_template
             .as_ref()
+            .and_then(|v| if v == "" { None } else { Some(v) })
             .and_then(|template| {
                 use regex::Regex;
 
