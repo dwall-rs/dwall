@@ -27,7 +27,7 @@ const GithubMirror = () => {
         onChange={onChange}
         contentAfter={
           <LazyButton
-            appearance="transparent"
+            appearance="subtle"
             icon={<AiFillSave />}
             onClick={onConfirm}
             size="small"
