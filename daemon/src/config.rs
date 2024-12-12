@@ -1,4 +1,3 @@
-use std::sync::Arc;
 use std::{
     borrow::Cow,
     path::{Path, PathBuf},
@@ -28,7 +27,7 @@ pub enum ConfigError {
     FileNotFound,
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq, Default)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Default, Clone)]
 #[serde(rename_all = "lowercase")]
 pub enum ImageFormat {
     #[default]
@@ -76,12 +75,12 @@ impl CoordinateSource {
             CoordinateSource::Manual {
                 latitude,
                 longitude,
-            } => latitude >= -90.0 && latitude <= 90.0 && longitude >= -180.0 && longitude <= 180.0,
+            } => (-90.0..=90.0).contains(&latitude) && (-180.0..=180.0).contains(&longitude),
         }
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, Validate)]
+#[derive(Debug, Serialize, Deserialize, Validate, Clone)]
 pub struct Config<'a> {
     #[serde(skip_serializing_if = "Option::is_none")]
     github_mirror_template: Option<Cow<'a, str>>,
@@ -97,6 +96,9 @@ pub struct Config<'a> {
 
     #[serde(default = "default_auto_detect_color_mode")]
     auto_detect_color_mode: bool,
+
+    #[serde(default = "default_themes_directory")]
+    themes_directory: Cow<'a, Path>,
 
     /// Time interval for detecting solar altitude angle and azimuth angle
     /// Measured in seconds, range: [1, 600]
@@ -122,20 +124,11 @@ fn default_interval() -> u16 {
     15
 }
 
-impl<'a> Config<'a> {
-    pub fn owned<'c>(self) -> Config<'c> {
-        Config {
-            github_mirror_template: self
-                .github_mirror_template
-                .map(|c| Cow::Owned(c.into_owned())),
-            selected_theme_id: self.selected_theme_id.map(|c| Cow::Owned(c.into_owned())),
-            image_format: self.image_format,
-            interval: self.interval,
-            auto_detect_color_mode: self.auto_detect_color_mode,
-            coordinate_source: self.coordinate_source,
-        }
-    }
+fn default_themes_directory<'a>() -> Cow<'a, Path> {
+    APP_CONFIG_DIR.join("themes").into()
+}
 
+impl<'a> Config<'a> {
     pub fn validate(&self) -> DwallResult<()> {
         if self.interval < 1 || self.interval > 600 {
             error!(interval = self.interval, "Interval validation failed");
@@ -144,8 +137,18 @@ impl<'a> Config<'a> {
         Ok(())
     }
 
-    pub fn theme_id(&self) -> Option<Cow<'a, str>> {
-        self.selected_theme_id.clone()
+    pub fn theme_id(&self) -> Option<&str> {
+        self.selected_theme_id.as_deref()
+    }
+
+    pub fn themes_directory(&self) -> &Path {
+        &self.themes_directory
+    }
+
+    pub fn with_themes_directory(&self, themes_directory: &'a Path) -> Config<'a> {
+        let mut config = self.clone();
+        config.themes_directory = themes_directory.into();
+        config
     }
 
     pub fn interval(&self) -> u16 {
@@ -195,6 +198,7 @@ impl<'a> Default for Config<'a> {
             github_mirror_template: Default::default(),
             selected_theme_id: Default::default(),
             auto_detect_color_mode: true,
+            themes_directory: default_themes_directory(),
             // On the equator, an azimuth change of 0.1 degrees takes
             // approximately 12 seconds, and an altitude change of 0.1
             // degrees takes about 24 seconds.
@@ -216,6 +220,7 @@ impl<'a> PartialEq for Config<'a> {
             && self.interval == other.interval
             && self.auto_detect_color_mode == other.auto_detect_color_mode
             && self.coordinate_source == other.coordinate_source
+            && self.themes_directory == other.themes_directory
     }
 }
 
@@ -296,7 +301,7 @@ pub async fn read_config_file<'a>() -> DwallResult<Config<'a>> {
     config_manager.read_config().await
 }
 
-pub async fn write_config_file<'a>(config: Arc<Config<'a>>) -> DwallResult<()> {
+pub async fn write_config_file(config: &Config<'_>) -> DwallResult<()> {
     let config_manager = ConfigManager::new(&APP_CONFIG_DIR);
-    config_manager.write_config(&config).await
+    config_manager.write_config(config).await
 }
