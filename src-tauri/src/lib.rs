@@ -173,7 +173,7 @@ async fn set_titlebar_color_mode(
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() -> DwallSettingsResult<()> {
-    setup_logging("dwall_settings_lib");
+    setup_logging(&["dwall_settings_lib".to_string(), "dwall".to_string()]);
     let builder = tauri::Builder::default()
         .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_dialog::init())
