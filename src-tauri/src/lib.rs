@@ -126,15 +126,20 @@ async fn apply_theme(config: Config<'_>) -> DwallSettingsResult<()> {
     trace!("Starting theme application process");
 
     match kill_daemon() {
-        Ok(_) => debug!("Existing daemon process killed"),
+        Ok(_) => debug!("Successfully killed existing daemon process"),
         Err(e) => warn!(error = %e, "Failed to kill existing daemon process"),
     }
 
     dwall_write_config(&config).await?;
 
+    if config.theme_id().is_none() {
+        info!("No theme selected, skipping daemon spawn");
+        return Ok(());
+    }
+
     match spawn_apply_daemon() {
         Ok(_) => {
-            info!("Theme daemon spawned successfully");
+            info!("Successfully spawned theme daemon");
             Ok(())
         }
         Err(e) => {
