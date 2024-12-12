@@ -16,6 +16,7 @@ import { openConfigDir } from "~/commands";
 import { ask, message } from "@tauri-apps/plugin-dialog";
 import UpdateDialog from "./UpdateDialog";
 import { useAppContext } from "~/context";
+import ThemesDirectory from "./ThemesDirectory";
 
 const Settings = () => {
   const {
@@ -59,6 +60,8 @@ const Settings = () => {
           <CoordinateSource />
 
           <Interval />
+
+          <ThemesDirectory />
 
           <GithubMirror />
         </LazyFlex>

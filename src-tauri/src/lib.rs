@@ -1,7 +1,7 @@
 use std::borrow::Cow;
-use std::path::PathBuf;
-use std::sync::Arc;
+use std::path::{Path, PathBuf};
 
+use dwall::config::write_config_file as dwall_write_config;
 use dwall::{config::Config, setup_logging, ThemeValidator};
 use dwall::{ColorMode, APP_CONFIG_DIR};
 use tauri::{AppHandle, Manager, RunEvent, WebviewWindow};
@@ -10,6 +10,7 @@ use tokio::sync::OnceCell;
 use crate::auto_start::{check_auto_start, disable_auto_start, enable_auto_start};
 use crate::download::download_theme_and_extract;
 use crate::error::DwallSettingsResult;
+use crate::fs::move_themes_directory;
 use crate::postion::request_location_permission;
 use crate::process_manager::{find_daemon_process, kill_daemon};
 use crate::setup::setup_app;
@@ -19,6 +20,7 @@ use crate::window::create_main_window;
 mod auto_start;
 mod download;
 mod error;
+mod fs;
 mod postion;
 mod process_manager;
 mod setup;
@@ -52,9 +54,9 @@ fn show_window(app: AppHandle, label: &str) -> DwallSettingsResult<()> {
 }
 
 #[tauri::command]
-async fn check_theme_exists(theme_id: &str) -> DwallSettingsResult<()> {
+async fn check_theme_exists(themes_direcotry: &Path, theme_id: &str) -> DwallSettingsResult<()> {
     trace!("Checking theme existence for theme_id: {}", theme_id);
-    match ThemeValidator::validate_theme(theme_id).await {
+    match ThemeValidator::validate_theme(themes_direcotry, theme_id).await {
         Ok(_) => {
             info!("Theme '{}' exists and is valid", theme_id);
             Ok(())
@@ -67,7 +69,7 @@ async fn check_theme_exists(theme_id: &str) -> DwallSettingsResult<()> {
 }
 
 #[tauri::command]
-async fn get_applied_theme_id<'a>() -> DwallSettingsResult<Option<Cow<'a, str>>> {
+async fn get_applied_theme_id() -> DwallSettingsResult<Option<String>> {
     trace!("Attempting to get currently applied theme ID");
 
     let daemon_process = find_daemon_process()?;
@@ -80,7 +82,7 @@ async fn get_applied_theme_id<'a>() -> DwallSettingsResult<Option<Cow<'a, str>>>
         Ok(config) => {
             let theme_id = config.theme_id();
             info!(theme_id = ?theme_id, "Retrieved current theme ID");
-            Ok(theme_id)
+            Ok(theme_id.map(|s| s.to_owned()))
         }
         Err(e) => {
             error!(error = %e, "Failed to read config file while getting theme ID");
@@ -106,10 +108,8 @@ async fn read_config_file<'a>() -> DwallSettingsResult<Config<'a>> {
 
 #[tauri::command]
 async fn write_config_file(config: Config<'_>) -> DwallSettingsResult<()> {
-    let config = Arc::new(config);
-
     trace!("Writing configuration file");
-    match dwall::config::write_config_file(config.clone()).await {
+    match dwall_write_config(&config).await {
         Ok(_) => {
             info!(config = ?config, "Configuration file written successfully");
             Ok(())
@@ -130,7 +130,7 @@ async fn apply_theme(config: Config<'_>) -> DwallSettingsResult<()> {
         Err(e) => warn!(error = %e, "Failed to kill existing daemon process"),
     }
 
-    write_config_file(config).await?;
+    dwall_write_config(&config).await?;
 
     match spawn_apply_daemon() {
         Ok(_) => {
@@ -142,6 +142,14 @@ async fn apply_theme(config: Config<'_>) -> DwallSettingsResult<()> {
             Err(e)
         }
     }
+}
+
+#[tauri::command]
+async fn open_dir(dir_path: Cow<'_, Path>) -> DwallSettingsResult<()> {
+    open::that(dir_path.as_os_str()).map_err(|e| {
+        error!("Failed to open app config directory: {}", e);
+        e.into()
+    })
 }
 
 #[tauri::command]
@@ -165,7 +173,7 @@ async fn set_titlebar_color_mode(
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() -> DwallSettingsResult<()> {
-    setup_logging("dwall_settings_lib");
+    setup_logging(&["dwall_settings_lib".to_string(), "dwall".to_string()]);
     let builder = tauri::Builder::default()
         .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_dialog::init())
@@ -196,8 +204,10 @@ pub fn run() -> DwallSettingsResult<()> {
             enable_auto_start,
             download_theme_and_extract,
             request_location_permission,
+            open_dir,
             open_config_dir,
             set_titlebar_color_mode,
+            move_themes_directory,
             kill_daemon
         ]);
 

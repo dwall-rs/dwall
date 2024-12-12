@@ -1,5 +1,5 @@
 import { children, type JSXElement } from "solid-js";
-import { LazyCol, LazyFlex, LazyLabel, LazyRow } from "~/lazy";
+import { LazyCol, LazyFlex, LazyLabel } from "~/lazy";
 
 interface SettingsItemProps {
   label: string;
@@ -16,22 +16,20 @@ const SettingsItem = (props: SettingsItemProps) => {
         {props.children}
       </LazyFlex>
     ) : (
-      <LazyRow>
-        <LazyCol span={8}>
-          <LazyLabel
-            weight="semibold"
-            style={{
-              display: "flex",
-              "justify-items": "center",
-              "align-items": "center",
-            }}
-          >
-            {props.label}
-          </LazyLabel>
-        </LazyCol>
+      <LazyFlex justify="between">
+        <LazyLabel
+          weight="semibold"
+          style={{
+            display: "flex",
+            "justify-items": "center",
+            "align-items": "center",
+          }}
+        >
+          {props.label}
+        </LazyLabel>
 
-        <LazyCol span={16}>{props.children}</LazyCol>
-      </LazyRow>
+        {props.children}
+      </LazyFlex>
     ),
   );
 

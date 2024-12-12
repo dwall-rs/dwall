@@ -20,6 +20,7 @@ export default function ImageCarousel(props: ImageCarouselProps) {
 
   const updateImageHeight = () => {
     const img = containerRef!.querySelector(".carousel-image");
+    setCurrentIndex(0);
     setImageHeight(img!.clientHeight);
   };
 

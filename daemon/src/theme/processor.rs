@@ -1,4 +1,4 @@
-use std::{path::Path, sync::Arc, time::Duration};
+use std::{path::Path, time::Duration};
 
 use time::{macros::offset, OffsetDateTime};
 use tokio::{fs, time::sleep};
@@ -9,7 +9,7 @@ use crate::{
     position::{Position, PositionManager},
     solar::{SolarAngle, SunPosition},
     theme::{manager::WallpaperManager, ThemeError},
-    DwallResult, THEMES_DIR,
+    DwallResult,
 };
 
 /// Manages the lifecycle and processing of a specific theme
@@ -17,14 +17,14 @@ pub struct ThemeProcessor<'a> {
     /// Unique identifier for the current theme
     theme_id: String,
     /// Configuration settings for theme processing
-    config: Arc<Config<'a>>,
+    config: &'a Config<'a>,
     /// Manages geographic position tracking
     position_manager: PositionManager,
 }
 
 impl<'a> ThemeProcessor<'a> {
     /// Creates a new ThemeProcessor instance
-    pub fn new(theme_id: &str, config: Arc<Config<'a>>) -> Self {
+    pub fn new(theme_id: &str, config: &'a Config<'a>) -> Self {
         debug!(
             theme_id = theme_id,
             auto_detect_color_mode = ?config.auto_detect_color_mode(),
@@ -97,6 +97,7 @@ impl<'a> ThemeProcessor<'a> {
             self.config.auto_detect_color_mode(),
             self.config.image_format(),
             position,
+            self.config.themes_directory(),
         )
         .await
     }
@@ -155,6 +156,7 @@ async fn process_theme_cycle<'a, I: Into<&'a str>>(
     auto_detect_color_mode: bool,
     image_format: I,
     geographic_position: &Position,
+    themes_directory: &Path,
 ) -> DwallResult<()> {
     let image_format: &'a str = image_format.into();
 
@@ -167,7 +169,7 @@ async fn process_theme_cycle<'a, I: Into<&'a str>>(
         "Processing theme cycle with parameters"
     );
 
-    let theme_directory = THEMES_DIR.join(theme_id);
+    let theme_directory = themes_directory.join(theme_id);
 
     // Load solar angles for the theme
     let solar_angles = load_solar_angles(&theme_directory).await?;

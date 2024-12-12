@@ -3,6 +3,7 @@ interface Config {
   selected_theme_id?: string;
   interval: number;
   image_format: string;
+  themes_directory: string;
   coordinate_source: CoordinateSource;
   auto_detect_color_mode: boolean;
 }

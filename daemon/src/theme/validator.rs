@@ -2,20 +2,16 @@ use std::path::Path;
 
 use tokio::fs;
 
-use crate::{
-    error::DwallResult,
-    solar::SolarAngle,
-    theme::{ThemeError, THEMES_DIR},
-};
+use crate::{error::DwallResult, solar::SolarAngle, theme::ThemeError};
 
 /// Theme validation utilities
 pub struct ThemeValidator;
 
 impl ThemeValidator {
     /// Checks if a theme exists and has valid configuration
-    pub async fn validate_theme(theme_id: &str) -> DwallResult<()> {
+    pub async fn validate_theme(themes_directory: &Path, theme_id: &str) -> DwallResult<()> {
         trace!("Validating theme: {}", theme_id);
-        let theme_dir = THEMES_DIR.join(theme_id);
+        let theme_dir = themes_directory.join(theme_id);
 
         if !theme_dir.exists() {
             warn!("Theme directory not found: {}", theme_id);
