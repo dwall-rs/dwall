@@ -1,11 +1,11 @@
-import { createSignal, createMemo, createResource } from "solid-js";
+import { createSignal, createMemo, createResource, onMount } from "solid-js";
 import { check } from "@tauri-apps/plugin-updater";
 import {
   applyTheme,
   checkThemeExists,
-  closeLastThemeTask,
   readConfigFile,
   requestLocationPermission,
+  setTitlebarColorMode,
 } from "~/commands";
 import { message } from "@tauri-apps/plugin-dialog";
 
@@ -20,6 +20,18 @@ export const useThemeSelector = (themes: ThemeItem[]) => {
 
   const currentTheme = createMemo(() => themes[index()]);
 
+  onMount(() => {
+    window
+      .matchMedia("(prefers-color-scheme: dark)")
+      .addEventListener("change", (event) => {
+        if (event.matches) {
+          setTitlebarColorMode("DARK");
+        } else {
+          setTitlebarColorMode("LIGHT");
+        }
+      });
+  });
+
   const onMenuItemClick = async (idx: number) => {
     setIndex(idx);
     try {
@@ -31,8 +43,6 @@ export const useThemeSelector = (themes: ThemeItem[]) => {
   };
 
   const onCloseTask = async () => {
-    closeLastThemeTask();
-
     const stoppedConfig = { ...config()!, selected_theme_id: undefined };
     applyTheme(stoppedConfig);
     refetchConfig();
