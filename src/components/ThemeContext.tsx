@@ -20,23 +20,10 @@ export const useThemeSelector = (themes: ThemeItem[]) => {
 
   const currentTheme = createMemo(() => themes[index()]);
 
-  // const autoRun = async (config: Config) => {
-  //   const { selected_theme_id, ...themeParams } = config;
-  //   if (!selected_theme_id) return;
-
-  //   await applyTheme({
-  //     selected_theme_id,
-  //     ...themeParams,
-  //   });
-
-  //   setAppliedThemeID(selected_theme_id);
-  //   setIndex(themes.findIndex((t) => t.id === selected_theme_id));
-  // };
-
   const onMenuItemClick = async (idx: number) => {
     setIndex(idx);
     try {
-      await checkThemeExists(themes[idx].id);
+      await checkThemeExists(config()!.themes_directory, themes[idx].id);
       setThemeExists(true);
     } catch (e) {
       setThemeExists(false);
