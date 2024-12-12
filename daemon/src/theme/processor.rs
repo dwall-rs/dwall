@@ -92,14 +92,7 @@ impl<'a> ThemeProcessor<'a> {
 
     /// Process theme cycle for the current geographic position
     async fn process_theme_cycle(&self, position: &Position) -> DwallResult<()> {
-        process_theme_cycle(
-            &self.theme_id,
-            self.config.auto_detect_color_mode(),
-            self.config.image_format(),
-            position,
-            self.config.themes_directory(),
-        )
-        .await
+        process_theme_cycle(self.config, &self.theme_id, position).await
     }
 }
 
@@ -151,25 +144,21 @@ async fn load_solar_angles(theme_directory: &Path) -> DwallResult<Vec<SolarAngle
 }
 
 /// Core theme processing function
-async fn process_theme_cycle<'a, I: Into<&'a str>>(
+async fn process_theme_cycle(
+    config: &Config<'_>,
     theme_id: &str,
-    auto_detect_color_mode: bool,
-    image_format: I,
     geographic_position: &Position,
-    themes_directory: &Path,
 ) -> DwallResult<()> {
-    let image_format: &'a str = image_format.into();
-
     debug!(
         theme_id = theme_id,
-        auto_detect_color_mode = auto_detect_color_mode,
-        image_format = ?image_format,
+        auto_detect_color_mode = config.auto_detect_color_mode(),
+        image_format = ?config.image_format(),
         latitude = geographic_position.latitude,
         longitude = geographic_position.longitude,
         "Processing theme cycle with parameters"
     );
 
-    let theme_directory = themes_directory.join(theme_id);
+    let theme_directory = config.themes_directory().join(theme_id);
 
     // Load solar angles for the theme
     let solar_angles = load_solar_angles(&theme_directory).await?;
@@ -212,7 +201,7 @@ async fn process_theme_cycle<'a, I: Into<&'a str>>(
 
     // Construct wallpaper path
     let wallpaper_path = theme_directory
-        .join(image_format)
+        .join(std::convert::Into::<&str>::into(config.image_format()))
         .join(format!("{}.jpg", closest_image_index + 1));
 
     info!(
@@ -231,10 +220,13 @@ async fn process_theme_cycle<'a, I: Into<&'a str>>(
 
     // Update wallpapers
     WallpaperManager::set_lock_screen_image(&wallpaper_path)?;
-    WallpaperManager::set_desktop_wallpaper(&wallpaper_path)?;
+
+    if config.lock_screen_wallpaper_enabled() {
+        WallpaperManager::set_desktop_wallpaper(&wallpaper_path)?;
+    }
 
     // Optionally update system color mode
-    if auto_detect_color_mode {
+    if config.auto_detect_color_mode() {
         let color_mode = determine_color_mode(altitude);
         info!(
             color_mode = ?color_mode,
