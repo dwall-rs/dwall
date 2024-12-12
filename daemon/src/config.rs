@@ -170,6 +170,10 @@ impl<'a> Config<'a> {
         self.auto_detect_color_mode
     }
 
+    pub fn lock_screen_wallpaper_enabled(&self) -> bool {
+        self.lock_screen_wallpaper_enabled
+    }
+
     pub fn coordinate_source(&'a self) -> &'a CoordinateSource {
         &self.coordinate_source
     }
