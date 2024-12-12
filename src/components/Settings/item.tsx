@@ -1,5 +1,5 @@
 import { children, type JSXElement } from "solid-js";
-import { LazyCol, LazyFlex, LazyLabel } from "~/lazy";
+import { LazyFlex, LazyLabel } from "~/lazy";
 
 interface SettingsItemProps {
   label: string;

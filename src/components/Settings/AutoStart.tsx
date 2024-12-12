@@ -2,7 +2,6 @@ import { LazySwitch } from "~/lazy";
 import SettingsItem from "./item";
 import { createSignal, onMount } from "solid-js";
 import { checkAutoStart, disableAutoStart, enableAutoStart } from "~/commands";
-import { AiOutlineCheck, AiOutlineClose } from "solid-icons/ai";
 
 const AutoStart = () => {
   const [autoStartState, setAutoStartState] = createSignal(false);
