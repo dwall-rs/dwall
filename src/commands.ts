@@ -8,8 +8,10 @@ export const readConfigFile = async () => invoke<Config>("read_config_file");
 export const writeConfigFile = async (config: Config) =>
   invoke<Config>("write_config_file", { config });
 
-export const checkThemeExists = async (themeId: string) =>
-  invoke<void>("check_theme_exists", { themeId });
+export const checkThemeExists = async (
+  themesDirecotry: string,
+  themeId: string,
+) => invoke<void>("check_theme_exists", { themesDirecotry, themeId });
 
 export const closeLastThemeTask = async () =>
   invoke<void>("close_last_theme_task");
@@ -36,6 +38,12 @@ export const requestLocationPermission = async () =>
 
 export const setTitlebarColorMode = async (colorMode: ColorMode) =>
   invoke<void>("set_titlebar_color_mode", { colorMode });
+
+export const openDir = async (dirPath: string) =>
+  invoke<void>("open_dir", { dirPath });
+
+export const moveThemesDirectory = async (config: Config, dirPath: string) =>
+  invoke<void>("move_themes_directory", { config, dirPath });
 
 export const openConfigDir = async () => invoke<void>("open_config_dir");
 

@@ -5,11 +5,11 @@ use std::path::PathBuf;
 use std::time::Duration;
 
 use dwall::config::Config;
-use dwall::THEMES_DIR;
 use futures_util::StreamExt;
 use serde::Serialize;
 use tauri::{Emitter, WebviewWindow};
-use tokio::{fs, io::AsyncWriteExt};
+use tokio::fs;
+use tokio::io::AsyncWriteExt;
 
 use crate::error::DwallSettingsResult;
 
@@ -91,8 +91,8 @@ impl<'a> ThemeDownloader<'a> {
         debug!("Downloading theme from URL: {}", asset_url);
 
         // Prepare target directories
-        let target_dir = THEMES_DIR.join(theme_id);
-        let theme_zip_file = THEMES_DIR.join(format!("{}.zip", theme_id));
+        let target_dir = config.themes_directory().join(theme_id);
+        let theme_zip_file = config.themes_directory().join(format!("{}.zip", theme_id));
 
         // Clean up existing directories
         self.prepare_theme_directory(&target_dir).await?;
@@ -205,8 +205,13 @@ impl<'a> ThemeDownloader<'a> {
     }
 
     /// Extract downloaded theme
-    pub async fn extract_theme(&self, zip_path: &Path, theme_id: &str) -> DwallSettingsResult<()> {
-        let target_dir = THEMES_DIR.join(theme_id);
+    pub async fn extract_theme(
+        &self,
+        themes_directory: &Path,
+        zip_path: &Path,
+        theme_id: &str,
+    ) -> DwallSettingsResult<()> {
+        let target_dir = themes_directory.join(theme_id);
 
         // Read downloaded file
         let archive = fs::read(zip_path).await.map_err(|e| {
@@ -268,5 +273,7 @@ pub async fn download_theme_and_extract<'a>(
     let zip_path = downloader.download_theme(&config, &theme_id).await?;
 
     // Extract theme
-    downloader.extract_theme(&zip_path, &theme_id).await
+    downloader
+        .extract_theme(config.themes_directory(), &zip_path, &theme_id)
+        .await
 }

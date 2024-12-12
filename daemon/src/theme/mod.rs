@@ -1,31 +1,14 @@
-use std::{
-    path::PathBuf,
-    sync::{Arc, LazyLock},
-};
+use std::path::Path;
 
 use processor::ThemeProcessor;
 
-use crate::{config::Config, error::DwallResult, lazy::APP_CONFIG_DIR};
+use crate::{config::Config, error::DwallResult};
 
 pub use self::validator::ThemeValidator;
 
 mod manager;
 mod processor;
 mod validator;
-
-/// Directory for storing theme configurations
-pub static THEMES_DIR: LazyLock<PathBuf> = LazyLock::new(|| {
-    let path = APP_CONFIG_DIR.join("themes");
-    if !path.exists() {
-        std::fs::create_dir(&path)
-            .map_err(|e| {
-                error!("Failed to create themes directory: {}", e);
-                e
-            })
-            .unwrap();
-    }
-    path
-});
 
 /// Comprehensive error handling for theme-related operations
 #[derive(Debug, thiserror::Error)]
@@ -42,21 +25,20 @@ pub enum ThemeError {
 
 /// Applies a theme and starts a background task for periodic wallpaper updates
 pub async fn apply_theme(config: Config<'_>) -> DwallResult<()> {
-    let owned_config = config.owned();
-    let theme_id = owned_config.theme_id();
+    let theme_id = config.theme_id();
 
     let theme_id = match theme_id {
         Some(id) => id,
         None => return Ok(()),
     };
 
-    validate_theme(&theme_id).await?;
+    validate_theme(config.themes_directory(), theme_id).await?;
 
-    let theme_processor = ThemeProcessor::new(&theme_id, Arc::new(owned_config));
+    let theme_processor = ThemeProcessor::new(theme_id, &config);
 
     theme_processor.start_update_loop().await
 }
 
-async fn validate_theme(theme_id: &str) -> DwallResult<()> {
-    ThemeValidator::validate_theme(theme_id).await
+async fn validate_theme(themes_directory: &Path, theme_id: &str) -> DwallResult<()> {
+    ThemeValidator::validate_theme(themes_directory, theme_id).await
 }

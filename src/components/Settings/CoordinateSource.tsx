@@ -92,7 +92,7 @@ const CoordinateSource = () => {
 
   return (
     <SettingsItem label="自动获取坐标">
-      <LazySpace gap={8}>
+      <LazySpace gap={auto() ? 0 : 8}>
         <LazySwitch checked={auto()} onChange={onSwitchCoordinateSource} />
 
         <Show when={!auto()}>
