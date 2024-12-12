@@ -23,6 +23,12 @@ const images = {
       eager: true,
     }) as Record<string, string>,
   ),
+  "Earth ISS": Object.values(
+    import.meta.glob("~/assets/thumbnail/EarthISS/*.avif", {
+      import: "default",
+      eager: true,
+    }) as Record<string, string>,
+  ),
 };
 
 export const themes: ThemeItem[] = Object.entries(images)
