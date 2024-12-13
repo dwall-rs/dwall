@@ -34,7 +34,7 @@ pub enum ImageFormat {
     Jpeg,
 }
 
-impl<'a> From<&ImageFormat> for &'a str {
+impl From<&ImageFormat> for &str {
     fn from(val: &ImageFormat) -> Self {
         match val {
             ImageFormat::Jpeg => "jpg",
@@ -80,7 +80,7 @@ impl CoordinateSource {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, Validate, Clone)]
+#[derive(Debug, Serialize, Deserialize, Validate, Clone, PartialEq)]
 pub struct Config<'a> {
     #[serde(skip_serializing_if = "Option::is_none")]
     github_mirror_template: Option<Cow<'a, str>>,
@@ -96,6 +96,9 @@ pub struct Config<'a> {
 
     #[serde(default = "default_auto_detect_color_mode")]
     auto_detect_color_mode: bool,
+
+    #[serde(default = "default_lock_screen_wallpaper_enabled")]
+    lock_screen_wallpaper_enabled: bool,
 
     #[serde(default = "default_themes_directory")]
     themes_directory: Cow<'a, Path>,
@@ -117,6 +120,10 @@ fn default_coordinate_source() -> CoordinateSource {
 }
 
 fn default_auto_detect_color_mode() -> bool {
+    true
+}
+
+fn default_lock_screen_wallpaper_enabled() -> bool {
     true
 }
 
@@ -163,6 +170,10 @@ impl<'a> Config<'a> {
         self.auto_detect_color_mode
     }
 
+    pub fn lock_screen_wallpaper_enabled(&self) -> bool {
+        self.lock_screen_wallpaper_enabled
+    }
+
     pub fn coordinate_source(&'a self) -> &'a CoordinateSource {
         &self.coordinate_source
     }
@@ -190,15 +201,16 @@ impl<'a> Config<'a> {
     }
 }
 
-impl<'a> Default for Config<'a> {
+impl Default for Config<'_> {
     fn default() -> Self {
         Self {
             image_format: Default::default(),
             coordinate_source: Default::default(),
             github_mirror_template: Default::default(),
             selected_theme_id: Default::default(),
-            auto_detect_color_mode: true,
+            auto_detect_color_mode: default_auto_detect_color_mode(),
             themes_directory: default_themes_directory(),
+            lock_screen_wallpaper_enabled: default_lock_screen_wallpaper_enabled(),
             // On the equator, an azimuth change of 0.1 degrees takes
             // approximately 12 seconds, and an altitude change of 0.1
             // degrees takes about 24 seconds.
@@ -209,18 +221,6 @@ impl<'a> Default for Config<'a> {
             // interval required for each 0.1 degree change.
             interval: 15,
         }
-    }
-}
-
-impl<'a> PartialEq for Config<'a> {
-    fn eq(&self, other: &Self) -> bool {
-        self.github_mirror_template == other.github_mirror_template
-            && self.selected_theme_id == other.selected_theme_id
-            && self.image_format == other.image_format
-            && self.interval == other.interval
-            && self.auto_detect_color_mode == other.auto_detect_color_mode
-            && self.coordinate_source == other.coordinate_source
-            && self.themes_directory == other.themes_directory
     }
 }
 

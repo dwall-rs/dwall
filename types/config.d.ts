@@ -6,6 +6,7 @@ interface Config {
   themes_directory: string;
   coordinate_source: CoordinateSource;
   auto_detect_color_mode: boolean;
+  lock_screen_wallpaper_enabled: boolean;
 }
 
 interface CoordinateSourceAutomatic {

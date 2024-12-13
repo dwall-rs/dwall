@@ -109,6 +109,11 @@ impl<'a> ThemeDownloader<'a> {
             err
         })?;
 
+        if let Err(e) = response.error_for_status_ref() {
+            error!("Got a error response: {}", e);
+            return Err(e.into());
+        }
+
         let total_size = response.content_length().unwrap_or(0);
         let mut stream = response.bytes_stream();
 

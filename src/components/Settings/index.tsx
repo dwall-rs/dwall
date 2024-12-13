@@ -17,6 +17,7 @@ import { ask, message } from "@tauri-apps/plugin-dialog";
 import UpdateDialog from "./UpdateDialog";
 import { useAppContext } from "~/context";
 import ThemesDirectory from "./ThemesDirectory";
+import LockScreenWallpaperSwitch from "./LockScreenWallpaperSwitch";
 
 const Settings = () => {
   const {
@@ -56,6 +57,8 @@ const Settings = () => {
           <AutoStart />
 
           <AutoDetectColorMode />
+
+          <LockScreenWallpaperSwitch />
 
           <CoordinateSource />
 
