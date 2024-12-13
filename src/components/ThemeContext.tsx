@@ -14,11 +14,15 @@ export const useThemeSelector = (themes: ThemeItem[]) => {
     createResource<Config>(readConfigFile);
   const [appliedThemeID, setAppliedThemeID] = createSignal<string>();
   const [downloadThemeID, setDownloadThemeID] = createSignal<string>();
-  const [index, setIndex] = createSignal(0);
+  const [menuItemIndex, setMenuItemIndex] = createSignal<number | undefined>(0);
   const [themeExists, setThemeExists] = createSignal(false);
   const [update, { refetch: recheckUpdate }] = createResource(() => check());
 
-  const currentTheme = createMemo(() => themes[index()]);
+  const currentTheme = createMemo(() => {
+    const idx = menuItemIndex();
+    if (idx === undefined) return;
+    return themes[idx];
+  });
 
   onMount(() => {
     window
@@ -33,7 +37,7 @@ export const useThemeSelector = (themes: ThemeItem[]) => {
   });
 
   const onMenuItemClick = async (idx: number) => {
-    setIndex(idx);
+    setMenuItemIndex(idx);
     try {
       await checkThemeExists(config()!.themes_directory, themes[idx].id);
       setThemeExists(true);
@@ -58,9 +62,12 @@ export const useThemeSelector = (themes: ThemeItem[]) => {
       return;
     }
 
+    const theme = currentTheme();
+    if (!theme) return;
+
     const newConfig = {
       ...config()!,
-      selected_theme_id: currentTheme().id,
+      selected_theme_id: theme.id,
     };
     await applyTheme(newConfig);
     refetchConfig();
@@ -74,8 +81,8 @@ export const useThemeSelector = (themes: ThemeItem[]) => {
     setAppliedThemeID,
     downloadThemeID,
     setDownloadThemeID,
-    index,
-    setIndex,
+    menuItemIndex,
+    setMenuItemIndex,
     themeExists,
     currentTheme,
     onMenuItemClick,
