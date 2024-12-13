@@ -231,9 +231,9 @@ pub fn determine_color_mode(altitude: f64) -> ColorMode {
         ColorMode::Dark
     } else {
         // Twilight/dawn phase: can choose mode based on specific requirements
-        // More complex logic can be added, e.g., based on sunrise/sunset times
-        trace!("Twilight/dawn phase, defaulting to Dark mode");
-        ColorMode::Dark // Or Light based on specific requirements
+        // More complex logic can be added
+        trace!("Twilight/dawn phase, defaulting to Light mode");
+        ColorMode::Light
     }
 }
 
