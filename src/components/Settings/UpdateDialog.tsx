@@ -33,7 +33,7 @@ const UpdateDialog = (props: UpdateDialogProps) => {
   return (
     <LazyDialog
       show={!!props.update}
-      onClose={() => { }}
+      onClose={() => {}}
       maskClosable={false}
       size="large"
     >

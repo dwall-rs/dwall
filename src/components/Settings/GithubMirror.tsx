@@ -23,6 +23,7 @@ const GithubMirror = () => {
     <SettingsItem label="Github 镜像模板" vertical>
       <LazyInput
         style={{ flex: 15 }}
+        appearance="filled-lighter"
         value={value()}
         onChange={onChange}
         contentAfter={

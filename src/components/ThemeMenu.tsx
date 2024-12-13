@@ -3,7 +3,7 @@ import { LazyFlex, LazyTooltip } from "~/lazy";
 
 interface ThemeMenuProps {
   themes: ThemeItem[];
-  index: number;
+  index?: number;
   appliedThemeID?: string;
   onMenuItemClick: (idx: number) => void;
 }

@@ -26,8 +26,8 @@ const App = () => {
     appliedThemeID,
     downloadThemeID,
     setDownloadThemeID,
-    index,
-    setIndex,
+    menuItemIndex,
+    setMenuItemIndex,
     themeExists,
     currentTheme,
     onMenuItemClick,
@@ -45,13 +45,14 @@ const App = () => {
 
     await showWindow("main");
 
-    onMenuItemClick(index());
+    const mii = menuItemIndex();
+    if (mii !== undefined) onMenuItemClick(mii);
 
     const applied_theme_id = await getAppliedThemeID();
     if (applied_theme_id) {
       const themeIndex = themes.findIndex((t) => t.id === applied_theme_id);
       if (themeIndex !== -1) {
-        setIndex(themeIndex);
+        setMenuItemIndex(themeIndex);
         onMenuItemClick(themeIndex);
         setAppliedThemeID(applied_theme_id);
         return;
@@ -81,7 +82,7 @@ const App = () => {
         >
           <ThemeMenu
             themes={themes}
-            index={index()}
+            index={menuItemIndex()}
             appliedThemeID={appliedThemeID()}
             onMenuItemClick={(idx) => {
               setShowSettings(false);
@@ -96,7 +97,7 @@ const App = () => {
                 shape="circular"
                 icon={<AiFillSetting />}
                 onClick={() => {
-                  // setIndex(-1);
+                  setMenuItemIndex();
                   setShowSettings(true);
                 }}
               />
@@ -113,18 +114,18 @@ const App = () => {
           </div>
         </LazyFlex>
 
-        <Show when={!showSettings()} fallback={<Settings />}>
+        <Show when={!showSettings() && currentTheme()} fallback={<Settings />}>
           <ThemeShowcase
-            currentTheme={currentTheme}
+            currentTheme={currentTheme()!}
             themeExists={themeExists}
             appliedThemeID={appliedThemeID}
             downloadThemeID={downloadThemeID}
             setDownloadThemeID={setDownloadThemeID}
-            onDownload={() => setDownloadThemeID(currentTheme().id)}
+            onDownload={() => setDownloadThemeID(currentTheme()!.id)}
             onApply={onApply}
             onCloseTask={onCloseTask}
             onMenuItemClick={onMenuItemClick}
-            index={index}
+            index={menuItemIndex()!}
           />
         </Show>
       </LazyFlex>
