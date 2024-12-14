@@ -44,3 +44,14 @@
     }
   }
 }
+
+@media (prefers-color-scheme: dark) {
+  .menu-item {
+    --menu-item-color-shadow: #61616185;
+
+    &.active,
+    &:hover {
+      background-color: #ffffff14;
+    }
+  }
+}
