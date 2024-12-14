@@ -1,36 +1,26 @@
 import { BiSolidChevronLeft, BiSolidChevronRight } from "solid-icons/bi";
-import { createSignal, createEffect, onCleanup, onMount } from "solid-js";
+import { createSignal, createEffect, onCleanup } from "solid-js";
 import { LazyButton } from "~/lazy";
 import "./index.scss";
+import Image from "../Image";
 
 interface ImageCarouselProps {
   images: Array<{
     src: string;
     alt?: string;
   }>;
-  interval?: number; // 切换间隔，单位毫秒
+  interval?: number;
 }
 
 export default function ImageCarousel(props: ImageCarouselProps) {
   const [currentIndex, setCurrentIndex] = createSignal(0);
   const [isPlaying, setIsPlaying] = createSignal(true);
-  const [imageHeight, setImageHeight] = createSignal(480);
+  const [indicatorsBottom, setIndicatorsBottom] = createSignal(10);
 
   let containerRef: HTMLDivElement | undefined;
 
-  const updateImageHeight = () => {
-    const img = containerRef!.querySelector(".carousel-image");
-    setCurrentIndex(0);
-    setImageHeight(img!.clientHeight);
-  };
-
-  onMount(() => {
-    const observer = new MutationObserver(updateImageHeight);
-
-    observer.observe(containerRef!, { childList: true });
-
-    onCleanup(() => observer.disconnect());
-  });
+  // reset index
+  createEffect(() => props.images && setCurrentIndex(0));
 
   // 自动播放
   createEffect(() => {
@@ -84,10 +74,15 @@ export default function ImageCarousel(props: ImageCarouselProps) {
         <div
           class={`image-wrapper ${index === currentIndex() ? "active" : ""}`}
         >
-          <img
+          <Image
             src={image.src}
-            alt={image.alt || `Slide ${index + 1}`}
             class="carousel-image"
+            width={480}
+            height={480}
+            onLoad={(width, height) => {
+              const clientHeight = height / (width / 480);
+              setIndicatorsBottom((480 - clientHeight) / 2 + 10);
+            }}
           />
         </div>
       ))}
@@ -106,10 +101,7 @@ export default function ImageCarousel(props: ImageCarouselProps) {
         onClick={nextImage}
       />
 
-      <div
-        class="indicators"
-        style={{ bottom: `${(480 - imageHeight()) / 2 + 10}px` }}
-      >
+      <div class="indicators" style={{ bottom: `${indicatorsBottom()}px` }}>
         {props.images.map((_, index) => (
           <button
             type="button"
