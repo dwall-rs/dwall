@@ -88,3 +88,7 @@ export const LazySlider = lazy(
 export const LazyBadge = lazy(
   () => import("fluent-solid/lib/components/badge/badge"),
 );
+
+export const LazySpinner = lazy(
+  () => import("fluent-solid/lib/components/spinner"),
+);

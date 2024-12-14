@@ -31,6 +31,7 @@
       height: 24px;
       background-color: var(--alley-color-success);
       clip-path: polygon(0 0, 100% 0, 0 100%);
+      z-index: 1;
     }
 
     &::after {
@@ -41,6 +42,7 @@
       left: 7px;
       color: white;
       font-size: 0.8rem;
+      z-index: 2;
     }
   }
 }
