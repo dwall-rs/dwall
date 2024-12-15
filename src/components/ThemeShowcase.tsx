@@ -5,7 +5,7 @@ import { ThemeActions } from "./ThemeActions";
 import Download from "./Download";
 
 interface ThemeShowcaseProps {
-  currentTheme: () => ThemeItem;
+  currentTheme: ThemeItem;
   themeExists: () => boolean;
   appliedThemeID: () => string | undefined;
   downloadThemeID: () => string | undefined;
@@ -14,7 +14,7 @@ interface ThemeShowcaseProps {
   onApply: () => Promise<void>;
   onCloseTask: () => Promise<void>;
   onMenuItemClick: (index: number) => void;
-  index: () => number;
+  index: number;
 }
 
 const ThemeShowcase = (props: ThemeShowcaseProps) => {
@@ -27,17 +27,17 @@ const ThemeShowcase = (props: ThemeShowcaseProps) => {
       style={{ position: "relative" }}
     >
       <ImageCarousel
-        images={props.currentTheme().thumbnail.map((src) => ({
+        images={props.currentTheme.thumbnail.map((src) => ({
           src,
-          alt: props.currentTheme().id,
+          alt: props.currentTheme.id,
         }))}
       />
 
       <ThemeActions
         themeExists={props.themeExists()}
         appliedThemeID={props.appliedThemeID()}
-        currentThemeID={props.currentTheme().id}
-        onDownload={() => props.setDownloadThemeID(props.currentTheme().id)}
+        currentThemeID={props.currentTheme.id}
+        onDownload={() => props.setDownloadThemeID(props.currentTheme.id)}
         onApply={props.onApply}
         onCloseTask={props.onCloseTask}
         downloadThemeID={props.downloadThemeID()}
@@ -48,7 +48,7 @@ const ThemeShowcase = (props: ThemeShowcaseProps) => {
           themeID={props.downloadThemeID()!}
           onFinished={() => {
             props.setDownloadThemeID();
-            props.onMenuItemClick(props.index());
+            props.onMenuItemClick(props.index);
           }}
         />
       </Show>

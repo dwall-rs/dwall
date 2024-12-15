@@ -45,7 +45,7 @@ const ThemesDirectory = () => {
           </LazyButton>
         </LazyTooltip>
 
-        <LazyButton size="small" onClick={onChangePath}>
+        <LazyButton size="small" appearance="primary" onClick={onChangePath}>
           修改
         </LazyButton>
       </LazySpace>
