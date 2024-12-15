@@ -35,7 +35,7 @@ const ThemesDirectory = () => {
   return (
     <SettingsItem label="主题目录" vertical>
       <LazySpace gap={8} justify="between">
-        <LazyTooltip text="单击可打开主题目录" placement="top" delay={1000}>
+        <LazyTooltip content="单击可打开主题目录" relationship="label">
           <LazyButton
             appearance="transparent"
             style={{ padding: 0 }}
