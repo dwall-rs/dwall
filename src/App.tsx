@@ -1,7 +1,7 @@
 import { createSignal, onMount, Show } from "solid-js";
 import { LazyFlex, LazyTooltip, LazyButton, LazyBadge } from "~/lazy";
 import { AiFillSetting } from "solid-icons/ai";
-import { useDark } from "alley-components";
+import useDark from "alley-components/lib/hooks/useDark";
 
 import { ThemeMenu } from "./components/ThemeMenu";
 import Settings from "./components/Settings";
@@ -91,7 +91,11 @@ const App = () => {
           />
 
           <div style={{ position: "relative" }}>
-            <LazyTooltip placement="right" text="设置" delay={500} showArrow>
+            <LazyTooltip
+              positioning="after"
+              content="设置"
+              relationship="label"
+            >
               <LazyButton
                 appearance="transparent"
                 shape="circular"
@@ -103,7 +107,7 @@ const App = () => {
               />
             </LazyTooltip>
             <Show when={update()}>
-              <LazyTooltip text="检测到新版本" delay={250} showArrow>
+              <LazyTooltip content="检测到新版本" relationship="label">
                 <LazyBadge
                   style={{ position: "absolute", right: "4px", top: "4px" }}
                   size="extra-small"

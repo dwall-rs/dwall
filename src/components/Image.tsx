@@ -27,7 +27,7 @@ const Image = (props: ImageProps) => {
   };
 
   // Cleanup image element
-  onCleanup(() => { });
+  onCleanup(() => {});
 
   const resolved = children(() => (
     <>
