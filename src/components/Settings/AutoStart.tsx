@@ -2,6 +2,7 @@ import { LazySwitch } from "~/lazy";
 import SettingsItem from "./item";
 import { createSignal, onMount } from "solid-js";
 import { checkAutoStart, disableAutoStart, enableAutoStart } from "~/commands";
+import { message } from "@tauri-apps/plugin-dialog";
 
 const AutoStart = () => {
   const [autoStartState, setAutoStartState] = createSignal(false);
@@ -13,9 +14,19 @@ const AutoStart = () => {
 
   const onSwitchAutoStart = async () => {
     if (autoStartState()) {
-      await disableAutoStart();
+      try {
+        await disableAutoStart();
+      } catch (e) {
+        message(`关闭开机启动失败：\n${e}`);
+        return;
+      }
     } else {
-      await enableAutoStart();
+      try {
+        await enableAutoStart();
+      } catch (e) {
+        message(`开机启动失败：\n${e}`);
+        return;
+      }
     }
     setAutoStartState((prev) => !prev);
   };
