@@ -85,7 +85,7 @@ const Settings = () => {
           </LazySpace>
 
           <LazySpace>
-            <LazyButton appearance="transparent" onClick={onOpenLogDir}>
+            <LazyButton appearance="subtle" onClick={onOpenLogDir}>
               打开日志目录
             </LazyButton>
           </LazySpace>
