@@ -13,6 +13,7 @@ interface ImageProps {
 
 const Image = (props: ImageProps) => {
   const [loaded, setLoaded] = createSignal(false);
+  const [isSrcSet, setIsSrcSet] = createSignal(false);
 
   const handleLoad = () => {
     const img = props.ref;
@@ -26,8 +27,24 @@ const Image = (props: ImageProps) => {
     console.error("Image failed to load");
   };
 
-  // Cleanup image element
-  onCleanup(() => {});
+  const observerCallback: IntersectionObserverCallback = (entries) => {
+    for (const entry of entries) {
+      if (entry.isIntersecting && props.ref && !isSrcSet()) {
+        console.log(props.src, "-", props.ref.src);
+        props.ref.src = props.src;
+        setIsSrcSet(true);
+        observer.unobserve(props.ref);
+      }
+    }
+  };
+
+  const observer = new IntersectionObserver(observerCallback);
+
+  onCleanup(() => {
+    if (props.ref) {
+      observer.unobserve(props.ref);
+    }
+  });
 
   const resolved = children(() => (
     <>
@@ -44,12 +61,17 @@ const Image = (props: ImageProps) => {
         </div>
       )}
       <img
-        ref={props.ref}
-        src={props.src}
+        ref={(el) => {
+          props.ref = el;
+          if (el) {
+            observer.observe(el);
+          }
+        }}
         alt={props.alt}
         onLoad={handleLoad}
         onError={handleError}
         width={props.width}
+        style={{ visibility: loaded() ? "visible" : "hidden" }}
       />
     </>
   ));
