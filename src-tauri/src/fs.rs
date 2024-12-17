@@ -126,10 +126,16 @@ fn validate_directory_move(config: &Config<'_>, destination: &Path) -> DwallSett
 
     // Optional: Additional checks like write permissions could be added here
     let source = config.themes_directory();
+
+    if !source.exists() {
+        warn!("Source directory is not exists: {}", source.display());
+        return Ok(());
+    }
+
     if !source.is_dir() {
         error!("Source is not a directory: {}", source.display());
         return ThemeDirectoryMoveError::CopyFailed(std::io::Error::new(
-            std::io::ErrorKind::NotFound,
+            std::io::ErrorKind::NotADirectory,
             "Source is not a directory",
         ))
         .into();
@@ -166,25 +172,27 @@ async fn perform_themes_directory_move(
         destination.display()
     );
 
+    if !source.exists() {
+        info!("Old themes directory does not exist, skipping copy");
+        return Ok(());
+    }
+
     copy_dir(source, destination)
         .await
         .map_err(ThemeDirectoryMoveError::CopyFailed)?;
 
-    match fs::remove_dir_all(source).await {
-        Ok(_) => {
-            info!(
-                "Successfully removed old themes directory: {}",
-                source.display()
-            );
-        }
-        Err(e) => {
-            error!(
-                "Failed to remove old themes directory {}: {}",
-                source.display(),
-                e
-            );
-        }
-    };
+    if let Err(e) = fs::remove_dir_all(&source).await {
+        error!(
+            "Failed to remove old themes directory {}: {}",
+            source.display(),
+            e
+        );
+    } else {
+        info!(
+            "Successfully removed old themes directory: {}",
+            source.display()
+        );
+    }
 
     Ok(())
 }
