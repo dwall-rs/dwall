@@ -1,10 +1,9 @@
-import { LazyButton, LazySpace, LazySwitch } from "~/lazy";
+import { LazyButton, LazyInputNumber, LazySpace, LazySwitch } from "~/lazy";
 import SettingsItem from "./item";
 import { AiOutlineCheck } from "solid-icons/ai";
 import { useAppContext } from "~/context";
 import { writeConfigFile } from "~/commands";
 import { createMemo, createSignal, Show } from "solid-js";
-import { InputNumber } from "alley-components";
 
 interface CoordinateInputProps {
   min: number;
@@ -23,7 +22,7 @@ const CoordinateInput = (props: CoordinateInputProps) => {
   };
 
   return (
-    <InputNumber
+    <LazyInputNumber
       placeholder={props.placeholder}
       min={props.min}
       max={props.max}
@@ -47,11 +46,11 @@ const CoordinateSource = () => {
     config()?.coordinate_source.type === "AUTOMATIC"
       ? {}
       : {
-        latitude: (config()?.coordinate_source as CoordinateSourceManual)
-          .latitude,
-        longitude: (config()?.coordinate_source as CoordinateSourceManual)
-          .longitude,
-      },
+          latitude: (config()?.coordinate_source as CoordinateSourceManual)
+            .latitude,
+          longitude: (config()?.coordinate_source as CoordinateSourceManual)
+            .longitude,
+        },
   );
 
   const onSwitchCoordinateSource = async () => {

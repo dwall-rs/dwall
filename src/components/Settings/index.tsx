@@ -73,7 +73,7 @@ const Settings = () => {
           <LazySpace gap={8}>
             <LazyLabel>版本号</LazyLabel>
 
-            <LazyTooltip text="单击检测更新" placement="top">
+            <LazyTooltip content="单击检测更新" relationship="label">
               <LazyButton
                 appearance="transparent"
                 style={{ "min-width": "48px" }}
@@ -85,7 +85,7 @@ const Settings = () => {
           </LazySpace>
 
           <LazySpace>
-            <LazyButton appearance="transparent" onClick={onOpenLogDir}>
+            <LazyButton appearance="subtle" onClick={onOpenLogDir}>
               打开日志目录
             </LazyButton>
           </LazySpace>

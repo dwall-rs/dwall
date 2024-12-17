@@ -23,14 +23,13 @@ export const ThemeMenu = (props: ThemeMenuProps) => {
         }}
       >
         <LazyTooltip
-          placement="right"
-          text={
+          positioning="after"
+          content={
             props.appliedThemeID === item.id
               ? `${item.id}（正在使用）`
               : item.id
           }
-          delay={500}
-          showArrow
+          relationship="label"
         >
           <Image
             src={item.thumbnail[0]}
