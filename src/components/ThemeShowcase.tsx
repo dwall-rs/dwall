@@ -27,6 +27,7 @@ const ThemeShowcase = (props: ThemeShowcaseProps) => {
       style={{ position: "relative" }}
     >
       <ImageCarousel
+        themeID={props.currentTheme.id}
         images={props.currentTheme.thumbnail.map((src) => ({
           src,
           alt: props.currentTheme.id,

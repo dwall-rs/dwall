@@ -45,3 +45,9 @@ export const moveThemesDirectory = async (config: Config, dirPath: string) =>
 export const openConfigDir = async () => invoke<void>("open_config_dir");
 
 export const killDaemon = async () => invoke<void>("kill_daemon");
+
+export const getOrSaveCachedImage = async (
+  themeId: string,
+  serialNumber: number,
+  url: string,
+) => invoke<string>("get_or_save_cached_image", { themeId, serialNumber, url });

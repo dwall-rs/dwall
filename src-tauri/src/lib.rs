@@ -8,6 +8,7 @@ use tauri::{AppHandle, Manager, RunEvent, WebviewWindow};
 use tokio::sync::OnceCell;
 
 use crate::auto_start::{check_auto_start, disable_auto_start, enable_auto_start};
+use crate::cache::get_or_save_cached_image;
 use crate::download::download_theme_and_extract;
 use crate::error::DwallSettingsResult;
 use crate::fs::move_themes_directory;
@@ -18,6 +19,7 @@ use crate::theme::spawn_apply_daemon;
 use crate::window::create_main_window;
 
 mod auto_start;
+mod cache;
 mod download;
 mod error;
 mod fs;
@@ -213,7 +215,8 @@ pub fn run() -> DwallSettingsResult<()> {
             open_config_dir,
             set_titlebar_color_mode,
             move_themes_directory,
-            kill_daemon
+            kill_daemon,
+            get_or_save_cached_image
         ]);
 
     if cfg!(debug_assertions) {

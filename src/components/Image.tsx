@@ -1,14 +1,23 @@
+import { convertFileSrc } from "@tauri-apps/api/core";
 import { children, createSignal, onCleanup } from "solid-js";
+import { getOrSaveCachedImage } from "~/commands";
 import { LazySpinner } from "~/lazy";
+
+interface ImageData {
+  width: number;
+  height: number;
+}
 
 interface ImageProps {
   ref?: HTMLImageElement;
+  themeID: string;
+  serialNumber: number;
   src: string;
   alt?: string;
   width?: number;
   height?: number;
   class?: string;
-  onLoad?: (naturalWidth: number, naturalHeight: number) => void;
+  onLoad?: (data: ImageData) => void;
 }
 
 const Image = (props: ImageProps) => {
@@ -19,7 +28,10 @@ const Image = (props: ImageProps) => {
     const img = props.ref;
     if (img) {
       setLoaded(true);
-      props.onLoad?.(img.naturalWidth, img.naturalHeight);
+      props.onLoad?.({
+        width: img.naturalWidth,
+        height: img.naturalHeight,
+      });
     }
   };
 
@@ -30,10 +42,14 @@ const Image = (props: ImageProps) => {
   const observerCallback: IntersectionObserverCallback = (entries) => {
     for (const entry of entries) {
       if (entry.isIntersecting && props.ref && !isSrcSet()) {
-        console.log(props.src, "-", props.ref.src);
-        props.ref.src = props.src;
-        setIsSrcSet(true);
-        observer.unobserve(props.ref);
+        getOrSaveCachedImage(props.themeID, props.serialNumber, props.src).then(
+          (path) => {
+            const src = convertFileSrc(path);
+            props.ref!.src = src;
+            setIsSrcSet(true);
+            observer.unobserve(props.ref!);
+          },
+        );
       }
     }
   };
