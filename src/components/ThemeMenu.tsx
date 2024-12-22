@@ -34,8 +34,10 @@ export const ThemeMenu = (props: ThemeMenuProps) => {
           <Image
             src={item.thumbnail[0]}
             width={64}
+            themeID={item.id}
+            serialNumber={1}
             height={64}
-            onLoad={(height) => {
+            onLoad={({ height }) => {
               heights[item.id] = height;
             }}
           />

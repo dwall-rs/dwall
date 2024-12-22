@@ -5,6 +5,7 @@ import "./index.scss";
 import Image from "../Image";
 
 interface ImageCarouselProps {
+  themeID: string;
   images: Array<{
     src: string;
     alt?: string;
@@ -77,9 +78,11 @@ export default function ImageCarousel(props: ImageCarouselProps) {
           <Image
             src={image.src}
             class="carousel-image"
+            themeID={props.themeID}
+            serialNumber={index + 1}
             width={480}
             height={480}
-            onLoad={(width, height) => {
+            onLoad={({ width, height }) => {
               const clientHeight = height / (width / 480);
               setIndicatorsBottom((480 - clientHeight) / 2 + 10);
             }}
