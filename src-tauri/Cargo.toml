@@ -18,7 +18,7 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
-tauri = { version = "2", features = [] }
+tauri = { version = "2", features = ["protocol-asset"] }
 dwall = { version = "0", path = "../daemon" }
 
 serde = { version = "1", default-features = false, features = ["derive"] }
@@ -44,6 +44,7 @@ reqwest = "0"
 futures-util = "0"
 zip-extract = "0"
 open = "5"
+dirs = "5"
 
 [target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
 tauri-plugin-single-instance = "2"
