@@ -8,6 +8,8 @@ interface AppContext {
   update: {
     resource: Resource<Update | null>;
     refetch: () => void;
+    showDialog: Accessor<boolean | undefined>;
+    setShowDialog: Setter<boolean | undefined>;
   };
   config: Accessor<Config | undefined>;
   refetchConfig: () => void;

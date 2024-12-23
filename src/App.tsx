@@ -1,5 +1,5 @@
 import { createSignal, onMount, Show } from "solid-js";
-import { LazyFlex, LazyTooltip, LazyButton, LazyBadge } from "~/lazy";
+import { LazyFlex, LazyTooltip, LazyButton, LazySpace } from "~/lazy";
 import { AiFillSetting } from "solid-icons/ai";
 import useDark from "alley-components/lib/hooks/useDark";
 
@@ -16,9 +16,12 @@ import "./App.scss";
 import ThemeShowcase from "./components/ThemeShowcase";
 import { detectColorMode } from "./utils/color";
 import { themes } from "./themes";
+import { TbArrowBigUpLinesFilled } from "solid-icons/tb";
+import Updater from "./components/Update";
 
 const App = () => {
   const [showSettings, setShowSettings] = createSignal(false);
+  const [showUpdateDialog, setShowUpdateDialog] = createSignal<boolean>();
 
   const {
     config,
@@ -60,10 +63,19 @@ const App = () => {
     }
   });
 
+  const onUpdate = () => {
+    update() && setShowUpdateDialog(true);
+  };
+
   return (
     <AppContext.Provider
       value={{
-        update: { resource: update, refetch: recheckUpdate },
+        update: {
+          resource: update,
+          refetch: recheckUpdate,
+          showDialog: showUpdateDialog,
+          setShowDialog: setShowUpdateDialog,
+        },
         config,
         refetchConfig,
         settings: { show: showSettings, setShow: setShowSettings },
@@ -90,7 +102,22 @@ const App = () => {
             }}
           />
 
-          <div style={{ position: "relative" }}>
+          <LazySpace direction="vertical" gap={8} justify="end" align="center">
+            <Show when={update()}>
+              <LazyTooltip
+                positioning="after"
+                content="检测到新版本，点击按钮更新"
+                relationship="label"
+              >
+                <LazyButton
+                  appearance="transparent"
+                  shape="circular"
+                  icon={<TbArrowBigUpLinesFilled />}
+                  onClick={onUpdate}
+                />
+              </LazyTooltip>
+            </Show>
+
             <LazyTooltip
               positioning="after"
               content="设置"
@@ -106,16 +133,7 @@ const App = () => {
                 }}
               />
             </LazyTooltip>
-            <Show when={update()}>
-              <LazyTooltip content="检测到新版本" relationship="label">
-                <LazyBadge
-                  style={{ position: "absolute", right: "4px", top: "4px" }}
-                  size="extra-small"
-                  color="severe"
-                />
-              </LazyTooltip>
-            </Show>
-          </div>
+          </LazySpace>
         </LazyFlex>
 
         <Show when={!showSettings() && currentTheme()} fallback={<Settings />}>
@@ -133,6 +151,8 @@ const App = () => {
           />
         </Show>
       </LazyFlex>
+
+      <Updater />
     </AppContext.Provider>
   );
 };
