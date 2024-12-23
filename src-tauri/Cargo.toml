@@ -39,6 +39,7 @@ windows = { version = "0", default-features = false, features = [
   "Win32_Graphics_Dwm",
   "Wdk_System_SystemServices",
   "Win32_System_SystemInformation",
+  "Win32_Globalization"
 ] }
 reqwest = "0"
 futures-util = "0"
