@@ -12,6 +12,7 @@ use crate::cache::get_or_save_cached_image;
 use crate::download::download_theme_and_extract;
 use crate::error::DwallSettingsResult;
 use crate::fs::move_themes_directory;
+use crate::i18n::get_translations;
 use crate::postion::request_location_permission;
 use crate::process_manager::{find_daemon_process, kill_daemon};
 use crate::setup::setup_app;
@@ -23,6 +24,7 @@ mod cache;
 mod download;
 mod error;
 mod fs;
+mod i18n;
 mod postion;
 mod process_manager;
 mod setup;
@@ -216,7 +218,8 @@ pub fn run() -> DwallSettingsResult<()> {
             set_titlebar_color_mode,
             move_themes_directory,
             kill_daemon,
-            get_or_save_cached_image
+            get_or_save_cached_image,
+            get_translations
         ]);
 
     if cfg!(debug_assertions) {
