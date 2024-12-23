@@ -194,19 +194,7 @@ impl ColorModeManager {
                 }
             };
 
-            let theme_name: Vec<u16> = "ImmersiveColorSet\0".encode_utf16().collect();
-            match SendNotifyMessageW(
-                HWND_BROADCAST,
-                WM_SETTINGCHANGE,
-                WPARAM(0),
-                LPARAM(theme_name.as_ptr() as isize),
-            ) {
-                Ok(()) => info!("Successfully broadcast Windows settings change for theme"),
-                Err(e) => warn!(
-                    "Failed to broadcast Windows settings change for theme: {}",
-                    e
-                ),
-            }
+            notify_theme_change()?;
         }
 
         Ok(())
@@ -245,4 +233,29 @@ pub fn set_color_mode(color_mode: ColorMode) -> DwallResult<()> {
     }
 
     ColorModeManager::set_color_mode(color_mode)
+}
+
+fn notify_theme_change() -> DwallResult<()> {
+    let notifications = [
+        "ImmersiveColorSet",
+        "WindowsThemeElement",
+        "UserPreferenceChanged",
+        "ThemeChanged",
+    ];
+
+    for notification in notifications {
+        let theme_name: Vec<u16> = format!("{}\0", notification).encode_utf16().collect();
+        unsafe {
+            if let Err(e) = SendNotifyMessageW(
+                HWND_BROADCAST,
+                WM_SETTINGCHANGE,
+                WPARAM(0),
+                LPARAM(theme_name.as_ptr() as isize),
+            ) {
+                warn!("Failed to broadcast {}: {}", notification, e);
+            }
+        }
+    }
+
+    Ok(())
 }
