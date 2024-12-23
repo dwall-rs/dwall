@@ -4,6 +4,7 @@ import { AiOutlineCheck } from "solid-icons/ai";
 import { useAppContext } from "~/context";
 import { writeConfigFile } from "~/commands";
 import { createMemo, createSignal, Show } from "solid-js";
+import { translate } from "~/utils/i18n";
 
 interface CoordinateInputProps {
   min: number;
@@ -33,10 +34,10 @@ const CoordinateInput = (props: CoordinateInputProps) => {
 };
 
 const CoordinateSource = () => {
-  const { config, refetchConfig } = useAppContext();
+  const { config, refetchConfig, translations } = useAppContext();
 
   const [auto, setAuto] = createSignal(
-    config()?.coordinate_source.type === "AUTOMATIC",
+    config()?.coordinate_source.type === "AUTOMATIC"
   );
 
   const [position, setPosition] = createSignal<{
@@ -50,7 +51,7 @@ const CoordinateSource = () => {
             .latitude,
           longitude: (config()?.coordinate_source as CoordinateSourceManual)
             .longitude,
-        },
+        }
   );
 
   const onSwitchCoordinateSource = async () => {
@@ -74,7 +75,7 @@ const CoordinateSource = () => {
       position().latitude! <= 90.0 &&
       position().longitude !== undefined &&
       position().longitude! >= -180.0 &&
-      position().longitude! <= 180.0,
+      position().longitude! <= 180.0
   );
 
   const onConfirmManual = async () => {
@@ -90,7 +91,12 @@ const CoordinateSource = () => {
   };
 
   return (
-    <SettingsItem label="自动获取坐标">
+    <SettingsItem
+      label={translate(
+        translations()!,
+        "label-automatically-retrieve-coordinates"
+      )}
+    >
       <LazySpace gap={auto() ? 0 : 8}>
         <LazySwitch checked={auto()} onChange={onSwitchCoordinateSource} />
 

@@ -30,7 +30,7 @@ const SettingsItem = (props: SettingsItemProps) => {
 
         {props.children}
       </LazyFlex>
-    ),
+    )
   );
 
   return <>{resolved}</>;

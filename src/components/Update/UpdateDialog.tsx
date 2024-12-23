@@ -4,12 +4,16 @@ import { createSignal, onMount } from "solid-js";
 import { killDaemon } from "~/commands";
 import { LazyProgress } from "~/lazy";
 import Dialog from "../Dialog";
+import { useAppContext } from "~/context";
+import { translate } from "~/utils/i18n";
 
 interface UpdateDialogProps {
   update: Update;
 }
 
 const UpdateDialog = (props: UpdateDialogProps) => {
+  const { translations } = useAppContext();
+
   const [total, setTotal] = createSignal<number | undefined>();
   const [downloaded, setDownloaded] = createSignal<number | undefined>();
 
@@ -32,7 +36,11 @@ const UpdateDialog = (props: UpdateDialogProps) => {
   });
 
   return (
-    <Dialog open={!!props.update} maskClosable={false} title="正在下载更新...">
+    <Dialog
+      open={!!props.update}
+      maskClosable={false}
+      title={translate(translations()!, "title-downloading-new-version")}
+    >
       <LazyProgress
         style={{ width: "480px" }}
         thickness="large"

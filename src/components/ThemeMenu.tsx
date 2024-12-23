@@ -22,15 +22,7 @@ export const ThemeMenu = (props: ThemeMenuProps) => {
           applied: item.id === props.appliedThemeID,
         }}
       >
-        <LazyTooltip
-          positioning="after"
-          content={
-            props.appliedThemeID === item.id
-              ? `${item.id}（正在使用）`
-              : item.id
-          }
-          relationship="label"
-        >
+        <LazyTooltip positioning="after" content={item.id} relationship="label">
           <Image
             src={item.thumbnail[0]}
             width={64}
@@ -43,7 +35,7 @@ export const ThemeMenu = (props: ThemeMenuProps) => {
           />
         </LazyTooltip>
       </div>
-    )),
+    ))
   );
 
   return (
