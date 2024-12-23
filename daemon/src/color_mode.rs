@@ -17,18 +17,18 @@ use crate::error::DwallResult;
 
 /// Custom error types for registry operations
 #[derive(thiserror::Error, Debug)]
-pub enum ColorModeError {
+pub enum ColorModeRegistryError {
     #[error("Registry operation failed: Open key {0}")]
-    RegistryOpenFailed(u32),
+    Open(u32),
 
     #[error("Registry operation failed: Query value {0}")]
-    RegistryQueryFailed(u32),
+    Query(u32),
 
     #[error("Registry operation failed: Set value {0}")]
-    RegistrySetFailed(u32),
+    Set(u32),
 
     #[error("Registry operation failed: Close key {0}")]
-    RegistryCloseFailed(u32),
+    Close(u32),
 }
 
 #[derive(Debug, PartialEq, Deserialize)]
@@ -73,7 +73,7 @@ impl RegistryHelper {
                 }
                 err => {
                     error!("Failed to open registry key: {} (Error: {})", path, err.0);
-                    Err(ColorModeError::RegistryOpenFailed(err.0).into())
+                    Err(ColorModeRegistryError::Open(err.0).into())
                 }
             }
         }
@@ -90,7 +90,7 @@ impl RegistryHelper {
                 }
                 err => {
                     warn!("Failed to close registry key (Error: {})", err.0);
-                    Err(ColorModeError::RegistryCloseFailed(err.0).into())
+                    Err(ColorModeRegistryError::Close(err.0).into())
                 }
             }
         }
@@ -140,7 +140,7 @@ impl ColorModeManager {
                 }
                 err => {
                     error!("Failed to query color mode value (Error: {})", err.0);
-                    Err(ColorModeError::RegistryQueryFailed(err.0).into())
+                    Err(ColorModeRegistryError::Query(err.0).into())
                 }
             }
         }
@@ -187,7 +187,7 @@ impl ColorModeManager {
                         "Failed to set color mode (Apps result: {}, System result: {})",
                         set_apps_result.0, set_system_result.0
                     );
-                    return Err(ColorModeError::RegistrySetFailed(
+                    return Err(ColorModeRegistryError::Set(
                         set_apps_result.0 | set_system_result.0,
                     )
                     .into());
