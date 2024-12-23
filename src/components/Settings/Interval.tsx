@@ -17,7 +17,7 @@ const Interval = () => {
 
   return (
     <SettingsItem label="检测间隔">
-      <LazySpace gap={8}>
+      <LazySpace gap={8} style={{ color: "var(--colorNeutralForeground1)" }}>
         <LazySlider
           min={15}
           max={300}
