@@ -3,8 +3,11 @@ import SettingsItem from "./item";
 import { createSignal, onMount } from "solid-js";
 import { checkAutoStart, disableAutoStart, enableAutoStart } from "~/commands";
 import { message } from "@tauri-apps/plugin-dialog";
+import { useAppContext } from "~/context";
+import { translate } from "~/utils/i18n";
 
 const AutoStart = () => {
+  const { translations } = useAppContext();
   const [autoStartState, setAutoStartState] = createSignal(false);
 
   onMount(async () => {
@@ -17,14 +20,22 @@ const AutoStart = () => {
       try {
         await disableAutoStart();
       } catch (e) {
-        message(`关闭开机启动失败：\n${e}`);
+        message(
+          translate(translations()!, "message-disable-startup-failed", {
+            error: String(e),
+          })
+        );
         return;
       }
     } else {
       try {
         await enableAutoStart();
       } catch (e) {
-        message(`开机启动失败：\n${e}`);
+        message(
+          translate(translations()!, "message-startup-failed", {
+            error: String(e),
+          })
+        );
         return;
       }
     }
@@ -32,7 +43,7 @@ const AutoStart = () => {
   };
 
   return (
-    <SettingsItem label="开机自启">
+    <SettingsItem label={translate(translations()!, "label-launch-at-startup")}>
       <LazySwitch checked={autoStartState()} onChange={onSwitchAutoStart} />
     </SettingsItem>
   );

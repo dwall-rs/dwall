@@ -1,5 +1,7 @@
 import { createSignal, Show } from "solid-js";
+import { useAppContext } from "~/context";
 import { LazyButton, LazySpace } from "~/lazy";
+import { translate } from "~/utils/i18n";
 
 export interface ThemeActionsProps {
   themeExists: boolean;
@@ -12,6 +14,8 @@ export interface ThemeActionsProps {
 }
 
 export const ThemeActions = (props: ThemeActionsProps) => {
+  const { translations } = useAppContext();
+
   const [spinning, setSpinning] = createSignal(false);
 
   const onApply = () => {
@@ -35,7 +39,7 @@ export const ThemeActions = (props: ThemeActionsProps) => {
             onClick={props.onDownload}
             disabled={!!props.downloadThemeID}
           >
-            下载
+            {translate(translations()!, "button-download")}
           </LazyButton>
         }
       >
@@ -43,7 +47,7 @@ export const ThemeActions = (props: ThemeActionsProps) => {
           when={props.appliedThemeID !== props.currentThemeID}
           fallback={
             <LazyButton onClick={onClose} danger>
-              停止
+              {translate(translations()!, "button-stop")}
             </LazyButton>
           }
         >
@@ -52,7 +56,7 @@ export const ThemeActions = (props: ThemeActionsProps) => {
             disabled={!props.themeExists}
             onClick={onApply}
           >
-            应用
+            {translate(translations()!, "button-apply")}
           </LazyButton>
         </Show>
       </Show>

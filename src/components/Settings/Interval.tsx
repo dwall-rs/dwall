@@ -3,9 +3,10 @@ import SettingsItem from "./item";
 import { useAppContext } from "~/context";
 import { createSignal } from "solid-js";
 import { writeConfigFile } from "~/commands";
+import { translate } from "~/utils/i18n";
 
 const Interval = () => {
-  const { config, refetchConfig } = useAppContext();
+  const { config, refetchConfig, translations } = useAppContext();
 
   const [value, setValue] = createSignal(config()?.interval);
 
@@ -16,7 +17,7 @@ const Interval = () => {
   };
 
   return (
-    <SettingsItem label="检测间隔">
+    <SettingsItem label={translate(translations()!, "label-check-interval")}>
       <LazySpace gap={8} style={{ color: "var(--colorNeutralForeground1)" }}>
         <LazySlider
           min={15}
@@ -25,7 +26,8 @@ const Interval = () => {
           value={value()}
           style={{ width: "240px" }}
         />
-        {value()}秒
+        {value()}
+        {translate(translations()!, "unit-second")}
       </LazySpace>
     </SettingsItem>
   );

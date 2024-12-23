@@ -1,4 +1,4 @@
-import { createSignal, onMount, Show } from "solid-js";
+import { createResource, createSignal, onMount, Show } from "solid-js";
 import { LazyFlex, LazyTooltip, LazyButton, LazySpace } from "~/lazy";
 import { AiFillSetting } from "solid-icons/ai";
 import useDark from "alley-components/lib/hooks/useDark";
@@ -10,6 +10,7 @@ import {
   showWindow,
   getAppliedThemeID,
   setTitlebarColorMode,
+  getTranslations,
 } from "~/commands";
 import { useThemeSelector } from "./components/ThemeContext";
 import "./App.scss";
@@ -18,10 +19,11 @@ import { detectColorMode } from "./utils/color";
 import { themes } from "./themes";
 import { TbArrowBigUpLinesFilled } from "solid-icons/tb";
 import Updater from "./components/Update";
+import { translate } from "./utils/i18n";
 
 const App = () => {
-  const [showSettings, setShowSettings] = createSignal(false);
   const [showUpdateDialog, setShowUpdateDialog] = createSignal<boolean>();
+  const [translations] = createResource(getTranslations);
 
   const {
     config,
@@ -39,6 +41,8 @@ const App = () => {
     setAppliedThemeID,
     update,
     recheckUpdate,
+    showSettings,
+    setShowSettings,
   } = useThemeSelector(themes);
 
   useDark();
@@ -79,6 +83,7 @@ const App = () => {
         config,
         refetchConfig,
         settings: { show: showSettings, setShow: setShowSettings },
+        translations,
       }}
     >
       <LazyFlex
@@ -106,7 +111,10 @@ const App = () => {
             <Show when={update()}>
               <LazyTooltip
                 positioning="after"
-                content="检测到新版本，点击按钮更新"
+                content={translate(
+                  translations()!,
+                  "tooltip-new-version-available"
+                )}
                 relationship="label"
               >
                 <LazyButton
@@ -120,7 +128,7 @@ const App = () => {
 
             <LazyTooltip
               positioning="after"
-              content="设置"
+              content={translate(translations()!, "tooltip-settings")}
               relationship="label"
             >
               <LazyButton
