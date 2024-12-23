@@ -3,15 +3,11 @@ use std::path::Path;
 
 use dwall::config::{write_config_file, Config};
 use tokio::fs;
-use tokio::io;
 
 use crate::error::DwallSettingsResult;
 
-async fn copy_dir(src: &Path, dest: &Path) -> io::Result<()> {
-    fs::create_dir_all(dest).await.map_err(|e| {
-        error!(path = %dest.display(), error = %e, "Failed to create directory");
-        e
-    })?;
+async fn copy_dir(src: &Path, dest: &Path) -> std::io::Result<()> {
+    create_dir_if_missing(&dest).await?;
 
     let mut dir = fs::read_dir(src).await.map_err(|e| {
         error!(path = %src.display(), error = %e, "Failed to read source directory");
@@ -195,4 +191,28 @@ async fn perform_themes_directory_move(
     }
 
     Ok(())
+}
+
+pub async fn create_dir_if_missing<P: AsRef<Path>>(path: P) -> std::io::Result<()> {
+    let path = path.as_ref();
+    trace!("Checking if directory exists: {}", path.display());
+
+    if !path.exists() {
+        trace!(
+            "Directory does not exist. Attempting to create: {}",
+            path.display()
+        );
+        fs::create_dir_all(path)
+            .await
+            .map(|_| {
+                info!("Successfully created directory: {}", path.display());
+            })
+            .map_err(|e| {
+                error!("Failed to create directory {}: {}", path.display(), e);
+                e
+            })
+    } else {
+        debug!("Directory already exists: {}", path.display());
+        Ok(())
+    }
 }

@@ -1,6 +1,6 @@
 use windows::Win32::Foundation::WIN32_ERROR;
 
-use crate::color_mode::ColorModeError;
+use crate::color_mode::ColorModeRegistryError;
 
 pub type DwallResult<T> = std::result::Result<T, DwallError>;
 
@@ -17,7 +17,7 @@ pub enum DwallError {
     #[error(transparent)]
     Config(#[from] crate::config::ConfigError),
     #[error(transparent)]
-    ColorMode(#[from] ColorModeError),
+    ColorMode(#[from] ColorModeRegistryError),
     #[error(transparent)]
     NulError(#[from] std::ffi::NulError),
     #[error(transparent)]

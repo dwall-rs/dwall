@@ -11,20 +11,18 @@ import AutoDetectColorMode from "./AutoDetectColorMode";
 import CoordinateSource from "./CoordinateSource";
 import Interval from "./Interval";
 import GithubMirror from "./GithubMirror";
-import { createResource, createSignal, Show } from "solid-js";
+import { createResource } from "solid-js";
 import { openConfigDir } from "~/commands";
 import { ask, message } from "@tauri-apps/plugin-dialog";
-import UpdateDialog from "./UpdateDialog";
 import { useAppContext } from "~/context";
 import ThemesDirectory from "./ThemesDirectory";
 import LockScreenWallpaperSwitch from "./LockScreenWallpaperSwitch";
 
 const Settings = () => {
   const {
-    update: { resource, refetch },
+    update: { resource, refetch, setShowDialog },
   } = useAppContext();
   const [version] = createResource(getVersion);
-  const [downloading, setDownloading] = createSignal(false);
 
   const onOpenLogDir = async () => {
     await openConfigDir();
@@ -47,7 +45,7 @@ const Settings = () => {
       "Dwall",
     );
     if (!result) return;
-    setDownloading(true);
+    setShowDialog(true);
   };
 
   return (
@@ -91,10 +89,6 @@ const Settings = () => {
           </LazySpace>
         </LazyFlex>
       </LazyFlex>
-
-      <Show when={downloading()}>
-        <UpdateDialog update={resource()!} />
-      </Show>
     </>
   );
 };
