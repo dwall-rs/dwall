@@ -8,10 +8,6 @@ export const LazySpace = lazy(
   () => import("alley-components/lib/components/space"),
 );
 
-export const LazyDialog = lazy(
-  () => import("alley-components/lib/components/dialog"),
-);
-
 export const LazyInputNumber = lazy(
   () => import("alley-components/lib/components/input-number"),
 );
@@ -52,4 +48,8 @@ export const LazySpinner = lazy(
 
 export const LazyTooltip = lazy(
   () => import("fluent-solid/lib/components/tooltip"),
+);
+
+export const LazyDivider = lazy(
+  () => import("fluent-solid/lib/components/divider"),
 );

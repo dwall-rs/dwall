@@ -2,7 +2,8 @@ import { relaunch } from "@tauri-apps/plugin-process";
 import type { Update } from "@tauri-apps/plugin-updater";
 import { createSignal, onMount } from "solid-js";
 import { killDaemon } from "~/commands";
-import { LazyDialog, LazyProgress } from "~/lazy";
+import { LazyProgress } from "~/lazy";
+import Dialog from "../Dialog";
 
 interface UpdateDialogProps {
   update: Update;
@@ -31,19 +32,14 @@ const UpdateDialog = (props: UpdateDialogProps) => {
   });
 
   return (
-    <LazyDialog
-      show={!!props.update}
-      onClose={() => {}}
-      maskClosable={false}
-      size="large"
-    >
+    <Dialog open={!!props.update} maskClosable={false} title="正在下载更新...">
       <LazyProgress
-        style={{ width: "540px" }}
+        style={{ width: "480px" }}
         thickness="large"
         max={total()}
         value={downloaded()}
       />
-    </LazyDialog>
+    </Dialog>
   );
 };
 
