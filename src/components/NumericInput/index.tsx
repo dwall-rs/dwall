@@ -1,4 +1,4 @@
-import { createEffect, Show, type Component } from "solid-js";
+import { createEffect, type Component } from "solid-js";
 import styles from "./index.module.scss";
 import { LazyInput } from "~/lazy";
 import type { NumericInputProps } from "./types";
@@ -11,6 +11,7 @@ const NumericInput: Component<NumericInputProps> = (props) => {
     warning,
     handleBlur,
     handleInput,
+    handleChange,
     setInputValue,
     setWarning,
     tooSmallMessage,
@@ -45,7 +46,8 @@ const NumericInput: Component<NumericInputProps> = (props) => {
         <LazyInput
           type="text"
           value={inputValue()}
-          onInput={(e) => handleInput(e)}
+          onInput={handleInput}
+          onChange={handleChange}
           onBlur={handleBlur}
           placeholder={props.placeholder}
           disabled={props.disabled}
@@ -55,10 +57,8 @@ const NumericInput: Component<NumericInputProps> = (props) => {
           appearance={props.appearance}
           style={props.style}
           autofocus={props.autofocus}
+          contentAfter={props.contentAfter}
         />
-        <Show when={props.suffix}>
-          <span class={styles.suffix}>{props.suffix}</span>
-        </Show>
       </div>
     </InputContainer>
   );

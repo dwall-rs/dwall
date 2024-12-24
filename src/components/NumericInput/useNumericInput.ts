@@ -77,22 +77,30 @@ const useNumericInputHandling = (props: NumericInputProps) => {
         warning: tooLargeMessage,
       },
     );
-    setWarning(message);
+    if (message) {
+      setWarning(message);
+      props.onChange?.();
+    } else {
+      setWarning("");
+      props.onChange?.(validatedValue);
+    }
     setInputValue(validatedValue.toString());
-    props.onChange?.(validatedValue);
   };
 
-  const handleInput = (value: string) => {
+  const handleCommonLogic = (
+    value: string,
+    callback?: (value?: number) => void,
+  ) => {
     if (value === "" || value === "-" || value === ".") {
       setInputValue(value);
       setWarning("");
-      props.onChange?.();
+      callback?.();
       return;
     }
 
     if (!numberValidation.isValidNumberInput(value)) {
       setWarning(invalidNumberMessage);
-      props.onChange?.();
+      callback?.();
       return;
     }
 
@@ -108,11 +116,24 @@ const useNumericInputHandling = (props: NumericInputProps) => {
         warning: tooLargeMessage,
       },
     );
-    setWarning(message);
+
+    if (message) {
+      setWarning(message);
+      callback?.();
+    } else {
+      setWarning("");
+      callback?.(numValue);
+    }
     setInputValue(value);
-    props.onChange?.(numValue);
   };
 
+  const handleInput = (value: string) => {
+    handleCommonLogic(value, props.onInput);
+  };
+
+  const handleChange = (value: string) => {
+    handleCommonLogic(value, props.onChange);
+  };
   return {
     inputValue,
     setInputValue,
@@ -120,6 +141,7 @@ const useNumericInputHandling = (props: NumericInputProps) => {
     setWarning,
     handleBlur,
     handleInput,
+    handleChange,
     tooSmallMessage,
     tooLargeMessage,
   };
