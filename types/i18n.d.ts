@@ -26,6 +26,8 @@ type TranslationKey =
   | "message-startup-failed"
   | "message-themes-directory-moved"
   | "message-version-is-the-latest"
+  | "placeholder-latitude"
+  | "placeholder-longitude"
   | "unit-second"
   | "title-download-faild"
   | "title-downloading-new-version";

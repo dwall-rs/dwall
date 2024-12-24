@@ -22,6 +22,7 @@ const GithubMirror = () => {
 
   return (
     <SettingsItem
+      layout="vertical"
       label={translate(translations()!, "label-github-mirror-template")}
       vertical
     >

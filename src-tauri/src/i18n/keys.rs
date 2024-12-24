@@ -44,3 +44,5 @@ pub(super) const TITLE_DOWNLOAD_FAILD: &str = "title-download-faild";
 pub(super) const TITLE_DOWNLOADING_NEW_VERSION: &str = "title-downloading-new-version";
 
 // ---------------- placeholders ----------------
+pub(super) const PLACEHOLDER_LATITUDE: &str = "placeholder-latitude";
+pub(super) const PLACEHOLDER_LONGITUDE: &str = "placeholder-longitude";

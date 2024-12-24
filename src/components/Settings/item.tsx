@@ -1,39 +1,75 @@
 import { children, type JSXElement } from "solid-js";
 import { LazyFlex, LazyLabel } from "~/lazy";
 
-interface SettingsItemProps {
+interface BaseProps {
   label: string;
   children: JSXElement;
-  vertical?: boolean;
 }
 
+interface VerticalLayout {
+  layout: "vertical";
+  vertical: true;
+  extra?: never;
+}
+
+interface HorizontalLayout {
+  layout: "horizontal";
+  vertical?: never;
+  extra?: JSXElement;
+}
+
+interface DefaultLayout {
+  layout?: never;
+  vertical?: never;
+  extra?: never;
+}
+
+type LayoutConfig = VerticalLayout | HorizontalLayout | DefaultLayout;
+type SettingsItemProps = BaseProps & LayoutConfig;
+
+const labelStyles = {
+  display: "flex",
+  "justify-items": "center",
+  "align-items": "center",
+} as const;
+
 const SettingsItem = (props: SettingsItemProps) => {
-  const resolved = children(() =>
-    props.vertical ? (
-      <LazyFlex direction="vertical" gap={8}>
-        <LazyLabel weight="semibold">{props.label}</LazyLabel>
+  const renderLabel = children(() => (
+    <LazyLabel weight="semibold" style={labelStyles}>
+      {props.label}
+    </LazyLabel>
+  ));
 
-        {props.children}
-      </LazyFlex>
-    ) : (
+  const renderContent = children(() => {
+    if (props.layout === "vertical") {
+      return (
+        <LazyFlex direction="vertical" gap={8}>
+          {renderLabel()}
+          {props.children}
+        </LazyFlex>
+      );
+    }
+
+    const mainContent = (
       <LazyFlex justify="between">
-        <LazyLabel
-          weight="semibold"
-          style={{
-            display: "flex",
-            "justify-items": "center",
-            "align-items": "center",
-          }}
-        >
-          {props.label}
-        </LazyLabel>
-
+        {renderLabel()}
         {props.children}
       </LazyFlex>
-    ),
-  );
+    );
 
-  return <>{resolved}</>;
+    if (props.layout === "horizontal" && props.extra) {
+      return (
+        <LazyFlex direction="vertical" gap={8}>
+          {mainContent}
+          {props.extra}
+        </LazyFlex>
+      );
+    }
+
+    return mainContent;
+  });
+
+  return <>{renderContent()}</>;
 };
 
 export default SettingsItem;

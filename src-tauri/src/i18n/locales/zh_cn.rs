@@ -125,6 +125,10 @@ impl TranslationMap for ChineseSimplifiedTranslations {
             TranslationValue::Text("正在下载新版本..."),
         );
 
+        // placeholders
+        translations.insert(PLACEHOLDER_LATITUDE, TranslationValue::Text("纬度"));
+        translations.insert(PLACEHOLDER_LONGITUDE, TranslationValue::Text("经度"));
+
         translations
     }
 }

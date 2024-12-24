@@ -34,7 +34,6 @@ const CoordinateInput = (props: CoordinateInputProps) => {
       size="small"
       suffix="°"
       appearance="underline"
-      style={{ width: "72px" }}
       autofocus={props.autofocus}
     />
   );
@@ -97,20 +96,27 @@ const CoordinateSource = () => {
     refetchConfig();
   };
 
+  const latitudePlaceholder = translate(
+    translations()!,
+    "placeholder-latitude",
+  );
+  const longitudePlaceholder = translate(
+    translations()!,
+    "placeholder-longitude",
+  );
+
   return (
     <SettingsItem
+      layout="horizontal"
       label={translate(
         translations()!,
         "label-automatically-retrieve-coordinates",
       )}
-    >
-      <LazySpace gap={auto() ? 0 : 8}>
-        <LazySwitch checked={auto()} onChange={onSwitchCoordinateSource} />
-
+      extra={
         <Show when={!auto()}>
-          <LazySpace gap={8}>
+          <LazySpace gap={16} justify="end">
             <CoordinateInput
-              placeholder="经度"
+              placeholder={longitudePlaceholder}
               min={-180.0}
               max={180.0}
               defaultValue={position().longitude}
@@ -124,7 +130,7 @@ const CoordinateSource = () => {
             />
 
             <CoordinateInput
-              placeholder="纬度"
+              placeholder={latitudePlaceholder}
               min={-90.0}
               max={90.0}
               defaultValue={position().latitude}
@@ -144,6 +150,10 @@ const CoordinateSource = () => {
             />
           </LazySpace>
         </Show>
+      }
+    >
+      <LazySpace gap={auto() ? 0 : 8}>
+        <LazySwitch checked={auto()} onChange={onSwitchCoordinateSource} />
       </LazySpace>
     </SettingsItem>
   );
