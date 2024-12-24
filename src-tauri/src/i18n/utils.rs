@@ -33,5 +33,6 @@ pub(super) fn get_user_preferred_language() -> DwallSettingsResult<String> {
     let language = &languages[0];
 
     info!("Succesfully got user preferred language: {}", language);
-    Ok(language.to_string())
+    // Ok(language.to_string())
+    Ok("en-US".to_string())
 }

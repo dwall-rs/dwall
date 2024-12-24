@@ -3,20 +3,25 @@ import { check } from "@tauri-apps/plugin-updater";
 import {
   applyTheme,
   checkThemeExists,
+  getTranslations,
   readConfigFile,
   requestLocationPermission,
   setTitlebarColorMode,
 } from "~/commands";
-import { message } from "@tauri-apps/plugin-dialog";
+import { ask } from "@tauri-apps/plugin-dialog";
+import { exit } from "@tauri-apps/plugin-process";
+import { translate } from "~/utils/i18n";
 
 export const useThemeSelector = (themes: ThemeItem[]) => {
-  const [config, { refetch: refetchConfig }] =
+  const [translations] = createResource(getTranslations);
+  const [config, { refetch: refetchConfig, mutate }] =
     createResource<Config>(readConfigFile);
   const [appliedThemeID, setAppliedThemeID] = createSignal<string>();
   const [downloadThemeID, setDownloadThemeID] = createSignal<string>();
   const [menuItemIndex, setMenuItemIndex] = createSignal<number | undefined>(0);
   const [themeExists, setThemeExists] = createSignal(false);
   const [update, { refetch: recheckUpdate }] = createResource(() => check());
+  const [showSettings, setShowSettings] = createSignal(false);
 
   const currentTheme = createMemo(() => {
     const idx = menuItemIndex();
@@ -58,7 +63,22 @@ export const useThemeSelector = (themes: ThemeItem[]) => {
     try {
       await requestLocationPermission();
     } catch (e) {
-      message("定位权限未打开，请手动开启定位", { kind: "error" });
+      const ok = await ask(
+        translate(translations()!, "message-location-permission"),
+        {
+          kind: "warning",
+        }
+      );
+
+      if (!ok) {
+        exit(0);
+      } else {
+        mutate((prev) => ({
+          ...prev!,
+          coordinate_source: { type: "MANUAL" },
+        }));
+        setShowSettings(true);
+      }
       return;
     }
 
@@ -90,5 +110,8 @@ export const useThemeSelector = (themes: ThemeItem[]) => {
     onApply,
     update,
     recheckUpdate,
+    showSettings,
+    setShowSettings,
+    translations,
   };
 };

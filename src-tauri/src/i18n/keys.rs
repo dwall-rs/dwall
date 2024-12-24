@@ -29,6 +29,7 @@ pub(super) const MESSAGE_CHANGE_THEMES_DIRECTORY: &str = "message-change-themes-
 pub(super) const MESSAGE_DISABLE_STARTUP_FAILED: &str = "message-disable-startup-failed";
 pub(super) const MESSAGE_DOWNLOAD_FAILED: &str = "message-download-faild";
 pub(super) const MESSAGE_INVALID_NUMBER_INPUT: &str = "message-invalid-number-input";
+pub(super) const MESSAGE_LOCATION_PERMISSION: &str = "message-location-permission";
 pub(super) const MESSAGE_NUMBER_TOO_LARGE: &str = "message-number-too-large";
 pub(super) const MESSAGE_NUMBER_TOO_SMALL: &str = "message-number-too-small";
 pub(super) const MESSAGE_STARTUP_FAILED: &str = "message-startup-failed";

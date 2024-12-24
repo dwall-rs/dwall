@@ -20,6 +20,7 @@ type TranslationKey =
   | "message-disable-startup-failed"
   | "message-download-faild"
   | "message-invalid-number-input"
+  | "message-location-permission"
   | "message-number-too-small"
   | "message-number-too-large"
   | "message-startup-failed"
