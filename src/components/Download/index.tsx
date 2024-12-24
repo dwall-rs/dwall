@@ -30,7 +30,7 @@ const Download = (props: DownloadProps) => {
       (e) => {
         const { total_bytes, downloaded_bytes } = e.payload;
         setPercent(Math.round((downloaded_bytes / total_bytes) * 1000) / 10);
-      }
+      },
     );
 
     try {
@@ -43,7 +43,7 @@ const Download = (props: DownloadProps) => {
         {
           title: translate(translations()!, "title-download-faild"),
           kind: "error",
-        }
+        },
       );
     } finally {
       props.onFinished();

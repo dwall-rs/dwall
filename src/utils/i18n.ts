@@ -1,7 +1,7 @@
 export const translate = (
   translations: Translations,
   key: TranslationKey,
-  params: Record<string, string> = {}
+  params: Record<string, string> = {},
 ) => {
   const translation = translations[key];
   if (!translation) return key;

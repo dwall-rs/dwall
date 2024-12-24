@@ -24,7 +24,7 @@ const ThemesDirectory = () => {
     const ok = await confirm(
       translate(translations()!, "message-change-themes-directory", {
         newThemesDirectory,
-      })
+      }),
     );
     if (!ok) return;
 
@@ -33,7 +33,7 @@ const ThemesDirectory = () => {
       message(
         translate(translations()!, "message-themes-directory-moved", {
           newThemesDirectory,
-        })
+        }),
       );
       setPath(newThemesDirectory);
       refetchConfig();

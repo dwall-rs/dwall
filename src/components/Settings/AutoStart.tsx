@@ -23,7 +23,7 @@ const AutoStart = () => {
         message(
           translate(translations()!, "message-disable-startup-failed", {
             error: String(e),
-          })
+          }),
         );
         return;
       }
@@ -34,7 +34,7 @@ const AutoStart = () => {
         message(
           translate(translations()!, "message-startup-failed", {
             error: String(e),
-          })
+          }),
         );
         return;
       }

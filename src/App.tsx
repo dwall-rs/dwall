@@ -113,7 +113,7 @@ const App = () => {
                 positioning="after"
                 content={translate(
                   translations()!,
-                  "tooltip-new-version-available"
+                  "tooltip-new-version-available",
                 )}
                 relationship="label"
               >

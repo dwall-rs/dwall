@@ -1,34 +1,41 @@
-import { LazyButton, LazyInputNumber, LazySpace, LazySwitch } from "~/lazy";
+import { LazyButton, LazySpace, LazySwitch } from "~/lazy";
 import SettingsItem from "./item";
 import { AiOutlineCheck } from "solid-icons/ai";
 import { useAppContext } from "~/context";
 import { writeConfigFile } from "~/commands";
 import { createMemo, createSignal, Show } from "solid-js";
 import { translate } from "~/utils/i18n";
+import NumericInput from "../NumericInput";
 
 interface CoordinateInputProps {
   min: number;
   max: number;
   placeholder: string;
   defaultValue?: number;
-  onChange: (value: number) => void;
+  onChange: (value?: number) => void;
+  autofocus?: boolean;
 }
 
 const CoordinateInput = (props: CoordinateInputProps) => {
   const [value, setValue] = createSignal(props.defaultValue);
 
-  const onChange = (v: number) => {
+  const onChange = (v?: number) => {
     setValue(v);
     props.onChange(v);
   };
 
   return (
-    <LazyInputNumber
+    <NumericInput
       placeholder={props.placeholder}
       min={props.min}
       max={props.max}
       value={value()}
       onChange={onChange}
+      size="small"
+      suffix="°"
+      appearance="underline"
+      style={{ width: "72px" }}
+      autofocus={props.autofocus}
     />
   );
 };
@@ -37,7 +44,7 @@ const CoordinateSource = () => {
   const { config, refetchConfig, translations } = useAppContext();
 
   const [auto, setAuto] = createSignal(
-    config()?.coordinate_source.type === "AUTOMATIC"
+    config()?.coordinate_source.type === "AUTOMATIC",
   );
 
   const [position, setPosition] = createSignal<{
@@ -47,11 +54,11 @@ const CoordinateSource = () => {
     config()?.coordinate_source.type === "AUTOMATIC"
       ? {}
       : {
-          latitude: (config()?.coordinate_source as CoordinateSourceManual)
-            .latitude,
-          longitude: (config()?.coordinate_source as CoordinateSourceManual)
-            .longitude,
-        }
+        latitude: (config()?.coordinate_source as CoordinateSourceManual)
+          .latitude,
+        longitude: (config()?.coordinate_source as CoordinateSourceManual)
+          .longitude,
+      },
   );
 
   const onSwitchCoordinateSource = async () => {
@@ -75,7 +82,7 @@ const CoordinateSource = () => {
       position().latitude! <= 90.0 &&
       position().longitude !== undefined &&
       position().longitude! >= -180.0 &&
-      position().longitude! <= 180.0
+      position().longitude! <= 180.0,
   );
 
   const onConfirmManual = async () => {
@@ -94,7 +101,7 @@ const CoordinateSource = () => {
     <SettingsItem
       label={translate(
         translations()!,
-        "label-automatically-retrieve-coordinates"
+        "label-automatically-retrieve-coordinates",
       )}
     >
       <LazySpace gap={auto() ? 0 : 8}>
@@ -107,6 +114,7 @@ const CoordinateSource = () => {
               min={-180.0}
               max={180.0}
               defaultValue={position().longitude}
+              autofocus
               onChange={(v) =>
                 setPosition((prev) => ({
                   ...prev,
@@ -132,6 +140,7 @@ const CoordinateSource = () => {
               icon={<AiOutlineCheck />}
               onClick={onConfirmManual}
               disabled={!postionIsValid()}
+              size="small"
             />
           </LazySpace>
         </Show>
