@@ -8,10 +8,6 @@ export const LazySpace = lazy(
   () => import("alley-components/lib/components/space"),
 );
 
-export const LazyInputNumber = lazy(
-  () => import("alley-components/lib/components/input-number"),
-);
-
 // ------ fluent -----
 
 export const LazyButton = lazy(
