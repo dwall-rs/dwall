@@ -1,9 +1,10 @@
 [package]
 name = "dwall-settings"
 description = "A Tauri App"
-authors = ["you"]
-edition = "2021"
+edition.workspace = true
 version.workspace = true
+authors.workspace = true
+repository.workspace = true
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -39,7 +40,7 @@ windows = { version = "0", default-features = false, features = [
   "Win32_Graphics_Dwm",
   "Wdk_System_SystemServices",
   "Win32_System_SystemInformation",
-  "Win32_Globalization"
+  "Win32_Globalization",
 ] }
 reqwest = "0"
 futures-util = "0"
