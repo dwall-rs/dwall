@@ -95,11 +95,8 @@ impl TranslationMap for EnglishUSTranslations {
             TranslationValue::Text("Please enter a valid number."),
         );
         translations.insert(
-            MESSAGE_STARTUP_FAILED,
-            TranslationValue::Template {
-                template: "Startup failed: \n${error}",
-                params: &["error"],
-            },
+            MESSAGE_LOCATION_PERMISSION,
+            TranslationValue::Text("The location permission is not turned on. Please manually enable location or manually configure coordinates.\n\nDo you want to manually configure coordinates?\nClick \"Yes\" to manually configure coordinates, or click \"No\" to close the program."),
         );
         translations.insert(
             MESSAGE_NUMBER_TOO_LARGE,
@@ -113,6 +110,13 @@ impl TranslationMap for EnglishUSTranslations {
             TranslationValue::Template {
                 template: "Cannot be less than {{min}}",
                 params: &["min"],
+            },
+        );
+        translations.insert(
+            MESSAGE_STARTUP_FAILED,
+            TranslationValue::Template {
+                template: "Startup failed: \n${error}",
+                params: &["error"],
             },
         );
         translations.insert(

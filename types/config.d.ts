@@ -15,8 +15,8 @@ interface CoordinateSourceAutomatic {
 
 interface CoordinateSourceManual {
   type: "MANUAL";
-  latitude: number;
-  longitude: number;
+  latitude?: number;
+  longitude?: number;
 }
 
 type CoordinateSource = CoordinateSourceAutomatic | CoordinateSourceManual;

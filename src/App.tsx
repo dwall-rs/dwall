@@ -1,4 +1,4 @@
-import { createResource, createSignal, onMount, Show } from "solid-js";
+import { createSignal, onMount, Show } from "solid-js";
 import { LazyFlex, LazyTooltip, LazyButton, LazySpace } from "~/lazy";
 import { AiFillSetting } from "solid-icons/ai";
 import useDark from "alley-components/lib/hooks/useDark";
@@ -10,7 +10,6 @@ import {
   showWindow,
   getAppliedThemeID,
   setTitlebarColorMode,
-  getTranslations,
 } from "~/commands";
 import { useThemeSelector } from "./components/ThemeContext";
 import "./App.scss";
@@ -23,7 +22,6 @@ import { translate } from "./utils/i18n";
 
 const App = () => {
   const [showUpdateDialog, setShowUpdateDialog] = createSignal<boolean>();
-  const [translations] = createResource(getTranslations);
 
   const {
     config,
@@ -43,6 +41,7 @@ const App = () => {
     recheckUpdate,
     showSettings,
     setShowSettings,
+    translations,
   } = useThemeSelector(themes);
 
   useDark();
@@ -113,7 +112,7 @@ const App = () => {
                 positioning="after"
                 content={translate(
                   translations()!,
-                  "tooltip-new-version-available",
+                  "tooltip-new-version-available"
                 )}
                 relationship="label"
               >

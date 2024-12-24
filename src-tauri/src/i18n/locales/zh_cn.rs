@@ -82,6 +82,10 @@ impl TranslationMap for ChineseSimplifiedTranslations {
             TranslationValue::Text("请输入有效的数字"),
         );
         translations.insert(
+            MESSAGE_LOCATION_PERMISSION,
+            TranslationValue::Text("定位权限未打开，请手动开启定位或手动配置坐标。\n\n是否手动配置坐标？\n点击“是”手动配置坐标，点击“否”关闭程序"),
+        );
+        translations.insert(
             MESSAGE_NUMBER_TOO_LARGE,
             TranslationValue::Template {
                 template: "不能大于 {{max}}",
