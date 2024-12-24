@@ -78,6 +78,24 @@ impl TranslationMap for ChineseSimplifiedTranslations {
             },
         );
         translations.insert(
+            MESSAGE_INVALID_NUMBER_INPUT,
+            TranslationValue::Text("请输入有效的数字"),
+        );
+        translations.insert(
+            MESSAGE_NUMBER_TOO_LARGE,
+            TranslationValue::Template {
+                template: "不能大于 {{max}}",
+                params: &["max"],
+            },
+        );
+        translations.insert(
+            MESSAGE_NUMBER_TOO_SMALL,
+            TranslationValue::Template {
+                template: "不能小于 {{min}}",
+                params: &["min"],
+            },
+        );
+        translations.insert(
             MESSAGE_STARTUP_FAILED,
             TranslationValue::Template {
                 template: "设置开机自启失败：\n${error}",

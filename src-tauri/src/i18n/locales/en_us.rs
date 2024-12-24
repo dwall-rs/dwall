@@ -91,10 +91,28 @@ impl TranslationMap for EnglishUSTranslations {
             },
         );
         translations.insert(
+            MESSAGE_INVALID_NUMBER_INPUT,
+            TranslationValue::Text("Please enter a valid number."),
+        );
+        translations.insert(
             MESSAGE_STARTUP_FAILED,
             TranslationValue::Template {
                 template: "Startup failed: \n${error}",
                 params: &["error"],
+            },
+        );
+        translations.insert(
+            MESSAGE_NUMBER_TOO_LARGE,
+            TranslationValue::Template {
+                template: "Cannot exceed {{max}}",
+                params: &["max"],
+            },
+        );
+        translations.insert(
+            MESSAGE_NUMBER_TOO_SMALL,
+            TranslationValue::Template {
+                template: "Cannot be less than {{min}}",
+                params: &["min"],
             },
         );
         translations.insert(
