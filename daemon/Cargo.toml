@@ -5,53 +5,52 @@ exclude = ["CHANGELOG.md", "/target"]
 readme = "README.md"
 version.workspace = true
 authors.workspace = true
-# homepage.workspace = true
-# repository.workspace = true
-# categories.workspace = true
-# license.workspace = true
 edition.workspace = true
+# homepage.workspace = true
+repository.workspace = true
+# license.workspace = true
 
 [dependencies]
 windows = { version = "0", default-features = false, features = [
-    "Devices_Geolocation",
-    "Win32_System_Registry",
-    "System_UserProfile",
-    "Storage",
-    "Win32_UI",
-    "Win32_UI_Shell",
-    "Win32_UI_WindowsAndMessaging",
-    "Win32_System_Com",
+  "Devices_Geolocation",
+  "Win32_System_Registry",
+  "System_UserProfile",
+  "Storage",
+  "Win32_UI",
+  "Win32_UI_Shell",
+  "Win32_UI_WindowsAndMessaging",
+  "Win32_System_Com",
 ] }
 serde = { version = "1", default-features = false, features = ["derive"] }
 serde_json = "1"
 serde_valid = "0"
 tokio = { version = "1", default-features = false, features = [
-    "sync",
-    "macros",
-    "time",
-    "fs",
-    "rt",
-    "rt-multi-thread",
+  "sync",
+  "macros",
+  "time",
+  "fs",
+  "rt",
+  "rt-multi-thread",
 ] }
 time = { version = "0", default-features = false, features = [
-    'macros',
-    'serde',
+  'macros',
+  'serde',
 ] }
 tracing = { version = "0", default-features = false, features = [
-    "log",
-    "release_max_level_info",
+  "log",
+  "release_max_level_info",
 ] }
 tracing-subscriber = { version = "0", default-features = false, features = [
-    "fmt",
-    'time',
-    "local-time",
-    'env-filter',
-    'json',
+  "fmt",
+  'time',
+  "local-time",
+  'env-filter',
+  'json',
 ] }
 thiserror = { version = "2", default-features = false }
 toml = { version = "0", default-features = false, features = [
-    "display",
-    "parse",
+  "display",
+  "parse",
 ] }
 dirs = { version = "5", default-features = false }
 regex = { version = "1", default-features = false }
