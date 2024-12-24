@@ -21,7 +21,7 @@ const LockScreenWallpaperSwitch = () => {
     <SettingsItem
       label={translate(
         translations()!,
-        "label-set-lock-screen-wallpaper-simultaneously"
+        "label-set-lock-screen-wallpaper-simultaneously",
       )}
     >
       <LazySwitch

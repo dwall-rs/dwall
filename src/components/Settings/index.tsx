@@ -37,7 +37,7 @@ const Settings = () => {
     const update = resource();
     if (!update) {
       await message(
-        translate(translations()!, "message-version-is-the-latest")
+        translate(translations()!, "message-version-is-the-latest"),
       );
       return;
     }
@@ -46,7 +46,7 @@ const Settings = () => {
 
     const result = await ask(
       `当前版本 ${currentVersion}，有新版本 ${version}。\n\n更新日志：\n\n${body}\n\n是否更新？`,
-      "Dwall"
+      "Dwall",
     );
     if (!result) return;
     setShowDialog(true);

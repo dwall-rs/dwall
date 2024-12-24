@@ -35,7 +35,7 @@ export const ThemeMenu = (props: ThemeMenuProps) => {
           />
         </LazyTooltip>
       </div>
-    ))
+    )),
   );
 
   return (

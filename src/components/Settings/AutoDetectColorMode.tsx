@@ -20,7 +20,7 @@ const AutoDetectColorMode = () => {
     <SettingsItem
       label={translate(
         translations()!,
-        "label-automatically-switch-to-dark-mode"
+        "label-automatically-switch-to-dark-mode",
       )}
     >
       <LazySwitch
