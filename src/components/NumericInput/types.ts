@@ -2,9 +2,9 @@ import type { InputProps } from "fluent-solid/lib/components/input";
 
 export interface NumericInputProps {
   label?: string;
-  suffix?: string;
   value?: number;
   onChange?: (value?: number) => void;
+  onInput?: (value?: number) => void;
   disabled?: boolean;
   required?: boolean;
   min?: number;
@@ -13,5 +13,6 @@ export interface NumericInputProps {
   appearance?: InputProps["appearance"];
   placeholder?: InputProps["placeholder"];
   style?: InputProps["style"];
+  contentAfter?: InputProps["contentAfter"];
   autofocus?: boolean;
 }
