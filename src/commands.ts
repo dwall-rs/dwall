@@ -10,7 +10,7 @@ export const writeConfigFile = async (config: Config) =>
 
 export const checkThemeExists = async (
   themesDirecotry: string,
-  themeId: string
+  themeId: string,
 ) => invoke<void>("check_theme_exists", { themesDirecotry, themeId });
 
 export const applyTheme = async (config: Config) =>
@@ -27,7 +27,7 @@ export const disableAutoStart = async () => invoke<void>("disable_auto_start");
 
 export const downloadThemeAndExtract = async (
   config: Config,
-  themeId: string
+  themeId: string,
 ) => invoke<void>("download_theme_and_extract", { config, themeId });
 
 export const requestLocationPermission = async () =>
@@ -49,7 +49,7 @@ export const killDaemon = async () => invoke<void>("kill_daemon");
 export const getOrSaveCachedImage = async (
   themeId: string,
   serialNumber: number,
-  url: string
+  url: string,
 ) => invoke<string>("get_or_save_cached_image", { themeId, serialNumber, url });
 
 export const getTranslations = async () =>
