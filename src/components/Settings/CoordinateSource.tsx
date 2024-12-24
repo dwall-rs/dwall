@@ -32,7 +32,7 @@ const CoordinateInput = (props: CoordinateInputProps) => {
       value={value()}
       onChange={onChange}
       size="small"
-      suffix="°"
+      contentAfter="°"
       appearance="underline"
       autofocus={props.autofocus}
     />
