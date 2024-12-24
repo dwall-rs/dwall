@@ -44,6 +44,7 @@ const ThemesDirectory = () => {
 
   return (
     <SettingsItem
+      layout="vertical"
       label={translate(translations()!, "label-themes-directory")}
       vertical
     >

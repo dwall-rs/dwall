@@ -144,6 +144,10 @@ impl TranslationMap for EnglishUSTranslations {
             TranslationValue::Text("Downloading new version..."),
         );
 
+        // placeholders
+        translations.insert(PLACEHOLDER_LATITUDE, TranslationValue::Text("latitude"));
+        translations.insert(PLACEHOLDER_LONGITUDE, TranslationValue::Text("longitude"));
+
         translations
     }
 }
