@@ -115,7 +115,7 @@ pub fn get_current_language() -> Language {
 #[tauri::command]
 pub fn get_translations() -> LocaleTranslations {
     let current_lang = get_current_language();
-    info!("Current language: {}", current_lang.native_name());
+    info!(language = current_lang.native_name(), "Current language");
 
     let translations = TRANSLATIONS.read().unwrap();
 
@@ -130,6 +130,7 @@ pub fn get_translations() -> LocaleTranslations {
 
     for (key, value) in en_us_translations.iter() {
         if !locale_translations.contains_key(*key) {
+            debug!(key = key, "Translation missing, using default");
             locale_translations.insert(*key, value.clone());
         }
     }

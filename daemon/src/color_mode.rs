@@ -44,7 +44,7 @@ struct RegistryHelper;
 impl RegistryHelper {
     /// Convert a string to a wide character string (Windows-compatible)
     fn to_wide_string(s: &str) -> Vec<u16> {
-        trace!("Converting string to wide string: {}", s);
+        trace!(string = s, "Converting string to wide string");
         OsStr::new(s)
             .encode_wide()
             .chain(std::iter::once(0))
@@ -53,7 +53,7 @@ impl RegistryHelper {
 
     /// Open a registry key with specified access rights
     fn open_key(path: &str, access: REG_SAM_FLAGS) -> DwallResult<HKEY> {
-        debug!("Attempting to open registry key: {}", path);
+        debug!(path = path, "Attempting to open registry key");
         let wide_path = Self::to_wide_string(path);
         let mut hkey = HKEY::default();
 
@@ -68,11 +68,15 @@ impl RegistryHelper {
 
             match result {
                 ERROR_SUCCESS => {
-                    info!("Successfully opened registry key: {}", path);
+                    info!(path = path, "Successfully opened registry key");
                     Ok(hkey)
                 }
                 err => {
-                    error!("Failed to open registry key: {} (Error: {})", path, err.0);
+                    error!(
+                        path = path,
+                        error_code = err.0,
+                        "Failed to open registry key"
+                    );
                     Err(ColorModeRegistryError::Open(err.0).into())
                 }
             }
@@ -89,7 +93,7 @@ impl RegistryHelper {
                     Ok(())
                 }
                 err => {
-                    warn!("Failed to close registry key (Error: {})", err.0);
+                    warn!(error_code = err.0, "Failed to close registry key");
                     Err(ColorModeRegistryError::Close(err.0).into())
                 }
             }
@@ -139,7 +143,7 @@ impl ColorModeManager {
                     Ok(mode)
                 }
                 err => {
-                    error!("Failed to query color mode value (Error: {})", err.0);
+                    error!(error_code = err.0, "Failed to query color mode value");
                     Err(ColorModeRegistryError::Query(err.0).into())
                 }
             }
@@ -148,7 +152,7 @@ impl ColorModeManager {
 
     /// Set the system color mode in the registry
     pub fn set_color_mode(mode: ColorMode) -> DwallResult<()> {
-        info!("Setting system color mode to {:?}", mode);
+        info!(mode = ?mode, "Setting system color mode");
         let hkey = RegistryHelper::open_key(Self::PERSONALIZE_KEY_PATH, KEY_SET_VALUE)?;
 
         let value = match mode {
@@ -180,12 +184,13 @@ impl ColorModeManager {
 
             match (set_apps_result, set_system_result) {
                 (ERROR_SUCCESS, ERROR_SUCCESS) => {
-                    info!("Successfully set color mode to {:?}", mode);
+                    info!(mode = ?mode, "Successfully set color mode");
                 }
                 _ => {
                     error!(
-                        "Failed to set color mode (Apps result: {}, System result: {})",
-                        set_apps_result.0, set_system_result.0
+                        apps_result = set_apps_result.0,
+                        system_result = set_system_result.0,
+                        "Failed to set color mode"
                     );
                     return Err(ColorModeRegistryError::Set(
                         set_apps_result.0 | set_system_result.0,
@@ -207,7 +212,7 @@ pub fn determine_color_mode(altitude: f64) -> ColorMode {
     const DAY_ALTITUDE_THRESHOLD: f64 = 0.0; // Sun above horizon considered daytime
     const TWILIGHT_ALTITUDE_THRESHOLD: f64 = -6.0; // Sun below horizon considered nighttime
 
-    trace!("Determining color mode with altitude: {}", altitude);
+    trace!(altitude = altitude, "Determining color mode");
 
     if altitude > DAY_ALTITUDE_THRESHOLD {
         // Daytime: Sun is above the horizon
@@ -228,7 +233,7 @@ pub fn determine_color_mode(altitude: f64) -> ColorMode {
 pub fn set_color_mode(color_mode: ColorMode) -> DwallResult<()> {
     let current_color_mode = ColorModeManager::get_current_mode()?;
     if current_color_mode == color_mode {
-        info!("Color mode is already set to {:?}", color_mode);
+        info!(mode = ?color_mode, "Color mode is already set");
         return Ok(());
     }
 
@@ -252,7 +257,7 @@ fn notify_theme_change() -> DwallResult<()> {
                 WPARAM(0),
                 LPARAM(theme_name.as_ptr() as isize),
             ) {
-                warn!("Failed to broadcast {}: {}", notification, e);
+                warn!(notification = notification, error = ?e, "Failed to broadcast notification");
             }
         }
     }

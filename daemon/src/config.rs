@@ -249,7 +249,7 @@ impl<'a> ConfigManager {
         let config: Config = match toml::from_str(&content) {
             Ok(config) => config,
             Err(e) => {
-                error!(error = %e, "Failed to parse configuration");
+                error!(error = ?e, "Failed to parse configuration");
                 return Err(ConfigError::Deserialization(e).into());
             }
         };
@@ -284,7 +284,7 @@ impl<'a> ConfigManager {
         let toml_string = match toml::to_string(config) {
             Ok(s) => s,
             Err(e) => {
-                error!(error = %e, "Failed to serialize configuration");
+                error!(error = ?e, "Failed to serialize configuration");
                 return Err(ConfigError::Serialization(e).into());
             }
         };

@@ -9,13 +9,13 @@ use crate::{
 
 pub fn setup_app(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
     info!(
-        "Starting application: version {}, build mode: {}",
-        app.package_info().version,
-        if cfg!(debug_assertions) {
+        version = app.package_info().version.to_string(),
+        build_mode = if cfg!(debug_assertions) {
             "debug"
         } else {
             "release"
-        }
+        },
+        "Starting application"
     );
 
     //#[cfg(all(desktop, not(debug_assertions)))]
@@ -23,7 +23,7 @@ pub fn setup_app(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>>
 
     // Process launch arguments
     let args: Vec<String> = env::args().collect();
-    debug!("Launch arguments: {:?}", args);
+    debug!(arguments = ?args, "Launch arguments");
 
     let settings_exe_path = PathBuf::from_str(&args[0])?;
     let daemon_exe_path = settings_exe_path
@@ -63,13 +63,13 @@ pub fn setup_app(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>>
 
 //#[cfg(all(desktop, not(debug_assertions)))]
 fn setup_updater(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
-    info!("Initializing update plugin");
+    debug!("Initializing update plugin");
 
     // Initialize update plugin
     app.handle()
         .plugin(tauri_plugin_updater::Builder::new().build())
         .map_err(|e| {
-            error!("Failed to initialize update plugin: {}", e);
+            error!(error = ?e, "Failed to initialize update plugin");
             e
         })?;
 
