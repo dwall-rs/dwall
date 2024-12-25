@@ -1,58 +1,65 @@
-use std::{fs, path::PathBuf, sync::LazyLock, time::Duration};
+use std::{
+    fs,
+    path::{Path, PathBuf},
+    time::Duration,
+};
+
+use dwall::DWALL_CACHE_DIR;
 
 use crate::{error::DwallSettingsResult, fs::create_dir_if_missing};
 
-pub static CACHE_DIR: LazyLock<PathBuf> = LazyLock::new(|| {
-    let config_dir = dirs::cache_dir().unwrap();
+fn get_url_extension(url: &str) -> Option<&str> {
+    let after_last_slash = url.rfind('/').map_or(url, |pos| &url[pos + 1..]);
 
-    let dir = config_dir.join("dwall");
-    trace!("Initializing cache directory at: {}", dir.display());
-
-    if !dir.exists() {
-        if let Err(e) = fs::create_dir(&dir) {
-            let error_message = format!("Failed to create cache dir: {}", e);
-            error!("{}", error_message);
-            panic!("{}", error_message);
-        } else {
-            info!("Cache directory created successfully at: {}", dir.display());
-        }
+    let clean_path = if let Some(query_pos) = after_last_slash.find('?') {
+        &after_last_slash[..query_pos]
+    } else if let Some(fragment_pos) = after_last_slash.find('#') {
+        &after_last_slash[..fragment_pos]
     } else {
-        debug!("Cache directory already exists at: {}", dir.display());
-    }
+        after_last_slash
+    };
 
-    dir
-});
+    Path::new(clean_path)
+        .extension()
+        .and_then(|ext| ext.to_str())
+}
 
 #[tauri::command]
-pub async fn get_or_save_cached_image(
+pub async fn get_or_save_cached_thumbnails(
     theme_id: &str,
     serial_number: u8,
     url: &str,
 ) -> DwallSettingsResult<PathBuf> {
     trace!(
-        "Received request to cache image for theme: '{}' with serial number: {} and URL: {}",
-        theme_id,
-        serial_number,
-        url
+        theme_id = theme_id,
+        serial_number = serial_number,
+        url = url,
+        "Received request to cache image"
     );
 
-    let theme_dir = CACHE_DIR.join(theme_id);
+    let theme_dir = DWALL_CACHE_DIR.join("thumbnails").join(theme_id);
     create_dir_if_missing(&theme_dir).await?;
 
-    let image_path = theme_dir.join(format!("{}.jpg", serial_number));
+    let extension = get_url_extension(url).unwrap_or("jpg");
+    debug!(extension = extension, "Determined image extension");
+
+    let image_path = theme_dir.join(format!("{}.{}", serial_number, extension));
     trace!(
-        "Checking if image already exists at: {}",
-        image_path.display()
+        image_path = image_path.display().to_string(),
+        "Checking if image already exists"
     );
 
     if image_path.exists() {
-        info!("Image already cached at: {}", image_path.display());
+        info!(
+            image_path = image_path.display().to_string(),
+            "Image already cached"
+        );
         return Ok(image_path);
     }
 
     trace!(
-        "Image not found in cache. Writing to path: {}",
-        image_path.display()
+        image_path = image_path.display().to_string(),
+        "Image not found in cache. Writing to path"
     );
 
     let client = reqwest::ClientBuilder::new()
@@ -60,29 +67,38 @@ pub async fn get_or_save_cached_image(
         .read_timeout(Duration::from_secs(120))
         .build()
         .map_err(|e| {
-            error!("Failed to create HTTP client: {}", e);
+            error!(error = ?e, "Failed to create HTTP client");
             e
-        })
-        .unwrap();
+        })?;
 
-    trace!("Sending HTTP GET request to: {}", url);
+    trace!(url = url, "Sending HTTP GET request");
     let response = client.get(url).send().await.map_err(|e| {
         error!(url = url, error = ?e, "Failed to get online image");
         e
     })?;
 
-    trace!("Received response from: {}. Reading bytes.", url);
+    trace!(url = url, "Received response. Reading bytes");
     let buffer = response.bytes().await.map_err(|e| {
-        error!("Failed to read image bytes from response: {}", e);
+        error!(error = ?e, "Failed to read image bytes from response");
         e
     })?;
 
-    trace!("Writing image to: {}", image_path.display());
+    trace!(
+        image_path = image_path.display().to_string(),
+        "Writing image to path"
+    );
     if let Err(e) = fs::write(&image_path, buffer) {
-        error!("Failed to write image to {}: {}", image_path.display(), e);
+        error!(
+            image_path = image_path.display().to_string(),
+            error = ?e,
+            "Failed to write image"
+        );
         return Err(e.into());
     } else {
-        info!("Image successfully cached at: {}", image_path.display());
+        info!(
+            image_path = image_path.display().to_string(),
+            "Image successfully cached"
+        );
     }
 
     Ok(image_path)

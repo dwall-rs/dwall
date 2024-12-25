@@ -1,6 +1,6 @@
 import { convertFileSrc } from "@tauri-apps/api/core";
 import { children, createSignal, onCleanup } from "solid-js";
-import { getOrSaveCachedImage } from "~/commands";
+import { getOrSaveCachedThumbnails } from "~/commands";
 import { LazySpinner } from "~/lazy";
 
 interface ImageData {
@@ -42,14 +42,16 @@ const Image = (props: ImageProps) => {
   const observerCallback: IntersectionObserverCallback = (entries) => {
     for (const entry of entries) {
       if (entry.isIntersecting && props.ref && !isSrcSet()) {
-        getOrSaveCachedImage(props.themeID, props.serialNumber, props.src).then(
-          (path) => {
-            const src = convertFileSrc(path);
-            props.ref!.src = src;
-            setIsSrcSet(true);
-            observer.unobserve(props.ref!);
-          },
-        );
+        getOrSaveCachedThumbnails(
+          props.themeID,
+          props.serialNumber,
+          props.src,
+        ).then((path) => {
+          const src = convertFileSrc(path);
+          props.ref!.src = src;
+          setIsSrcSet(true);
+          observer.unobserve(props.ref!);
+        });
       }
     }
   };
