@@ -34,7 +34,7 @@ pub fn find_daemon_process() -> DwallSettingsResult<Option<u32>> {
             snap
         }
         Err(e) => {
-            error!("Failed to create process snapshot: {:?}", e);
+            error!(error = ?e, "Failed to create process snapshot");
             return Ok(None);
         }
     };
@@ -58,7 +58,7 @@ pub fn find_daemon_process() -> DwallSettingsResult<Option<u32>> {
                     Err(e) => {
                         debug!(
                             pid = process_entry.th32ProcessID,
-                            error = %e,
+                            error = ?e,
                             "Could not open process"
                         );
                         if Process32Next(snapshot, &mut process_entry).is_err() {
@@ -81,9 +81,9 @@ pub fn find_daemon_process() -> DwallSettingsResult<Option<u32>> {
                     // Compare paths
                     if let Some(full_path_str) = full_path.to_str() {
                         trace!(
-                            "Checking process: PID {}, Path: {}",
-                            process_entry.th32ProcessID,
-                            full_path_str
+                            pid = process_entry.th32ProcessID,
+                            path = full_path_str,
+                            "Checking process",
                         );
 
                         if cfg!(debug_assertions) {
@@ -92,19 +92,17 @@ pub fn find_daemon_process() -> DwallSettingsResult<Option<u32>> {
                             let full_path = Path::new(full_path_str);
                             if full_path.file_name() == Some(OsStr::new("dwall.exe")) {
                                 info!(
-                                    "Found matching daemon process. PID: {}",
-                                    process_entry.th32ProcessID
+                                    pid = process_entry.th32ProcessID,
+                                    "Found matching daemon process",
                                 );
                                 return Ok(Some(process_entry.th32ProcessID));
                             }
-                        } else {
-                            if full_path_str.eq_ignore_ascii_case(daemon_path_str) {
-                                info!(
-                                    "Found matching daemon process. PID: {}",
-                                    process_entry.th32ProcessID
-                                );
-                                return Ok(Some(process_entry.th32ProcessID));
-                            }
+                        } else if full_path_str.eq_ignore_ascii_case(daemon_path_str) {
+                            info!(
+                                pid = process_entry.th32ProcessID,
+                                "Found matching daemon process",
+                            );
+                            return Ok(Some(process_entry.th32ProcessID));
                         }
                     }
                 }
@@ -116,8 +114,8 @@ pub fn find_daemon_process() -> DwallSettingsResult<Option<u32>> {
             }
 
             warn!(
-                "No matching daemon process found for path: {}",
-                daemon_path_str
+                path = daemon_path_str,
+                "No matching daemon process found for path",
             );
         } else {
             error!("Failed to get first process in snapshot");
@@ -135,7 +133,7 @@ pub fn kill_daemon() -> DwallSettingsResult<()> {
             // Open process with termination rights
             let process_handle = unsafe {
                 OpenProcess(PROCESS_TERMINATE, false, pid).map_err(|e| {
-                    error!("Failed to open process for termination: {:?}", e);
+                    error!(error = ?e, "Failed to open process for termination");
                     e
                 })?
             };
@@ -143,12 +141,12 @@ pub fn kill_daemon() -> DwallSettingsResult<()> {
             // Terminate the process
             unsafe {
                 TerminateProcess(process_handle, 0).map_err(|e| {
-                    error!("Failed to terminate daemon process: {:?}", e);
+                    error!(error = ?e, "Failed to terminate daemon process");
                     e
                 })?
             };
 
-            info!("Successfully terminated daemon process with PID: {}", pid);
+            info!(pid = pid, "Successfully terminated daemon process with PID");
             Ok(())
         }
         None => {

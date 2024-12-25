@@ -6,7 +6,14 @@ pub static DWALL_CONFIG_DIR: LazyLock<PathBuf> = LazyLock::new(|| {
     let app_config_dir = config_dir.join("dwall");
 
     if !app_config_dir.exists() {
-        fs::create_dir(&app_config_dir).unwrap();
+        if let Err(e) = fs::create_dir(&app_config_dir) {
+            error!(error = ?e, "Failed to create config directory");
+            panic!("Failed to create config directory: {}", e);
+        } else {
+            info!(path = %app_config_dir.display(), "Config directory created successfully");
+        }
+    } else {
+        debug!(path = %app_config_dir.display(), "Config directory already exists");
     }
 
     app_config_dir
@@ -16,18 +23,17 @@ pub static DWALL_CACHE_DIR: LazyLock<PathBuf> = LazyLock::new(|| {
     let config_dir = dirs::cache_dir().unwrap();
 
     let dir = config_dir.join("dwall");
-    trace!("Initializing cache directory at: {}", dir.display());
+    trace!(path = %dir.display(), "Initializing cache directory");
 
     if !dir.exists() {
         if let Err(e) = fs::create_dir(&dir) {
-            let error_message = format!("Failed to create cache dir: {}", e);
-            error!("{}", error_message);
-            panic!("{}", error_message);
+            error!(error = ?e, "Failed to create cache directory");
+            panic!("Failed to create cache directory: {}", e);
         } else {
             info!("Cache directory created successfully at: {}", dir.display());
         }
     } else {
-        debug!("Cache directory already exists at: {}", dir.display());
+        debug!(path = %dir.display(), "Cache directory already exists");
     }
 
     dir

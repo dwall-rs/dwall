@@ -57,7 +57,7 @@ impl<'a> ThemeDownloader<'a> {
             .connect_timeout(Duration::from_secs(10))
             .build()
             .map_err(|e| {
-                error!("Failed to create HTTP client: {}", e);
+                error!(error = ?e, "Failed to create HTTP client");
                 e
             })
             .unwrap();
@@ -88,7 +88,7 @@ impl<'a> ThemeDownloader<'a> {
         let github_url = Self::build_download_url(theme_id);
         let asset_url = config.github_asset_url(&github_url);
 
-        debug!("Downloading theme from URL: {}", asset_url);
+        debug!(theme_id = theme_id, url = %asset_url, "Downloading theme from URL");
 
         // Prepare target directories
         let target_dir = config.themes_directory().join(theme_id);
@@ -103,14 +103,14 @@ impl<'a> ThemeDownloader<'a> {
             error!(
                 theme_id = theme_id,
                 url = %asset_url,
-                error = %err,
+                error = ?err,
                 "Failed to establish connection for theme download"
             );
             err
         })?;
 
         if let Err(e) = response.error_for_status_ref() {
-            error!("Got a error response: {}", e);
+            error!(theme_id = theme_id, error = ?e, "Got an error response");
             return Err(e.into());
         }
 
@@ -122,7 +122,7 @@ impl<'a> ThemeDownloader<'a> {
             error!(
                 theme_id = theme_id,
                 file_path = %theme_zip_file.display(),
-                error = %e,
+                error = ?e,
                 "Failed to create theme zip file"
             );
             e
@@ -134,7 +134,7 @@ impl<'a> ThemeDownloader<'a> {
             let chunk = chunk_result.map_err(|e| {
                 error!(
                     theme_id = theme_id,
-                    error = %e,
+                    error = ?e,
                     "Failed to download theme chunk"
                 );
                 e
@@ -145,7 +145,7 @@ impl<'a> ThemeDownloader<'a> {
                     theme_id = theme_id,
                     downloaded_bytes,
                     total_bytes = total_size,
-                    error = %e,
+                    error = ?e,
                     "Failed to write theme chunk to file"
                 );
                 e
@@ -164,7 +164,7 @@ impl<'a> ThemeDownloader<'a> {
                     theme_id = theme_id,
                     downloaded_bytes,
                     total_bytes = total_size,
-                    error = %e,
+                    error = ?e,
                     "Failed to emit download progress"
                 );
                 e
@@ -187,7 +187,7 @@ impl<'a> ThemeDownloader<'a> {
             fs::remove_dir_all(target_dir).await.map_err(|e| {
                 error!(
                     dir_path = %target_dir.display(),
-                    error = %e,
+                    error = ?e,
                     "Failed to remove existing theme directory"
                 );
                 e
@@ -199,13 +199,13 @@ impl<'a> ThemeDownloader<'a> {
         fs::create_dir_all(target_dir).await.map_err(|e| {
             error!(
                 dir_path = %target_dir.display(),
-                error = %e,
+                error = ?e,
                 "Failed to create theme directory"
             );
             e
         })?;
 
-        trace!("Created new theme directory");
+        trace!(dir_path = %target_dir.display(), "Created new theme directory");
         Ok(())
     }
 
@@ -223,7 +223,7 @@ impl<'a> ThemeDownloader<'a> {
             error!(
                 theme_id = theme_id,
                 zip_path = %zip_path.display(),
-                error = %e,
+                error = ?e,
                 "Failed to read theme archive"
             );
             e
@@ -234,7 +234,7 @@ impl<'a> ThemeDownloader<'a> {
             error!(
                 theme_id = theme_id,
                 target_dir = %target_dir.display(),
-                error = %e,
+                error = ?e,
                 "Failed to extract theme archive"
             );
             e
@@ -251,7 +251,7 @@ impl<'a> ThemeDownloader<'a> {
             error!(
                 theme_id = theme_id,
                 zip_path = %zip_path.display(),
-                error = %e,
+                error = ?e,
                 "Failed to delete theme archive"
             );
             e

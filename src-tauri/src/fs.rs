@@ -10,17 +10,17 @@ async fn copy_dir(src: &Path, dest: &Path) -> std::io::Result<()> {
     create_dir_if_missing(&dest).await?;
 
     let mut dir = fs::read_dir(src).await.map_err(|e| {
-        error!(path = %src.display(), error = %e, "Failed to read source directory");
+        error!(path = %src.display(), error = ?e, "Failed to read source directory");
         e
     })?;
 
     while let Some(entry) = dir.next_entry().await.map_err(|e| {
-        error!(path = %src.display(), error = %e, "Failed to get next entry in source directory");
+        error!(path = %src.display(), error = ?e, "Failed to get next entry in source directory");
         e
     })? {
         let src_path = entry.path();
         let file_type = entry.file_type().await.map_err(|e| {
-            error!(path = %src_path.display(), error = %e, "Failed to get file type of entry");
+            error!(path = %src_path.display(), error = ?e, "Failed to get file type of entry");
             e
         })?;
         let dest_path = dest.join(src_path.strip_prefix(src).unwrap());
@@ -31,7 +31,7 @@ async fn copy_dir(src: &Path, dest: &Path) -> std::io::Result<()> {
         } else {
             info!(src = %src_path.display(), dest = %dest_path.display(), "Copying file");
             fs::copy(&src_path, &dest_path).await.map_err(|e| {
-                error!(src = %src_path.display(), dest = %dest_path.display(), error = %e, "Failed to copy file");
+                error!(src = %src_path.display(), dest = %dest_path.display(), error = ?e, "Failed to copy file");
                 e
             })?;
         }
@@ -46,6 +46,7 @@ async fn copy_dir(src: &Path, dest: &Path) -> std::io::Result<()> {
 enum ThemeDirectoryMoveError {
     DestinationExists,
     CopyFailed(std::io::Error),
+    RemoveFailed(std::io::Error),
 }
 
 impl From<ThemeDirectoryMoveError> for DwallSettingsResult<()> {
@@ -55,6 +56,7 @@ impl From<ThemeDirectoryMoveError> for DwallSettingsResult<()> {
                 Err(std::io::Error::from(std::io::ErrorKind::AlreadyExists).into())
             }
             ThemeDirectoryMoveError::CopyFailed(io_err) => Err(io_err.into()),
+            ThemeDirectoryMoveError::RemoveFailed(io_err) => Err(io_err.into()),
         }
     }
 }
@@ -77,7 +79,7 @@ pub async fn move_themes_directory(
     match prepare_new_config(&config, &dir_path).await {
         Ok(_) => {}
         Err(e) => {
-            error!("Failed to prepare new configuration: {:?}", e);
+            error!(error = ?e, "Failed to prepare new configuration");
             return Err(e);
         }
     };
@@ -86,9 +88,9 @@ pub async fn move_themes_directory(
     match perform_themes_directory_move(&config, &dir_path).await {
         Ok(_) => {
             info!(
-                "Themes directory successfully relocated from {} to {}",
-                config.themes_directory().display(),
-                dir_path.display()
+                from = %config.themes_directory().display(),
+                to = %dir_path.display(),
+                "Themes directory successfully relocated",
             );
             Ok(())
         }
@@ -96,11 +98,7 @@ pub async fn move_themes_directory(
             // Rollback configuration if move fails
             warn!("Directory move failed. Attempting to rollback configuration.");
             if let Err(rollback_err) = write_config_file(&config).await {
-                error!(
-                    "Critical: Failed to rollback configuration after move failure. \
-                    Original error: {:?}, Rollback error: {:?}",
-                    e, rollback_err
-                );
+                error!(original_error = ?e, rollback_error = ?rollback_err, "Critical: Failed to rollback configuration after move failure");
             }
             e.into()
         }
@@ -113,10 +111,7 @@ fn validate_directory_move(config: &Config<'_>, destination: &Path) -> DwallSett
 
     // Check if destination directory already exists
     if destination.exists() {
-        error!(
-            "Move operation aborted: Destination directory already exists at {}",
-            destination.display()
-        );
+        error!(destination = %destination.display(), "Move operation aborted: Destination directory already exists");
         return ThemeDirectoryMoveError::DestinationExists.into();
     }
 
@@ -124,12 +119,12 @@ fn validate_directory_move(config: &Config<'_>, destination: &Path) -> DwallSett
     let source = config.themes_directory();
 
     if !source.exists() {
-        warn!("Source directory is not exists: {}", source.display());
+        warn!(source = %source.display(), "Source directory does not exist");
         return Ok(());
     }
 
     if !source.is_dir() {
-        error!("Source is not a directory: {}", source.display());
+        error!(source = %source.display(), "Source is not a directory");
         return ThemeDirectoryMoveError::CopyFailed(std::io::Error::new(
             std::io::ErrorKind::NotADirectory,
             "Source is not a directory",
@@ -148,7 +143,7 @@ async fn prepare_new_config<'a>(
     debug!("Preparing new configuration with updated themes directory");
 
     let new_config = config.with_themes_directory(new_path);
-    debug!("new config: {:?}", new_config);
+    debug!(new_config = ?new_config, "New configuration prepared");
 
     write_config_file(&new_config).await?;
 
@@ -162,14 +157,10 @@ async fn perform_themes_directory_move(
 ) -> Result<(), ThemeDirectoryMoveError> {
     let source = config.themes_directory();
 
-    debug!(
-        "Initiating themes directory move from {} to {}",
-        source.display(),
-        destination.display()
-    );
+    debug!(source = %source.display(), destination = %destination.display(), "Initiating themes directory move");
 
     if !source.exists() {
-        info!("Old themes directory does not exist, skipping copy");
+        info!(source = %source.display(), "Old themes directory does not exist, skipping copy");
         return Ok(());
     }
 
@@ -177,42 +168,32 @@ async fn perform_themes_directory_move(
         .await
         .map_err(ThemeDirectoryMoveError::CopyFailed)?;
 
-    if let Err(e) = fs::remove_dir_all(&source).await {
-        error!(
-            "Failed to remove old themes directory {}: {}",
-            source.display(),
-            e
-        );
-    } else {
-        info!(
-            "Successfully removed old themes directory: {}",
-            source.display()
-        );
-    }
+    fs::remove_dir_all(&source).await.map_err(|e| {
+        error!(source = %source.display(), error = ?e, "Failed to remove old themes directory");
+        ThemeDirectoryMoveError::RemoveFailed(e)
+    })?;
 
+    info!(source = %source.display(), "Successfully removed old themes directory");
     Ok(())
 }
 
 pub async fn create_dir_if_missing<P: AsRef<Path>>(path: P) -> std::io::Result<()> {
     let path = path.as_ref();
-    trace!("Checking if directory exists: {}", path.display());
+    trace!(path = %path.display(), "Checking if directory exists");
 
     if !path.exists() {
-        trace!(
-            "Directory does not exist. Attempting to create: {}",
-            path.display()
-        );
+        trace!(path = %path.display(), "Directory does not exist. Attempting to create");
         fs::create_dir_all(path)
             .await
             .map(|_| {
-                info!("Successfully created directory: {}", path.display());
+                info!(path = %path.display(), "Successfully created directory");
             })
             .map_err(|e| {
-                error!("Failed to create directory {}: {}", path.display(), e);
+                error!(path = %path.display(), error = ?e, "Failed to create directory");
                 e
             })
     } else {
-        debug!("Directory already exists: {}", path.display());
+        debug!(path = %path.display(), "Directory already exists");
         Ok(())
     }
 }

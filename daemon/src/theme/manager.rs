@@ -23,11 +23,10 @@ impl WallpaperManager {
         unsafe {
             desktop_wallpaper.GetMonitorDevicePathCount().map_err(|e| {
                 error!(
-                    error = %e,
+                    error = ?e,
                     "Critical failure: Unable to retrieve monitor device path count.
                      This may indicate a system-level graphics configuration issue."
                 );
-                trace!("Monitor count retrieval failed with error: {}", e);
                 e.into()
             })
         }
@@ -48,7 +47,7 @@ impl WallpaperManager {
             Ok(path) => path,
             Err(e) => {
                 error!(
-                    error = %e,
+                    error = ?e,
                     monitor_path = %unsafe{monitor_path.display()},
                     "Failed to retrieve current wallpaper for monitor"
                 );
@@ -87,16 +86,11 @@ impl WallpaperManager {
                 .map_err(|e| {
                     error!(
                         monitor_index = monitor_index,
-                        error = %e,
+                        error = ?e,
                         wallpaper_path = %wallpaper_path,
                         "Comprehensive wallpaper setting failure:
                      Unable to apply wallpaper to specified monitor. 
                      Check file permissions, path validity, and system graphics settings."
-                    );
-                    trace!(
-                        "Detailed wallpaper setting error for monitor {}: {}",
-                        monitor_index,
-                        e
                     );
                     e.into()
                 })
@@ -126,12 +120,11 @@ impl WallpaperManager {
         let desktop_wallpaper: IDesktopWallpaper = unsafe {
             CoCreateInstance(&DesktopWallpaper as *const _, None, CLSCTX_ALL).map_err(|e| {
                 error!(
-                    error = %e,
+                    error = ?e,
                     "Critical initialization failure:
                      Unable to create desktop wallpaper COM instance. 
                      This may indicate system COM registration issues."
                 );
-                trace!("Desktop wallpaper instance creation error: {}", e);
                 e
             })?
         };
@@ -147,7 +140,7 @@ impl WallpaperManager {
             }
             Err(e) => {
                 error!(
-                    error = %e,
+                    error = ?e,
                     "Wallpaper configuration aborted due to monitor count retrieval failure"
                 );
                 return Err(e);
@@ -175,7 +168,7 @@ impl WallpaperManager {
                 Err(e) => {
                     error!(
                         monitor_index = i,
-                        error = %e,
+                        error = ?e,
                         "Failed to retrieve monitor device path. Skipping this monitor."
                     );
                     continue;
@@ -203,7 +196,7 @@ impl WallpaperManager {
                 Err(e) => {
                     error!(
                         monitor_index = i,
-                        error = %e,
+                        error = ?e,
                         "Error checking existing wallpaper. Attempting to set new wallpaper."
                     );
                 }
@@ -215,7 +208,7 @@ impl WallpaperManager {
             {
                 warn!(
                     monitor_index = i,
-                    error = %e,
+                    error = ?e,
                     "Failed to set wallpaper for a specific monitor. Continuing with other monitors."
                 );
                 // Continue to next monitor instead of completely failing
@@ -234,11 +227,11 @@ impl WallpaperManager {
 
     fn get_current_lock_screen_image() -> DwallResult<Uri> {
         let result = LockScreen::OriginalImageFile().map_err(|e| {
-            error!("Failed to retrieve lock screen image: {}", e);
+            error!(error = ?e, "Failed to retrieve lock screen image");
             e
         })?;
 
-        debug!("Current lock screen image path: {}", result.DisplayUri()?);
+        debug!(path = %result.DisplayUri()?, "Current lock screen image");
         Ok(result)
     }
 
@@ -246,64 +239,64 @@ impl WallpaperManager {
         let image_path_hstring = HSTRING::from(image_path);
         let uri = Uri::CreateUri(&image_path_hstring).map_err(|e| {
             error!(
-                "Failed to create URI for lock screen image: {}, Error: {}",
-                image_path.display(),
-                e
+                path = %image_path.display(),
+                error = ?e,
+                "Failed to create URI for lock screen image",
             );
             e
         })?;
-        debug!("Target lock screen image path: {}", uri.DisplayUri()?);
+        debug!(path = %uri.DisplayUri()?, "Target lock screen image");
 
         let current_lock_screen_image_uri = Self::get_current_lock_screen_image()?;
 
         if uri.Equals(&current_lock_screen_image_uri)? {
-            info!("Lock screen image already set: {}", image_path.display());
+            info!(path = %image_path.display(), "Lock screen image already set");
             return Ok(());
         }
 
         let file = StorageFile::GetFileFromPathAsync(&image_path_hstring).map_err(|e| {
             error!(
-                "Failed to get storage file for lock screen: {}, Error: {}",
-                image_path.display(),
-                e
+                path = %image_path.display(),
+                error = ?e,
+                "Failed to get storage file for lock screen",
             );
             e
         })?;
         let file = file.get().map_err(|e| {
             error!(
-                "Failed to retrieve async storage file: {}, Error: {}",
-                image_path.display(),
-                e
+                path = %image_path.display(),
+                error = ?e,
+                "Failed to retrieve async storage file",
             );
             e
         })?;
 
         let i_storage_file: IStorageFile = file.cast().map_err(|e| {
             error!(
-                "Failed to cast storage file: {}, Error: {}",
-                image_path.display(),
-                e
+                path = %image_path.display(),
+                error = ?e,
+                "Failed to cast storage file",
             );
             e
         })?;
         let result = LockScreen::SetImageFileAsync(&i_storage_file).map_err(|e| {
             error!(
-                "Failed to set lock screen image async: {}, Error: {}",
-                image_path.display(),
-                e
+                path = %image_path.display(),
+                error = ?e,
+                "Failed to set lock screen image async",
             );
             e
         })?;
         result.get().map_err(|e| {
             error!(
-                "Failed to complete lock screen image setting: {}, Error: {}",
-                image_path.display(),
-                e
+                path = %image_path.display(),
+                error = ?e,
+                "Failed to complete lock screen image setting",
             );
             e
         })?;
 
-        info!("Lock screen image updated: {}", image_path.display());
+        info!(path = %image_path.display(), "Lock screen image updated");
         Ok(())
     }
 

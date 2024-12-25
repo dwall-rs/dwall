@@ -38,20 +38,20 @@ pub static DAEMON_EXE_PATH: OnceCell<PathBuf> = OnceCell::const_new();
 
 #[tauri::command]
 fn show_window(app: AppHandle, label: &str) -> DwallSettingsResult<()> {
-    debug!("Showing window: {}", label);
+    debug!(label = label, "Showing window");
 
     if let Some(window) = app.get_webview_window(label) {
-        trace!("Window found for label: {}", label);
+        trace!(label = label, "Window found for label");
         window.show().map_err(|e| {
-            error!(error = %e, "Failed to show window");
+            error!(error = ?e, "Failed to show window");
             e
         })?;
         window.set_focus().map_err(|e| {
-            error!(error = %e, "Failed to set window focus");
+            error!(error = ?e, "Failed to set window focus");
             e
         })?;
     } else {
-        warn!("No window found with label: {}", label);
+        warn!(label = label, "No window found with label");
     }
 
     Ok(())
@@ -59,14 +59,14 @@ fn show_window(app: AppHandle, label: &str) -> DwallSettingsResult<()> {
 
 #[tauri::command]
 async fn check_theme_exists(themes_direcotry: &Path, theme_id: &str) -> DwallSettingsResult<()> {
-    trace!("Checking theme existence for theme_id: {}", theme_id);
+    trace!(id = theme_id, "Checking theme existence for theme");
     match ThemeValidator::validate_theme(themes_direcotry, theme_id).await {
         Ok(_) => {
-            info!("Theme '{}' exists and is valid", theme_id);
+            info!(id = theme_id, "Theme exists and is valid");
             Ok(())
         }
         Err(e) => {
-            error!(theme_id = %theme_id, error = %e, "Theme validation failed");
+            error!(theme_id = %theme_id, error = ?e, "Theme validation failed");
             Err(e.into())
         }
     }
@@ -89,7 +89,7 @@ async fn get_applied_theme_id() -> DwallSettingsResult<Option<String>> {
             Ok(theme_id.map(|s| s.to_owned()))
         }
         Err(e) => {
-            error!(error = %e, "Failed to read config file while getting theme ID");
+            error!(error = ?e, "Failed to read config file while getting theme ID");
             Err(e.into())
         }
     }
@@ -104,7 +104,7 @@ async fn read_config_file<'a>() -> DwallSettingsResult<Config<'a>> {
             Ok(config)
         }
         Err(e) => {
-            error!(error = %e, "Failed to read configuration file");
+            error!(error = ?e, "Failed to read configuration file");
             Err(e.into())
         }
     }
@@ -119,7 +119,7 @@ async fn write_config_file(config: Config<'_>) -> DwallSettingsResult<()> {
             Ok(())
         }
         Err(e) => {
-            error!(config = ?config, error = %e, "Failed to write configuration file");
+            error!(config = ?config, error = ?e, "Failed to write configuration file");
             Err(e.into())
         }
     }
@@ -131,7 +131,7 @@ async fn apply_theme(config: Config<'_>) -> DwallSettingsResult<()> {
 
     match kill_daemon() {
         Ok(_) => debug!("Successfully killed existing daemon process"),
-        Err(e) => warn!(error = %e, "Failed to kill existing daemon process"),
+        Err(e) => warn!(error = ?e, "Failed to kill existing daemon process"),
     }
 
     dwall_write_config(&config).await?;
@@ -147,7 +147,7 @@ async fn apply_theme(config: Config<'_>) -> DwallSettingsResult<()> {
             Ok(())
         }
         Err(e) => {
-            error!(error = %e, "Failed to spawn theme daemon");
+            error!(error = ?e, "Failed to spawn theme daemon");
             Err(e)
         }
     }
@@ -156,7 +156,7 @@ async fn apply_theme(config: Config<'_>) -> DwallSettingsResult<()> {
 #[tauri::command]
 async fn open_dir(dir_path: Cow<'_, Path>) -> DwallSettingsResult<()> {
     open::that(dir_path.as_os_str()).map_err(|e| {
-        error!("Failed to open app config directory: {}", e);
+        error!(error = ?e, "Failed to open app config directory");
         e.into()
     })
 }
@@ -164,7 +164,7 @@ async fn open_dir(dir_path: Cow<'_, Path>) -> DwallSettingsResult<()> {
 #[tauri::command]
 async fn open_config_dir() -> DwallSettingsResult<()> {
     open::that(DWALL_CONFIG_DIR.as_os_str()).map_err(|e| {
-        error!("Failed to open app config directory: {}", e);
+        error!(error = ?e, "Failed to open app config directory");
         e.into()
     })
 }
@@ -191,12 +191,12 @@ pub fn run() -> DwallSettingsResult<()> {
             if let Some(w) = app.get_webview_window("main") {
                 info!("Application instance already running, focusing existing window");
                 if let Err(e) = w.set_focus() {
-                    error!(error = %e, "Failed to set focus on existing window");
+                    error!(error = ?e, "Failed to set focus on existing window");
                 }
             } else {
                 match create_main_window(app) {
                     Ok(_) => debug!("New main window created"),
-                    Err(e) => error!(error = %e, "Failed to create new main window"),
+                    Err(e) => error!(error = ?e, "Failed to create new main window"),
                 }
             }
         }))
@@ -228,7 +228,7 @@ pub fn run() -> DwallSettingsResult<()> {
                 trace!("Application exit event received");
                 match kill_daemon() {
                     Ok(_) => debug!("Daemon process killed on exit"),
-                    Err(e) => error!(error = %e, "Failed to kill daemon process on exit"),
+                    Err(e) => error!(error = ?e, "Failed to kill daemon process on exit"),
                 }
             }
         })

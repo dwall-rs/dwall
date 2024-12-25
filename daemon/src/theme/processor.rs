@@ -59,7 +59,7 @@ impl<'a> ThemeProcessor<'a> {
                     }
                     Err(e) => {
                         error!(
-                            error = %e,
+                            error = ?e,
                             theme_id = %self.theme_id,
                             "Failed to process theme cycle"
                         );
@@ -68,7 +68,7 @@ impl<'a> ThemeProcessor<'a> {
                 },
                 Err(position_error) => {
                     error!(
-                        error = %position_error,
+                        error = ?position_error,
                         "Failed to retrieve current geographic position"
                     );
                     break;
@@ -115,7 +115,7 @@ async fn load_solar_angles(theme_directory: &Path) -> DwallResult<Vec<SolarAngle
         Err(read_error) => {
             error!(
                 solar_config_path = %solar_config_path.display(),
-                error = %read_error,
+                error = ?read_error,
                 "Failed to read solar configuration file"
             );
             return Err(read_error.into());
@@ -128,7 +128,7 @@ async fn load_solar_angles(theme_directory: &Path) -> DwallResult<Vec<SolarAngle
         Err(parse_error) => {
             error!(
                 solar_config_path = %solar_config_path.display(),
-                error = %parse_error,
+                error = ?parse_error,
                 "Failed to parse solar configuration JSON"
             );
             return Err(parse_error.into());
