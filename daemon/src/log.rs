@@ -51,10 +51,10 @@ pub fn setup_logging(pkg_names: &[String]) {
     let writer = if cfg!(debug_assertions) {
         BoxMakeWriter::new(Mutex::new(std::io::stderr()))
     } else {
-        use crate::lazy::APP_CONFIG_DIR;
+        use crate::lazy::DWALL_CONFIG_DIR;
         use std::fs::File;
 
-        let log_file = File::create(APP_CONFIG_DIR.join(format!("{}.log", pkg_names[0])))
+        let log_file = File::create(DWALL_CONFIG_DIR.join(format!("{}.log", pkg_names[0])))
             .expect("Failed to create the log file");
         BoxMakeWriter::new(Mutex::new(log_file))
     };

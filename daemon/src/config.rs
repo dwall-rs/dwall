@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 use serde_valid::Validate;
 use thiserror::Error;
 
-use crate::{error::DwallResult, lazy::APP_CONFIG_DIR};
+use crate::{error::DwallResult, lazy::DWALL_CONFIG_DIR};
 
 #[derive(Error, Debug)]
 pub enum ConfigError {
@@ -132,7 +132,7 @@ fn default_interval() -> u16 {
 }
 
 fn default_themes_directory<'a>() -> Cow<'a, Path> {
-    APP_CONFIG_DIR.join("themes").into()
+    DWALL_CONFIG_DIR.join("themes").into()
 }
 
 impl<'a> Config<'a> {
@@ -297,11 +297,11 @@ impl<'a> ConfigManager {
 }
 
 pub async fn read_config_file<'a>() -> DwallResult<Config<'a>> {
-    let config_manager = ConfigManager::new(&APP_CONFIG_DIR);
+    let config_manager = ConfigManager::new(&DWALL_CONFIG_DIR);
     config_manager.read_config().await
 }
 
 pub async fn write_config_file(config: &Config<'_>) -> DwallResult<()> {
-    let config_manager = ConfigManager::new(&APP_CONFIG_DIR);
+    let config_manager = ConfigManager::new(&DWALL_CONFIG_DIR);
     config_manager.write_config(config).await
 }
