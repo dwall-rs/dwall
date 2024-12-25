@@ -5,6 +5,7 @@ use std::{collections::HashMap, sync::RwLock};
 use serde::Serialize;
 
 use self::locales::en_us::EnglishUSTranslations;
+use self::locales::ja_jp::JapaneseTranslations;
 use self::locales::zh_cn::ChineseSimplifiedTranslations;
 use self::locales::zh_hk::ChineseTraditionalHKTranslations;
 use self::locales::zh_tw::ChineseTraditionalTWTranslations;
@@ -30,6 +31,7 @@ static TRANSLATIONS: LazyLock<RwLock<HashMap<&'static str, LocaleTranslations>>>
                 "zh-TW",
                 ChineseTraditionalTWTranslations::get_translations(),
             );
+            m.insert("ja-JP", JapaneseTranslations::get_translations());
 
             m
         })
@@ -43,6 +45,7 @@ pub enum Language {
     ChineseSimplified,
     ChineseTraditionalTW,
     ChineseTraditionalHK,
+    Japanese,
 }
 
 impl FromStr for Language {
@@ -54,6 +57,7 @@ impl FromStr for Language {
             "zh-CN" => Ok(Language::ChineseSimplified),
             "zh-HK" => Ok(Language::ChineseTraditionalHK),
             "zh-TW" => Ok(Language::ChineseTraditionalTW),
+            "ja-JP" => Ok(Language::Japanese),
             _ => Err(format!("Unsupported language identifier: {}", s)),
         }
     }
@@ -67,6 +71,7 @@ impl Language {
             Language::ChineseSimplified => "zh-CN",
             Language::ChineseTraditionalHK => "zh-HK",
             Language::ChineseTraditionalTW => "zh-TW",
+            Language::Japanese => "ja-JP",
         }
     }
 
@@ -77,6 +82,7 @@ impl Language {
             Language::ChineseSimplified => "简体中文",
             Language::ChineseTraditionalHK => "繁體中文（香港）",
             Language::ChineseTraditionalTW => "繁體中文（台灣）",
+            Language::Japanese => "日本語",
         }
     }
 
