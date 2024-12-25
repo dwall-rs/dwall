@@ -3,12 +3,12 @@ use std::path::{Path, PathBuf};
 
 use dwall::config::write_config_file as dwall_write_config;
 use dwall::{config::Config, setup_logging, ThemeValidator};
-use dwall::{ColorMode, APP_CONFIG_DIR};
+use dwall::{ColorMode, DWALL_CONFIG_DIR};
 use tauri::{AppHandle, Manager, RunEvent, WebviewWindow};
 use tokio::sync::OnceCell;
 
 use crate::auto_start::{check_auto_start, disable_auto_start, enable_auto_start};
-use crate::cache::get_or_save_cached_image;
+use crate::cache::get_or_save_cached_thumbnails;
 use crate::download::download_theme_and_extract;
 use crate::error::DwallSettingsResult;
 use crate::fs::move_themes_directory;
@@ -163,7 +163,7 @@ async fn open_dir(dir_path: Cow<'_, Path>) -> DwallSettingsResult<()> {
 
 #[tauri::command]
 async fn open_config_dir() -> DwallSettingsResult<()> {
-    open::that(APP_CONFIG_DIR.as_os_str()).map_err(|e| {
+    open::that(DWALL_CONFIG_DIR.as_os_str()).map_err(|e| {
         error!("Failed to open app config directory: {}", e);
         e.into()
     })
@@ -218,7 +218,7 @@ pub fn run() -> DwallSettingsResult<()> {
             set_titlebar_color_mode,
             move_themes_directory,
             kill_daemon,
-            get_or_save_cached_image,
+            get_or_save_cached_thumbnails,
             get_translations
         ]);
 
