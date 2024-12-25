@@ -38,7 +38,7 @@ export const ThemeMenu = (props: ThemeMenuProps) => {
         {item.id === props.appliedThemeID && (
           <div class="menu-item-applied-badge">
             <LazyBadge
-              shape="square"
+              shape="rounded"
               icon={<BsCheckLg />}
               color="success"
               size="small"
