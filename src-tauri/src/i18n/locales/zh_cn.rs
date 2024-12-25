@@ -66,14 +66,14 @@ impl TranslationMap for ChineseSimplifiedTranslations {
         translations.insert(
             MESSAGE_DISABLE_STARTUP_FAILED,
             TranslationValue::Template {
-                template: "关闭开机自启失败：\n${error}",
+                template: "关闭开机自启失败：\n{{error}}",
                 params: &["error"],
             },
         );
         translations.insert(
             MESSAGE_DOWNLOAD_FAILED,
             TranslationValue::Template {
-                template: "${error}\n\n具体错误请查看日志文件：dwall_settings_lib.log",
+                template: "{{error}}\n\n具体错误请查看日志文件：dwall_settings_lib.log",
                 params: &["error"],
             },
         );
@@ -102,7 +102,7 @@ impl TranslationMap for ChineseSimplifiedTranslations {
         translations.insert(
             MESSAGE_STARTUP_FAILED,
             TranslationValue::Template {
-                template: "设置开机自启失败：\n${error}",
+                template: "设置开机自启失败：\n{{error}}",
                 params: &["error"],
             },
         );

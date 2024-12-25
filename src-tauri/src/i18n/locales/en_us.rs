@@ -78,7 +78,7 @@ impl TranslationMap for EnglishUSTranslations {
         translations.insert(
             MESSAGE_DISABLE_STARTUP_FAILED,
             TranslationValue::Template {
-                template: "Failed to disable startup: \n${error}",
+                template: "Failed to disable startup: \n{{error}}",
                 params: &["error"],
             },
         );
@@ -86,7 +86,7 @@ impl TranslationMap for EnglishUSTranslations {
             MESSAGE_DOWNLOAD_FAILED,
             TranslationValue::Template {
                 template:
-                    "${error}\n\nFor specific errors, please check the log: dwall_settings_lib.log",
+                    "{{error}}\n\nFor specific errors, please check the log: dwall_settings_lib.log",
                 params: &["error"],
             },
         );
@@ -115,7 +115,7 @@ impl TranslationMap for EnglishUSTranslations {
         translations.insert(
             MESSAGE_STARTUP_FAILED,
             TranslationValue::Template {
-                template: "Startup failed: \n${error}",
+                template: "Startup failed: \n{{error}}",
                 params: &["error"],
             },
         );
