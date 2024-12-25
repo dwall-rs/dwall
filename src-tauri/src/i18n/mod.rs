@@ -7,6 +7,7 @@ use serde::Serialize;
 use self::locales::en_us::EnglishUSTranslations;
 use self::locales::zh_cn::ChineseSimplifiedTranslations;
 use self::locales::zh_hk::ChineseTraditionalHKTranslations;
+use self::locales::zh_tw::ChineseTraditionalTWTranslations;
 
 mod keys;
 mod locales;
@@ -25,6 +26,10 @@ static TRANSLATIONS: LazyLock<RwLock<HashMap<&'static str, LocaleTranslations>>>
                 "zh-HK",
                 ChineseTraditionalHKTranslations::get_translations(),
             );
+            m.insert(
+                "zh-TW",
+                ChineseTraditionalTWTranslations::get_translations(),
+            );
 
             m
         })
@@ -36,7 +41,7 @@ pub enum Language {
     EnglishUS,
     // EnglishGB,
     ChineseSimplified,
-    // ChineseTraditionalTW,
+    ChineseTraditionalTW,
     ChineseTraditionalHK,
 }
 
@@ -48,6 +53,7 @@ impl FromStr for Language {
             "en-US" => Ok(Language::EnglishUS),
             "zh-CN" => Ok(Language::ChineseSimplified),
             "zh-HK" => Ok(Language::ChineseTraditionalHK),
+            "zh-TW" => Ok(Language::ChineseTraditionalTW),
             _ => Err(format!("Unsupported language identifier: {}", s)),
         }
     }
@@ -59,8 +65,8 @@ impl Language {
             Language::EnglishUS => "en-US",
             // LanguageVariant::EnglishGB => "en-GB",
             Language::ChineseSimplified => "zh-CN",
-            // LanguageVariant::ChineseTraditionalTW => "zh-TW",
             Language::ChineseTraditionalHK => "zh-HK",
+            Language::ChineseTraditionalTW => "zh-TW",
         }
     }
 
@@ -69,8 +75,8 @@ impl Language {
             Language::EnglishUS => "American English",
             // LanguageVariant::EnglishGB => "British English",
             Language::ChineseSimplified => "简体中文",
-            // LanguageVariant::ChineseTraditionalTW => "繁體中文（台灣）",
             Language::ChineseTraditionalHK => "繁體中文（香港）",
+            Language::ChineseTraditionalTW => "繁體中文（台灣）",
         }
     }
 
