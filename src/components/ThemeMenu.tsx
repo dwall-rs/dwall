@@ -1,6 +1,7 @@
 import { children } from "solid-js";
-import { LazyFlex, LazyTooltip } from "~/lazy";
+import { LazyBadge, LazyFlex, LazyTooltip } from "~/lazy";
 import Image from "./Image";
+import { BsCheckLg } from "solid-icons/bs";
 
 interface ThemeMenuProps {
   themes: ThemeItem[];
@@ -18,19 +19,11 @@ export const ThemeMenu = (props: ThemeMenuProps) => {
         onClick={() => props.onMenuItemClick(idx, heights[item.id])}
         classList={{
           "menu-item": true,
-          active: idx === props.index,
-          applied: item.id === props.appliedThemeID,
+          "menu-item-active": idx === props.index,
+          "menu-item-applied": item.id === props.appliedThemeID,
         }}
       >
-        <LazyTooltip
-          positioning="after"
-          content={
-            props.appliedThemeID === item.id
-              ? `${item.id}（正在使用）`
-              : item.id
-          }
-          relationship="label"
-        >
+        <LazyTooltip positioning="after" content={item.id} relationship="label">
           <Image
             src={item.thumbnail[0]}
             width={64}
@@ -42,6 +35,16 @@ export const ThemeMenu = (props: ThemeMenuProps) => {
             }}
           />
         </LazyTooltip>
+        {item.id === props.appliedThemeID && (
+          <div class="menu-item-applied-badge">
+            <LazyBadge
+              shape="square"
+              icon={<BsCheckLg />}
+              color="success"
+              size="small"
+            />
+          </div>
+        )}
       </div>
     )),
   );

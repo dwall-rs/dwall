@@ -1,6 +1,6 @@
 {
   "name": "dwall-settings",
-  "version": "0.1.8",
+  "version": "0.1.9",
   "description": "",
   "type": "module",
   "scripts": {
@@ -20,7 +20,7 @@
     "@tauri-apps/plugin-process": "~2.0.0",
     "@tauri-apps/plugin-updater": "^2.3.0",
     "alley-components": "^0.3.11",
-    "fluent-solid": "^0.1.12",
+    "fluent-solid": "^0.1.15",
     "solid-icons": "^1.1.0",
     "solid-js": "^1.9.3"
   },

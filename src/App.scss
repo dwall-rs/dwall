@@ -1,5 +1,5 @@
 .menu-item {
-  --menu-item-color-shadow: #00000085;
+  --menu-item-color-shadow: rgba(0, 0, 0, 0.3);
 
   padding: 4px;
   border-radius: 5px;
@@ -7,53 +7,59 @@
   width: 64px;
   display: flex;
   align-items: center;
+  position: relative;
+  transition: all 0.2s ease-in-out;
+  background: var(--colorNeutralBackground6);
 
   &:hover {
-    box-shadow: 0 0 5px 1px var(--menu-item-color-shadow);
-  }
-
-  &.active {
-    box-shadow: 0 0 5px 1px var(--menu-item-color-shadow);
-  }
-
-  &.applied {
-    position: relative;
-
-    &::before {
-      content: "";
-      color: #fff;
-      font-weight: bold;
-      font-size: 0.8rem;
-      position: absolute;
-      top: 4px;
-      left: 4px;
-      width: 24px;
-      height: 24px;
-      background-color: var(--colorStatusSuccessBackground3);
-      clip-path: polygon(0 0, 100% 0, 0 100%);
-      z-index: 1;
-    }
+    background: var(--colorNeutralCardBackgroundHover);
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px var(--menu-item-color-shadow);
 
     &::after {
-      content: "✓";
-      font-weight: bold;
-      position: absolute;
-      top: 4px;
-      left: 7px;
-      color: white;
-      font-size: 0.8rem;
-      z-index: 2;
+      opacity: 1;
     }
   }
-}
 
-@media (prefers-color-scheme: dark) {
-  .menu-item {
-    --menu-item-color-shadow: #61616185;
+  &::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    opacity: 0;
+    border-radius: 5px;
+    background: linear-gradient(
+      45deg,
+      rgba(255, 255, 255, 0.1),
+      rgba(255, 255, 255, 0.05)
+    );
+    transition: opacity 0.2s ease-in-out;
+    pointer-events: none;
+  }
 
-    &.active,
-    &:hover {
-      background-color: #ffffff14;
+  &-active {
+    background: var(--colorNeutralCardBackgroundHover);
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px var(--menu-item-color-shadow);
+
+    &::after {
+      opacity: 1;
     }
+  }
+
+  &-applied {
+    position: relative;
+
+    &-badge {
+      position: absolute;
+      right: 4px;
+      bottom: 2px;
+    }
+  }
+
+  img {
+    border-radius: 5px;
   }
 }

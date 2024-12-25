@@ -4,9 +4,10 @@ import { useAppContext } from "~/context";
 import { createSignal } from "solid-js";
 import { moveThemesDirectory, openDir } from "~/commands";
 import { confirm, message, open } from "@tauri-apps/plugin-dialog";
+import { translate } from "~/utils/i18n";
 
 const ThemesDirectory = () => {
-  const { config, refetchConfig } = useAppContext();
+  const { config, refetchConfig, translations } = useAppContext();
 
   const [path, setPath] = createSignal(config()?.themes_directory);
 
@@ -19,12 +20,21 @@ const ThemesDirectory = () => {
     if (!dirPath) return;
 
     const newThemesDirectory = `${dirPath}\\themes`;
-    const ok = await confirm(`将主题目录变为：${newThemesDirectory}？`);
+
+    const ok = await confirm(
+      translate(translations()!, "message-change-themes-directory", {
+        newThemesDirectory,
+      }),
+    );
     if (!ok) return;
 
     try {
       await moveThemesDirectory(config()!, newThemesDirectory);
-      message(`主题目录已移动至：${newThemesDirectory}`);
+      message(
+        translate(translations()!, "message-themes-directory-moved", {
+          newThemesDirectory,
+        }),
+      );
       setPath(newThemesDirectory);
       refetchConfig();
     } catch (e) {
@@ -33,9 +43,16 @@ const ThemesDirectory = () => {
   };
 
   return (
-    <SettingsItem label="主题目录" vertical>
+    <SettingsItem
+      layout="vertical"
+      label={translate(translations()!, "label-themes-directory")}
+      vertical
+    >
       <LazySpace gap={8} justify="between">
-        <LazyTooltip content="单击可打开主题目录" relationship="label">
+        <LazyTooltip
+          content={translate(translations()!, "tooltip-open-themes-directory")}
+          relationship="label"
+        >
           <LazyButton
             appearance="transparent"
             style={{ padding: 0 }}
@@ -46,7 +63,7 @@ const ThemesDirectory = () => {
         </LazyTooltip>
 
         <LazyButton size="small" appearance="primary" onClick={onChangePath}>
-          修改
+          {translate(translations()!, "button-select-folder")}
         </LazyButton>
       </LazySpace>
     </SettingsItem>

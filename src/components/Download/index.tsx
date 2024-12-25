@@ -5,6 +5,7 @@ import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
 import { downloadThemeAndExtract } from "~/commands";
 import { useAppContext } from "~/context";
 import { message } from "@tauri-apps/plugin-dialog";
+import { translate } from "~/utils/i18n";
 
 interface DownloadProgress {
   theme_id: string;
@@ -20,7 +21,7 @@ interface DownloadProps {
 const window = getCurrentWebviewWindow();
 
 const Download = (props: DownloadProps) => {
-  const { config } = useAppContext()!;
+  const { config, translations } = useAppContext()!;
   const [percent, setPercent] = createSignal<number>();
 
   onMount(async () => {
@@ -35,10 +36,15 @@ const Download = (props: DownloadProps) => {
     try {
       await downloadThemeAndExtract(config()!, props.themeID);
     } catch (e) {
-      message(`${e}\n\n具体错误请查看日志：dwall_settings_lib.log`, {
-        title: "下载失败",
-        kind: "error",
-      });
+      message(
+        translate(translations()!, "title-download-faild", {
+          error: String(e),
+        }),
+        {
+          title: translate(translations()!, "title-download-faild"),
+          kind: "error",
+        },
+      );
     } finally {
       props.onFinished();
       setPercent();

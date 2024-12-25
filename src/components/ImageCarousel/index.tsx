@@ -17,13 +17,13 @@ export default function ImageCarousel(props: ImageCarouselProps) {
   const [currentIndex, setCurrentIndex] = createSignal(0);
   const [isPlaying, setIsPlaying] = createSignal(true);
   const [indicatorsBottom, setIndicatorsBottom] = createSignal(10);
+  const [isHovered, setIsHovered] = createSignal(false);
 
   let containerRef: HTMLDivElement | undefined;
 
   // reset index
   createEffect(() => props.images && setCurrentIndex(0));
 
-  // 自动播放
   createEffect(() => {
     if (!isPlaying()) return;
 
@@ -34,50 +34,48 @@ export default function ImageCarousel(props: ImageCarouselProps) {
     onCleanup(() => clearInterval(timer));
   });
 
-  // 切换到下一张图片
   const nextImage = () => {
     setCurrentIndex((current) =>
       current === props.images.length - 1 ? 0 : current + 1,
     );
   };
 
-  // 切换到上一张图片
   const prevImage = () => {
     setCurrentIndex((current) =>
       current === 0 ? props.images.length - 1 : current - 1,
     );
   };
 
-  // 直接跳转到指定图片
   const goToImage = (index: number) => {
     setCurrentIndex(index);
   };
 
-  // 鼠标进入时暂停自动播放
   const handleMouseEnter = () => {
     setIsPlaying(false);
+    setIsHovered(true);
   };
 
-  // 鼠标离开时恢复自动播放
   const handleMouseLeave = () => {
     setIsPlaying(true);
+    setIsHovered(false);
   };
 
   return (
     <div
       ref={containerRef}
-      class="image-carousel-container"
+      class="fluent-carousel"
       style={{ width: "480px", height: "480px" }}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
     >
       {props.images.map((image, index) => (
         <div
-          class={`image-wrapper ${index === currentIndex() ? "active" : ""}`}
+          class={`fluent-carousel-slide ${index === currentIndex() ? "active" : ""
+            }`}
         >
           <Image
             src={image.src}
-            class="carousel-image"
+            class="fluent-carousel-image"
             themeID={props.themeID}
             serialNumber={index + 1}
             width={480}
@@ -90,26 +88,32 @@ export default function ImageCarousel(props: ImageCarouselProps) {
         </div>
       ))}
 
-      <LazyButton
-        class="prev-button"
-        icon={<BiSolidChevronLeft />}
-        shape="circular"
-        onClick={prevImage}
-      />
+      <div class={`fluent-carousel-controls ${isHovered() ? "visible" : ""}`}>
+        <LazyButton
+          class="fluent-carousel-button prev"
+          icon={<BiSolidChevronLeft />}
+          shape="circular"
+          onClick={prevImage}
+        />
 
-      <LazyButton
-        class="next-button"
-        icon={<BiSolidChevronRight />}
-        shape="circular"
-        onClick={nextImage}
-      />
+        <LazyButton
+          class="fluent-carousel-button next"
+          icon={<BiSolidChevronRight />}
+          shape="circular"
+          onClick={nextImage}
+        />
+      </div>
 
-      <div class="indicators" style={{ bottom: `${indicatorsBottom()}px` }}>
+      <div
+        class="fluent-carousel-indicators"
+        style={{ bottom: `${indicatorsBottom()}px` }}
+      >
         {props.images.map((_, index) => (
           <button
             type="button"
-            class={`indicator ${index === currentIndex() ? "active" : ""}`}
+            class={`fluent-indicator ${index === currentIndex() ? "active" : ""}`}
             onClick={() => goToImage(index)}
+            aria-label={`Go to slide ${index + 1}`}
           />
         ))}
       </div>

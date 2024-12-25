@@ -17,10 +17,12 @@ import { ask, message } from "@tauri-apps/plugin-dialog";
 import { useAppContext } from "~/context";
 import ThemesDirectory from "./ThemesDirectory";
 import LockScreenWallpaperSwitch from "./LockScreenWallpaperSwitch";
+import { translate } from "~/utils/i18n";
 
 const Settings = () => {
   const {
     update: { resource, refetch, setShowDialog },
+    translations,
   } = useAppContext();
   const [version] = createResource(getVersion);
 
@@ -34,7 +36,9 @@ const Settings = () => {
     }
     const update = resource();
     if (!update) {
-      await message("当前已经最新版");
+      await message(
+        translate(translations()!, "message-version-is-the-latest"),
+      );
       return;
     }
 
@@ -69,9 +73,12 @@ const Settings = () => {
 
         <LazyFlex flex={1} justify="between">
           <LazySpace gap={8}>
-            <LazyLabel>版本号</LazyLabel>
+            <LazyLabel>{translate(translations()!, "label-version")}</LazyLabel>
 
-            <LazyTooltip content="单击检测更新" relationship="label">
+            <LazyTooltip
+              content={translate(translations()!, "tooltip-check-new-version")}
+              relationship="label"
+            >
               <LazyButton
                 appearance="transparent"
                 style={{ "min-width": "48px" }}
@@ -84,7 +91,7 @@ const Settings = () => {
 
           <LazySpace>
             <LazyButton appearance="subtle" onClick={onOpenLogDir}>
-              打开日志目录
+              {translate(translations()!, "button-open-log-directory")}
             </LazyButton>
           </LazySpace>
         </LazyFlex>

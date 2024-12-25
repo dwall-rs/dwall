@@ -46,8 +46,16 @@ export const openConfigDir = async () => invoke<void>("open_config_dir");
 
 export const killDaemon = async () => invoke<void>("kill_daemon");
 
-export const getOrSaveCachedImage = async (
+export const getOrSaveCachedThumbnails = async (
   themeId: string,
   serialNumber: number,
   url: string,
-) => invoke<string>("get_or_save_cached_image", { themeId, serialNumber, url });
+) =>
+  invoke<string>("get_or_save_cached_thumbnails", {
+    themeId,
+    serialNumber,
+    url,
+  });
+
+export const getTranslations = async () =>
+  invoke<Record<TranslationKey, string>>("get_translations");

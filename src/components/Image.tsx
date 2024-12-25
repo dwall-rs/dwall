@@ -1,6 +1,12 @@
 import { convertFileSrc } from "@tauri-apps/api/core";
-import { children, createSignal, onCleanup } from "solid-js";
-import { getOrSaveCachedImage } from "~/commands";
+import {
+  children,
+  createEffect,
+  createSignal,
+  mergeProps,
+  onCleanup,
+} from "solid-js";
+import { getOrSaveCachedThumbnails } from "~/commands";
 import { LazySpinner } from "~/lazy";
 
 interface ImageData {
@@ -9,7 +15,6 @@ interface ImageData {
 }
 
 interface ImageProps {
-  ref?: HTMLImageElement;
   themeID: string;
   serialNumber: number;
   src: string;
@@ -18,53 +23,86 @@ interface ImageProps {
   height?: number;
   class?: string;
   onLoad?: (data: ImageData) => void;
+  onError?: (error: Error) => void;
+  fallbackSrc?: string;
+  retryCount?: number;
 }
 
 const Image = (props: ImageProps) => {
+  let imageRef: HTMLImageElement | undefined;
   const [loaded, setLoaded] = createSignal(false);
-  const [isSrcSet, setIsSrcSet] = createSignal(false);
+  const [error, setError] = createSignal<Error | null>(null);
+  const [retryAttempts, setRetryAttempts] = createSignal(0);
+  const merged = mergeProps({ retryCount: 3 }, props);
+
+  const [currentSrc, setCurrentSrc] = createSignal<string | null>(null);
 
   const handleLoad = () => {
-    const img = props.ref;
-    if (img) {
+    if (imageRef?.src) {
       setLoaded(true);
+      setError(null);
       props.onLoad?.({
-        width: img.naturalWidth,
-        height: img.naturalHeight,
+        width: imageRef.naturalWidth,
+        height: imageRef.naturalHeight,
       });
     }
   };
 
   const handleError = () => {
-    console.error("Image failed to load");
-  };
+    const currentAttempts = retryAttempts();
+    if (currentAttempts < merged.retryCount) {
+      setRetryAttempts(currentAttempts + 1);
+      // 重试加载
+      loadImage();
+    } else {
+      const err = new Error(
+        `Failed to load image after ${merged.retryCount} attempts`,
+      );
+      setError(err);
+      props.onError?.(err);
 
-  const observerCallback: IntersectionObserverCallback = (entries) => {
-    for (const entry of entries) {
-      if (entry.isIntersecting && props.ref && !isSrcSet()) {
-        getOrSaveCachedImage(props.themeID, props.serialNumber, props.src).then(
-          (path) => {
-            const src = convertFileSrc(path);
-            props.ref!.src = src;
-            setIsSrcSet(true);
-            observer.unobserve(props.ref!);
-          },
-        );
+      if (props.fallbackSrc) {
+        setCurrentSrc(props.fallbackSrc);
       }
     }
   };
 
-  const observer = new IntersectionObserver(observerCallback);
-
-  onCleanup(() => {
-    if (props.ref) {
-      observer.unobserve(props.ref);
+  const loadImage = async () => {
+    try {
+      const path = await getOrSaveCachedThumbnails(
+        props.themeID,
+        props.serialNumber,
+        props.src,
+      );
+      const src = convertFileSrc(path);
+      setCurrentSrc(src);
+    } catch (err) {
+      handleError();
     }
+  };
+
+  createEffect(() => {
+    if (!imageRef) return;
+
+    const observer = new IntersectionObserver((entries) => {
+      for (const entry of entries) {
+        if (entry.isIntersecting && !currentSrc()) {
+          loadImage();
+          observer.unobserve(entry.target);
+        }
+      }
+    });
+
+    observer.observe(imageRef);
+
+    onCleanup(() => {
+      observer.disconnect();
+    });
   });
 
   const resolved = children(() => (
     <>
-      {!loaded() && (
+      {!loaded() && !error() && (
         <div
           style={{
             position: "absolute",
@@ -77,18 +115,15 @@ const Image = (props: ImageProps) => {
         </div>
       )}
       <img
-        ref={(el) => {
-          props.ref = el;
-          if (el) {
-            observer.observe(el);
-          }
-        }}
+        ref={imageRef}
         alt={props.alt}
+        src={currentSrc() || undefined}
         onLoad={handleLoad}
         onError={handleError}
         width={props.width}
         style={{ visibility: loaded() ? "visible" : "hidden" }}
       />
+      {error() && !props.fallbackSrc && <div>Failed to load image</div>}
     </>
   ));
 

@@ -1,11 +1,11 @@
 import { LazySwitch } from "~/lazy";
 import SettingsItem from "./item";
-import { useContext } from "solid-js";
-import { AppContext } from "~/context";
+import { useAppContext } from "~/context";
 import { writeConfigFile } from "~/commands";
+import { translate } from "~/utils/i18n";
 
 const AutoDetectColorMode = () => {
-  const { config, refetchConfig } = useContext(AppContext)!;
+  const { config, refetchConfig, translations } = useAppContext();
 
   const onSwitchAutoDetectColorMode = async () => {
     await writeConfigFile({
@@ -17,7 +17,12 @@ const AutoDetectColorMode = () => {
   };
 
   return (
-    <SettingsItem label="自动切换暗色模式">
+    <SettingsItem
+      label={translate(
+        translations()!,
+        "label-automatically-switch-to-dark-mode",
+      )}
+    >
       <LazySwitch
         checked={config()!.auto_detect_color_mode}
         onChange={onSwitchAutoDetectColorMode}

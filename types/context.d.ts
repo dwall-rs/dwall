@@ -14,4 +14,5 @@ interface AppContext {
   config: Accessor<Config | undefined>;
   refetchConfig: () => void;
   settings: { show: Accessor<boolean>; setShow: Setter<boolean> };
+  translations: Resource<Translations>;
 }

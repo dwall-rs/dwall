@@ -3,9 +3,10 @@ import SettingsItem from "./item";
 import { useContext } from "solid-js";
 import { AppContext } from "~/context";
 import { writeConfigFile } from "~/commands";
+import { translate } from "~/utils/i18n";
 
 const LockScreenWallpaperSwitch = () => {
-  const { config, refetchConfig } = useContext(AppContext)!;
+  const { config, refetchConfig, translations } = useContext(AppContext)!;
 
   const onSwitchLockScreenWallpaper = async () => {
     await writeConfigFile({
@@ -17,7 +18,12 @@ const LockScreenWallpaperSwitch = () => {
   };
 
   return (
-    <SettingsItem label="同时设置锁屏壁纸">
+    <SettingsItem
+      label={translate(
+        translations()!,
+        "label-set-lock-screen-wallpaper-simultaneously",
+      )}
+    >
       <LazySwitch
         checked={config()!.lock_screen_wallpaper_enabled}
         onChange={onSwitchLockScreenWallpaper}

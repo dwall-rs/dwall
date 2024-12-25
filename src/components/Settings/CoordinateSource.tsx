@@ -1,39 +1,46 @@
-import { LazyButton, LazyInputNumber, LazySpace, LazySwitch } from "~/lazy";
+import { LazyButton, LazySpace, LazySwitch } from "~/lazy";
 import SettingsItem from "./item";
 import { AiOutlineCheck } from "solid-icons/ai";
 import { useAppContext } from "~/context";
 import { writeConfigFile } from "~/commands";
 import { createMemo, createSignal, Show } from "solid-js";
+import { translate } from "~/utils/i18n";
+import NumericInput from "../NumericInput";
 
 interface CoordinateInputProps {
   min: number;
   max: number;
   placeholder: string;
   defaultValue?: number;
-  onChange: (value: number) => void;
+  onChange: (value?: number) => void;
+  autofocus?: boolean;
 }
 
 const CoordinateInput = (props: CoordinateInputProps) => {
   const [value, setValue] = createSignal(props.defaultValue);
 
-  const onChange = (v: number) => {
+  const onChange = (v?: number) => {
     setValue(v);
     props.onChange(v);
   };
 
   return (
-    <LazyInputNumber
+    <NumericInput
       placeholder={props.placeholder}
       min={props.min}
       max={props.max}
       value={value()}
       onChange={onChange}
+      size="small"
+      contentAfter="°"
+      appearance="underline"
+      autofocus={props.autofocus}
     />
   );
 };
 
 const CoordinateSource = () => {
-  const { config, refetchConfig } = useAppContext();
+  const { config, refetchConfig, translations } = useAppContext();
 
   const [auto, setAuto] = createSignal(
     config()?.coordinate_source.type === "AUTOMATIC",
@@ -46,11 +53,11 @@ const CoordinateSource = () => {
     config()?.coordinate_source.type === "AUTOMATIC"
       ? {}
       : {
-          latitude: (config()?.coordinate_source as CoordinateSourceManual)
-            .latitude,
-          longitude: (config()?.coordinate_source as CoordinateSourceManual)
-            .longitude,
-        },
+        latitude: (config()?.coordinate_source as CoordinateSourceManual)
+          .latitude,
+        longitude: (config()?.coordinate_source as CoordinateSourceManual)
+          .longitude,
+      },
   );
 
   const onSwitchCoordinateSource = async () => {
@@ -89,18 +96,31 @@ const CoordinateSource = () => {
     refetchConfig();
   };
 
-  return (
-    <SettingsItem label="自动获取坐标">
-      <LazySpace gap={auto() ? 0 : 8}>
-        <LazySwitch checked={auto()} onChange={onSwitchCoordinateSource} />
+  const latitudePlaceholder = translate(
+    translations()!,
+    "placeholder-latitude",
+  );
+  const longitudePlaceholder = translate(
+    translations()!,
+    "placeholder-longitude",
+  );
 
+  return (
+    <SettingsItem
+      layout="horizontal"
+      label={translate(
+        translations()!,
+        "label-automatically-retrieve-coordinates",
+      )}
+      extra={
         <Show when={!auto()}>
-          <LazySpace gap={8}>
+          <LazySpace gap={16} justify="end">
             <CoordinateInput
-              placeholder="经度"
+              placeholder={longitudePlaceholder}
               min={-180.0}
               max={180.0}
               defaultValue={position().longitude}
+              autofocus
               onChange={(v) =>
                 setPosition((prev) => ({
                   ...prev,
@@ -110,7 +130,7 @@ const CoordinateSource = () => {
             />
 
             <CoordinateInput
-              placeholder="纬度"
+              placeholder={latitudePlaceholder}
               min={-90.0}
               max={90.0}
               defaultValue={position().latitude}
@@ -126,9 +146,14 @@ const CoordinateSource = () => {
               icon={<AiOutlineCheck />}
               onClick={onConfirmManual}
               disabled={!postionIsValid()}
+              size="small"
             />
           </LazySpace>
         </Show>
+      }
+    >
+      <LazySpace gap={auto() ? 0 : 8}>
+        <LazySwitch checked={auto()} onChange={onSwitchCoordinateSource} />
       </LazySpace>
     </SettingsItem>
   );
