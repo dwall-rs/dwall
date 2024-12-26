@@ -112,9 +112,10 @@ const App = () => {
                 positioning="after"
                 content={translate(
                   translations()!,
-                  "tooltip-new-version-available"
+                  "tooltip-new-version-available",
                 )}
                 relationship="label"
+                withArrow
               >
                 <LazyButton
                   appearance="transparent"
@@ -129,6 +130,7 @@ const App = () => {
               positioning="after"
               content={translate(translations()!, "tooltip-settings")}
               relationship="label"
+              withArrow
             >
               <LazyButton
                 appearance="transparent"
