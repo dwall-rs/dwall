@@ -133,6 +133,13 @@ impl TranslationMap for EnglishUSTranslations {
             },
         );
         translations.insert(
+            MESSAGE_SWITCH_AUTO_LIGHT_DARK_MODE_FAILED,
+            TranslationValue::Template {
+                template: "Failed to switch auto light/dark mode: \n{{error}}",
+                params: &["error"],
+            },
+        );
+        translations.insert(
             MESSAGE_SWITCHING_TO_MANUAL_COORDINATE_CONFIG,
             TranslationValue::Template {
                 template: "Error occurred while switching to manual configuration of coordinates: \n{{error}}",

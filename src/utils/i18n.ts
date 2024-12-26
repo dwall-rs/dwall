@@ -16,3 +16,12 @@ export const translate = (
   }
   return result;
 };
+
+export const translateErrorMessage = (
+  translations: Translations,
+  key: TranslationKey,
+  error: unknown,
+  params: Record<string, string> = {},
+) => {
+  return translate(translations, key, { ...params, error: String(error) });
+};

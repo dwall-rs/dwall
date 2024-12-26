@@ -35,6 +35,8 @@ pub(super) const MESSAGE_NUMBER_TOO_LARGE: &str = "message-number-too-large";
 pub(super) const MESSAGE_NUMBER_TOO_SMALL: &str = "message-number-too-small";
 pub(super) const MESSAGE_SAVING_MANUAL_COORDINATES: &str = "message-saving-manual-coordinates";
 pub(super) const MESSAGE_STARTUP_FAILED: &str = "message-startup-failed";
+pub(super) const MESSAGE_SWITCH_AUTO_LIGHT_DARK_MODE_FAILED: &str =
+    "message-switch-auto-light-dark-mode-failed";
 pub(super) const MESSAGE_SWITCHING_TO_MANUAL_COORDINATE_CONFIG: &str =
     "message-switching-to-manual-coordinate-config";
 pub(super) const MESSAGE_THEMES_DIRECTORY_MOVED: &str = "message-themes-directory-moved";

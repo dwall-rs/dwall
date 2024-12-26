@@ -118,6 +118,13 @@ impl TranslationMap for ChineseSimplifiedTranslations {
             },
         );
         translations.insert(
+            MESSAGE_SWITCH_AUTO_LIGHT_DARK_MODE_FAILED,
+            TranslationValue::Template {
+                template: "切换自动切换明暗模式失败: \n{{error}}",
+                params: &["error"],
+            },
+        );
+        translations.insert(
             MESSAGE_SWITCHING_TO_MANUAL_COORDINATE_CONFIG,
             TranslationValue::Template {
                 template: "切换至手动配置坐标时出错：\n{{error}}",
