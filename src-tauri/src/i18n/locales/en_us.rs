@@ -99,6 +99,12 @@ impl TranslationMap for EnglishUSTranslations {
             TranslationValue::Text("The location permission is not turned on. Please manually enable location or manually configure coordinates.\n\nDo you want to manually configure coordinates?\nClick \"Yes\" to manually configure coordinates, or click \"No\" to close the program."),
         );
         translations.insert(
+            MESSAGE_MANUAL_COORDINATES_SAVED,
+            TranslationValue::Text(
+                "Coordinates saved, next you can choose the theme you want to apply.",
+            ),
+        );
+        translations.insert(
             MESSAGE_NUMBER_TOO_LARGE,
             TranslationValue::Template {
                 template: "Cannot exceed {{max}}",
@@ -113,9 +119,23 @@ impl TranslationMap for EnglishUSTranslations {
             },
         );
         translations.insert(
+            MESSAGE_SAVING_MANUAL_COORDINATES,
+            TranslationValue::Template {
+                template: "Error saving coordinates: \n{{error}}",
+                params: &["error"],
+            },
+        );
+        translations.insert(
             MESSAGE_STARTUP_FAILED,
             TranslationValue::Template {
                 template: "Startup failed: \n{{error}}",
+                params: &["error"],
+            },
+        );
+        translations.insert(
+            MESSAGE_SWITCHING_TO_MANUAL_COORDINATE_CONFIG,
+            TranslationValue::Template {
+                template: "Error occurred while switching to manual configuration of coordinates: \n{{error}}",
                 params: &["error"],
             },
         );
