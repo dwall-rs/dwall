@@ -30,9 +30,13 @@ pub(super) const MESSAGE_DISABLE_STARTUP_FAILED: &str = "message-disable-startup
 pub(super) const MESSAGE_DOWNLOAD_FAILED: &str = "message-download-faild";
 pub(super) const MESSAGE_INVALID_NUMBER_INPUT: &str = "message-invalid-number-input";
 pub(super) const MESSAGE_LOCATION_PERMISSION: &str = "message-location-permission";
+pub(super) const MESSAGE_MANUAL_COORDINATES_SAVED: &str = "message-coordinates-saved";
 pub(super) const MESSAGE_NUMBER_TOO_LARGE: &str = "message-number-too-large";
 pub(super) const MESSAGE_NUMBER_TOO_SMALL: &str = "message-number-too-small";
+pub(super) const MESSAGE_SAVING_MANUAL_COORDINATES: &str = "message-saving-manual-coordinates";
 pub(super) const MESSAGE_STARTUP_FAILED: &str = "message-startup-failed";
+pub(super) const MESSAGE_SWITCHING_TO_MANUAL_COORDINATE_CONFIG: &str =
+    "message-switching-to-manual-coordinate-config";
 pub(super) const MESSAGE_THEMES_DIRECTORY_MOVED: &str = "message-themes-directory-moved";
 pub(super) const MESSAGE_VERSION_IS_THE_LATEST: &str = "message-version-is-the-latest";
 
