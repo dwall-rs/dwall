@@ -52,6 +52,7 @@ const ThemesDirectory = () => {
         <LazyTooltip
           content={translate(translations()!, "tooltip-open-themes-directory")}
           relationship="label"
+          withArrow
         >
           <LazyButton
             appearance="transparent"
