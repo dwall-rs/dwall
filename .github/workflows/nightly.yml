@@ -20,6 +20,17 @@ jobs:
         with:
           paths: daemon public src src-tauri static package.json .scripts .github
 
+      - name: Check commit message for keywords
+        id: check-commit-message
+        run: |
+          COMMIT_MESSAGE=$(git log -1 --pretty=format:%s)
+          if [[ "$COMMIT_MESSAGE" =~ ^(feat|fix|breaking) ]]; then
+            echo "Commit message indicates a relevant change."
+          else
+            echo "No relevant commit detected. Skipping Nightly release."
+            exit 0
+          fi
+
   create-release:
     needs: check-changed-paths
     if: needs.check-changed-paths.outputs.changed == 'true'
@@ -103,6 +114,16 @@ jobs:
         with:
           node-version: lts/*
 
+      - name: Cache bun cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~\.bun
+            node_modules/
+          key: ${{ runner.os }}-bun-${{ hashFiles('**/bun.lockb') }}
+          restore-keys: |
+            ${{ runner.os }}-bun-
+
       - uses: oven-sh/setup-bun@v1
 
       - name: install Rust stable
@@ -110,6 +131,19 @@ jobs:
 
       - name: install frontend dependencies
         run: bun i
+
+      - name: Cache Rust cache and target directory
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
 
       - uses: tauri-apps/tauri-action@v0
         env:
