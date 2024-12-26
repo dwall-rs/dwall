@@ -63,16 +63,14 @@
   }
 }
 
-.fluent-carousel-button {
+.fluent-carousel-button.fluent-button {
   position: absolute;
   top: 50%;
   transform: translateY(-50%);
   z-index: 2;
-  background: var(--button-bg, rgba(255, 255, 255, 0.9));
+  background: var(--button-bg, rgba(255, 255, 255, 0.3));
   color: var(--button-color, #000);
   border: none;
-  width: 40px;
-  height: 40px;
   display: flex;
   align-items: center;
   justify-content: center;
