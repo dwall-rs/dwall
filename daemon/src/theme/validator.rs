@@ -10,11 +10,11 @@ pub struct ThemeValidator;
 impl ThemeValidator {
     /// Checks if a theme exists and has valid configuration
     pub async fn validate_theme(themes_directory: &Path, theme_id: &str) -> DwallResult<()> {
-        trace!("Validating theme: {}", theme_id);
+        trace!(theme_id = theme_id, "Validating theme");
         let theme_dir = themes_directory.join(theme_id);
 
         if !theme_dir.exists() {
-            warn!("Theme directory not found: {}", theme_id);
+            warn!(theme_id = theme_id, "Theme directory not found");
             return Err(ThemeError::NotExists.into());
         }
 
@@ -22,11 +22,11 @@ impl ThemeValidator {
         let image_indices: Vec<u8> = solar_angles.iter().map(|angle| angle.index).collect();
 
         if !Self::validate_image_files(&theme_dir, &image_indices, "jpg") {
-            warn!("Image validation failed for theme: {}", theme_id);
+            warn!(theme_id = theme_id, "Image validation failed for theme");
             return Err(ThemeError::ImageCountMismatch.into());
         }
 
-        debug!("Theme validation successful: {}", theme_id);
+        debug!(theme_id = theme_id, "Theme validation successful");
         Ok(())
     }
 
@@ -35,24 +35,24 @@ impl ThemeValidator {
         let solar_config_path = theme_dir.join("solar.json");
 
         if !solar_config_path.exists() {
-            error!("Solar configuration file missing: {:?}", solar_config_path);
+            error!(solar_config_path = %solar_config_path.display(), "Solar configuration file missing");
             return Err(ThemeError::MissingSolarConfigFile.into());
         }
 
         let solar_config_content = fs::read_to_string(&solar_config_path).await.map_err(|e| {
-            error!("Failed to read solar configuration: {}", e);
+            error!(error = ?e, "Failed to read solar configuration");
             e
         })?;
 
         let solar_angles: Vec<SolarAngle> =
             serde_json::from_str(&solar_config_content).map_err(|e| {
-                error!("Failed to parse solar configuration JSON: {}", e);
+                error!(error = ?e, "Failed to parse solar configuration JSON");
                 e
             })?;
 
         debug!(
-            "Loaded {} solar angles from configuration",
-            solar_angles.len()
+            solar_angles_count = solar_angles.len(),
+            "Loaded solar angles from configuration"
         );
         Ok(solar_angles)
     }
@@ -62,7 +62,7 @@ impl ThemeValidator {
         let image_dir = theme_dir.join(image_format);
 
         if !image_dir.is_dir() {
-            warn!("Image directory not found: {:?}", image_dir);
+            warn!(image_dir = %image_dir.display(), "Image directory not found");
             return false;
         }
 
@@ -72,7 +72,7 @@ impl ThemeValidator {
 
             let is_valid = image_path.exists() && image_path.is_file();
             if !is_valid {
-                warn!("Missing or invalid image: {:?}", image_path);
+                warn!(image_path = %image_path.display(), "Missing or invalid image");
             }
             is_valid
         });

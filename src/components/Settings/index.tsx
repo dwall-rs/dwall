@@ -78,6 +78,7 @@ const Settings = () => {
             <LazyTooltip
               content={translate(translations()!, "tooltip-check-new-version")}
               relationship="label"
+              withArrow
             >
               <LazyButton
                 appearance="transparent"

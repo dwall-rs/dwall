@@ -30,68 +30,98 @@ export const useThemeSelector = (themes: ThemeItem[]) => {
   });
 
   onMount(() => {
-    window
-      .matchMedia("(prefers-color-scheme: dark)")
-      .addEventListener("change", (event) => {
-        if (event.matches) {
-          setTitlebarColorMode("DARK");
-        } else {
-          setTitlebarColorMode("LIGHT");
-        }
-      });
+    const darkModeMediaQuery = window.matchMedia(
+      "(prefers-color-scheme: dark)",
+    );
+
+    const handleColorSchemeChange = (event: MediaQueryListEvent) => {
+      setTitlebarColorMode(event.matches ? "DARK" : "LIGHT");
+    };
+
+    darkModeMediaQuery.addEventListener("change", handleColorSchemeChange);
+    return () =>
+      darkModeMediaQuery.removeEventListener("change", handleColorSchemeChange);
   });
 
-  const onMenuItemClick = async (idx: number) => {
+  const handleThemeSelection = async (idx: number) => {
     setMenuItemIndex(idx);
     try {
-      await checkThemeExists(config()!.themes_directory, themes[idx].id);
+      await checkThemeExists(config()?.themes_directory ?? "", themes[idx].id);
       setThemeExists(true);
     } catch (e) {
       setThemeExists(false);
+      console.error("Failed to check theme existence:", e);
     }
   };
 
-  const onCloseTask = async () => {
-    const stoppedConfig = { ...config()!, selected_theme_id: undefined };
-    applyTheme(stoppedConfig);
-    refetchConfig();
+  const handleTaskClosure = async () => {
+    if (!config()) return;
 
-    setAppliedThemeID();
+    const updatedConfig = {
+      ...config()!,
+      selected_theme_id: undefined,
+    };
+
+    try {
+      await applyTheme(updatedConfig);
+      await refetchConfig();
+      setAppliedThemeID(undefined);
+    } catch (e) {
+      console.error("Failed to close task:", e);
+    }
   };
 
-  const onApply = async () => {
+  const checkLocationPermission = async (): Promise<boolean> => {
     try {
       await requestLocationPermission();
+      return true;
     } catch (e) {
-      const ok = await ask(
+      const shouldContinue = await ask(
         translate(translations()!, "message-location-permission"),
-        {
-          kind: "warning",
-        }
+        { kind: "warning" },
       );
 
-      if (!ok) {
+      if (!shouldContinue) {
         exit(0);
-      } else {
-        mutate((prev) => ({
-          ...prev!,
-          coordinate_source: { type: "MANUAL" },
-        }));
-        setShowSettings(true);
+        return false;
       }
-      return;
+
+      mutate((prev) => ({
+        ...prev!,
+        coordinate_source: { type: "MANUAL" },
+      }));
+      setShowSettings(true);
+      return false;
+    }
+  };
+
+  const handleThemeApplication = async () => {
+    const theme = currentTheme();
+    if (!theme || !config()) return;
+
+    const currentConfig = config()!;
+    const hasValidCoordinates =
+      currentConfig.coordinate_source?.type === "MANUAL" &&
+      typeof currentConfig.coordinate_source.latitude === "number" &&
+      typeof currentConfig.coordinate_source.longitude === "number";
+
+    if (!hasValidCoordinates) {
+      const hasPermission = await checkLocationPermission();
+      if (!hasPermission) return;
     }
 
-    const theme = currentTheme();
-    if (!theme) return;
+    try {
+      const newConfig = {
+        ...currentConfig,
+        selected_theme_id: theme.id,
+      };
 
-    const newConfig = {
-      ...config()!,
-      selected_theme_id: theme.id,
-    };
-    await applyTheme(newConfig);
-    refetchConfig();
-    setAppliedThemeID(newConfig.selected_theme_id);
+      await applyTheme(newConfig);
+      await refetchConfig();
+      setAppliedThemeID(theme.id);
+    } catch (e) {
+      console.error("Failed to apply theme:", e);
+    }
   };
 
   return {
@@ -105,9 +135,9 @@ export const useThemeSelector = (themes: ThemeItem[]) => {
     setMenuItemIndex,
     themeExists,
     currentTheme,
-    onMenuItemClick,
-    onCloseTask,
-    onApply,
+    handleThemeSelection,
+    handleTaskClosure,
+    handleThemeApplication,
     update,
     recheckUpdate,
     showSettings,

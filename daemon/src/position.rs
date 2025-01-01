@@ -21,7 +21,7 @@ impl Position {
 pub fn get_geo_position() -> DwallResult<Position> {
     trace!("Initializing Geolocator...");
     let geolocator = Geolocator::new().map_err(|e| {
-        error!("Failed to initialize Geolocator: {:?}", e);
+        error!(error = ?e, "Failed to initialize Geolocator");
         e
     })?;
     debug!("Geolocator initialized successfully.");
@@ -30,35 +30,35 @@ pub fn get_geo_position() -> DwallResult<Position> {
     geolocator
         .SetDesiredAccuracy(PositionAccuracy::High)
         .map_err(|e| {
-            error!("Failed to set desired accuracy to High: {:?}", e);
+            error!(error = ?e, "Failed to set desired accuracy to High");
             e
         })?;
     debug!("Desired accuracy set to High successfully.");
 
     trace!("Getting geoposition asynchronously...");
     let geoposition = geolocator.GetGeopositionAsync()?.get().map_err(|e| {
-        error!("Failed to retrieve geoposition: {:?}", e);
+        error!(error = ?e, "Failed to retrieve geoposition");
         e
     })?;
     debug!("Geoposition retrieved successfully.");
 
     trace!("Extracting coordinate from geoposition...");
     let coordinate = geoposition.Coordinate().map_err(|e| {
-        error!("Failed to extract coordinate from geoposition: {:?}", e);
+        error!(error = ?e, "Failed to extract coordinate from geoposition");
         e
     })?;
     debug!("Coordinate extracted successfully.");
 
     trace!("Extracting point from coordinate...");
     let point = coordinate.Point().map_err(|e| {
-        error!("Failed to extract point from coordinate: {:?}", e);
+        error!(error = ?e, "Failed to extract point from coordinate");
         e
     })?;
     debug!("Point extracted successfully.");
 
     trace!("Extracting position from point...");
     let position = point.Position().map_err(|e| {
-        error!("Failed to extract position from point: {:?}", e);
+        error!(error = ?e, "Failed to extract position from point");
         e
     })?;
     debug!("Position extracted successfully.");
@@ -70,7 +70,11 @@ pub fn get_geo_position() -> DwallResult<Position> {
     };
     debug!("Position struct created successfully.");
 
-    info!("Current geoposition: {:?}", result);
+    info!(
+        latitude = result.latitude,
+        longitude = result.longitude,
+        "Current geoposition"
+    );
     Ok(result)
 }
 

@@ -89,10 +89,7 @@ impl AutoStartManager {
                 Ok(())
             }
             _ => {
-                error!(
-                    error_code = ?close_result,
-                    "Failed to close registry key",
-                );
+                error!(error_code = close_result.0, "Failed to close registry key",);
                 Err(RegistryError::Close(close_result).into())
             }
         }
@@ -185,7 +182,7 @@ impl AutoStartManager {
 
                 warn!(
                     app_name = Self::APP_NAME,
-                    error_code = ?delete_result,
+                    error_code = delete_result.0,
                     "Failed to disable auto-start",
                 );
                 Err(RegistryError::Delete(delete_result).into())
@@ -263,7 +260,7 @@ impl AutoStartManager {
                         _ => {
                             error!(
                                 app_name = Self::APP_NAME,
-                                error_code = ?second_query_result,
+                                error_code = second_query_result.0,
                                 "Failed to query registry value",
                             );
                             Err(RegistryError::Query(second_query_result).into())
@@ -283,7 +280,7 @@ impl AutoStartManager {
 
                     error!(
                         app_name = Self::APP_NAME,
-                        error_code = ?first_query_result,
+                        error_code = first_query_result.0,
                         "Unexpected error querying registry",
                     );
                     Err(RegistryError::Query(first_query_result).into())

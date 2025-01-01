@@ -46,7 +46,7 @@ export const ThemeActions = (props: ThemeActionsProps) => {
         <Show
           when={props.appliedThemeID !== props.currentThemeID}
           fallback={
-            <LazyButton onClick={onClose} danger>
+            <LazyButton onClick={onClose} appearance="danger">
               {translate(translations()!, "button-stop")}
             </LazyButton>
           }

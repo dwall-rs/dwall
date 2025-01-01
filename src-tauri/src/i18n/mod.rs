@@ -5,7 +5,10 @@ use std::{collections::HashMap, sync::RwLock};
 use serde::Serialize;
 
 use self::locales::en_us::EnglishUSTranslations;
+use self::locales::ja_jp::JapaneseTranslations;
 use self::locales::zh_cn::ChineseSimplifiedTranslations;
+use self::locales::zh_hk::ChineseTraditionalHKTranslations;
+use self::locales::zh_tw::ChineseTraditionalTWTranslations;
 
 mod keys;
 mod locales;
@@ -19,8 +22,16 @@ static TRANSLATIONS: LazyLock<RwLock<HashMap<&'static str, LocaleTranslations>>>
             // 英文必须实现所有的翻译键
             m.insert("en-US", EnglishUSTranslations::get_translations());
 
-            // 其他语言可以只实现部分键
             m.insert("zh-CN", ChineseSimplifiedTranslations::get_translations());
+            m.insert(
+                "zh-HK",
+                ChineseTraditionalHKTranslations::get_translations(),
+            );
+            m.insert(
+                "zh-TW",
+                ChineseTraditionalTWTranslations::get_translations(),
+            );
+            m.insert("ja-JP", JapaneseTranslations::get_translations());
 
             m
         })
@@ -32,8 +43,9 @@ pub enum Language {
     EnglishUS,
     // EnglishGB,
     ChineseSimplified,
-    // ChineseTraditionalTW,
-    // ChineseTraditionalHK,
+    ChineseTraditionalTW,
+    ChineseTraditionalHK,
+    Japanese,
 }
 
 impl FromStr for Language {
@@ -43,6 +55,9 @@ impl FromStr for Language {
         match s {
             "en-US" => Ok(Language::EnglishUS),
             "zh-CN" => Ok(Language::ChineseSimplified),
+            "zh-HK" => Ok(Language::ChineseTraditionalHK),
+            "zh-TW" => Ok(Language::ChineseTraditionalTW),
+            "ja-JP" => Ok(Language::Japanese),
             _ => Err(format!("Unsupported language identifier: {}", s)),
         }
     }
@@ -54,8 +69,9 @@ impl Language {
             Language::EnglishUS => "en-US",
             // LanguageVariant::EnglishGB => "en-GB",
             Language::ChineseSimplified => "zh-CN",
-            // LanguageVariant::ChineseTraditionalTW => "zh-TW",
-            // LanguageVariant::ChineseTraditionalHK => "zh-HK",
+            Language::ChineseTraditionalHK => "zh-HK",
+            Language::ChineseTraditionalTW => "zh-TW",
+            Language::Japanese => "ja-JP",
         }
     }
 
@@ -64,8 +80,9 @@ impl Language {
             Language::EnglishUS => "American English",
             // LanguageVariant::EnglishGB => "British English",
             Language::ChineseSimplified => "简体中文",
-            // LanguageVariant::ChineseTraditionalTW => "繁體中文（台灣）",
-            // LanguageVariant::ChineseTraditionalHK => "繁體中文（香港）",
+            Language::ChineseTraditionalHK => "繁體中文（香港）",
+            Language::ChineseTraditionalTW => "繁體中文（台灣）",
+            Language::Japanese => "日本語",
         }
     }
 
@@ -101,7 +118,7 @@ thread_local! {
 }
 
 pub fn get_current_language() -> Language {
-    CURRENT_LANGUAGE.with(|lang| lang.borrow().clone())
+    CURRENT_LANGUAGE.with(|lang| *lang.borrow())
 }
 
 // pub fn set_language(language_id: &str) -> Result<(), String> {
@@ -115,7 +132,7 @@ pub fn get_current_language() -> Language {
 #[tauri::command]
 pub fn get_translations() -> LocaleTranslations {
     let current_lang = get_current_language();
-    info!("Current language: {}", current_lang.native_name());
+    info!(language = current_lang.native_name(), "Current language");
 
     let translations = TRANSLATIONS.read().unwrap();
 
@@ -130,6 +147,7 @@ pub fn get_translations() -> LocaleTranslations {
 
     for (key, value) in en_us_translations.iter() {
         if !locale_translations.contains_key(*key) {
+            debug!(key = key, "Translation missing, using default");
             locale_translations.insert(*key, value.clone());
         }
     }

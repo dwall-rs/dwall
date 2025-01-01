@@ -66,14 +66,14 @@ impl TranslationMap for ChineseSimplifiedTranslations {
         translations.insert(
             MESSAGE_DISABLE_STARTUP_FAILED,
             TranslationValue::Template {
-                template: "关闭开机自启失败：\n${error}",
+                template: "关闭开机自启失败：\n{{error}}",
                 params: &["error"],
             },
         );
         translations.insert(
             MESSAGE_DOWNLOAD_FAILED,
             TranslationValue::Template {
-                template: "${error}\n\n具体错误请查看日志文件：dwall_settings_lib.log",
+                template: "{{error}}\n\n具体错误请查看日志文件：dwall_settings_lib.log",
                 params: &["error"],
             },
         );
@@ -84,6 +84,10 @@ impl TranslationMap for ChineseSimplifiedTranslations {
         translations.insert(
             MESSAGE_LOCATION_PERMISSION,
             TranslationValue::Text("定位权限未打开，请手动开启定位或手动配置坐标。\n\n是否手动配置坐标？\n点击“是”手动配置坐标，点击“否”关闭程序"),
+        );
+        translations.insert(
+            MESSAGE_MANUAL_COORDINATES_SAVED,
+            TranslationValue::Text("坐标已保存，接下来可以选择想要应用的主题了"),
         );
         translations.insert(
             MESSAGE_NUMBER_TOO_LARGE,
@@ -100,9 +104,30 @@ impl TranslationMap for ChineseSimplifiedTranslations {
             },
         );
         translations.insert(
+            MESSAGE_SAVING_MANUAL_COORDINATES,
+            TranslationValue::Template {
+                template: "保存坐标时出错：\n{{error}}",
+                params: &["error"],
+            },
+        );
+        translations.insert(
             MESSAGE_STARTUP_FAILED,
             TranslationValue::Template {
-                template: "设置开机自启失败：\n${error}",
+                template: "设置开机自启失败：\n{{error}}",
+                params: &["error"],
+            },
+        );
+        translations.insert(
+            MESSAGE_SWITCH_AUTO_LIGHT_DARK_MODE_FAILED,
+            TranslationValue::Template {
+                template: "切换自动切换明暗模式失败: \n{{error}}",
+                params: &["error"],
+            },
+        );
+        translations.insert(
+            MESSAGE_SWITCHING_TO_MANUAL_COORDINATE_CONFIG,
+            TranslationValue::Template {
+                template: "切换至手动配置坐标时出错：\n{{error}}",
                 params: &["error"],
             },
         );

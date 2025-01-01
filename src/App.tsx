@@ -33,9 +33,9 @@ const App = () => {
     setMenuItemIndex,
     themeExists,
     currentTheme,
-    onMenuItemClick,
-    onCloseTask,
-    onApply,
+    handleThemeSelection,
+    handleTaskClosure,
+    handleThemeApplication,
     setAppliedThemeID,
     update,
     recheckUpdate,
@@ -52,14 +52,14 @@ const App = () => {
     await showWindow("main");
 
     const mii = menuItemIndex();
-    if (mii !== undefined) onMenuItemClick(mii);
+    if (mii !== undefined) handleThemeSelection(mii);
 
     const applied_theme_id = await getAppliedThemeID();
     if (applied_theme_id) {
       const themeIndex = themes.findIndex((t) => t.id === applied_theme_id);
       if (themeIndex !== -1) {
         setMenuItemIndex(themeIndex);
-        onMenuItemClick(themeIndex);
+        handleThemeSelection(themeIndex);
         setAppliedThemeID(applied_theme_id);
         return;
       }
@@ -102,7 +102,7 @@ const App = () => {
             appliedThemeID={appliedThemeID()}
             onMenuItemClick={(idx) => {
               setShowSettings(false);
-              onMenuItemClick(idx);
+              handleThemeSelection(idx);
             }}
           />
 
@@ -112,9 +112,10 @@ const App = () => {
                 positioning="after"
                 content={translate(
                   translations()!,
-                  "tooltip-new-version-available"
+                  "tooltip-new-version-available",
                 )}
                 relationship="label"
+                withArrow
               >
                 <LazyButton
                   appearance="transparent"
@@ -129,6 +130,7 @@ const App = () => {
               positioning="after"
               content={translate(translations()!, "tooltip-settings")}
               relationship="label"
+              withArrow
             >
               <LazyButton
                 appearance="transparent"
@@ -151,9 +153,9 @@ const App = () => {
             downloadThemeID={downloadThemeID}
             setDownloadThemeID={setDownloadThemeID}
             onDownload={() => setDownloadThemeID(currentTheme()!.id)}
-            onApply={onApply}
-            onCloseTask={onCloseTask}
-            onMenuItemClick={onMenuItemClick}
+            onApply={handleThemeApplication}
+            onCloseTask={handleTaskClosure}
+            onMenuItemClick={handleThemeSelection}
             index={menuItemIndex()!}
           />
         </Show>

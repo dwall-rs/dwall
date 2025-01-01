@@ -3,9 +3,10 @@ import SettingsItem from "./item";
 import { AiOutlineCheck } from "solid-icons/ai";
 import { useAppContext } from "~/context";
 import { writeConfigFile } from "~/commands";
-import { createMemo, createSignal, Show } from "solid-js";
+import { children, createMemo, createSignal, Show } from "solid-js";
 import { translate } from "~/utils/i18n";
 import NumericInput from "../NumericInput";
+import { message } from "@tauri-apps/plugin-dialog";
 
 interface CoordinateInputProps {
   min: number;
@@ -39,121 +40,150 @@ const CoordinateInput = (props: CoordinateInputProps) => {
   );
 };
 
+const COORDINATE_LIMITS = {
+  LATITUDE: { MIN: -90.0, MAX: 90.0 },
+  LONGITUDE: { MIN: -180.0, MAX: 180.0 },
+} as const;
+
 const CoordinateSource = () => {
   const { config, refetchConfig, translations } = useAppContext();
 
-  const [auto, setAuto] = createSignal(
-    config()?.coordinate_source.type === "AUTOMATIC",
-  );
-
-  const [position, setPosition] = createSignal<{
-    latitude?: number;
-    longitude?: number;
-  }>(
-    config()?.coordinate_source.type === "AUTOMATIC"
-      ? {}
-      : {
+  const initialPosition: Omit<CoordinateSourceManual, "type"> =
+    config()?.coordinate_source.type === "MANUAL"
+      ? {
         latitude: (config()?.coordinate_source as CoordinateSourceManual)
           .latitude,
         longitude: (config()?.coordinate_source as CoordinateSourceManual)
           .longitude,
-      },
-  );
+      }
+      : {};
 
-  const onSwitchCoordinateSource = async () => {
+  const [auto, setAuto] = createSignal(
+    config()?.coordinate_source.type === "AUTOMATIC",
+  );
+  const [position, setPosition] = createSignal<{
+    latitude?: number;
+    longitude?: number;
+  }>(initialPosition);
+
+  const getTranslation = (
+    key: TranslationKey,
+    params: Record<string, string> = {},
+  ) => translate(translations()!, key, params);
+
+  const isPositionValid = createMemo(() => {
+    const { latitude, longitude } = position();
+    return (
+      latitude !== undefined &&
+      longitude !== undefined &&
+      latitude >= COORDINATE_LIMITS.LATITUDE.MIN &&
+      latitude <= COORDINATE_LIMITS.LATITUDE.MAX &&
+      longitude >= COORDINATE_LIMITS.LONGITUDE.MIN &&
+      longitude <= COORDINATE_LIMITS.LONGITUDE.MAX
+    );
+  });
+
+  const handleSwitchCoordinateSource = async () => {
     if (!auto()) {
-      await writeConfigFile({
-        ...config()!,
-        coordinate_source: {
-          type: "AUTOMATIC",
-        },
-      });
-      refetchConfig();
+      try {
+        await writeConfigFile({
+          ...config()!,
+          coordinate_source: {
+            type: "AUTOMATIC",
+          },
+        });
+        refetchConfig();
+      } catch (e) {
+        message(
+          getTranslation("message-switching-to-manual-coordinate-config", {
+            error: String(e),
+          }),
+          { kind: "error" },
+        );
+        return;
+      }
     }
 
     setAuto((prev) => !prev);
   };
 
-  const postionIsValid = createMemo(
-    () =>
-      position().latitude !== undefined &&
-      position().latitude! >= -90.0 &&
-      position().latitude! <= 90.0 &&
-      position().longitude !== undefined &&
-      position().longitude! >= -180.0 &&
-      position().longitude! <= 180.0,
-  );
+  const handleConfirmManual = async () => {
+    const { latitude, longitude } = position();
+    if (!isPositionValid()) return;
 
-  const onConfirmManual = async () => {
-    await writeConfigFile({
-      ...config()!,
-      coordinate_source: {
-        type: "MANUAL",
-        latitude: position().latitude!,
-        longitude: position().longitude!,
-      },
-    });
-    refetchConfig();
+    const newConfig: CoordinateSourceManual = {
+      type: "MANUAL",
+      latitude,
+      longitude,
+    };
+
+    try {
+      await writeConfigFile({
+        ...config()!,
+        coordinate_source: newConfig,
+      });
+      refetchConfig();
+      message(getTranslation("message-coordinates-saved"));
+    } catch (e) {
+      message(
+        getTranslation("message-saving-manual-coordinates", {
+          error: String(e),
+        }),
+        {
+          kind: "error",
+        },
+      );
+      return;
+    }
   };
 
-  const latitudePlaceholder = translate(
-    translations()!,
-    "placeholder-latitude",
-  );
-  const longitudePlaceholder = translate(
-    translations()!,
-    "placeholder-longitude",
-  );
+  const handlePositionChange =
+    (field: keyof Omit<CoordinateSourceManual, "type">) => (value?: number) => {
+      setPosition((prev) => ({
+        ...prev,
+        [field]: value,
+      }));
+    };
+
+  const latitudePlaceholder = getTranslation("placeholder-latitude");
+  const longitudePlaceholder = getTranslation("placeholder-longitude");
+
+  const renderCoordinateInputs = children(() => (
+    <Show when={!auto()}>
+      <LazySpace gap={16} justify="end">
+        <CoordinateInput
+          placeholder={longitudePlaceholder}
+          min={COORDINATE_LIMITS.LONGITUDE.MIN}
+          max={COORDINATE_LIMITS.LONGITUDE.MAX}
+          defaultValue={position().longitude}
+          autofocus
+          onChange={handlePositionChange("longitude")}
+        />
+        <CoordinateInput
+          placeholder={latitudePlaceholder}
+          min={COORDINATE_LIMITS.LATITUDE.MIN}
+          max={COORDINATE_LIMITS.LATITUDE.MAX}
+          defaultValue={position().latitude}
+          onChange={handlePositionChange("latitude")}
+        />
+        <LazyButton
+          icon={<AiOutlineCheck />}
+          onClick={handleConfirmManual}
+          disabled={!isPositionValid()}
+          size="small"
+        />
+      </LazySpace>
+    </Show>
+  ));
 
   return (
     <SettingsItem
       layout="horizontal"
-      label={translate(
-        translations()!,
-        "label-automatically-retrieve-coordinates",
-      )}
-      extra={
-        <Show when={!auto()}>
-          <LazySpace gap={16} justify="end">
-            <CoordinateInput
-              placeholder={longitudePlaceholder}
-              min={-180.0}
-              max={180.0}
-              defaultValue={position().longitude}
-              autofocus
-              onChange={(v) =>
-                setPosition((prev) => ({
-                  ...prev,
-                  longitude: v,
-                }))
-              }
-            />
-
-            <CoordinateInput
-              placeholder={latitudePlaceholder}
-              min={-90.0}
-              max={90.0}
-              defaultValue={position().latitude}
-              onChange={(v) =>
-                setPosition((prev) => ({
-                  ...prev,
-                  latitude: v,
-                }))
-              }
-            />
-
-            <LazyButton
-              icon={<AiOutlineCheck />}
-              onClick={onConfirmManual}
-              disabled={!postionIsValid()}
-              size="small"
-            />
-          </LazySpace>
-        </Show>
-      }
+      label={getTranslation("label-automatically-retrieve-coordinates")}
+      extra={renderCoordinateInputs()}
     >
       <LazySpace gap={auto() ? 0 : 8}>
-        <LazySwitch checked={auto()} onChange={onSwitchCoordinateSource} />
+        <LazySwitch checked={auto()} onChange={handleSwitchCoordinateSource} />
       </LazySpace>
     </SettingsItem>
   );
