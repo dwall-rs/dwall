@@ -46,6 +46,7 @@ impl TranslationMap for EnglishUSTranslations {
             LABEL_SET_LOCK_SCREEN_WALLPAPER_SIMULTANEOUSLY,
             TranslationValue::Text("Set Lock Screen Wallpaper Simultaneously"),
         );
+        translations.insert(LABEL_SOURCE_CODE, TranslationValue::Text("Source Code"));
         translations.insert(
             LABEL_THEMES_DIRECTORY,
             TranslationValue::Text("Theme Directory"),

@@ -11,7 +11,31 @@ repository.workspace = true
 # license.workspace = true
 
 [dependencies]
-windows = { version = "0", default-features = false, features = [
+serde_valid = "1"
+time = { version = "0", default-features = false, features = [
+  'macros',
+  'serde',
+] }
+toml = { version = "0", default-features = false, features = [
+  "display",
+  "parse",
+] }
+tokio = { workspace = true, features = [
+  "sync",
+  "macros",
+  "time",
+  "fs",
+  "rt",
+  "rt-multi-thread",
+] }
+regex = { version = "1", default-features = false }
+dirs = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+windows = { workspace = true, default-features = false, features = [
   "Devices_Geolocation",
   "Win32_System_Registry",
   "System_UserProfile",
@@ -21,39 +45,6 @@ windows = { version = "0", default-features = false, features = [
   "Win32_UI_WindowsAndMessaging",
   "Win32_System_Com",
 ] }
-serde = { version = "1", default-features = false, features = ["derive"] }
-serde_json = "1"
-serde_valid = "0"
-tokio = { version = "1", default-features = false, features = [
-  "sync",
-  "macros",
-  "time",
-  "fs",
-  "rt",
-  "rt-multi-thread",
-] }
-time = { version = "0", default-features = false, features = [
-  'macros',
-  'serde',
-] }
-tracing = { version = "0", default-features = false, features = [
-  "log",
-  "release_max_level_info",
-] }
-tracing-subscriber = { version = "0", default-features = false, features = [
-  "fmt",
-  'time',
-  "local-time",
-  'env-filter',
-  'json',
-] }
-thiserror = { version = "2", default-features = false }
-toml = { version = "0", default-features = false, features = [
-  "display",
-  "parse",
-] }
-dirs = { version = "5", default-features = false }
-regex = { version = "1", default-features = false }
 
 [features]
 default = []

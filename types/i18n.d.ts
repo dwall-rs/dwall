@@ -10,6 +10,7 @@ type TranslationKey =
   | "label-github-mirror-template"
   | "label-launch-at-startup"
   | "label-set-lock-screen-wallpaper-simultaneously"
+  | "label-source-code"
   | "label-themes-directory"
   | "label-version"
   | "tooltip-check-new-version"

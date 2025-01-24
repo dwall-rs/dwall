@@ -94,7 +94,7 @@ const App = () => {
           direction="vertical"
           align="center"
           justify="between"
-          style={{ height: "100%" }}
+          class="sidebar"
         >
           <ThemeMenu
             themes={themes}
@@ -106,7 +106,13 @@ const App = () => {
             }}
           />
 
-          <LazySpace direction="vertical" gap={8} justify="end" align="center">
+          <LazySpace
+            direction="vertical"
+            gap={8}
+            justify="end"
+            align="center"
+            class="sidebar-buttons"
+          >
             <Show when={update()}>
               <LazyTooltip
                 positioning="after"

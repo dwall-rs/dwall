@@ -15,6 +15,7 @@ pub(super) const LABEL_GITHUB_MIRROR_TEMPLATE: &str = "label-github-mirror-templ
 pub(super) const LABEL_LAUNCH_AT_STARTUP: &str = "label-launch-at-startup";
 pub(super) const LABEL_SET_LOCK_SCREEN_WALLPAPER_SIMULTANEOUSLY: &str =
     "label-set-lock-screen-wallpaper-simultaneously";
+pub(super) const LABEL_SOURCE_CODE: &str = "label-source-code";
 pub(super) const LABEL_THEMES_DIRECTORY: &str = "label-themes-directory";
 pub(super) const LABEL_VERSION: &str = "label-version";
 

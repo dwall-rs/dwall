@@ -14,10 +14,12 @@ import GithubMirror from "./GithubMirror";
 import { createResource } from "solid-js";
 import { openConfigDir } from "~/commands";
 import { ask, message } from "@tauri-apps/plugin-dialog";
+import { open } from "@tauri-apps/plugin-shell";
 import { useAppContext } from "~/context";
 import ThemesDirectory from "./ThemesDirectory";
 import LockScreenWallpaperSwitch from "./LockScreenWallpaperSwitch";
 import { translate } from "~/utils/i18n";
+import { AiFillGithub } from "solid-icons/ai";
 
 const Settings = () => {
   const {
@@ -51,6 +53,8 @@ const Settings = () => {
     if (!result) return;
     setShowDialog(true);
   };
+
+  const onOpenGithub = () => open("https://github.com/dwall-rs/dwall");
 
   return (
     <>
@@ -88,6 +92,18 @@ const Settings = () => {
                 {version()}
               </LazyButton>
             </LazyTooltip>
+          </LazySpace>
+
+          <LazySpace gap={8}>
+            <LazyLabel>
+              {translate(translations()!, "label-source-code")}
+            </LazyLabel>
+
+            <LazyButton
+              appearance="subtle"
+              icon={<AiFillGithub />}
+              onClick={onOpenGithub}
+            />
           </LazySpace>
 
           <LazySpace>

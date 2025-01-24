@@ -37,6 +37,7 @@ impl TranslationMap for ChineseSimplifiedTranslations {
             LABEL_SET_LOCK_SCREEN_WALLPAPER_SIMULTANEOUSLY,
             TranslationValue::Text("同时设置锁屏壁纸"),
         );
+        translations.insert(LABEL_SOURCE_CODE, TranslationValue::Text("源代码"));
         translations.insert(LABEL_THEMES_DIRECTORY, TranslationValue::Text("主题文件夹"));
         translations.insert(LABEL_VERSION, TranslationValue::Text("版本号"));
 

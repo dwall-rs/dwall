@@ -9,6 +9,7 @@
     "core:default",
     "updater:default",
     "dialog:default",
-    "process:default"
+    "process:default",
+    "shell:default"
   ]
 }
