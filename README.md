@@ -1,13 +1,27 @@
 # DWALL
 
-By calculating the solar altitude angle and azimuth angle to simulate the wallpaper switching logic of macOS, implement a smooth dynamic wallpaper switching feature on the Windows system.
+DWALL is a lightweight application designed to emulate the macOS wallpaper switching behavior by dynamically changing the desktop background on Windows systems based on the solar altitude and azimuth angles. Experience a seamless transition of wallpapers that mimic the natural movement of the sun throughout the day.
 
-### Purpose
+### Motivation
 
-Why create another similar software when there is already [WinDynamicDesktop](https://github.com/t1m0thyj/WinDynamicDesktop) and [AutoDarkMode](https://github.com/AutoDarkMode/Windows-Auto-Night-Mode)?
+With existing solutions like [WinDynamicDesktop](https://github.com/t1m0thyj/WinDynamicDesktop) and [AutoDarkMode](https://github.com/AutoDarkMode/Windows-Auto-Night-Mode), you might wonder why another tool is necessary. While these applications offer similar features, they operate as separate projects without plans for consolidation. Additionally, their resource consumption can be higher than ideal for such tasks.
 
-These two pieces of software have similar functionalities, and ideally, they should have been combined into one application, but the projects do not have such intentions.
+Recognizing this gap, DWALL was developed to provide an efficient alternative. It automatically toggles between light and dark themes and changes wallpapers according to the position of the sun, all while maintaining minimal memory usage during operation. For users seeking a less resource-intensive option, DWALL offers a compelling choice.
 
-Moreover, as background-running processes, the memory usage of these two applications far exceeds what is necessary for their functions.
+### Features
 
-Taking into account these two reasons, I developed dwall, which can automatically switch between light and dark modes and change wallpapers according to the sun's angle, while maintaining very low memory consumption when running in the background. This project can serve as an alternative to the aforementioned two applications.
+- **Sun-Based Scheduling:** Automatically adjusts wallpapers in sync with the sun's path.
+- **Low Resource Footprint:** Optimized for performance with minimal impact on system resources.
+- **Seamless Integration:** Easily integrates into your workflow without intrusive notifications or settings.
+
+### Screenshots
+
+Below are two screenshots showcasing DWALL in action:
+
+![home](images/home.avif)
+
+![settings](images/settings.avif)
+
+---
+
+We welcome contributions from the community to help improve DWALL. If you encounter any issues or have suggestions for new features, feel free to open an issue or submit a pull request on our GitHub page.
