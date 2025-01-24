@@ -1,3 +1,19 @@
+.sidebar {
+  height: 560px;
+  display: flex;
+  flex-direction: column;
+}
+
+.thumbnails-container {
+  flex: 7;
+  overflow-y: auto;
+  padding: 10px;
+}
+
+.sidebar-buttons {
+  flex: 1;
+}
+
 .menu-item {
   --menu-item-color-shadow: rgba(0, 0, 0, 0.3);
 
