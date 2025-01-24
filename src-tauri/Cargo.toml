@@ -43,6 +43,7 @@ windows = { workspace = true, features = [
   "Win32_Globalization",
   "Win32_System_Threading",
 ] }
+tauri-plugin-shell = "2"
 
 [target.'cfg(target_os = "windows")'.dependencies]
 tauri-plugin-single-instance = "2"

@@ -43,6 +43,7 @@ impl TranslationMap for JapaneseTranslations {
             LABEL_SET_LOCK_SCREEN_WALLPAPER_SIMULTANEOUSLY,
             TranslationValue::Text("ロック画面の壁紙も同時に設定"),
         );
+        translations.insert(LABEL_SOURCE_CODE, TranslationValue::Text("ソースコード"));
         translations.insert(
             LABEL_THEMES_DIRECTORY,
             TranslationValue::Text("テーマディレクトリ"),
