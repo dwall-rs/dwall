@@ -1,5 +1,5 @@
-import fs from "fs";
-import path from "path";
+import fs from "node:fs";
+import path from "node:path";
 
 const mirrors = [
   { host: "mirror.ghproxy.com", prefix: true },
@@ -12,7 +12,7 @@ const mirrorContent = (mirror, text) => {
   if (mirror.prefix) {
     return text.replaceAll(
       GITHUB,
-      `https://${mirror.host}/https://github.com/`
+      `https://${mirror.host}/https://github.com/`,
     );
   }
 
@@ -27,7 +27,7 @@ const newMirrorJSON = (text, mirror, filepath) => {
 const run = async () => {
   let text = process.env.TEXT;
 
-  // 删除开头和结尾的引号
+  // Remove leading and trailing quotes
   if (text[0] === '"') {
     text = text.slice(1);
   }
@@ -37,11 +37,11 @@ const run = async () => {
   }
 
   text = text
-    .replace("\\n}", "}") // 处理结尾的换行
-    .replaceAll("\\n ", "\n") // 删除 notes 外的换行
-    .replaceAll(/\s{2,}/g, "") // 删除所有空白符
-    .replaceAll('\\"', '"') // 替换转义的双引号
-    .replaceAll("\\\\n", "\\n"); // 处理 notes 中的换行
+    .replace("\\n}", "}") // Handle trailing newline
+    .replaceAll("\\n ", "\n") // Remove newlines outside notes
+    .replaceAll(/\s{2,}/g, "") // Remove all whitespace
+    .replace(/(\\+)(?=")/g, "\\") // Replace escaped double quotes
+    .replace(/(\\+)(n)/g, "\\n"); // Handle newlines within notes
 
   const currentDir = process.cwd();
   const targetDir = path.join(currentDir, "mirrors");
@@ -51,7 +51,7 @@ const run = async () => {
   }
 
   mirrors.forEach((m, i) =>
-    newMirrorJSON(text, m, path.join(targetDir, `latest-mirror-${i + 1}.json`))
+    newMirrorJSON(text, m, path.join(targetDir, `latest-mirror-${i + 1}.json`)),
   );
 };
 
