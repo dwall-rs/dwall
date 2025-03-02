@@ -55,7 +55,7 @@ impl WallpaperManager {
             }
         };
 
-        let is_same = *wallpaper_path == unsafe { current_wallpaper_path.to_hstring() }.unwrap();
+        let is_same = *wallpaper_path == unsafe { current_wallpaper_path.to_hstring() };
 
         trace!(
             current_wallpaper_path = %unsafe{current_wallpaper_path.display()},

@@ -61,7 +61,7 @@ impl RegistryHelper {
             let result = RegOpenKeyExW(
                 HKEY_CURRENT_USER,
                 PCWSTR(wide_path.as_ptr()),
-                0,
+                None,
                 access,
                 &mut hkey,
             );
@@ -167,7 +167,7 @@ impl ColorModeManager {
             let set_apps_result = RegSetValueExW(
                 hkey,
                 PCWSTR(apps_value.as_ptr()),
-                0,
+                None,
                 REG_DWORD,
                 Some(&value),
             );
@@ -175,7 +175,7 @@ impl ColorModeManager {
             let set_system_result = RegSetValueExW(
                 hkey,
                 PCWSTR(system_value.as_ptr()),
-                0,
+                None,
                 REG_DWORD,
                 Some(&value),
             );

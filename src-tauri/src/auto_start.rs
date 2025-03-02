@@ -52,7 +52,7 @@ impl AutoStartManager {
             let reg_result = RegOpenKeyExA(
                 HKEY_CURRENT_USER,
                 PCSTR(self.key_path.as_ptr() as *const u8),
-                0,
+                None,
                 access,
                 &mut hkey,
             );
@@ -121,7 +121,7 @@ impl AutoStartManager {
             RegSetValueExA(
                 hkey,
                 PCSTR(self.app_name.as_ptr() as *const u8),
-                0,
+                None,
                 REG_SZ,
                 Some(exe_path_str.as_bytes()),
             )
