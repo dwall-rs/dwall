@@ -8,7 +8,7 @@ pub type DwallResult<T> = std::result::Result<T, DwallError>;
 pub enum DwallError {
     #[error(transparent)]
     Io(#[from] std::io::Error),
-    #[error(transparent)]
+    #[error("{0}")]
     Windows(#[from] windows::core::Error),
     #[error(transparent)]
     Theme(#[from] crate::theme::ThemeError),

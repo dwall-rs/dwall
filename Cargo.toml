@@ -27,7 +27,7 @@ tracing-subscriber = { version = "0", default-features = false, features = [
   'json',
 ] }
 tokio = { version = "1", default-features = false }
-windows = { version = "0.58", default-features = false }
+windows = { version = "0.60", default-features = false }
 
 [profile.release]
 panic = "abort"
