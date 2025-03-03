@@ -50,7 +50,7 @@ pub fn setup_app(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>>
             .await
             .and_then(|config| {
                 config
-                    .theme_id()
+                    .default_theme_id()
                     .map_or(Ok(None), |_| find_daemon_process())
             })
             .and_then(|pid| pid.map_or_else(|| spawn_apply_daemon().map(|_| ()), |_| Ok(())));

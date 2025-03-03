@@ -15,6 +15,8 @@ mod validator;
 pub enum ThemeError {
     #[error("Theme does not exist")]
     NotExists,
+    #[error("Missing default theme")]
+    MissingDefaultTheme,
     #[error("Missing solar configuration file")]
     MissingSolarConfigFile,
     #[error("Image count does not match solar configuration")]
@@ -25,12 +27,7 @@ pub enum ThemeError {
 
 /// Applies a theme and starts a background task for periodic wallpaper updates
 pub async fn apply_theme(config: Config<'_>) -> DwallResult<()> {
-    let theme_id = config.theme_id();
-
-    let theme_id = match theme_id {
-        Some(id) => id,
-        None => return Ok(()),
-    };
+    let theme_id = config.default_theme_id()?;
 
     validate_theme(config.themes_directory(), theme_id).await?;
 

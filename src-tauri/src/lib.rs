@@ -1,4 +1,5 @@
 use std::borrow::Cow;
+use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
 use dwall::config::write_config_file as dwall_write_config;
@@ -25,6 +26,7 @@ mod download;
 mod error;
 mod fs;
 mod i18n;
+mod monitor;
 mod postion;
 mod process_manager;
 mod setup;
@@ -84,9 +86,9 @@ async fn get_applied_theme_id() -> DwallSettingsResult<Option<String>> {
 
     match dwall::config::read_config_file().await {
         Ok(config) => {
-            let theme_id = config.theme_id();
-            info!(theme_id = ?theme_id, "Retrieved current theme ID");
-            Ok(theme_id.map(|s| s.to_owned()))
+            let default_theme_id = config.default_theme_id().ok();
+            info!(default_theme_id = ?default_theme_id, "Retrieved current theme ID");
+            Ok(default_theme_id.map(|s| s.to_owned()))
         }
         Err(e) => {
             error!(error = ?e, "Failed to read config file while getting theme ID");
@@ -136,7 +138,7 @@ async fn apply_theme(config: Config<'_>) -> DwallSettingsResult<()> {
 
     dwall_write_config(&config).await?;
 
-    if config.theme_id().is_none() {
+    if config.default_theme_id().is_err() {
         info!("No theme selected, skipping daemon spawn");
         return Ok(());
     }
@@ -180,6 +182,14 @@ async fn set_titlebar_color_mode(
     Ok(())
 }
 
+#[tauri::command]
+async fn get_monitors(
+) -> DwallSettingsResult<HashMap<std::string::String, dwall::monitor::MonitorInfo>> {
+    let monitors = monitor::get_monitors()?;
+
+    Ok(monitors)
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() -> DwallSettingsResult<()> {
     setup_logging(&["dwall_settings_lib".to_string(), "dwall".to_string()]);
@@ -220,7 +230,8 @@ pub fn run() -> DwallSettingsResult<()> {
             move_themes_directory,
             kill_daemon,
             get_or_save_cached_thumbnails,
-            get_translations
+            get_translations,
+            get_monitors
         ]);
 
     if cfg!(debug_assertions) {
