@@ -44,6 +44,10 @@ windows = { workspace = true, default-features = false, features = [
   "Win32_UI_Shell",
   "Win32_UI_WindowsAndMessaging",
   "Win32_System_Com",
+  "Win32_Graphics",
+  "Win32_Graphics_Gdi",
+  "Win32_Devices_Display",
+  "Win32_Devices_DeviceAndDriverInstallation",
 ] }
 windows-strings = { version = '0.3.1', features = ['std'] }
 windows-result = { version = '0.3.1', features = ['std'] }
