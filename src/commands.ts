@@ -59,3 +59,6 @@ export const getOrSaveCachedThumbnails = async (
 
 export const getTranslations = async () =>
   invoke<Record<TranslationKey, string>>("get_translations");
+
+export const getMonitors = async () =>
+  invoke<Record<string, MonitorInfo>>("get_monitors");
