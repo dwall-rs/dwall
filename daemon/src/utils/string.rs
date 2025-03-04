@@ -5,7 +5,6 @@ pub trait WideStringRead {
 }
 
 pub trait WideStringExt: WideStringRead {
-    fn from_string(s: String) -> Self;
     fn from_str(s: &str) -> Self;
 }
 
@@ -21,16 +20,12 @@ impl<const N: usize> WideStringExt for [u16; N] {
         let mut buf = [0u16; N];
         let wide_chars: Vec<u16> = OsStr::new(s).encode_wide().collect();
         let copy_len = wide_chars.len().min(N - 1); // Ensure one position is reserved for the null terminator
-        
+
         for i in 0..copy_len {
             buf[i] = wide_chars[i];
         }
 
         buf
-    }
-    
-    fn from_string(s: String) -> Self {
-        Self::from_str(&s)
     }
 }
 
@@ -49,10 +44,6 @@ impl WideStringRead for Vec<u16> {
 }
 
 impl WideStringExt for Vec<u16> {
-    fn from_string(s: String) -> Self {
-        Self::from_str(&s)
-    }
-
     fn from_str(s: &str) -> Self {
         OsStr::new(s)
             .encode_wide()
