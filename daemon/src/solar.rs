@@ -18,6 +18,14 @@ pub struct SunPosition {
 }
 
 impl SunPosition {
+    /// Creates a new SunPosition instance for solar angle calculations
+    ///
+    /// # Parameters
+    ///
+    /// * `latitude` - The latitude of the location in degrees (positive for North, negative for South)
+    /// * `longitude` - The longitude of the location in degrees (positive for East, negative for West)
+    /// * `date_time` - The local date and time for which to calculate the sun position
+    /// * `timezone_offset_hours` - The timezone offset from UTC in hours (e.g., +8 for UTC+8)
     pub fn new(
         latitude: f64,
         longitude: f64,
@@ -64,6 +72,7 @@ impl SunPosition {
         let b = 2.0 * PI * (day_of_year - 81.0) / 364.0;
         let equation_of_time = 9.87 * (2.0 * b).sin() - 7.53 * b.cos() - 1.5 * b.sin(); // Equation of time
 
+        // FIXME: The time zones in some regions are not based on geographical location but are determined by political divisions. Therefore, using time zone offsets here is not precise enough for certain areas of large countries that span multiple time zones, and further processing is required.
         // Calculate local mean time
         let zone_correction = self.longitude - (15.0 * self.timezone_offset_hours as f64); // Using provided timezone offset
         let local_mean_time = hours + (zone_correction / 15.0) + (equation_of_time / 60.0);
