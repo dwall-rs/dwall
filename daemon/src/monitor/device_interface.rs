@@ -10,7 +10,7 @@ use windows::{
     },
 };
 
-use crate::{monitor::error::MonitorError, utils::string::WideStringExt, DwallResult};
+use crate::{monitor::error::MonitorError, utils::string::WideStringRead, DwallResult};
 
 pub fn query_device_friendly_name(
     device_path: &str,

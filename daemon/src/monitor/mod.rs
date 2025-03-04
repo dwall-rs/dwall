@@ -12,7 +12,7 @@ use windows::Win32::{
 };
 use windows_strings::HSTRING;
 
-use crate::{error::DwallResult, utils::string::WideStringExt};
+use crate::{error::DwallResult, utils::string::WideStringRead};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Monitor {

@@ -1,5 +1,3 @@
-use std::{ffi::OsStr, os::windows::ffi::OsStrExt};
-
 use serde::Deserialize;
 use windows::{
     core::PCWSTR,
@@ -13,7 +11,7 @@ use windows::{
     },
 };
 
-use crate::error::DwallResult;
+use crate::{error::DwallResult, utils::string::WideStringExt};
 
 /// Custom error types for registry operations
 #[derive(thiserror::Error, Debug)]
@@ -42,19 +40,10 @@ pub enum ColorMode {
 struct RegistryHelper;
 
 impl RegistryHelper {
-    /// Convert a string to a wide character string (Windows-compatible)
-    fn to_wide_string(s: &str) -> Vec<u16> {
-        trace!(string = s, "Converting string to wide string");
-        OsStr::new(s)
-            .encode_wide()
-            .chain(std::iter::once(0))
-            .collect()
-    }
-
     /// Open a registry key with specified access rights
     fn open_key(path: &str, access: REG_SAM_FLAGS) -> DwallResult<HKEY> {
         debug!(path = path, "Attempting to open registry key");
-        let wide_path = Self::to_wide_string(path);
+        let wide_path = Vec::from_str(path);
         let mut hkey = HKEY::default();
 
         unsafe {
@@ -115,7 +104,7 @@ impl ColorModeManager {
         info!("Retrieving current system color mode");
         let hkey = RegistryHelper::open_key(Self::PERSONALIZE_KEY_PATH, KEY_QUERY_VALUE)?;
 
-        let value_name = RegistryHelper::to_wide_string(Self::APPS_THEME_VALUE);
+        let value_name = Vec::from_str(Self::APPS_THEME_VALUE);
         let mut value: u32 = 0;
         let mut size = std::mem::size_of::<u32>() as u32;
 
@@ -160,8 +149,8 @@ impl ColorModeManager {
             ColorMode::Dark => [0u8, 0, 0, 0],
         };
 
-        let apps_value = RegistryHelper::to_wide_string(Self::APPS_THEME_VALUE);
-        let system_value = RegistryHelper::to_wide_string(Self::SYSTEM_THEME_VALUE);
+        let apps_value = Vec::from_str(Self::APPS_THEME_VALUE);
+        let system_value = Vec::from_str(Self::SYSTEM_THEME_VALUE);
 
         unsafe {
             let set_apps_result = RegSetValueExW(
