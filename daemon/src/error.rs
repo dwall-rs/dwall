@@ -22,6 +22,8 @@ pub enum DwallError {
     NulError(#[from] std::ffi::NulError),
     #[error(transparent)]
     TimeIndeterminateOffset(#[from] time::error::IndeterminateOffset),
+    #[error(transparent)]
+    Monitor(#[from] crate::monitor::error::MonitorError),
 }
 
 #[derive(Debug, thiserror::Error)]

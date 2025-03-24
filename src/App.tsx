@@ -19,6 +19,7 @@ import { themes } from "./themes";
 import { TbArrowBigUpLinesFilled } from "solid-icons/tb";
 import Updater from "./components/Update";
 import { translate } from "./utils/i18n";
+import Select from "./components/Select";
 
 const App = () => {
   const [showUpdateDialog, setShowUpdateDialog] = createSignal<boolean>();
@@ -42,6 +43,9 @@ const App = () => {
     showSettings,
     setShowSettings,
     translations,
+    monitors,
+    handleMonitorChange,
+    monitorID,
   } = useThemeSelector(themes);
 
   useDark();
@@ -49,7 +53,7 @@ const App = () => {
   onMount(async () => {
     await setTitlebarColorMode(detectColorMode());
 
-    await showWindow("main");
+    if (!import.meta.env.PRODEV) await showWindow("main");
 
     const mii = menuItemIndex();
     if (mii !== undefined) handleThemeSelection(mii);
@@ -86,7 +90,7 @@ const App = () => {
       }}
     >
       <LazyFlex
-        style={{ height: "100vh", flex: 1, padding: "20px 0" }}
+        style={{ height: "100vh", flex: 1, padding: "10px 0" }}
         justify="round"
         align="center"
       >
@@ -152,18 +156,28 @@ const App = () => {
         </LazyFlex>
 
         <Show when={!showSettings() && currentTheme()} fallback={<Settings />}>
-          <ThemeShowcase
-            currentTheme={currentTheme()!}
-            themeExists={themeExists}
-            appliedThemeID={appliedThemeID}
-            downloadThemeID={downloadThemeID}
-            setDownloadThemeID={setDownloadThemeID}
-            onDownload={() => setDownloadThemeID(currentTheme()!.id)}
-            onApply={handleThemeApplication}
-            onCloseTask={handleTaskClosure}
-            onMenuItemClick={handleThemeSelection}
-            index={menuItemIndex()!}
-          />
+          <LazyFlex direction="vertical" gap={16} align="center">
+            <Select
+              options={monitors()}
+              placeholder="选择显示器"
+              onChange={handleMonitorChange}
+              value={monitorID()}
+              label="选择显示器"
+            />
+
+            <ThemeShowcase
+              currentTheme={currentTheme()!}
+              themeExists={themeExists}
+              appliedThemeID={appliedThemeID}
+              downloadThemeID={downloadThemeID}
+              setDownloadThemeID={setDownloadThemeID}
+              onDownload={() => setDownloadThemeID(currentTheme()!.id)}
+              onApply={handleThemeApplication}
+              onCloseTask={handleTaskClosure}
+              onMenuItemClick={handleThemeSelection}
+              index={menuItemIndex()!}
+            />
+          </LazyFlex>
         </Show>
       </LazyFlex>
 
