@@ -230,7 +230,6 @@ async fn process_theme_cycle(
         geographic_position.latitude,
         geographic_position.longitude,
         current_time,
-        config.timezone_offset(),
     );
 
     // Process each monitor
