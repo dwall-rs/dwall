@@ -1,3 +1,10 @@
+.app {
+  height: 100vh;
+  flex: 1;
+  padding: 0 0 10px 0;
+  justify-content: stretch;
+}
+
 .sidebar {
   height: 560px;
   display: flex;
@@ -7,7 +14,7 @@
 .thumbnails-container {
   flex: 7;
   overflow-y: auto;
-  padding: 10px;
+  padding: 10px 10px 10px 20px;
 }
 
 .sidebar-buttons {
