@@ -201,6 +201,10 @@ impl<'a> Config<'a> {
         &self.coordinate_source
     }
 
+    pub fn timezone_offset(&self) -> i8 {
+        self.timezone_offset
+    }
+
     pub fn monitor_specific_wallpapers(&'a self) -> &'a HashMap<String, Cow<'a, str>> {
         &self.monitor_specific_wallpapers
     }
