@@ -39,7 +39,6 @@ impl TranslationMap for ChineseSimplifiedTranslations {
         );
         translations.insert(LABEL_SOURCE_CODE, TranslationValue::Text("源代码"));
         translations.insert(LABEL_THEMES_DIRECTORY, TranslationValue::Text("主题文件夹"));
-        translations.insert(LABEL_TIMEZONE_OFFSET, TranslationValue::Text("时区偏移"));
         translations.insert(LABEL_VERSION, TranslationValue::Text("版本号"));
 
         // tooltips
@@ -56,7 +55,6 @@ impl TranslationMap for ChineseSimplifiedTranslations {
             TranslationValue::Text("发现新版本，点击更新"),
         );
         translations.insert(TOOLTIP_SETTINGS, TranslationValue::Text("设置"));
-        translations.insert(TOOLTIP_TIMEZONE_OFFSET, TranslationValue::Text("有些国家的时区并非通过经度确定，因此可能导致太阳方位角和高度角计算不准确，需要根据经度手动计算并设置更准确的时区偏移"));
 
         // messages
         translations.insert(

@@ -16,7 +16,6 @@ pub(super) const LABEL_LAUNCH_AT_STARTUP: &str = "label-launch-at-startup";
 pub(super) const LABEL_SET_LOCK_SCREEN_WALLPAPER_SIMULTANEOUSLY: &str =
     "label-set-lock-screen-wallpaper-simultaneously";
 pub(super) const LABEL_SOURCE_CODE: &str = "label-source-code";
-pub(super) const LABEL_TIMEZONE_OFFSET: &str = "label-timezone-offset";
 pub(super) const LABEL_THEMES_DIRECTORY: &str = "label-themes-directory";
 pub(super) const LABEL_VERSION: &str = "label-version";
 
@@ -25,7 +24,6 @@ pub(super) const TOOLTIP_CHECK_NEW_VERSION: &str = "tooltip-check-new-version";
 pub(super) const TOOLTIP_NEW_VERSION_AVAILABLE: &str = "tooltip-new-version-available";
 pub(super) const TOOLTIP_OPEN_THEMES_DIRECTORY: &str = "tooltip-open-themes-directory";
 pub(super) const TOOLTIP_SETTINGS: &str = "tooltip-settings";
-pub(super) const TOOLTIP_TIMEZONE_OFFSET: &str = "tooltip-timezone-offset";
 
 // ---------------- messages ----------------
 pub(super) const MESSAGE_CHANGE_THEMES_DIRECTORY: &str = "message-change-themes-directory";
