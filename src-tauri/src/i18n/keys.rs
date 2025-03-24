@@ -41,9 +41,11 @@ pub(super) const MESSAGE_SWITCH_AUTO_LIGHT_DARK_MODE_FAILED: &str =
 pub(super) const MESSAGE_SWITCHING_TO_MANUAL_COORDINATE_CONFIG: &str =
     "message-switching-to-manual-coordinate-config";
 pub(super) const MESSAGE_THEMES_DIRECTORY_MOVED: &str = "message-themes-directory-moved";
+pub(super) const MESSAGE_UPDATE_FAILED: &str = "message-update-failed";
 pub(super) const MESSAGE_VERSION_IS_THE_LATEST: &str = "message-version-is-the-latest";
 
 // ---------------- units ----------------
+pub(super) const UNIT_HOUR: &str = "unit-hour";
 pub(super) const UNIT_SECOND: &str = "unit-second";
 
 // ---------------- titles ----------------

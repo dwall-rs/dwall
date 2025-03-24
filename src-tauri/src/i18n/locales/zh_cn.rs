@@ -140,6 +140,13 @@ impl TranslationMap for ChineseSimplifiedTranslations {
             },
         );
         translations.insert(
+            MESSAGE_UPDATE_FAILED,
+            TranslationValue::Template {
+                template: "升级失败: \n{{error}}",
+                params: &["error"],
+            },
+        );
+        translations.insert(
             MESSAGE_VERSION_IS_THE_LATEST,
             TranslationValue::Text("当前已是最新版本"),
         );
