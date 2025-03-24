@@ -7,7 +7,6 @@ use std::{
 use serde::{Deserialize, Serialize};
 use serde_valid::Validate;
 use thiserror::Error;
-use time::UtcOffset;
 
 use crate::{error::DwallResult, lazy::DWALL_CONFIG_DIR, theme::ThemeError};
 
@@ -111,9 +110,6 @@ pub struct Config<'a> {
     #[serde(default = "default_monitor_specific_wallpapers")]
     monitor_specific_wallpapers: HashMap<String, Cow<'a, str>>,
 
-    #[serde(default = "default_timezone_offset")]
-    timezone_offset: i8,
-
     /// Time interval for detecting solar altitude angle and azimuth angle
     /// Measured in seconds, range: [1, 600]
     #[serde(default = "default_interval")]
@@ -148,12 +144,6 @@ fn default_themes_directory<'a>() -> Cow<'a, Path> {
 
 fn default_monitor_specific_wallpapers<'a>() -> HashMap<String, Cow<'a, str>> {
     HashMap::new()
-}
-
-fn default_timezone_offset() -> i8 {
-    UtcOffset::current_local_offset()
-        .and_then(|offset| Ok(offset.whole_hours()))
-        .unwrap_or(0)
 }
 
 impl<'a> Config<'a> {
@@ -201,10 +191,6 @@ impl<'a> Config<'a> {
         &self.coordinate_source
     }
 
-    pub fn timezone_offset(&self) -> i8 {
-        self.timezone_offset
-    }
-
     pub fn monitor_specific_wallpapers(&'a self) -> &'a HashMap<String, Cow<'a, str>> {
         &self.monitor_specific_wallpapers
     }
@@ -242,7 +228,6 @@ impl Default for Config<'_> {
             auto_detect_color_mode: default_auto_detect_color_mode(),
             themes_directory: default_themes_directory(),
             lock_screen_wallpaper_enabled: default_lock_screen_wallpaper_enabled(),
-            timezone_offset: default_timezone_offset(),
             monitor_specific_wallpapers: Default::default(),
             // On the equator, an azimuth change of 0.1 degrees takes
             // approximately 12 seconds, and an altitude change of 0.1
