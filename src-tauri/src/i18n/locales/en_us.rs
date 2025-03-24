@@ -51,6 +51,10 @@ impl TranslationMap for EnglishUSTranslations {
             LABEL_THEMES_DIRECTORY,
             TranslationValue::Text("Theme Directory"),
         );
+        translations.insert(
+            LABEL_TIMEZONE_OFFSET,
+            TranslationValue::Text("Timezone Offset"),
+        );
         translations.insert(LABEL_VERSION, TranslationValue::Text("Version"));
 
         // tooltips
@@ -67,6 +71,7 @@ impl TranslationMap for EnglishUSTranslations {
             TranslationValue::Text("New version available! Click this button to update."),
         );
         translations.insert(TOOLTIP_SETTINGS, TranslationValue::Text("Settings"));
+        translations.insert(TOOLTIP_TIMEZONE_OFFSET, TranslationValue::Text("Some countries' time zones are not determined by longitude, which may lead to inaccurate calculations of solar azimuth and altitude angles. You need to manually calculate and set a more accurate timezone offset based on longitude"));
 
         // messages
         translations.insert(
@@ -155,11 +160,19 @@ impl TranslationMap for EnglishUSTranslations {
             },
         );
         translations.insert(
+            MESSAGE_UPDATE_FAILED,
+            TranslationValue::Template {
+                template: "Failed to update: \n{{error}}",
+                params: &["error"],
+            },
+        );
+        translations.insert(
             MESSAGE_VERSION_IS_THE_LATEST,
             TranslationValue::Text("The current version is already the latest."),
         );
 
         // units
+        translations.insert(UNIT_HOUR, TranslationValue::Text("h"));
         translations.insert(UNIT_SECOND, TranslationValue::Text("s"));
 
         // titles
