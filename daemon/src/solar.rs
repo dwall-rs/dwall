@@ -18,24 +18,16 @@ pub struct SunPosition {
 }
 
 impl SunPosition {
-    /// Creates a new SunPosition instance for solar angle calculations
-    ///
-    /// # Parameters
-    ///
-    /// * `latitude` - The latitude of the location in degrees (positive for North, negative for South)
-    /// * `longitude` - The longitude of the location in degrees (positive for East, negative for West)
-    /// * `date_time` - The local date and time for which to calculate the sun position
-    /// * `timezone_offset_hours` - The timezone offset from UTC in hours (e.g., +8 for UTC+8)
     pub fn new(
         latitude: f64,
         longitude: f64,
-        date_time: OffsetDateTime,
+        utc_time: OffsetDateTime,
         timezone_offset_hours: i8,
     ) -> Self {
         Self {
             latitude,
             longitude,
-            date_time,
+            date_time: utc_time,
             timezone_offset_hours,
         }
     }
