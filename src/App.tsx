@@ -89,11 +89,7 @@ const App = () => {
         translations,
       }}
     >
-      <LazyFlex
-        style={{ height: "100vh", flex: 1, padding: "10px 0" }}
-        justify="round"
-        align="center"
-      >
+      <LazyFlex class="app" align="center">
         <LazyFlex
           direction="vertical"
           align="center"
