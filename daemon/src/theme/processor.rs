@@ -225,7 +225,7 @@ async fn process_theme_cycle(
     // Get monitor specific wallpapers
     let monitor_specific_wallpapers = config.monitor_specific_wallpapers();
 
-    let current_time = OffsetDateTime::now_local().unwrap_or(OffsetDateTime::now_utc());
+    let current_time = OffsetDateTime::now_utc();
     let sun_position = SunPosition::new(
         geographic_position.latitude,
         geographic_position.longitude,
