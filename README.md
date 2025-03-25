@@ -14,6 +14,18 @@ Recognizing this gap, DWALL was developed to provide an efficient alternative. I
 - **Low Resource Footprint:** Optimized for performance with minimal impact on system resources.
 - **Seamless Integration:** Easily integrates into your workflow without intrusive notifications or settings.
 
+## Before You Begin
+
+This project is still in the development stage and may have some issues. If you encounter any problems during use, please feel free to raise an issue on the GitHub page.
+
+## Usage Steps
+
+1. Download the [latest DWALL executable](https://github.com/dwall-rs/dwall/releases/latest).
+2. Run the DWALL executable.
+3. Allow DWALL to access your location information, or manually set your location in the settings page.
+4. In the side menu, click on the wallpaper you want to use. If it's not downloaded, you'll need to click the "Download" button to download this set of wallpapers. Once downloaded, you can click the "Apply" button to use this set of wallpapers.
+5. If you use multiple monitors, you can select the monitor you want to configure separately in the monitor selector, then repeat step 4.
+
 ## Screenshots
 
 Below are two screenshots showcasing DWALL in action:
