@@ -38,6 +38,30 @@ Below are two screenshots showcasing DWALL in action:
 
 DWALL's log level is set to `warning` by default. You can adjust the log level by setting the environment variable `DWALL_LOG`, for example, `DWALL_LOG=info`. Please note that the release version will not output logs below the `info` level.
 
+## Frequently Asked Questions
+
+1. Why are the settings and daemon processes completely isolated?
+
+   In the initial version, the settings and daemon processes ran in the same process, with taskbar tray management support. However, this resulted in higher memory usage (though still much less than other similar programs), which wasn't the desired outcome. Therefore, the settings and daemon processes were completely isolated to reduce the daemon's memory footprint and simplify process management.
+
+   Of course, this also introduced inter-process communication challenges. In the current version, the settings process (graphical program) and daemon process don't implement inter-process communication. Their only means of communication is through configuration files, which means that when the daemon process abnormally exits, the settings process cannot promptly obtain the daemon's status. This is an issue that needs to be addressed.
+
+2. Wallpaper download failure.
+
+   Wallpaper resources are stored on GitHub, but some countries and regions cannot access GitHub normally due to network restrictions. If you don't set a GitHub mirror template, wallpaper downloads will fail. You need to search for available GitHub mirror or acceleration sites using a search engine. For example, if you find an available GitHub acceleration site like `https://ghproxy.cc`, you can configure the GitHub mirror template in the settings page as follows:
+
+   ```
+   https://ghproxy.cc/https://github.com/<owner>/<repo>/releases/download/<version>/<asset>
+   ```
+
+   If you find a GitHub mirror site like `https://kkgithub.com/`, you would need to configure the GitHub mirror template as follows:
+
+   ```
+   https://kkgithub.com/<owner>/<repo>/releases/download/<version>/<asset>
+   ```
+
+   Then you can download wallpapers normally.
+
 ---
 
 We welcome contributions from the community to help improve DWALL. If you encounter any issues or have suggestions for new features, feel free to open an issue or submit a pull request on our GitHub page.
