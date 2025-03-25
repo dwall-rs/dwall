@@ -16,7 +16,10 @@ pub fn query_device_friendly_name(
     device_path: &str,
     device_guid: &windows::core::GUID,
 ) -> DwallResult<String> {
-    debug!("查询设备友好名称，设备路径: {}", device_path);
+    debug!(
+        "Querying device friendly name, device path: {}",
+        device_path
+    );
 
     unsafe {
         let mut device_info_set = get_device_info_set(device_guid)?;

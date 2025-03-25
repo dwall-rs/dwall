@@ -46,7 +46,7 @@ impl MonitorManager {
         monitor_id: &str,
         wallpaper_path: &std::path::Path,
     ) -> DwallResult<()> {
-        // 验证壁纸路径是否存在
+        // Verify wallpaper path exists
         if !wallpaper_path.exists() {
             error!(
                 image_path = %wallpaper_path.display(),
@@ -57,10 +57,10 @@ impl MonitorManager {
             );
         }
 
-        // 获取所有显示器
+        // Get all monitors
         let monitors = query_monitor_info()?;
 
-        // 查找指定ID的显示器
+        // Find monitor with specified ID
         let monitor = monitors.get(monitor_id).ok_or_else(|| {
             error!(
                 monitor_id = monitor_id,
@@ -69,12 +69,12 @@ impl MonitorManager {
             std::io::Error::new(std::io::ErrorKind::NotFound, "Monitor not found")
         })?;
 
-        // 转换壁纸路径为HSTRING
+        // Convert wallpaper path to HSTRING
         let wallpaper_path = windows::core::HSTRING::from(wallpaper_path);
 
         let device_path = HSTRING::from(&monitor.device_path);
 
-        // 设置壁纸
+        // Set wallpaper
         unsafe {
             self.desktop_wallpaper
                 .SetWallpaper(&device_path, &wallpaper_path)
@@ -139,6 +139,6 @@ fn query_monitor_info() -> DwallResult<HashMap<String, MonitorInfo>> {
         }
     }
 
-    info!("共找到 {} 个显示器", monitor_info.len());
+    info!("Found {} monitors in total", monitor_info.len());
     Ok(monitor_info)
 }
