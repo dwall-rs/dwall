@@ -1,19 +1,35 @@
 use windows::Win32::Foundation::WIN32_ERROR;
 
+/// Monitor operation related errors
+///
+/// Contains all possible errors that may occur during interaction with monitor devices
 #[derive(Debug, thiserror::Error)]
 pub enum MonitorError {
-    #[error("Failed to get monitor set")]
+    /// Unable to get monitor device collection
+    #[error("Unable to get monitor device collection")]
     GetDeviceInfoSet,
-    #[error("Failed to get monitor")]
+
+    /// Unable to get monitor device information
+    #[error("Unable to get monitor device information")]
     GetDeviceInfo,
-    #[error("Failed to get target name")]
+
+    /// Unable to get target device name
+    #[error("Unable to get target device name")]
     GetTargetName,
-    #[error("Failed to find matching device")]
+
+    /// Unable to find matching device
+    #[error("Unable to find matching device")]
     MatchDevice,
-    #[error("Failed to get friendly name")]
+
+    /// Unable to get device friendly name
+    #[error("Unable to get device friendly name")]
     GetFriendlyName,
-    #[error("Failed to get buffer sizes")]
+
+    /// Unable to get buffer sizes
+    #[error("Unable to get buffer sizes")]
     GetBufferSizes,
-    #[error("Failed to query display config: {0:?}")]
+
+    /// Failed to query display configuration
+    #[error("Failed to query display configuration: {0:?}")]
     QueryDisplayConfig(WIN32_ERROR),
 }
