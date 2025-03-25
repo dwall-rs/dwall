@@ -1,6 +1,10 @@
 import fs from "node:fs";
 import path from "node:path";
 
+const latestJsonContent = fs.readFileSync(path.join("..", "latest.json"), {
+  encoding: "utf8",
+});
+
 const mirrors = [
   { host: "gh-proxy.com", prefix: true },
   { host: "kkgithub.com" },
@@ -8,41 +12,23 @@ const mirrors = [
 
 const GITHUB = "https://github.com/";
 
-const mirrorContent = (mirror, text) => {
+const mirrorContent = (mirror) => {
   if (mirror.prefix) {
-    return text.replaceAll(
+    return latestJsonContent.replaceAll(
       GITHUB,
       `https://${mirror.host}/https://github.com/`
     );
   }
 
-  return text.replaceAll(GITHUB, `https://${mirror.host}/`);
+  return latestJsonContent.replaceAll(GITHUB, `https://${mirror.host}/`);
 };
 
-const newMirrorJSON = (text, mirror, filepath) => {
-  const content = mirrorContent(mirror, text);
+const newMirrorJSON = (mirror, filepath) => {
+  const content = mirrorContent(mirror);
   fs.writeFileSync(filepath, content);
 };
 
 const run = async () => {
-  let text = process.env.TEXT;
-
-  // Remove leading and trailing quotes
-  if (text[0] === '"') {
-    text = text.slice(1);
-  }
-
-  if (text[text.length - 1] === '"') {
-    text = text.slice(0, text.length - 1);
-  }
-
-  text = text
-    .replace("\\n}", "}") // Handle trailing newline
-    .replaceAll("\\n ", "\n") // Remove newlines outside notes
-    .replaceAll(/\s{2,}/g, "") // Remove all whitespace
-    .replace(/(\\\\+)(?=")/g, "\\") // Replace escaped double quotes
-    .replace(/(\\+)(n)/g, "\\n"); // Handle newlines within notes
-
   const currentDir = process.cwd();
   const targetDir = path.join(currentDir, "mirrors");
 
@@ -51,7 +37,7 @@ const run = async () => {
   }
 
   mirrors.forEach((m, i) =>
-    newMirrorJSON(text, m, path.join(targetDir, `latest-mirror-${i + 1}.json`))
+    newMirrorJSON(m, path.join(targetDir, `latest-mirror-${i + 1}.json`))
   );
 };
 

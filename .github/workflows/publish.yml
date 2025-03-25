@@ -198,7 +198,9 @@ jobs:
               },
             );
 
-            return Buffer.from(data.data).toString()
+            const content = Buffer.from(data.data).toString();
+            const fs = require('fs');
+            fs.writeFileSync('latest.json', content);
 
       - name: new mirror latest.json
         env:
@@ -234,4 +236,4 @@ jobs:
         if: env.RELEASE_ID != ''
         run: gh release delete nightly --cleanup-tag
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} 
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
