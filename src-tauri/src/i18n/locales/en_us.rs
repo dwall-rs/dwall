@@ -155,11 +155,19 @@ impl TranslationMap for EnglishUSTranslations {
             },
         );
         translations.insert(
+            MESSAGE_UPDATE_FAILED,
+            TranslationValue::Template {
+                template: "Failed to update: \n{{error}}",
+                params: &["error"],
+            },
+        );
+        translations.insert(
             MESSAGE_VERSION_IS_THE_LATEST,
             TranslationValue::Text("The current version is already the latest."),
         );
 
         // units
+        translations.insert(UNIT_HOUR, TranslationValue::Text("h"));
         translations.insert(UNIT_SECOND, TranslationValue::Text("s"));
 
         // titles

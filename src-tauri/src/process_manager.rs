@@ -70,8 +70,11 @@ pub fn find_daemon_process() -> DwallSettingsResult<Option<u32>> {
 
                 // Get the full path of the executable
                 let mut filename_buffer = vec![0u16; 1024];
-                let filename_length =
-                    GetModuleFileNameExW(process_handle, None, filename_buffer.as_mut_slice());
+                let filename_length = GetModuleFileNameExW(
+                    Some(process_handle),
+                    None,
+                    filename_buffer.as_mut_slice(),
+                );
 
                 if filename_length > 0 {
                     // Truncate the buffer to actual length and convert to OsString

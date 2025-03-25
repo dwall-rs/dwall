@@ -2,25 +2,27 @@ import { children } from "solid-js";
 import { LazyBadge, LazyFlex, LazyTooltip } from "~/lazy";
 import Image from "./Image";
 import { BsCheckLg } from "solid-icons/bs";
+import { useAppContext } from "~/context";
 
 interface ThemeMenuProps {
   themes: ThemeItem[];
-  index?: number;
-  appliedThemeID?: string;
-  onMenuItemClick: (idx: number, height: number) => void;
 }
 
 export const ThemeMenu = (props: ThemeMenuProps) => {
+  const { theme, settings } = useAppContext();
   const heights: Record<string, number> = {};
 
   const menu = children(() =>
     props.themes.map((item, idx) => (
       <div
-        onClick={() => props.onMenuItemClick(idx, heights[item.id])}
+        onClick={() => {
+          settings.setShow(false);
+          theme.handleThemeSelection(idx);
+        }}
         classList={{
           "menu-item": true,
-          "menu-item-active": idx === props.index,
-          "menu-item-applied": item.id === props.appliedThemeID,
+          "menu-item-active": idx === theme.menuItemIndex(),
+          "menu-item-applied": item.id === theme.appliedThemeID(),
         }}
       >
         <LazyTooltip positioning="after" content={item.id} relationship="label">
@@ -35,7 +37,7 @@ export const ThemeMenu = (props: ThemeMenuProps) => {
             }}
           />
         </LazyTooltip>
-        {item.id === props.appliedThemeID && (
+        {item.id === theme.appliedThemeID() && (
           <div class="menu-item-applied-badge">
             <LazyBadge
               shape="rounded"

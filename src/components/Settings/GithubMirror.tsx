@@ -4,10 +4,11 @@ import { useAppContext } from "~/context";
 import { createSignal } from "solid-js";
 import { AiFillSave } from "solid-icons/ai";
 import { writeConfigFile } from "~/commands";
-import { translate } from "~/utils/i18n";
+import { useTranslations } from "../TranslationsContext";
 
 const GithubMirror = () => {
-  const { config, refetchConfig, translations } = useAppContext();
+  const { config, refetchConfig } = useAppContext();
+  const { translate } = useTranslations();
 
   const [value, setValue] = createSignal(config()?.github_mirror_template);
 
@@ -23,7 +24,7 @@ const GithubMirror = () => {
   return (
     <SettingsItem
       layout="vertical"
-      label={translate(translations()!, "label-github-mirror-template")}
+      label={translate("label-github-mirror-template")}
       vertical
     >
       <LazyInput

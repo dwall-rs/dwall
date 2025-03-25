@@ -3,12 +3,13 @@ import SettingsItem from "./item";
 import { useAppContext } from "~/context";
 import { createSignal } from "solid-js";
 import { writeConfigFile } from "~/commands";
-import { translate } from "~/utils/i18n";
 import NumericInput from "../NumericInput";
 import { AiFillSave } from "solid-icons/ai";
+import { useTranslations } from "../TranslationsContext";
 
 const Interval = () => {
-  const { config, refetchConfig, translations } = useAppContext();
+  const { config, refetchConfig } = useAppContext();
+  const { translate } = useTranslations();
 
   const [value, setValue] = createSignal(config()?.interval);
 
@@ -22,16 +23,17 @@ const Interval = () => {
   };
 
   return (
-    <SettingsItem label={translate(translations()!, "label-check-interval")}>
-      <LazySpace gap={8} style={{ color: "var(--colorNeutralForeground1)" }}>
-        <NumericInput
-          appearance="underline"
-          min={15}
-          max={300}
-          onChange={onChange}
-          value={value()}
-          style={{ width: "120px" }}
-          contentAfter={
+    <SettingsItem label={translate("label-check-interval")}>
+      <NumericInput
+        appearance="underline"
+        min={15}
+        max={300}
+        onChange={onChange}
+        value={value()}
+        style={{ width: "100px" }}
+        contentAfter={
+          <LazySpace gap={4}>
+            <span>{translate("unit-second")}</span>
             <LazyButton
               disabled={!value()}
               onClick={onSave}
@@ -39,10 +41,9 @@ const Interval = () => {
               appearance="subtle"
               size="small"
             />
-          }
-        />
-        {translate(translations()!, "unit-second")}
-      </LazySpace>
+          </LazySpace>
+        }
+      />
     </SettingsItem>
   );
 };

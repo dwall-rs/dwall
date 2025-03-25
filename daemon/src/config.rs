@@ -1,5 +1,6 @@
 use std::{
     borrow::Cow,
+    collections::HashMap,
     path::{Path, PathBuf},
 };
 
@@ -7,7 +8,7 @@ use serde::{Deserialize, Serialize};
 use serde_valid::Validate;
 use thiserror::Error;
 
-use crate::{error::DwallResult, lazy::DWALL_CONFIG_DIR};
+use crate::{error::DwallResult, lazy::DWALL_CONFIG_DIR, theme::ThemeError};
 
 #[derive(Error, Debug)]
 pub enum ConfigError {
@@ -85,6 +86,8 @@ pub struct Config<'a> {
     #[serde(skip_serializing_if = "Option::is_none")]
     github_mirror_template: Option<Cow<'a, str>>,
 
+    /// When `monitor_specific_wallpapers` is not set, `selected_theme_id` will be applied to all monitors.
+    /// Otherwise, `selected_theme_id` will not take effect, and wallpapers will be set according to `monitor_specific_wallpapers`.
     #[serde(skip_serializing_if = "Option::is_none")]
     selected_theme_id: Option<Cow<'a, str>>,
 
@@ -102,6 +105,10 @@ pub struct Config<'a> {
 
     #[serde(default = "default_themes_directory")]
     themes_directory: Cow<'a, Path>,
+
+    /// Wallpapers specific to each monitor, using monitor ID as key
+    #[serde(default = "default_monitor_specific_wallpapers")]
+    monitor_specific_wallpapers: HashMap<String, Cow<'a, str>>,
 
     /// Time interval for detecting solar altitude angle and azimuth angle
     /// Measured in seconds, range: [1, 600]
@@ -135,6 +142,10 @@ fn default_themes_directory<'a>() -> Cow<'a, Path> {
     DWALL_CONFIG_DIR.join("themes").into()
 }
 
+fn default_monitor_specific_wallpapers<'a>() -> HashMap<String, Cow<'a, str>> {
+    HashMap::new()
+}
+
 impl<'a> Config<'a> {
     pub fn validate(&self) -> DwallResult<()> {
         if self.interval < 1 || self.interval > 600 {
@@ -144,8 +155,10 @@ impl<'a> Config<'a> {
         Ok(())
     }
 
-    pub fn theme_id(&self) -> Option<&str> {
-        self.selected_theme_id.as_deref()
+    pub fn default_theme_id(&self) -> DwallResult<&str> {
+        self.selected_theme_id
+            .as_deref()
+            .ok_or(ThemeError::MissingDefaultTheme.into())
     }
 
     pub fn themes_directory(&self) -> &Path {
@@ -176,6 +189,10 @@ impl<'a> Config<'a> {
 
     pub fn coordinate_source(&'a self) -> &'a CoordinateSource {
         &self.coordinate_source
+    }
+
+    pub fn monitor_specific_wallpapers(&'a self) -> &'a HashMap<String, Cow<'a, str>> {
+        &self.monitor_specific_wallpapers
     }
 
     pub fn github_asset_url(&self, github_url: &'a str) -> String {
@@ -211,6 +228,7 @@ impl Default for Config<'_> {
             auto_detect_color_mode: default_auto_detect_color_mode(),
             themes_directory: default_themes_directory(),
             lock_screen_wallpaper_enabled: default_lock_screen_wallpaper_enabled(),
+            monitor_specific_wallpapers: Default::default(),
             // On the equator, an azimuth change of 0.1 degrees takes
             // approximately 12 seconds, and an altitude change of 0.1
             // degrees takes about 24 seconds.

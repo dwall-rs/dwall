@@ -1,9 +1,17 @@
+import { BsQuestionCircle } from "solid-icons/bs";
 import { children, type JSXElement } from "solid-js";
-import { LazyFlex, LazyLabel } from "~/lazy";
+import {
+  LazyButton,
+  LazyFlex,
+  LazyLabel,
+  LazySpace,
+  LazyTooltip,
+} from "~/lazy";
 
 interface BaseProps {
   label: string;
   children: JSXElement;
+  help?: string;
 }
 
 interface VerticalLayout {
@@ -52,7 +60,24 @@ const SettingsItem = (props: SettingsItemProps) => {
 
     const mainContent = (
       <LazyFlex justify="between">
-        {renderLabel()}
+        <LazySpace class="settings-item-content-wrapper" gap={2}>
+          {renderLabel()}
+          {props.help && (
+            <LazyTooltip
+              content={props.help}
+              relationship="description"
+              withArrow
+            >
+              <LazyButton
+                icon={<BsQuestionCircle />}
+                shape="circular"
+                size="small"
+                appearance="transparent"
+              />
+            </LazyTooltip>
+          )}
+        </LazySpace>
+
         {props.children}
       </LazyFlex>
     );

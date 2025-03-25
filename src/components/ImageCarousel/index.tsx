@@ -1,19 +1,17 @@
+import { createSignal, createEffect, onCleanup, createMemo } from "solid-js";
 import { BiSolidChevronLeft, BiSolidChevronRight } from "solid-icons/bi";
-import { createSignal, createEffect, onCleanup } from "solid-js";
 import { LazyButton } from "~/lazy";
-import "./index.scss";
+import { useAppContext } from "~/context";
 import Image from "../Image";
+import "./index.scss";
 
 interface ImageCarouselProps {
-  themeID: string;
-  images: Array<{
-    src: string;
-    alt?: string;
-  }>;
   interval?: number;
 }
 
 export default function ImageCarousel(props: ImageCarouselProps) {
+  const { theme } = useAppContext();
+
   const [currentIndex, setCurrentIndex] = createSignal(0);
   const [isPlaying, setIsPlaying] = createSignal(true);
   const [indicatorsBottom, setIndicatorsBottom] = createSignal(10);
@@ -21,8 +19,15 @@ export default function ImageCarousel(props: ImageCarouselProps) {
 
   let containerRef: HTMLDivElement | undefined;
 
+  const images = createMemo(() =>
+    theme.currentTheme()!.thumbnail.map((src) => ({
+      src,
+      alt: theme.currentTheme()!.id,
+    })),
+  );
+
   // reset index
-  createEffect(() => props.images && setCurrentIndex(0));
+  createEffect(() => images() && setCurrentIndex(0));
 
   createEffect(() => {
     if (!isPlaying()) return;
@@ -36,13 +41,13 @@ export default function ImageCarousel(props: ImageCarouselProps) {
 
   const nextImage = () => {
     setCurrentIndex((current) =>
-      current === props.images.length - 1 ? 0 : current + 1,
+      current === images().length - 1 ? 0 : current + 1,
     );
   };
 
   const prevImage = () => {
     setCurrentIndex((current) =>
-      current === 0 ? props.images.length - 1 : current - 1,
+      current === 0 ? images().length - 1 : current - 1,
     );
   };
 
@@ -68,15 +73,16 @@ export default function ImageCarousel(props: ImageCarouselProps) {
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
     >
-      {props.images.map((image, index) => (
+      {images().map((image, index) => (
         <div
-          class={`fluent-carousel-slide ${index === currentIndex() ? "active" : ""
-            }`}
+          class={`fluent-carousel-slide ${
+            index === currentIndex() ? "active" : ""
+          }`}
         >
           <Image
             src={image.src}
             class="fluent-carousel-image"
-            themeID={props.themeID}
+            themeID={theme.currentTheme()!.id}
             serialNumber={index + 1}
             width={480}
             height={480}
@@ -108,7 +114,7 @@ export default function ImageCarousel(props: ImageCarouselProps) {
         class="fluent-carousel-indicators"
         style={{ bottom: `${indicatorsBottom()}px` }}
       >
-        {props.images.map((_, index) => (
+        {images().map((_, index) => (
           <button
             type="button"
             class={`fluent-indicator ${index === currentIndex() ? "active" : ""}`}

@@ -1,0 +1,128 @@
+.container {
+  display: flex;
+  gap: 4px;
+  position: relative;
+  align-items: center;
+  justify-content: center;
+}
+
+.selectWrapper {
+  display: flex;
+  align-items: center;
+  border: 1px solid var(--colorNeutralStroke1);
+  border-radius: 4px;
+  padding: 0 8px;
+  height: 32px;
+  background: var(--colorNeutralBackground1);
+  transition: all 0.1s ease;
+  cursor: pointer;
+  position: relative;
+  min-width: 240px;
+
+  &:hover {
+    border-color: var(--colorNeutralStrokeAccessible);
+  }
+
+  &.focused {
+    border-color: var(--colorBrandStroke1);
+    box-shadow: 0 0 0 1px var(--colorBrandStroke1);
+  }
+
+  &.disabled {
+    background: var(--colorNeutralBackground3);
+    border-color: var(--colorNeutralStrokeDisabled);
+    cursor: not-allowed;
+
+    .value,
+    .placeholder,
+    .arrow {
+      color: var(--colorNeutralForegroundDisabled);
+    }
+  }
+}
+
+.value {
+  flex: 1;
+  font-size: 14px;
+  color: var(--colorNeutralForeground1);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.placeholder {
+  flex: 1;
+  font-size: 14px;
+  color: var(--colorNeutralForeground4);
+}
+
+.arrow {
+  margin-left: 8px;
+  color: var(--colorNeutralForeground3);
+  transition: transform 0.2s;
+
+  &.open {
+    transform: rotate(180deg);
+  }
+}
+
+.dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  width: 100%;
+  max-height: 200px;
+  overflow-y: auto;
+  background: var(--colorNeutralBackground1);
+  border: 1px solid var(--colorNeutralStroke1);
+  border-radius: 4px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  z-index: 100;
+  display: none;
+
+  &.open {
+    display: block;
+    animation: dropdownIn 0.1s ease-out;
+  }
+}
+
+.option {
+  padding: 8px 12px;
+  font-size: 14px;
+  color: var(--colorNeutralForeground1);
+  cursor: pointer;
+  transition: background 0.1s;
+
+  &:hover {
+    background: var(--colorBrandBackgroundHover);
+    color: var(--colorNeutralForegroundOnBrand);
+  }
+
+  &.disabled {
+    color: var(--colorNeutralForegroundDisabled);
+    background: transparent;
+    cursor: not-allowed;
+  }
+}
+
+.warningMessage {
+  position: absolute;
+  left: 0;
+  top: 100%;
+  color: var(--colorStatusDangerForeground1);
+  margin-top: 4px;
+  line-height: 1.2;
+  white-space: nowrap;
+  font-size: 0.6rem;
+}
+
+@keyframes dropdownIn {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

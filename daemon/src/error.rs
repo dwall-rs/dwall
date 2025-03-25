@@ -8,7 +8,7 @@ pub type DwallResult<T> = std::result::Result<T, DwallError>;
 pub enum DwallError {
     #[error(transparent)]
     Io(#[from] std::io::Error),
-    #[error(transparent)]
+    #[error("{0}")]
     Windows(#[from] windows::core::Error),
     #[error(transparent)]
     Theme(#[from] crate::theme::ThemeError),
@@ -22,6 +22,8 @@ pub enum DwallError {
     NulError(#[from] std::ffi::NulError),
     #[error(transparent)]
     TimeIndeterminateOffset(#[from] time::error::IndeterminateOffset),
+    #[error(transparent)]
+    Monitor(#[from] crate::monitor::error::MonitorError),
 }
 
 #[derive(Debug, thiserror::Error)]

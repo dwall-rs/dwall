@@ -4,10 +4,11 @@ import { useAppContext } from "~/context";
 import { createSignal } from "solid-js";
 import { moveThemesDirectory, openDir } from "~/commands";
 import { confirm, message, open } from "@tauri-apps/plugin-dialog";
-import { translate } from "~/utils/i18n";
+import { useTranslations } from "../TranslationsContext";
 
 const ThemesDirectory = () => {
-  const { config, refetchConfig, translations } = useAppContext();
+  const { config, refetchConfig } = useAppContext();
+  const { translate } = useTranslations();
 
   const [path, setPath] = createSignal(config()?.themes_directory);
 
@@ -22,7 +23,7 @@ const ThemesDirectory = () => {
     const newThemesDirectory = `${dirPath}\\themes`;
 
     const ok = await confirm(
-      translate(translations()!, "message-change-themes-directory", {
+      translate("message-change-themes-directory", {
         newThemesDirectory,
       }),
     );
@@ -31,7 +32,7 @@ const ThemesDirectory = () => {
     try {
       await moveThemesDirectory(config()!, newThemesDirectory);
       message(
-        translate(translations()!, "message-themes-directory-moved", {
+        translate("message-themes-directory-moved", {
           newThemesDirectory,
         }),
       );
@@ -45,12 +46,12 @@ const ThemesDirectory = () => {
   return (
     <SettingsItem
       layout="vertical"
-      label={translate(translations()!, "label-themes-directory")}
+      label={translate("label-themes-directory")}
       vertical
     >
       <LazySpace gap={8} justify="between">
         <LazyTooltip
-          content={translate(translations()!, "tooltip-open-themes-directory")}
+          content={translate("tooltip-open-themes-directory")}
           relationship="label"
           withArrow
         >
@@ -64,7 +65,7 @@ const ThemesDirectory = () => {
         </LazyTooltip>
 
         <LazyButton size="small" appearance="primary" onClick={onChangePath}>
-          {translate(translations()!, "button-select-folder")}
+          {translate("button-select-folder")}
         </LazyButton>
       </LazySpace>
     </SettingsItem>

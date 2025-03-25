@@ -8,7 +8,7 @@ authors.workspace = true
 edition.workspace = true
 # homepage.workspace = true
 repository.workspace = true
-# license.workspace = true
+license.workspace = true
 
 [dependencies]
 serde_valid = "1"
@@ -39,12 +39,18 @@ windows = { workspace = true, default-features = false, features = [
   "Devices_Geolocation",
   "Win32_System_Registry",
   "System_UserProfile",
-  "Storage",
+  "Storage_Streams",
   "Win32_UI",
   "Win32_UI_Shell",
   "Win32_UI_WindowsAndMessaging",
   "Win32_System_Com",
+  "Win32_Graphics",
+  "Win32_Graphics_Gdi",
+  "Win32_Devices_Display",
+  "Win32_Devices_DeviceAndDriverInstallation",
 ] }
+windows-strings = { version = '0.3.1', features = ['std'] }
+windows-result = { version = '0.3.1', features = ['std'] }
 
 [features]
 default = []

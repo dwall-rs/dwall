@@ -7,6 +7,7 @@ interface Config {
   coordinate_source: CoordinateSource;
   auto_detect_color_mode: boolean;
   lock_screen_wallpaper_enabled: boolean;
+  monitor_specific_wallpapers: Record<string, string>;
 }
 
 interface CoordinateSourceAutomatic {
