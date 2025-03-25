@@ -43,6 +43,10 @@ impl TranslationMap for EnglishUSTranslations {
             TranslationValue::Text("Launch at Startup"),
         );
         translations.insert(
+            LABEL_SELECT_MONITOR,
+            TranslationValue::Text("Select Monitor"),
+        );
+        translations.insert(
             LABEL_SET_LOCK_SCREEN_WALLPAPER_SIMULTANEOUSLY,
             TranslationValue::Text("Set Lock Screen Wallpaper Simultaneously"),
         );

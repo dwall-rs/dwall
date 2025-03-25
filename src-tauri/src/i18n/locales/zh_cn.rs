@@ -33,6 +33,7 @@ impl TranslationMap for ChineseSimplifiedTranslations {
             TranslationValue::Text("Github 镜像模板"),
         );
         translations.insert(LABEL_LAUNCH_AT_STARTUP, TranslationValue::Text("开机自启"));
+        translations.insert(LABEL_SELECT_MONITOR, TranslationValue::Text("选择显示器"));
         translations.insert(
             LABEL_SET_LOCK_SCREEN_WALLPAPER_SIMULTANEOUSLY,
             TranslationValue::Text("同时设置锁屏壁纸"),
