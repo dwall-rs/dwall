@@ -3,11 +3,11 @@ import SettingsItem from "./item";
 import { createSignal, onMount } from "solid-js";
 import { checkAutoStart, disableAutoStart, enableAutoStart } from "~/commands";
 import { message } from "@tauri-apps/plugin-dialog";
-import { useAppContext } from "~/context";
-import { translate } from "~/utils/i18n";
+
+import { useTranslations } from "../TranslationsContext";
 
 const AutoStart = () => {
-  const { translations } = useAppContext();
+  const { translate, translateErrorMessage } = useTranslations();
   const [autoStartState, setAutoStartState] = createSignal(false);
 
   onMount(async () => {
@@ -20,22 +20,18 @@ const AutoStart = () => {
       try {
         await disableAutoStart();
       } catch (e) {
-        message(
-          translate(translations()!, "message-disable-startup-failed", {
-            error: String(e),
-          }),
-        );
+        message(translateErrorMessage("message-disable-startup-failed", e), {
+          kind: "error",
+        });
         return;
       }
     } else {
       try {
         await enableAutoStart();
       } catch (e) {
-        message(
-          translate(translations()!, "message-startup-failed", {
-            error: String(e),
-          }),
-        );
+        message(translateErrorMessage("message-startup-failed", e), {
+          kind: "error",
+        });
         return;
       }
     }
@@ -43,7 +39,7 @@ const AutoStart = () => {
   };
 
   return (
-    <SettingsItem label={translate(translations()!, "label-launch-at-startup")}>
+    <SettingsItem label={translate("label-launch-at-startup")}>
       <LazySwitch checked={autoStartState()} onChange={onSwitchAutoStart} />
     </SettingsItem>
   );

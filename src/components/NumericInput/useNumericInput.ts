@@ -1,7 +1,7 @@
 import { createSignal } from "solid-js";
 import type { NumericInputProps } from "./types";
-import { useAppContext } from "~/context";
-import { translate } from "~/utils/i18n";
+
+import { useTranslations } from "../TranslationsContext";
 
 export const numberValidation = {
   isValidNumberInput: (value: string): boolean => {
@@ -31,23 +31,20 @@ export const numberValidation = {
 };
 
 const useNumericInputHandling = (props: NumericInputProps) => {
-  const { translations } = useAppContext();
+  const { translate } = useTranslations();
   const [inputValue, setInputValue] = createSignal(
     props.value?.toString() || "",
   );
   const [warning, setWarning] = createSignal<string>("");
 
-  const invalidNumberMessage = translate(
-    translations()!,
-    "message-invalid-number-input",
-  );
+  const invalidNumberMessage = translate("message-invalid-number-input");
   const tooSmallMessage = props.min
-    ? translate(translations()!, "message-number-too-small", {
+    ? translate("message-number-too-small", {
         min: String(props.min),
       })
     : "";
   const tooLargeMessage = props.max
-    ? translate(translations()!, "message-number-too-large", {
+    ? translate("message-number-too-large", {
         max: String(props.max),
       })
     : "";

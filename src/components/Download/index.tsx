@@ -5,7 +5,7 @@ import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
 import { downloadThemeAndExtract } from "~/commands";
 import { useAppContext } from "~/context";
 import { message } from "@tauri-apps/plugin-dialog";
-import { translate } from "~/utils/i18n";
+import { useTranslations } from "../TranslationsContext";
 
 interface DownloadProgress {
   theme_id: string;
@@ -13,16 +13,17 @@ interface DownloadProgress {
   total_bytes: number;
 }
 
-interface DownloadProps {
-  themeID: string;
-  onFinished: () => void;
-}
-
 const window = getCurrentWebviewWindow();
 
-const Download = (props: DownloadProps) => {
-  const { config, translations } = useAppContext()!;
+const Download = () => {
+  const { translate } = useTranslations();
+  const { config, theme } = useAppContext()!;
   const [percent, setPercent] = createSignal<number>();
+
+  const onFinished = () => {
+    theme.setDownloadThemeID();
+    theme.handleThemeSelection(theme.menuItemIndex()!);
+  };
 
   onMount(async () => {
     const unlisten = await window.listen<DownloadProgress>(
@@ -34,19 +35,19 @@ const Download = (props: DownloadProps) => {
     );
 
     try {
-      await downloadThemeAndExtract(config()!, props.themeID);
+      await downloadThemeAndExtract(config()!, theme.downloadThemeID()!);
     } catch (e) {
       message(
-        translate(translations()!, "title-download-faild", {
+        translate("title-download-faild", {
           error: String(e),
         }),
         {
-          title: translate(translations()!, "title-download-faild"),
+          title: translate("title-download-faild"),
           kind: "error",
         },
       );
     } finally {
-      props.onFinished();
+      onFinished();
       setPercent();
       unlisten();
     }

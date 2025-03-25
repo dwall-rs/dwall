@@ -4,9 +4,9 @@ import { AiOutlineCheck } from "solid-icons/ai";
 import { useAppContext } from "~/context";
 import { writeConfigFile } from "~/commands";
 import { children, createMemo, createSignal, Show } from "solid-js";
-import { translate } from "~/utils/i18n";
 import NumericInput from "../NumericInput";
 import { message } from "@tauri-apps/plugin-dialog";
+import { useTranslations } from "../TranslationsContext";
 
 interface CoordinateInputProps {
   min: number;
@@ -46,16 +46,17 @@ const COORDINATE_LIMITS = {
 } as const;
 
 const CoordinateSource = () => {
-  const { config, refetchConfig, translations } = useAppContext();
+  const { config, refetchConfig } = useAppContext();
+  const { translate } = useTranslations();
 
   const initialPosition: Omit<CoordinateSourceManual, "type"> =
     config()?.coordinate_source.type === "MANUAL"
       ? {
-        latitude: (config()?.coordinate_source as CoordinateSourceManual)
-          .latitude,
-        longitude: (config()?.coordinate_source as CoordinateSourceManual)
-          .longitude,
-      }
+          latitude: (config()?.coordinate_source as CoordinateSourceManual)
+            .latitude,
+          longitude: (config()?.coordinate_source as CoordinateSourceManual)
+            .longitude,
+        }
       : {};
 
   const [auto, setAuto] = createSignal(
@@ -69,7 +70,7 @@ const CoordinateSource = () => {
   const getTranslation = (
     key: TranslationKey,
     params: Record<string, string> = {},
-  ) => translate(translations()!, key, params);
+  ) => translate(key, params);
 
   const isPositionValid = createMemo(() => {
     const { latitude, longitude } = position();
