@@ -1,7 +1,7 @@
 import { createSignal, Show } from "solid-js";
-import { useAppContext } from "~/context";
 import { LazyButton, LazySpace } from "~/lazy";
-import { translate } from "~/utils/i18n";
+import { useTranslations } from "./TranslationsContext";
+import { useAppContext } from "~/context";
 
 export interface ThemeActionsProps {
   themeExists: boolean;
@@ -13,50 +13,52 @@ export interface ThemeActionsProps {
   downloadThemeID?: string;
 }
 
-export const ThemeActions = (props: ThemeActionsProps) => {
-  const { translations } = useAppContext();
+export const ThemeActions = () => {
+  const { theme, task } = useAppContext();
+
+  const { translate } = useTranslations();
 
   const [spinning, setSpinning] = createSignal(false);
 
   const onApply = () => {
     setSpinning(true);
-    props.onApply();
+    theme.handleThemeApplication();
     setSpinning(false);
   };
 
   const onClose = () => {
     setSpinning(true);
-    props.onCloseTask();
+    task.handleClosure();
     setSpinning(false);
   };
 
   return (
     <LazySpace gap={8}>
       <Show
-        when={props.themeExists}
+        when={theme.themeExists()}
         fallback={
           <LazyButton
-            onClick={props.onDownload}
-            disabled={!!props.downloadThemeID}
+            onClick={() => theme.setDownloadThemeID(theme.currentTheme()!.id)}
+            disabled={!!theme.downloadThemeID()}
           >
-            {translate(translations()!, "button-download")}
+            {translate("button-download")}
           </LazyButton>
         }
       >
         <Show
-          when={props.appliedThemeID !== props.currentThemeID}
+          when={theme.appliedThemeID() !== theme.currentTheme()!.id}
           fallback={
             <LazyButton onClick={onClose} appearance="danger">
-              {translate(translations()!, "button-stop")}
+              {translate("button-stop")}
             </LazyButton>
           }
         >
           <LazyButton
             isLoading={spinning()}
-            disabled={!props.themeExists}
+            disabled={!theme.themeExists()}
             onClick={onApply}
           >
-            {translate(translations()!, "button-apply")}
+            {translate("button-apply")}
           </LazyButton>
         </Show>
       </Show>

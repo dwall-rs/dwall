@@ -3,21 +3,11 @@ import { LazyFlex } from "~/lazy";
 import ImageCarousel from "./ImageCarousel";
 import { ThemeActions } from "./ThemeActions";
 import Download from "./Download";
+import { useAppContext } from "~/context";
 
-interface ThemeShowcaseProps {
-  currentTheme: ThemeItem;
-  themeExists: () => boolean;
-  appliedThemeID: () => string | undefined;
-  downloadThemeID: () => string | undefined;
-  setDownloadThemeID: (id?: string) => void;
-  onDownload: () => void;
-  onApply: () => Promise<void>;
-  onCloseTask: () => Promise<void>;
-  onMenuItemClick: (index: number) => void;
-  index: number;
-}
+const ThemeShowcase = () => {
+  const { theme } = useAppContext();
 
-const ThemeShowcase = (props: ThemeShowcaseProps) => {
   return (
     <LazyFlex
       direction="vertical"
@@ -26,32 +16,12 @@ const ThemeShowcase = (props: ThemeShowcaseProps) => {
       align="center"
       style={{ position: "relative" }}
     >
-      <ImageCarousel
-        themeID={props.currentTheme.id}
-        images={props.currentTheme.thumbnail.map((src) => ({
-          src,
-          alt: props.currentTheme.id,
-        }))}
-      />
+      <ImageCarousel />
 
-      <ThemeActions
-        themeExists={props.themeExists()}
-        appliedThemeID={props.appliedThemeID()}
-        currentThemeID={props.currentTheme.id}
-        onDownload={() => props.setDownloadThemeID(props.currentTheme.id)}
-        onApply={props.onApply}
-        onCloseTask={props.onCloseTask}
-        downloadThemeID={props.downloadThemeID()}
-      />
+      <ThemeActions />
 
-      <Show when={props.downloadThemeID()}>
-        <Download
-          themeID={props.downloadThemeID()!}
-          onFinished={() => {
-            props.setDownloadThemeID();
-            props.onMenuItemClick(props.index);
-          }}
-        />
+      <Show when={theme.downloadThemeID()}>
+        <Download />
       </Show>
     </LazyFlex>
   );

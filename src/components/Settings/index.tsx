@@ -1,3 +1,16 @@
+import { createResource } from "solid-js";
+import { AiFillGithub } from "solid-icons/ai";
+
+import { getVersion } from "@tauri-apps/api/app";
+import { ask, message } from "@tauri-apps/plugin-dialog";
+import { open } from "@tauri-apps/plugin-shell";
+
+import { useAppContext } from "~/context";
+
+import { openConfigDir } from "~/commands";
+
+import "./index.scss";
+
 import {
   LazyButton,
   LazyFlex,
@@ -5,27 +18,20 @@ import {
   LazySpace,
   LazyTooltip,
 } from "~/lazy";
-import { getVersion } from "@tauri-apps/api/app";
 import AutoStart from "./AutoStart";
 import AutoDetectColorMode from "./AutoDetectColorMode";
 import CoordinateSource from "./CoordinateSource";
 import Interval from "./Interval";
 import GithubMirror from "./GithubMirror";
-import { createResource } from "solid-js";
-import { openConfigDir } from "~/commands";
-import { ask, message } from "@tauri-apps/plugin-dialog";
-import { open } from "@tauri-apps/plugin-shell";
-import { useAppContext } from "~/context";
 import ThemesDirectory from "./ThemesDirectory";
 import LockScreenWallpaperSwitch from "./LockScreenWallpaperSwitch";
-import { translate } from "~/utils/i18n";
-import { AiFillGithub } from "solid-icons/ai";
+import { useTranslations } from "../TranslationsContext";
 
 const Settings = () => {
   const {
     update: { resource, refetch, setShowDialog },
-    translations,
   } = useAppContext();
+  const { translate } = useTranslations();
   const [version] = createResource(getVersion);
 
   const onOpenLogDir = async () => {
@@ -38,9 +44,7 @@ const Settings = () => {
     }
     const update = resource();
     if (!update) {
-      await message(
-        translate(translations()!, "message-version-is-the-latest"),
-      );
+      await message(translate("message-version-is-the-latest"));
       return;
     }
 
@@ -77,10 +81,10 @@ const Settings = () => {
 
         <LazyFlex flex={1} justify="between">
           <LazySpace gap={8}>
-            <LazyLabel>{translate(translations()!, "label-version")}</LazyLabel>
+            <LazyLabel>{translate("label-version")}</LazyLabel>
 
             <LazyTooltip
-              content={translate(translations()!, "tooltip-check-new-version")}
+              content={translate("tooltip-check-new-version")}
               relationship="label"
               withArrow
             >
@@ -95,9 +99,7 @@ const Settings = () => {
           </LazySpace>
 
           <LazySpace gap={8}>
-            <LazyLabel>
-              {translate(translations()!, "label-source-code")}
-            </LazyLabel>
+            <LazyLabel>{translate("label-source-code")}</LazyLabel>
 
             <LazyButton
               appearance="subtle"
@@ -108,7 +110,7 @@ const Settings = () => {
 
           <LazySpace>
             <LazyButton appearance="subtle" onClick={onOpenLogDir}>
-              {translate(translations()!, "button-open-log-directory")}
+              {translate("button-open-log-directory")}
             </LazyButton>
           </LazySpace>
         </LazyFlex>

@@ -1,54 +1,79 @@
-import { createSignal, onMount, Show } from "solid-js";
-import { LazyFlex, LazyTooltip, LazyButton, LazySpace } from "~/lazy";
-import { AiFillSetting } from "solid-icons/ai";
+import { onMount, Show } from "solid-js";
+
 import useDark from "alley-components/lib/hooks/useDark";
+
+import { LazyFlex } from "~/lazy";
 
 import { ThemeMenu } from "./components/ThemeMenu";
 import Settings from "./components/Settings";
+import SidebarButtons from "./components/SidebarButtons";
+import { useThemeSelector } from "./hooks/useThemeManager";
+import ThemeShowcase from "./components/ThemeShowcase";
+import Updater from "./components/Update";
+import Select from "./components/Select";
+
+import { useColorMode } from "./hooks/useColorMode";
+import { useUpdateManager } from "./hooks/useUpdateManager";
+
+import { detectColorMode } from "./utils/color";
+
 import { AppContext } from "./context";
+
 import {
   showWindow,
   getAppliedThemeID,
   setTitlebarColorMode,
 } from "~/commands";
-import { useThemeSelector } from "./components/ThemeContext";
-import "./App.scss";
-import ThemeShowcase from "./components/ThemeShowcase";
-import { detectColorMode } from "./utils/color";
+
 import { themes } from "./themes";
-import { TbArrowBigUpLinesFilled } from "solid-icons/tb";
-import Updater from "./components/Update";
-import { translate } from "./utils/i18n";
-import Select from "./components/Select";
+
+import "./App.scss";
 
 const App = () => {
-  const [showUpdateDialog, setShowUpdateDialog] = createSignal<boolean>();
+  const themeManager = useThemeSelector(themes);
 
+  // 解构主题管理器中的各个部分
   const {
-    config,
-    refetchConfig,
+    theme,
+    config: configManager,
+    monitor,
+    task,
+    settings,
+    update,
+  } = themeManager;
+
+  // 从各部分中提取需要的状态和方法
+  const {
+    currentTheme,
     appliedThemeID,
     downloadThemeID,
     setDownloadThemeID,
     menuItemIndex,
     setMenuItemIndex,
     themeExists,
-    currentTheme,
     handleThemeSelection,
-    handleTaskClosure,
     handleThemeApplication,
     setAppliedThemeID,
-    update,
+  } = theme;
+
+  const { data: config, refetch: refetchConfig } = configManager;
+  const {
+    list: monitors,
+    handleChange: handleMonitorChange,
+    id: monitorID,
+  } = monitor;
+  const { handleClosure: handleTaskClosure } = task;
+  const { show: showSettings, setShow: setShowSettings } = settings;
+  const { data: updateData, recheck: recheckUpdate } = update;
+
+  // 使用更新管理Hook
+  const { showUpdateDialog, setShowUpdateDialog } = useUpdateManager(
+    updateData,
     recheckUpdate,
-    showSettings,
-    setShowSettings,
-    translations,
-    monitors,
-    handleMonitorChange,
-    monitorID,
-  } = useThemeSelector(themes);
+  );
 
   useDark();
+  useColorMode();
 
   onMount(async () => {
     await setTitlebarColorMode(detectColorMode());
@@ -70,15 +95,11 @@ const App = () => {
     }
   });
 
-  const onUpdate = () => {
-    update() && setShowUpdateDialog(true);
-  };
-
   return (
     <AppContext.Provider
       value={{
         update: {
-          resource: update,
+          resource: updateData,
           refetch: recheckUpdate,
           showDialog: showUpdateDialog,
           setShowDialog: setShowUpdateDialog,
@@ -86,7 +107,26 @@ const App = () => {
         config,
         refetchConfig,
         settings: { show: showSettings, setShow: setShowSettings },
-        translations,
+        theme: {
+          currentTheme,
+          appliedThemeID,
+          setAppliedThemeID,
+          downloadThemeID,
+          setDownloadThemeID,
+          menuItemIndex,
+          setMenuItemIndex,
+          themeExists,
+          handleThemeSelection,
+          handleThemeApplication,
+        },
+        monitor: {
+          list: monitors,
+          handleChange: handleMonitorChange,
+          id: monitorID,
+        },
+        task: {
+          handleClosure: handleTaskClosure,
+        },
       }}
     >
       <LazyFlex class="app" align="center">
@@ -96,59 +136,9 @@ const App = () => {
           justify="between"
           class="sidebar"
         >
-          <ThemeMenu
-            themes={themes}
-            index={menuItemIndex()}
-            appliedThemeID={appliedThemeID()}
-            onMenuItemClick={(idx) => {
-              setShowSettings(false);
-              handleThemeSelection(idx);
-            }}
-          />
+          <ThemeMenu themes={themes} />
 
-          <LazySpace
-            direction="vertical"
-            gap={8}
-            justify="end"
-            align="center"
-            class="sidebar-buttons"
-          >
-            <Show when={update()}>
-              <LazyTooltip
-                positioning="after"
-                content={translate(
-                  translations()!,
-                  "tooltip-new-version-available",
-                )}
-                relationship="label"
-                withArrow
-              >
-                <LazyButton
-                  appearance="transparent"
-                  shape="circular"
-                  icon={<TbArrowBigUpLinesFilled />}
-                  onClick={onUpdate}
-                />
-              </LazyTooltip>
-            </Show>
-
-            <LazyTooltip
-              positioning="after"
-              content={translate(translations()!, "tooltip-settings")}
-              relationship="label"
-              withArrow
-            >
-              <LazyButton
-                appearance="transparent"
-                shape="circular"
-                icon={<AiFillSetting />}
-                onClick={() => {
-                  setMenuItemIndex();
-                  setShowSettings(true);
-                }}
-              />
-            </LazyTooltip>
-          </LazySpace>
+          <SidebarButtons />
         </LazyFlex>
 
         <Show when={!showSettings() && currentTheme()} fallback={<Settings />}>
@@ -161,18 +151,7 @@ const App = () => {
               label="选择显示器"
             />
 
-            <ThemeShowcase
-              currentTheme={currentTheme()!}
-              themeExists={themeExists}
-              appliedThemeID={appliedThemeID}
-              downloadThemeID={downloadThemeID}
-              setDownloadThemeID={setDownloadThemeID}
-              onDownload={() => setDownloadThemeID(currentTheme()!.id)}
-              onApply={handleThemeApplication}
-              onCloseTask={handleTaskClosure}
-              onMenuItemClick={handleThemeSelection}
-              index={menuItemIndex()!}
-            />
+            <ThemeShowcase />
           </LazyFlex>
         </Show>
       </LazyFlex>

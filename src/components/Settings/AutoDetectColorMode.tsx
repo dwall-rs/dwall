@@ -2,11 +2,12 @@ import { LazySwitch } from "~/lazy";
 import SettingsItem from "./item";
 import { useAppContext } from "~/context";
 import { writeConfigFile } from "~/commands";
-import { translate, translateErrorMessage } from "~/utils/i18n";
 import { message } from "@tauri-apps/plugin-dialog";
+import { useTranslations } from "../TranslationsContext";
 
 const AutoDetectColorMode = () => {
-  const { config, refetchConfig, translations } = useAppContext();
+  const { config, refetchConfig } = useAppContext();
+  const { translate, translateErrorMessage } = useTranslations();
 
   const onSwitchAutoDetectColorMode = async () => {
     try {
@@ -18,7 +19,6 @@ const AutoDetectColorMode = () => {
     } catch (error) {
       message(
         translateErrorMessage(
-          translations()!,
           "message-switch-auto-light-dark-mode-failed",
           error,
         ),
@@ -28,12 +28,7 @@ const AutoDetectColorMode = () => {
   };
 
   return (
-    <SettingsItem
-      label={translate(
-        translations()!,
-        "label-automatically-switch-to-dark-mode",
-      )}
-    >
+    <SettingsItem label={translate("label-automatically-switch-to-dark-mode")}>
       <LazySwitch
         checked={config()!.auto_detect_color_mode}
         onChange={onSwitchAutoDetectColorMode}
