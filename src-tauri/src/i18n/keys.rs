@@ -13,6 +13,7 @@ pub(super) const LABEL_AUTOMATICALLY_SWITCH_TO_DARK_MODE: &str =
 pub(super) const LABEL_CHECK_INTERVAL: &str = "label-check-interval";
 pub(super) const LABEL_GITHUB_MIRROR_TEMPLATE: &str = "label-github-mirror-template";
 pub(super) const LABEL_LAUNCH_AT_STARTUP: &str = "label-launch-at-startup";
+pub(super) const LABEL_SELECT_MONITOR: &str = "label-select-monitor";
 pub(super) const LABEL_SET_LOCK_SCREEN_WALLPAPER_SIMULTANEOUSLY: &str =
     "label-set-lock-screen-wallpaper-simultaneously";
 pub(super) const LABEL_SOURCE_CODE: &str = "label-source-code";

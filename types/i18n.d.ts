@@ -9,6 +9,7 @@ type TranslationKey =
   | "label-check-interval"
   | "label-github-mirror-template"
   | "label-launch-at-startup"
+  | "label-select-monitor"
   | "label-set-lock-screen-wallpaper-simultaneously"
   | "label-source-code"
   | "label-themes-directory"
