@@ -2,7 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 
 const mirrors = [
-  { host: "mirror.ghproxy.com", prefix: true },
+  { host: "gh-proxy.com", prefix: true },
   { host: "kkgithub.com" },
 ];
 
@@ -12,7 +12,7 @@ const mirrorContent = (mirror, text) => {
   if (mirror.prefix) {
     return text.replaceAll(
       GITHUB,
-      `https://${mirror.host}/https://github.com/`,
+      `https://${mirror.host}/https://github.com/`
     );
   }
 
@@ -40,7 +40,7 @@ const run = async () => {
     .replace("\\n}", "}") // Handle trailing newline
     .replaceAll("\\n ", "\n") // Remove newlines outside notes
     .replaceAll(/\s{2,}/g, "") // Remove all whitespace
-    .replace(/(\\+)(?=")/g, "\\") // Replace escaped double quotes
+    .replace(/(\\\\+)(?=")/g, "\\") // Replace escaped double quotes
     .replace(/(\\+)(n)/g, "\\n"); // Handle newlines within notes
 
   const currentDir = process.cwd();
@@ -51,7 +51,7 @@ const run = async () => {
   }
 
   mirrors.forEach((m, i) =>
-    newMirrorJSON(text, m, path.join(targetDir, `latest-mirror-${i + 1}.json`)),
+    newMirrorJSON(text, m, path.join(targetDir, `latest-mirror-${i + 1}.json`))
   );
 };
 
