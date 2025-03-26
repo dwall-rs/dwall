@@ -181,6 +181,7 @@ const CoordinateSource = () => {
     <SettingsItem
       layout="horizontal"
       label={getTranslation("label-automatically-retrieve-coordinates")}
+      help={auto() ? undefined : translate("help-manually-set-coordinates")}
       extra={renderCoordinateInputs()}
     >
       <LazySpace gap={auto() ? 0 : 8}>

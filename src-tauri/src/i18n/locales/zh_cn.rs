@@ -18,6 +18,12 @@ impl TranslationMap for ChineseSimplifiedTranslations {
         translations.insert(BUTTON_SELECT_FOLDER, TranslationValue::Text("修改"));
         translations.insert(BUTTON_STOP, TranslationValue::Text("停止"));
 
+        // helps
+        translations.insert(
+            HELP_MANUALLY_SET_COORDINATES,
+            TranslationValue::Text("手动设置坐标时需要使用WGS84坐标系（国际通用坐标系，中国用户需要注意），否则会存在坐标偏移问题使得壁纸匹配不精确。"), 
+        );
+
         // labels
         translations.insert(
             LABEL_AUTOMATICALLY_RETRIEVE_COORDINATES,

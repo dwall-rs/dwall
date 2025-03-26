@@ -4,6 +4,7 @@ type TranslationKey =
   | "button-download"
   | "button-open-log-directory"
   | "button-select-folder"
+  | "help-manually-set-coordinates"
   | "label-automatically-retrieve-coordinates"
   | "label-automatically-switch-to-dark-mode"
   | "label-check-interval"

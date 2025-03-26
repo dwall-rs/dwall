@@ -5,6 +5,9 @@ pub(super) const BUTTON_OPEN_LOG_DIRECTORY: &str = "button-open-log-directory";
 pub(super) const BUTTON_SELECT_FOLDER: &str = "button-select-folder";
 pub(super) const BUTTON_STOP: &str = "button-stop";
 
+// ---------------- help ----------------
+pub(super) const HELP_MANUALLY_SET_COORDINATES: &str = "help-manually-set-coordinates";
+
 // ---------------- labels ----------------
 pub(super) const LABEL_AUTOMATICALLY_RETRIEVE_COORDINATES: &str =
     "label-automatically-retrieve-coordinates";
