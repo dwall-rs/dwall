@@ -68,6 +68,14 @@ DWALL's log level is set to `warning` by default. You can adjust the log level b
 
    Then you can download wallpapers normally.
 
+3. Why doesn't support custom wallpapers?
+
+   The wallpaper transitions need to correlate with the sun's position. Since most users lack specialized astronomical knowledge to perfectly align custom wallpapers with solar movements, we provide pre-configured wallpaper sets that are scientifically aligned with sun positions. Users can choose from these curated collections.
+
+4. I can design sun-position-aligned wallpaper sets. How to contribute them to DWALL?
+
+   You may upload your designed wallpaper sets to cloud storage, then create a GitHub issue describing your design concept. We'll consider incorporating qualified submissions into DWALL during future updates.
+
 ---
 
 We welcome contributions from the community to help improve DWALL. If you encounter any issues or have suggestions for new features, feel free to open an issue or submit a pull request on our GitHub page.
