@@ -1,3 +1,9 @@
+<p align="center">
+<img height="64" width="64" src="./src-tauri/icons/128x128.png" />
+<br/>
+<a href="https://github.com/dwall-rs/dwall/releases/latest"><img src="https://img.shields.io/github/downloads/dwall-rs/dwall/total.svg?style=flat-square" alt="GitHub releases"></a>
+</p>
+
 # DWALL
 
 DWALL 是一款轻量级应用程序，旨在模拟 macOS 壁纸切换行为，通过基于太阳高度角和方位角动态更改 Windows 系统上的桌面背景。体验随着一天中太阳自然移动而无缝过渡的壁纸变化。
