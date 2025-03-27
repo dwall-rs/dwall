@@ -10,7 +10,6 @@ const Select: Component<SelectProps> = (props) => {
   const [selectedValue, setSelectedValue] = createSignal<string | undefined>(
     props.value,
   );
-  const [warning, setWarning] = createSignal<string | undefined>();
 
   // 引用下拉菜单和选择器容器
   let dropdownRef: HTMLDivElement | undefined;
@@ -96,11 +95,7 @@ const Select: Component<SelectProps> = (props) => {
   };
 
   return (
-    <InputContainer
-      label={props.label}
-      required={props.required}
-      warning={warning()}
-    >
+    <InputContainer label={props.label} required={props.required}>
       <div
         ref={selectRef}
         class={selectWrapperClass()}
