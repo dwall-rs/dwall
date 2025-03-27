@@ -91,7 +91,7 @@ const images = {
     "https://gh-proxy.com/https://github.com/dwall-rs/dwall-assets/blob/main/thumbnails/Mojave/15.avif",
     "https://gh-proxy.com/https://github.com/dwall-rs/dwall-assets/blob/main/thumbnails/Mojave/16.avif",
   ],
-  "Monterey Bay #1": [
+  "Monterey Bay 1": [
     "https://gh-proxy.com/https://github.com/dwall-rs/dwall-assets/blob/main/thumbnails/MontereyBay1/1.avif",
     "https://gh-proxy.com/https://github.com/dwall-rs/dwall-assets/blob/main/thumbnails/MontereyBay1/2.avif",
     "https://gh-proxy.com/https://github.com/dwall-rs/dwall-assets/blob/main/thumbnails/MontereyBay1/3.avif",
