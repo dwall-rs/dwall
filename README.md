@@ -1,3 +1,9 @@
+<p align="center">
+<img height="64" width="64" src="./src-tauri/icons/128x128.png" />
+<br/>
+<a href="https://github.com/dwall-rs/dwall/releases/latest"><img src="https://img.shields.io/github/downloads/dwall-rs/dwall/total.svg?style=flat-square" alt="GitHub releases"></a>
+</p>
+
 # DWALL
 
 DWALL is a lightweight application designed to emulate the macOS wallpaper switching behavior by dynamically changing the desktop background on Windows systems based on the solar altitude and azimuth angles. Experience a seamless transition of wallpapers that mimic the natural movement of the sun throughout the day.
