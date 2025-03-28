@@ -68,7 +68,7 @@ impl<'a> ThemeDownloader<'a> {
     /// Build download URL for a theme
     fn build_download_url(theme_id: &str) -> String {
         format!(
-            "https://github.com/thep0y/dwall-assets/releases/download/themes/{}.zip",
+            "https://github.com/dwall-rs/dwall-assets/releases/download/themes/{}.zip",
             theme_id.replace(' ', ".")
         )
     }
