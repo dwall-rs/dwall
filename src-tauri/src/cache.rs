@@ -9,7 +9,10 @@ use std::{
 use dwall::DWALL_CACHE_DIR;
 use tokio::sync::{Mutex, OnceCell};
 
-use crate::{error::DwallSettingsResult, fs::create_dir_if_missing};
+use crate::{
+    error::{DwallSettingsError, DwallSettingsResult},
+    fs::create_dir_if_missing,
+};
 
 // Cache key type for better type safety
 #[derive(Hash, Eq, PartialEq, Clone)]
@@ -66,7 +69,21 @@ async fn download_image(url: &str, image_path: &Path) -> DwallSettingsResult<()>
             e
         })?;
 
-        trace!(url = url, "Received response. Reading bytes");
+        match response.error_for_status_ref() {
+            Ok(_) => {
+                trace!(url = url, "HTTP GET request succeeded");
+            }
+            Err(e) => {
+                error!(
+                    url = url,
+                    status_code = response.status().as_str(),
+                    "HTTP GET request failed"
+                );
+                return Err(DwallSettingsError::Request(e));
+            }
+        }
+
+        trace!(url = url, length = ?response.content_length(), "Received response. Reading bytes");
         let buffer = response.bytes().await.map_err(|e| {
             error!(error = ?e, "Failed to read image bytes from response");
             e
@@ -125,20 +142,6 @@ async fn ensure_directories(thumbnails_dir: &Path, theme_dir: &Path) -> DwallSet
                     path = %thumbnails_dir.display(),
                     "Thumbnails directory does not exist",
                 );
-
-                info!(
-                    path = %DWALL_CACHE_DIR.display(),
-                    "Clearing old cache"
-                );
-
-                if let Err(e) = fs::remove_dir_all(&*DWALL_CACHE_DIR) {
-                    error!(error = %e, "Failed to clear old cache directory");
-                } else {
-                    info!(
-                        path = %DWALL_CACHE_DIR.display(),
-                        "Old cache cleared successfully"
-                    );
-                }
             }
         })
         .await;
