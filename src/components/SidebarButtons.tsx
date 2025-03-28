@@ -10,7 +10,7 @@ const SidebarButtons = () => {
   const {
     update: { resource: updateIsAvailable, setShowDialog: setShowUpdateDialog },
     settings: { setShow: setShowSettings },
-    theme: { setMenuItemIndex },
+    theme: { setMenuItemIndex, downloadThemeID },
   } = useAppContext();
 
   const onUpdate = () => {
@@ -37,6 +37,7 @@ const SidebarButtons = () => {
             shape="circular"
             icon={<TbArrowBigUpLinesFilled />}
             onClick={onUpdate}
+            disabled={!!downloadThemeID()} // 下载主题时禁用更新按钮
           />
         </LazyTooltip>
       </Show>
@@ -55,6 +56,7 @@ const SidebarButtons = () => {
             setMenuItemIndex();
             setShowSettings(true);
           }}
+          disabled={!!downloadThemeID()} // 下载主题时禁用设置按钮
         />
       </LazyTooltip>
     </LazySpace>
