@@ -10,6 +10,7 @@ impl TranslationMap for EnglishUSTranslations {
 
         // buttons
         translations.insert(BUTTON_APPLY, TranslationValue::Text("Apply"));
+        translations.insert(BUTTON_CANCEL, TranslationValue::Text("Cancel"));
         translations.insert(BUTTON_DOWNLOAD, TranslationValue::Text("Download"));
         translations.insert(
             BUTTON_OPEN_LOG_DIRECTORY,

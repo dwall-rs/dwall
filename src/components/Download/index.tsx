@@ -1,11 +1,11 @@
-import { createSignal, onMount } from "solid-js";
-import { LazyProgress } from "~/lazy";
-import "./index.scss";
+import { createSignal, onMount, Show } from "solid-js";
 import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
-import { downloadThemeAndExtract } from "~/commands";
-import { useAppContext } from "~/context";
 import { message } from "@tauri-apps/plugin-dialog";
+import { LazyButton, LazyProgress } from "~/lazy";
+import { downloadThemeAndExtract, cancelThemeDownload } from "~/commands";
+import { useAppContext } from "~/context";
 import { useTranslations } from "../TranslationsContext";
+import "./index.scss";
 
 interface DownloadProgress {
   theme_id: string;
@@ -19,10 +19,31 @@ const Download = () => {
   const { translate } = useTranslations();
   const { config, theme } = useAppContext()!;
   const [percent, setPercent] = createSignal<number>();
+  const [isCancelling, setIsCancelling] = createSignal(false);
 
   const onFinished = () => {
     theme.setDownloadThemeID();
     theme.handleThemeSelection(theme.menuItemIndex()!);
+  };
+
+  const handleCancelDownload = async () => {
+    if (isCancelling()) return;
+
+    setIsCancelling(true);
+    try {
+      await cancelThemeDownload(theme.downloadThemeID()!);
+      // 取消操作已发送，但实际取消会在后端处理
+    } catch (e) {
+      message(
+        translate("title-download-faild", {
+          error: String(e),
+        }),
+        {
+          title: translate("title-download-faild"),
+          kind: "error",
+        },
+      );
+    }
   };
 
   onMount(async () => {
@@ -37,15 +58,29 @@ const Download = () => {
     try {
       await downloadThemeAndExtract(config()!, theme.downloadThemeID()!);
     } catch (e) {
-      message(
-        translate("title-download-faild", {
-          error: String(e),
-        }),
-        {
-          title: translate("title-download-faild"),
-          kind: "error",
-        },
-      );
+      // 检查是否是取消下载导致的错误
+      if (String(e).includes("Download cancelled")) {
+        // message(
+        //   translate("download-cancelled", {
+        //     themeId: theme.downloadThemeID()!,
+        //   }) || `Download of ${theme.downloadThemeID()} was cancelled`,
+        //   {
+        //     title:
+        //       translate("download-cancelled-title") || "Download Cancelled",
+        //     kind: "info",
+        //   },
+        // );
+      } else {
+        message(
+          translate("title-download-faild", {
+            error: String(e),
+          }),
+          {
+            title: translate("title-download-faild"),
+            kind: "error",
+          },
+        );
+      }
     } finally {
       onFinished();
       setPercent();
@@ -53,7 +88,16 @@ const Download = () => {
     }
   });
 
-  return <LazyProgress class="download-progress" value={percent()} />;
+  return (
+    <div class="download-container">
+      <LazyProgress class="download-progress" value={percent()} />
+      <Show when={!isCancelling()}>
+        <LazyButton class="cancel-download-btn" onClick={handleCancelDownload}>
+          {translate("button-cancel") || "Cancel"}
+        </LazyButton>
+      </Show>
+    </div>
+  );
 };
 
 export default Download;

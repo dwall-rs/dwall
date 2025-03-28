@@ -11,7 +11,7 @@ const ThemeShowcase = () => {
   return (
     <LazyFlex
       direction="vertical"
-      gap={16}
+      gap={theme.downloadThemeID() ? 8 : 16}
       justify="center"
       align="center"
       style={{ position: "relative" }}

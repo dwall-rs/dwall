@@ -10,6 +10,7 @@ impl TranslationMap for ChineseSimplifiedTranslations {
 
         // buttons
         translations.insert(BUTTON_APPLY, TranslationValue::Text("应用"));
+        translations.insert(BUTTON_CANCEL, TranslationValue::Text("取消"));
         translations.insert(BUTTON_DOWNLOAD, TranslationValue::Text("下载"));
         translations.insert(
             BUTTON_OPEN_LOG_DIRECTORY,
