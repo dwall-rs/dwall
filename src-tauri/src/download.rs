@@ -1,7 +1,8 @@
 use std::borrow::Cow;
+use std::collections::HashMap;
 use std::error::Error;
-use std::path::Path;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
+use std::sync::{Arc, LazyLock};
 use std::time::Duration;
 
 use dwall::config::Config;
@@ -10,8 +11,12 @@ use serde::Serialize;
 use tauri::{Emitter, WebviewWindow};
 use tokio::fs;
 use tokio::io::AsyncWriteExt;
+use tokio::sync::Mutex;
 
 use crate::error::DwallSettingsResult;
+
+static DOWNLOAD_TASKS: LazyLock<Arc<Mutex<HashMap<String, bool>>>> =
+    LazyLock::new(|| Arc::new(Mutex::new(HashMap::new())));
 
 #[derive(Debug, thiserror::Error)]
 pub enum DownloadError {
@@ -54,7 +59,7 @@ impl<'a> ThemeDownloader<'a> {
     /// Create a new downloader instance
     pub fn new(window: &'a WebviewWindow) -> Self {
         let client = reqwest::ClientBuilder::new()
-            .connect_timeout(Duration::from_secs(10))
+            .connect_timeout(Duration::from_secs(120))
             .build()
             .map_err(|e| {
                 error!(error = ?e, "Failed to create HTTP client");
@@ -84,6 +89,18 @@ impl<'a> ThemeDownloader<'a> {
         config: &Config<'_>,
         theme_id: &str,
     ) -> DwallSettingsResult<PathBuf> {
+        // Check if theme is already being downloaded
+        let mut tasks = DOWNLOAD_TASKS.lock().await;
+        if tasks.contains_key(theme_id) {
+            error!(theme_id = theme_id, "Theme is already being downloaded");
+            return Err(
+                DownloadError::Unknown("Theme is already being downloaded".to_string()).into(),
+            );
+        }
+        // Mark theme as being downloaded
+        tasks.insert(theme_id.to_string(), true);
+        drop(tasks);
+
         // Construct download URL
         let github_url = Self::build_download_url(theme_id);
         let asset_url = config.github_asset_url(&github_url);
@@ -92,6 +109,9 @@ impl<'a> ThemeDownloader<'a> {
 
         // Prepare target directories
         let target_dir = config.themes_directory().join(theme_id);
+        let temp_theme_zip_file = config
+            .themes_directory()
+            .join(format!("{}.zip.temp", theme_id));
         let theme_zip_file = config.themes_directory().join(format!("{}.zip", theme_id));
 
         // Clean up existing directories
@@ -118,12 +138,12 @@ impl<'a> ThemeDownloader<'a> {
         let mut stream = response.bytes_stream();
 
         // Create file for writing
-        let mut file = fs::File::create(&theme_zip_file).await.map_err(|e| {
+        let mut file = fs::File::create(&temp_theme_zip_file).await.map_err(|e| {
             error!(
                 theme_id = theme_id,
-                file_path = %theme_zip_file.display(),
+                file_path = %temp_theme_zip_file.display(),
                 error = ?e,
-                "Failed to create theme zip file"
+                "Failed to create temp theme zip file"
             );
             e
         })?;
@@ -131,16 +151,21 @@ impl<'a> ThemeDownloader<'a> {
         // Download and write chunks
         let mut downloaded_bytes: u64 = 0;
         while let Some(chunk_result) = stream.next().await {
-            let chunk = chunk_result.map_err(|e| {
-                error!(
-                    theme_id = theme_id,
-                    error = ?e,
-                    "Failed to download theme chunk"
-                );
-                e
-            })?;
+            let chunk = match chunk_result {
+                Ok(chunk) => chunk,
+                Err(e) => {
+                    error!(
+                        theme_id = theme_id,
+                        error = ?e,
+                        "Failed to download theme chunk"
+                    );
+                    let mut tasks = DOWNLOAD_TASKS.lock().await;
+                    tasks.remove(theme_id);
+                    return Err(e.into());
+                }
+            };
 
-            file.write_all(&chunk).await.map_err(|e| {
+            if let Err(e) = file.write_all(&chunk).await {
                 error!(
                     theme_id = theme_id,
                     downloaded_bytes,
@@ -148,8 +173,10 @@ impl<'a> ThemeDownloader<'a> {
                     error = ?e,
                     "Failed to write theme chunk to file"
                 );
-                e
-            })?;
+                let mut tasks = DOWNLOAD_TASKS.lock().await;
+                tasks.remove(theme_id);
+                return Err(e.into());
+            };
 
             downloaded_bytes += chunk.len() as u64;
 
@@ -177,6 +204,13 @@ impl<'a> ThemeDownloader<'a> {
             total_bytes = total_size,
             "Successfully downloaded theme"
         );
+
+        // Remove download task from tracking
+        let mut tasks = DOWNLOAD_TASKS.lock().await;
+        tasks.remove(theme_id);
+
+        fs::rename(temp_theme_zip_file, &theme_zip_file).await?;
+
         Ok(theme_zip_file)
     }
 
