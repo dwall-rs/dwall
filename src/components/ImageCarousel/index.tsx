@@ -4,13 +4,14 @@ import { LazyButton } from "~/lazy";
 import { useAppContext } from "~/context";
 import Image from "../Image";
 import "./index.scss";
+import { generateGitHubThumbnailMirrorUrl } from "~/utils/proxy";
 
 interface ImageCarouselProps {
   interval?: number;
 }
 
 export default function ImageCarousel(props: ImageCarouselProps) {
-  const { theme } = useAppContext();
+  const { theme, config } = useAppContext();
 
   const [currentIndex, setCurrentIndex] = createSignal(0);
   const [isPlaying, setIsPlaying] = createSignal(true);
@@ -80,7 +81,10 @@ export default function ImageCarousel(props: ImageCarouselProps) {
           }`}
         >
           <Image
-            src={image.src}
+            src={generateGitHubThumbnailMirrorUrl(
+              image.src,
+              config()?.github_mirror_template,
+            )}
             class="fluent-carousel-image"
             themeID={theme.currentTheme()!.id}
             serialNumber={index + 1}

@@ -1,5 +1,5 @@
-import { BsQuestionCircle } from "solid-icons/bs";
 import { children, type JSXElement } from "solid-js";
+import { BsQuestionCircle } from "solid-icons/bs";
 import {
   LazyButton,
   LazyFlex,
@@ -11,7 +11,7 @@ import {
 interface BaseProps {
   label: string;
   children: JSXElement;
-  help?: string;
+  help?: JSXElement;
 }
 
 interface VerticalLayout {

@@ -35,10 +35,7 @@ pub fn query_target_name(
     adapter_id: u32,
     target_id: u32,
 ) -> DwallResult<DISPLAYCONFIG_TARGET_DEVICE_NAME> {
-    debug!(
-        "查询目标设备名称: adapter_id={}, target_id={}",
-        adapter_id, target_id
-    );
+    debug!(adapter_id, target_id, "Querying target device name");
 
     let mut target_name: DISPLAYCONFIG_TARGET_DEVICE_NAME = unsafe { mem::zeroed() };
     target_name.header = DISPLAYCONFIG_DEVICE_INFO_HEADER {

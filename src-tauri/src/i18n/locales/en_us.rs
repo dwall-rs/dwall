@@ -21,6 +21,12 @@ impl TranslationMap for EnglishUSTranslations {
         );
         translations.insert(BUTTON_STOP, TranslationValue::Text("Stop"));
 
+        // helps
+        translations.insert(
+            HELP_MANUALLY_SET_COORDINATES,
+            TranslationValue::Text("When manually setting coordinates, you must use the WGS84 coordinate system (the international standard, users in China should take note). Otherwise, coordinate offset issues may occur, leading to inaccurate wallpaper alignment."), 
+        );
+
         // labels
         translations.insert(
             LABEL_AUTOMATICALLY_RETRIEVE_COORDINATES,
@@ -41,6 +47,10 @@ impl TranslationMap for EnglishUSTranslations {
         translations.insert(
             LABEL_LAUNCH_AT_STARTUP,
             TranslationValue::Text("Launch at Startup"),
+        );
+        translations.insert(
+            LABEL_SELECT_MONITOR,
+            TranslationValue::Text("Select Monitor"),
         );
         translations.insert(
             LABEL_SET_LOCK_SCREEN_WALLPAPER_SIMULTANEOUSLY,

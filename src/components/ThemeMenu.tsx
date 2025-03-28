@@ -3,13 +3,14 @@ import { LazyBadge, LazyFlex, LazyTooltip } from "~/lazy";
 import Image from "./Image";
 import { BsCheckLg } from "solid-icons/bs";
 import { useAppContext } from "~/context";
+import { generateGitHubThumbnailMirrorUrl } from "~/utils/proxy";
 
 interface ThemeMenuProps {
   themes: ThemeItem[];
 }
 
 export const ThemeMenu = (props: ThemeMenuProps) => {
-  const { theme, settings } = useAppContext();
+  const { theme, settings, config } = useAppContext();
   const heights: Record<string, number> = {};
 
   const menu = children(() =>
@@ -27,7 +28,10 @@ export const ThemeMenu = (props: ThemeMenuProps) => {
       >
         <LazyTooltip positioning="after" content={item.id} relationship="label">
           <Image
-            src={item.thumbnail[0]}
+            src={generateGitHubThumbnailMirrorUrl(
+              item.thumbnail[0],
+              config()?.github_mirror_template,
+            )}
             width={64}
             themeID={item.id}
             serialNumber={1}

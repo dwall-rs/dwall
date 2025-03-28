@@ -22,7 +22,7 @@ pub static DWALL_CONFIG_DIR: LazyLock<PathBuf> = LazyLock::new(|| {
 pub static DWALL_CACHE_DIR: LazyLock<PathBuf> = LazyLock::new(|| {
     let config_dir = dirs::cache_dir().unwrap();
 
-    let dir = config_dir.join("dwall");
+    let dir = config_dir.join("com.thep0y.dwall"); // bundle identifier
     trace!(path = %dir.display(), "Initializing cache directory");
 
     if !dir.exists() {

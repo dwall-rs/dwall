@@ -28,8 +28,10 @@ import {
 import { themes } from "./themes";
 
 import "./App.scss";
+import { useTranslations } from "./components/TranslationsContext";
 
 const App = () => {
+  const { translate } = useTranslations();
   const themeManager = useThemeSelector(themes);
 
   // 解构主题管理器中的各个部分
@@ -145,10 +147,10 @@ const App = () => {
           <LazyFlex direction="vertical" gap={16} align="center">
             <Select
               options={monitors()}
-              placeholder="选择显示器"
+              placeholder={translate("label-select-monitor")}
               onChange={handleMonitorChange}
               value={monitorID()}
-              label="选择显示器"
+              label={translate("label-select-monitor")}
             />
 
             <ThemeShowcase />
