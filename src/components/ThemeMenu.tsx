@@ -1,4 +1,4 @@
-import { children } from "solid-js";
+import { children, createMemo } from "solid-js";
 import { LazyBadge, LazyFlex, LazyTooltip } from "~/lazy";
 import Image from "./Image";
 import { BsCheckLg } from "solid-icons/bs";
@@ -13,10 +13,14 @@ export const ThemeMenu = (props: ThemeMenuProps) => {
   const { theme, settings, config } = useAppContext();
   const heights: Record<string, number> = {};
 
+  const disabled = createMemo(() => !!theme.downloadThemeID());
+
   const menu = children(() =>
     props.themes.map((item, idx) => (
       <div
         onClick={() => {
+          if (disabled()) return; // 下载主题时不允许切换主题
+
           settings.setShow(false);
           theme.handleThemeSelection(idx);
         }}
@@ -24,6 +28,7 @@ export const ThemeMenu = (props: ThemeMenuProps) => {
           "menu-item": true,
           "menu-item-active": idx === theme.menuItemIndex(),
           "menu-item-applied": item.id === theme.appliedThemeID(),
+          "menu-item-disabled": disabled(),
         }}
       >
         <LazyTooltip positioning="after" content={item.id} relationship="label">

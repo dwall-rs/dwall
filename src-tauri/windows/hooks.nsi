@@ -3,6 +3,12 @@ ${StrStr}
 ${UnStrStr}
 
 !macro NSIS_HOOK_PREINSTALL
+  # NOTE: Clear incomplete thumbnails saved by old versions
+  # ---- start: This hook will be removed in the future ----
+  RMDir /r "$LOCALAPPDATA\dwall"
+  RMDir /r "$LOCALAPPDATA\com.thep0y.dwall"
+  # ---- end ----
+
   nsis_tauri_utils::FindProcess "dwall.exe"
   Pop $R0
   ${If} $R0 = 0
