@@ -125,20 +125,6 @@ async fn ensure_directories(thumbnails_dir: &Path, theme_dir: &Path) -> DwallSet
                     path = %thumbnails_dir.display(),
                     "Thumbnails directory does not exist",
                 );
-
-                info!(
-                    path = %DWALL_CACHE_DIR.display(),
-                    "Clearing old cache"
-                );
-
-                if let Err(e) = fs::remove_dir_all(&*DWALL_CACHE_DIR) {
-                    error!(error = %e, "Failed to clear old cache directory");
-                } else {
-                    info!(
-                        path = %DWALL_CACHE_DIR.display(),
-                        "Old cache cleared successfully"
-                    );
-                }
             }
         })
         .await;
