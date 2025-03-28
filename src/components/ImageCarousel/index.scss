@@ -14,12 +14,11 @@
 
   &:hover {
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+    transition: box-shadow 0.2s ease-in-out;
 
     @media (prefers-color-scheme: dark) {
       box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4);
     }
-
-    transition: box-shadow 0.2s ease-in-out;
   }
 }
 
@@ -85,12 +84,11 @@
 
   &:hover {
     background: var(--button-hover-bg, rgba(255, 255, 255, 0.95));
+    transform: translateY(-50%) scale(1.05);
 
     @media (prefers-color-scheme: dark) {
       --button-hover-bg: rgba(0, 0, 0, 0.8);
     }
-
-    transform: translateY(-50%) scale(1.05);
   }
 
   &.prev {
@@ -143,11 +141,10 @@
 
   &.active {
     background: var(--indicator-active-bg, white);
+    transform: scale(1.2);
 
     @media (prefers-color-scheme: dark) {
       --indicator-active-bg: rgba(255, 255, 255, 0.9);
     }
-
-    transform: scale(1.2);
   }
 }
