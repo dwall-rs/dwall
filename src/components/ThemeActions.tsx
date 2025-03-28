@@ -37,12 +37,14 @@ export const ThemeActions = () => {
       <Show
         when={theme.themeExists()}
         fallback={
-          <LazyButton
-            onClick={() => theme.setDownloadThemeID(theme.currentTheme()!.id)}
-            disabled={!!theme.downloadThemeID()}
-          >
-            {translate("button-download")}
-          </LazyButton>
+          <Show when={!theme.downloadThemeID()}>
+            <LazyButton
+              onClick={() => theme.setDownloadThemeID(theme.currentTheme()!.id)}
+              disabled={!!theme.downloadThemeID()}
+            >
+              {translate("button-download")}
+            </LazyButton>
+          </Show>
         }
       >
         <Show

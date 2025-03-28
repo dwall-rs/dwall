@@ -10,7 +10,7 @@ use tokio::sync::OnceCell;
 
 use crate::auto_start::{check_auto_start, disable_auto_start, enable_auto_start};
 use crate::cache::get_or_save_cached_thumbnails;
-use crate::download::download_theme_and_extract;
+use crate::download::{cancel_theme_download, download_theme_and_extract};
 use crate::error::DwallSettingsResult;
 use crate::fs::move_themes_directory;
 use crate::i18n::get_translations;
@@ -223,6 +223,7 @@ pub fn run() -> DwallSettingsResult<()> {
             disable_auto_start,
             enable_auto_start,
             download_theme_and_extract,
+            cancel_theme_download,
             request_location_permission,
             open_dir,
             open_config_dir,
