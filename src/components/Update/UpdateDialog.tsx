@@ -1,7 +1,6 @@
 import { relaunch } from "@tauri-apps/plugin-process";
 import type { Update } from "@tauri-apps/plugin-updater";
 import { createSignal, onMount } from "solid-js";
-import { killDaemon } from "~/commands";
 import { LazyProgress } from "~/lazy";
 import Dialog from "../Dialog";
 
@@ -18,7 +17,6 @@ const UpdateDialog = (props: UpdateDialogProps) => {
   const [downloaded, setDownloaded] = createSignal<number | undefined>();
 
   onMount(async () => {
-    await killDaemon();
     await props.update.downloadAndInstall((event) => {
       switch (event.event) {
         case "Started":
