@@ -52,35 +52,69 @@ async fn create_http_client() -> reqwest::Result<reqwest::Client> {
 async fn download_image(url: &str, image_path: &Path) -> DwallSettingsResult<()> {
     debug!(url = url, "Downloading image");
 
-    let client = create_http_client().await.map_err(|e| {
-        error!(error = ?e, "Failed to create HTTP client");
-        e
-    })?;
+    let temp_path = image_path.with_extension("temp");
 
-    trace!(url = url, "Sending HTTP GET request");
-    let response = client.get(url).send().await.map_err(|e| {
-        error!(url = url, error = ?e, "Failed to get online image");
-        e
-    })?;
+    let result = async {
+        let client = create_http_client().await.map_err(|e| {
+            error!(error = ?e, "Failed to create HTTP client");
+            e
+        })?;
 
-    trace!(url = url, "Received response. Reading bytes");
-    let buffer = response.bytes().await.map_err(|e| {
-        error!(error = ?e, "Failed to read image bytes from response");
-        e
-    })?;
+        trace!(url = url, "Sending HTTP GET request");
+        let response = client.get(url).send().await.map_err(|e| {
+            error!(url = url, error = ?e, "Failed to get online image");
+            e
+        })?;
 
-    trace!(
-        image_path = %image_path.display(),
-        "Writing image to path"
-    );
-    fs::write(image_path, buffer).map_err(|e| {
-        error!(
-            image_path = %image_path.display(),
-            error = ?e,
-            "Failed to write image"
+        trace!(url = url, "Received response. Reading bytes");
+        let buffer = response.bytes().await.map_err(|e| {
+            error!(error = ?e, "Failed to read image bytes from response");
+            e
+        })?;
+
+        trace!(
+            temp_path = %temp_path.display(),
+            "Writing image to temporary path"
         );
-        e.into()
-    })
+        fs::write(&temp_path, buffer).map_err(|e| {
+            error!(
+                temp_path = %temp_path.display(),
+                error = ?e,
+                "Failed to write temporary image"
+            );
+            e
+        })?;
+
+        trace!(
+            from = %temp_path.display(),
+            to = %image_path.display(),
+            "Renaming temporary file to target path"
+        );
+        fs::rename(&temp_path, image_path).map_err(|e| {
+            error!(
+                from = %temp_path.display(),
+                to = %image_path.display(),
+                error = ?e,
+                "Failed to rename temporary file"
+            );
+            e
+        })?;
+
+        Ok(())
+    }
+    .await;
+
+    if result.is_err() && temp_path.exists() {
+        if let Err(e) = fs::remove_file(&temp_path) {
+            error!(
+                temp_path = %temp_path.display(),
+                error = ?e,
+                "Failed to remove temporary file after error"
+            );
+        }
+    }
+
+    result
 }
 
 async fn ensure_directories(thumbnails_dir: &Path, theme_dir: &Path) -> DwallSettingsResult<()> {
