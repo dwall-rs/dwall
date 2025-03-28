@@ -151,6 +151,7 @@ const App = () => {
               onChange={handleMonitorChange}
               value={monitorID()}
               label={translate("label-select-monitor")}
+              disabled={!!downloadThemeID()} // 下载主题时禁用选择框
             />
 
             <ThemeShowcase />
