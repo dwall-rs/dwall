@@ -76,6 +76,10 @@ DWALL's log level is set to `warning` by default. You can adjust the log level b
 
    You may upload your designed wallpaper sets to cloud storage, then create a GitHub issue describing your design concept. We'll consider incorporating qualified submissions into DWALL during future updates.
 
+5. Why do thumbnails fail to load?
+
+   Thumbnails use GitHub direct links. Some regions have network restrictions that prevent access to GitHub. You can resolve this by setting up a GitHub mirror template.
+
 ---
 
 We welcome contributions from the community to help improve DWALL. If you encounter any issues or have suggestions for new features, feel free to open an issue or submit a pull request on our GitHub page.
