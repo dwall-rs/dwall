@@ -1,6 +1,6 @@
 import { createSignal, Show } from "solid-js";
 import { LazyButton, LazySpace } from "~/lazy";
-import { useTranslations } from "./TranslationsContext";
+import { useTranslations } from "~/contexts";
 import { useAppContext } from "~/context";
 
 export interface ThemeActionsProps {

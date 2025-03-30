@@ -3,7 +3,7 @@ import SettingsItem from "./item";
 import { useContext } from "solid-js";
 import { AppContext } from "~/context";
 import { writeConfigFile } from "~/commands";
-import { useTranslations } from "../TranslationsContext";
+import { useTranslations } from "~/contexts";
 
 const LockScreenWallpaperSwitch = () => {
   const { config, refetchConfig } = useContext(AppContext)!;

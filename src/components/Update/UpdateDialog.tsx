@@ -4,7 +4,7 @@ import { createSignal, onMount } from "solid-js";
 import { LazyProgress } from "~/lazy";
 import Dialog from "../Dialog";
 
-import { useTranslations } from "../TranslationsContext";
+import { useTranslations } from "~/contexts";
 
 interface UpdateDialogProps {
   update: Update;

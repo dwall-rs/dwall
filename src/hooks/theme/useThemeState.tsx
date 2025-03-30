@@ -2,7 +2,7 @@ import { createSignal, createResource } from "solid-js";
 import { check } from "@tauri-apps/plugin-updater";
 import { message } from "@tauri-apps/plugin-dialog";
 import { readConfigFile } from "~/commands";
-import { useTranslations } from "~/components/TranslationsContext";
+import { useTranslations } from "~/contexts";
 
 /**
  * Theme base state management Hook, used to manage theme-related base states

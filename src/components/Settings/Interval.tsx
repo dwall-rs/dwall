@@ -5,7 +5,7 @@ import { createSignal } from "solid-js";
 import { writeConfigFile } from "~/commands";
 import NumericInput from "../NumericInput";
 import { AiFillSave } from "solid-icons/ai";
-import { useTranslations } from "../TranslationsContext";
+import { useTranslations } from "~/contexts";
 
 const Interval = () => {
   const { config, refetchConfig } = useAppContext();

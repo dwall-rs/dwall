@@ -25,7 +25,7 @@ import Interval from "./Interval";
 import GithubMirror from "./GithubMirror";
 import ThemesDirectory from "./ThemesDirectory";
 import LockScreenWallpaperSwitch from "./LockScreenWallpaperSwitch";
-import { useTranslations } from "../TranslationsContext";
+import { useTranslations } from "~/contexts";
 
 const Settings = () => {
   const {

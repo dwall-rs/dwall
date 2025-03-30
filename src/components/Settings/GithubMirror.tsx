@@ -4,7 +4,7 @@ import { useAppContext } from "~/context";
 import { createSignal } from "solid-js";
 import { AiFillSave } from "solid-icons/ai";
 import { writeConfigFile } from "~/commands";
-import { useTranslations } from "../TranslationsContext";
+import { useTranslations } from "~/contexts";
 
 const GithubMirror = () => {
   const { config, refetchConfig } = useAppContext();

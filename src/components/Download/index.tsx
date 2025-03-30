@@ -4,7 +4,7 @@ import { message } from "@tauri-apps/plugin-dialog";
 import { LazyButton, LazyProgress } from "~/lazy";
 import { downloadThemeAndExtract, cancelThemeDownload } from "~/commands";
 import { useAppContext } from "~/context";
-import { useTranslations } from "../TranslationsContext";
+import { useTranslations } from "~/contexts";
 import "./index.scss";
 
 interface DownloadProgress {
