@@ -1,4 +1,4 @@
-import { onMount, Show } from "solid-js";
+import { Show } from "solid-js";
 
 import useDark from "alley-components/lib/hooks/useDark";
 

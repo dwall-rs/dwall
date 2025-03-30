@@ -1,9 +1,9 @@
-import { useThemeState } from "./useThemeState";
-import { useMonitorSelection } from "./useMonitorSelection";
+import { useThemeState } from "./theme/useThemeState";
+import { useMonitorSelection } from "./monitor/useMonitorSelection";
 import { useLocationPermission } from "./useLocationPermission";
-import { useThemeApplication } from "./useThemeApplication";
-import { useThemeSelection } from "./useThemeSelection";
-import { useMonitorThemeSync } from "./useMonitorThemeSync";
+import { useThemeApplication } from "./theme/useThemeApplication";
+import { useThemeSelection } from "./theme/useThemeSelection";
+import { useMonitorThemeSync } from "./monitor/useMonitorThemeSync";
 
 /**
  * Theme management Hook, used to combine various sub-Hooks and provide a unified interface
