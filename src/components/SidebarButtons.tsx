@@ -2,7 +2,7 @@ import { AiFillSetting } from "solid-icons/ai";
 import { TbArrowBigUpLinesFilled } from "solid-icons/tb";
 import { Show } from "solid-js";
 import { LazyButton, LazySpace, LazyTooltip } from "~/lazy";
-import { useTranslations } from "./TranslationsContext";
+import { useTranslations } from "~/contexts";
 import { useAppContext } from "~/context";
 
 const SidebarButtons = () => {

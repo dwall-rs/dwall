@@ -3,7 +3,7 @@ import { render } from "solid-js/web";
 import "fluent-solid/lib/index.css";
 import "./index.scss";
 import App from "./App";
-import { TranslationsProvider } from "./components/TranslationsContext";
+import { TranslationsProvider } from "./contexts/TranslationsContext";
 
 if (import.meta.env.MODE === "production") {
   document.addEventListener("contextmenu", (event) => event.preventDefault());

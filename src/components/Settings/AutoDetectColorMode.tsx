@@ -3,7 +3,7 @@ import SettingsItem from "./item";
 import { useAppContext } from "~/context";
 import { writeConfigFile } from "~/commands";
 import { message } from "@tauri-apps/plugin-dialog";
-import { useTranslations } from "../TranslationsContext";
+import { useTranslations } from "~/contexts";
 
 const AutoDetectColorMode = () => {
   const { config, refetchConfig } = useAppContext();

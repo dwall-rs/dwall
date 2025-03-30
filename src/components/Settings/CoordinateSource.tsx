@@ -6,7 +6,7 @@ import { writeConfigFile } from "~/commands";
 import { children, createMemo, createSignal, Show } from "solid-js";
 import NumericInput from "../NumericInput";
 import { message } from "@tauri-apps/plugin-dialog";
-import { useTranslations } from "../TranslationsContext";
+import { useTranslations } from "~/contexts";
 
 interface CoordinateInputProps {
   min: number;

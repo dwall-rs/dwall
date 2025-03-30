@@ -17,11 +17,11 @@ import { useUpdateManager } from "./hooks/useUpdateManager";
 import { useAppInitialization } from "./hooks/useAppInitialization";
 
 import { AppContext } from "./context";
+import { useTranslations } from "~/contexts";
 
 import { themes } from "./themes";
 
 import "./App.scss";
-import { useTranslations } from "./components/TranslationsContext";
 
 const App = () => {
   const { translate } = useTranslations();

@@ -4,7 +4,7 @@ import { useAppContext } from "~/context";
 import { createSignal } from "solid-js";
 import { moveThemesDirectory, openDir } from "~/commands";
 import { confirm, message, open } from "@tauri-apps/plugin-dialog";
-import { useTranslations } from "../TranslationsContext";
+import { useTranslations } from "~/contexts";
 
 const ThemesDirectory = () => {
   const { config, refetchConfig } = useAppContext();
