@@ -14,16 +14,9 @@ import Select from "./components/Select";
 
 import { useColorMode } from "./hooks/useColorMode";
 import { useUpdateManager } from "./hooks/useUpdateManager";
-
-import { detectColorMode } from "./utils/color";
+import { useAppInitialization } from "./hooks/useAppInitialization";
 
 import { AppContext } from "./context";
-
-import {
-  showWindow,
-  getAppliedThemeID,
-  setTitlebarColorMode,
-} from "~/commands";
 
 import { themes } from "./themes";
 
@@ -77,25 +70,7 @@ const App = () => {
   useDark();
   useColorMode();
 
-  onMount(async () => {
-    await setTitlebarColorMode(detectColorMode());
-
-    if (!import.meta.env.PRODEV) await showWindow("main");
-
-    const mii = menuItemIndex();
-    if (mii !== undefined) handleThemeSelection(mii);
-
-    const applied_theme_id = await getAppliedThemeID();
-    if (applied_theme_id) {
-      const themeIndex = themes.findIndex((t) => t.id === applied_theme_id);
-      if (themeIndex !== -1) {
-        setMenuItemIndex(themeIndex);
-        handleThemeSelection(themeIndex);
-        setAppliedThemeID(applied_theme_id);
-        return;
-      }
-    }
-  });
+  useAppInitialization(menuItemIndex, handleThemeSelection);
 
   return (
     <AppContext.Provider
