@@ -1,12 +1,14 @@
-import { LazySwitch } from "~/lazy";
-import SettingsItem from "./item";
-import { useAppContext } from "~/context";
-import { writeConfigFile } from "~/commands";
 import { message } from "@tauri-apps/plugin-dialog";
-import { useTranslations } from "~/contexts";
+
+import SettingsItem from "./item";
+import { LazySwitch } from "~/lazy";
+
+import { writeConfigFile } from "~/commands";
+
+import { useConfig, useTranslations } from "~/contexts";
 
 const AutoDetectColorMode = () => {
-  const { config, refetchConfig } = useAppContext();
+  const { data: config, refetch: refetchConfig } = useConfig();
   const { translate, translateErrorMessage } = useTranslations();
 
   const onSwitchAutoDetectColorMode = async () => {

@@ -1,12 +1,15 @@
+import { children, createMemo, createSignal, Show } from "solid-js";
+import { AiOutlineCheck } from "solid-icons/ai";
+
+import { message } from "@tauri-apps/plugin-dialog";
+
 import { LazyButton, LazySpace, LazySwitch } from "~/lazy";
 import SettingsItem from "./item";
-import { AiOutlineCheck } from "solid-icons/ai";
-import { useAppContext } from "~/context";
+import NumericInput from "~/components/NumericInput";
+
 import { writeConfigFile } from "~/commands";
-import { children, createMemo, createSignal, Show } from "solid-js";
-import NumericInput from "../NumericInput";
-import { message } from "@tauri-apps/plugin-dialog";
-import { useTranslations } from "~/contexts";
+
+import { useConfig, useTranslations } from "~/contexts";
 
 interface CoordinateInputProps {
   min: number;
@@ -46,7 +49,7 @@ const COORDINATE_LIMITS = {
 } as const;
 
 const CoordinateSource = () => {
-  const { config, refetchConfig } = useAppContext();
+  const { data: config, refetch: refetchConfig } = useConfig();
   const { translate } = useTranslations();
 
   const initialPosition: Omit<CoordinateSourceManual, "type"> =

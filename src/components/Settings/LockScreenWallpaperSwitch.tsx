@@ -1,12 +1,12 @@
 import { LazySwitch } from "~/lazy";
 import SettingsItem from "./item";
-import { useContext } from "solid-js";
-import { AppContext } from "~/context";
+
 import { writeConfigFile } from "~/commands";
-import { useTranslations } from "~/contexts";
+
+import { useConfig, useTranslations } from "~/contexts";
 
 const LockScreenWallpaperSwitch = () => {
-  const { config, refetchConfig } = useContext(AppContext)!;
+  const { data: config, refetch: refetchConfig } = useConfig();
   const { translate } = useTranslations();
 
   const onSwitchLockScreenWallpaper = async () => {

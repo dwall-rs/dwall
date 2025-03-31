@@ -1,14 +1,16 @@
+import { createSignal } from "solid-js";
+import { AiFillSave } from "solid-icons/ai";
+
 import { LazyButton, LazySpace } from "~/lazy";
 import SettingsItem from "./item";
-import { useAppContext } from "~/context";
-import { createSignal } from "solid-js";
+import NumericInput from "~/components/NumericInput";
+
 import { writeConfigFile } from "~/commands";
-import NumericInput from "../NumericInput";
-import { AiFillSave } from "solid-icons/ai";
-import { useTranslations } from "~/contexts";
+
+import { useConfig, useTranslations } from "~/contexts";
 
 const Interval = () => {
-  const { config, refetchConfig } = useAppContext();
+  const { data: config, refetch: refetchConfig } = useConfig();
   const { translate } = useTranslations();
 
   const [value, setValue] = createSignal(config()?.interval);
