@@ -1,14 +1,16 @@
-import { LazyButton, LazyInput } from "~/lazy";
-import SettingsItem from "./item";
-import { useAppContext } from "~/context";
 import { createSignal } from "solid-js";
 import { AiFillSave } from "solid-icons/ai";
+
+import { LazyButton, LazyInput } from "~/lazy";
+import SettingsItem from "./item";
+
 import { writeConfigFile } from "~/commands";
-import { useTranslations } from "~/contexts";
+
+import { useConfig, useTranslations } from "~/contexts";
 
 const GithubMirror = () => {
-  const { config, refetchConfig } = useAppContext();
   const { translate } = useTranslations();
+  const { data: config, refetch: refetchConfig } = useConfig();
 
   const [value, setValue] = createSignal(config()?.github_mirror_template);
 

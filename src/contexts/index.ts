@@ -1,1 +1,0 @@
-export { useTranslations } from "./TranslationsContext";

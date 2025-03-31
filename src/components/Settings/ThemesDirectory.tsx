@@ -1,13 +1,16 @@
+import { createSignal } from "solid-js";
+
+import { confirm, message, open } from "@tauri-apps/plugin-dialog";
+
 import { LazyButton, LazySpace, LazyTooltip } from "~/lazy";
 import SettingsItem from "./item";
-import { useAppContext } from "~/context";
-import { createSignal } from "solid-js";
+
 import { moveThemesDirectory, openDir } from "~/commands";
-import { confirm, message, open } from "@tauri-apps/plugin-dialog";
-import { useTranslations } from "~/contexts";
+
+import { useConfig, useTranslations } from "~/contexts";
 
 const ThemesDirectory = () => {
-  const { config, refetchConfig } = useAppContext();
+  const { data: config, refetch: refetchConfig } = useConfig();
   const { translate } = useTranslations();
 
   const [path, setPath] = createSignal(config()?.themes_directory);
