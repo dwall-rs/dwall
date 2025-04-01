@@ -20,14 +20,13 @@ export const useMonitorThemeSync = (
   const { setAppliedThemeID, setMenuItemIndex } = useTheme();
 
   // Monitor display selection changes, update theme state
-  createEffect(() => {
+  createEffect(async () => {
     const id =
       monitorID() === "all"
         ? Object.values(config()?.monitor_specific_wallpapers ?? {})[0]
         : config()?.monitor_specific_wallpapers[monitorID()!];
-    if (!id) return;
 
-    if (!monitorSpecificThemesIsSame() && monitorID() === "all") {
+    if (!id || (!monitorSpecificThemesIsSame() && monitorID() === "all")) {
       setAppliedThemeID(undefined);
       setMenuItemIndex(0);
     } else {
