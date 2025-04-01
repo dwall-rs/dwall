@@ -2,15 +2,17 @@ import { children, createMemo } from "solid-js";
 import { LazyBadge, LazyFlex, LazyTooltip } from "~/lazy";
 import Image from "./Image";
 import { BsCheckLg } from "solid-icons/bs";
-import { useAppContext } from "~/context";
 import { generateGitHubThumbnailMirrorUrl } from "~/utils/proxy";
+import { useConfig, useSettings, useTheme } from "~/contexts";
 
 interface ThemeMenuProps {
   themes: ThemeItem[];
 }
 
 export const ThemeMenu = (props: ThemeMenuProps) => {
-  const { theme, settings, config } = useAppContext();
+  const theme = useTheme();
+  const settings = useSettings();
+  const { data: config } = useConfig();
   const heights: Record<string, number> = {};
 
   const disabled = createMemo(() => !!theme.downloadThemeID());
@@ -21,8 +23,8 @@ export const ThemeMenu = (props: ThemeMenuProps) => {
         onClick={() => {
           if (disabled()) return; // 下载主题时不允许切换主题
 
-          settings.setShow(false);
           theme.handleThemeSelection(idx);
+          settings.setShowSettings(false);
         }}
         classList={{
           "menu-item": true,

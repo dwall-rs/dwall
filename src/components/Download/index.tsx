@@ -3,8 +3,7 @@ import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
 import { message } from "@tauri-apps/plugin-dialog";
 import { LazyButton, LazyProgress } from "~/lazy";
 import { downloadThemeAndExtract, cancelThemeDownload } from "~/commands";
-import { useAppContext } from "~/context";
-import { useTranslations } from "~/contexts";
+import { useConfig, useTheme, useTranslations } from "~/contexts";
 import "./index.scss";
 
 interface DownloadProgress {
@@ -17,7 +16,8 @@ const window = getCurrentWebviewWindow();
 
 const Download = () => {
   const { translate } = useTranslations();
-  const { config, theme } = useAppContext()!;
+  const theme = useTheme();
+  const { data: config } = useConfig();
   const [percent, setPercent] = createSignal<number>();
   const [isCancelling, setIsCancelling] = createSignal(false);
 

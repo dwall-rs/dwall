@@ -5,8 +5,6 @@ import { getVersion } from "@tauri-apps/api/app";
 import { ask, message } from "@tauri-apps/plugin-dialog";
 import { open } from "@tauri-apps/plugin-shell";
 
-import { useAppContext } from "~/context";
-
 import { openConfigDir } from "~/commands";
 
 import "./index.scss";
@@ -25,12 +23,10 @@ import Interval from "./Interval";
 import GithubMirror from "./GithubMirror";
 import ThemesDirectory from "./ThemesDirectory";
 import LockScreenWallpaperSwitch from "./LockScreenWallpaperSwitch";
-import { useTranslations } from "~/contexts";
+import { useTranslations, useUpdate } from "~/contexts";
 
 const Settings = () => {
-  const {
-    update: { resource, refetch, setShowDialog },
-  } = useAppContext();
+  const { update: resource, recheckUpdate, setShowUpdateDialog } = useUpdate();
   const { translate } = useTranslations();
   const [version] = createResource(getVersion);
 
@@ -40,7 +36,7 @@ const Settings = () => {
 
   const onUpdate = async () => {
     if (!resource()) {
-      refetch();
+      recheckUpdate();
     }
     const update = resource();
     if (!update) {
@@ -55,7 +51,7 @@ const Settings = () => {
       "Dwall",
     );
     if (!result) return;
-    setShowDialog(true);
+    setShowUpdateDialog(true);
   };
 
   const onOpenGithub = () => open("https://github.com/dwall-rs/dwall");

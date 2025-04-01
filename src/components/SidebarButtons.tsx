@@ -2,16 +2,13 @@ import { AiFillSetting } from "solid-icons/ai";
 import { TbArrowBigUpLinesFilled } from "solid-icons/tb";
 import { Show } from "solid-js";
 import { LazyButton, LazySpace, LazyTooltip } from "~/lazy";
-import { useTranslations } from "~/contexts";
-import { useAppContext } from "~/context";
+import { useSettings, useTheme, useTranslations, useUpdate } from "~/contexts";
 
 const SidebarButtons = () => {
   const { translate } = useTranslations();
-  const {
-    update: { resource: updateIsAvailable, setShowDialog: setShowUpdateDialog },
-    settings: { setShow: setShowSettings },
-    theme: { setMenuItemIndex, downloadThemeID },
-  } = useAppContext();
+  const { setMenuItemIndex, downloadThemeID } = useTheme();
+  const { update: updateIsAvailable, setShowUpdateDialog } = useUpdate();
+  const { setShowSettings } = useSettings();
 
   const onUpdate = () => {
     updateIsAvailable() && setShowUpdateDialog(true);
@@ -53,8 +50,8 @@ const SidebarButtons = () => {
           shape="circular"
           icon={<AiFillSetting />}
           onClick={() => {
-            setMenuItemIndex();
             setShowSettings(true);
+            setMenuItemIndex();
           }}
           disabled={!!downloadThemeID()} // 下载主题时禁用设置按钮
         />
