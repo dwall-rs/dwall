@@ -86,18 +86,24 @@ async fn get_applied_theme_id(monitor_id: &str) -> DwallSettingsResult<Option<St
 
     match dwall::config::read_config_file().await {
         Ok(config) => {
+            let monitor_themes = config.monitor_specific_wallpapers();
             let theme_id = if monitor_id == "all" {
-                let default_theme_id = config.default_theme_id().ok();
-                info!(default_theme_id = ?default_theme_id, "Retrieved default theme ID");
-                default_theme_id.map(|s| s.to_owned())
+                let mut iter = monitor_themes.values();
+                let first_value = iter.next();
+                let theme_id = if iter.all(|value| Some(value) == first_value) {
+                    first_value
+                } else {
+                    None
+                };
+                info!(theme_id = ?theme_id, "Retrieved all theme ID");
+                theme_id
             } else {
-                let monitor_themes = config.monitor_specific_wallpapers();
-                let theme_id = monitor_themes.get(monitor_id).map(|t| t.to_string());
+                let theme_id = monitor_themes.get(monitor_id);
                 info!(monitor_id, theme_id =?theme_id, "Retrieved current theme ID");
                 theme_id
             };
 
-            Ok(theme_id)
+            Ok(theme_id.map(|s| s.to_string()))
         }
         Err(e) => {
             error!(error = ?e, "Failed to read config file while getting theme ID");
