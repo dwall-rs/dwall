@@ -16,8 +16,8 @@ export const checkThemeExists = async (
 export const applyTheme = async (config: Config) =>
   invoke("apply_theme", { config });
 
-export const getAppliedThemeID = async () =>
-  invoke<string | null>("get_applied_theme_id");
+export const getAppliedThemeID = async (monitorId: string) =>
+  invoke<string | null>("get_applied_theme_id", { monitorId });
 
 export const checkAutoStart = async () => invoke<boolean>("check_auto_start");
 

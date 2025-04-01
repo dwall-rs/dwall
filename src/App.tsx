@@ -32,7 +32,6 @@ const App = () => {
     handleChange: handleMonitorChange,
     id: monitorID,
   } = useMonitor();
-  // const { handleClosure: handleTaskClosure } = task;
   const { showSettings } = useSettings();
 
   useDark();
