@@ -6,6 +6,7 @@ import {
 } from "solid-js";
 import { getMonitors } from "~/commands";
 import { useConfig } from "~/contexts";
+import { isSubset } from "~/utils/array";
 
 export const useMonitorSelection = () => {
   const { data: config } = useConfig();
@@ -13,18 +14,20 @@ export const useMonitorSelection = () => {
   const [monitorInfoObject] = createResource(getMonitors);
   const [monitorID, setMonitorID] = createSignal<string>("all");
 
-  // Get monitor list
-  const monitors = createMemo(() => {
+  const originalMonitors = createMemo(() => {
     const monitorIDs = Object.keys(monitorInfoObject() ?? {}).sort();
 
-    return [
-      { value: "all", label: "All" },
-      ...monitorIDs.map((id) => ({
-        value: monitorInfoObject()?.[id].device_path || "",
-        label: monitorInfoObject()?.[id].friendly_name || "",
-      })),
-    ];
+    return monitorIDs.map((id) => ({
+      value: monitorInfoObject()?.[id].device_path || "",
+      label: monitorInfoObject()?.[id].friendly_name || "",
+    }));
   });
+
+  // Get monitor list
+  const monitors = createMemo(() => [
+    { value: "all", label: "All" },
+    ...originalMonitors(),
+  ]);
 
   // Get monitor-specific theme configuration
   const monitorSpecificThemes = createMemo(() => {
@@ -36,7 +39,16 @@ export const useMonitorSelection = () => {
   // Check if all monitors are using the same theme
   const monitorSpecificThemesIsSame = createMemo(() => {
     const themes = monitorSpecificThemes();
-    if (themes.length <= 1) return true;
+    const monitorIDs = Object.keys(monitorInfoObject() ?? {}).sort();
+
+    if (
+      !isSubset(
+        monitorIDs,
+        themes.map((i) => i[0]),
+      )
+    )
+      return false;
+
     return themes.every((value) => value[1] === themes[0][1]);
   });
 
