@@ -5,8 +5,6 @@ import { applyTheme } from "~/commands";
  * @param config Application configuration
  * @param refetchConfig Function to refetch configuration
  * @param currentTheme Currently selected theme
- * @param monitorID Currently selected monitor ID
- * @param monitorSpecificThemes Monitor-specific theme configuration
  * @param checkLocationPermission Function to check location permission
  * @param setAppliedThemeID Function to set the applied theme ID
  * @returns Theme application related methods
@@ -20,8 +18,8 @@ export const useThemeApplication = (
 ) => {
   // Handle theme application
   const handleThemeApplication = async (
-    monitorID: () => string,
-    monitorSpecificThemes: () => [string, string][],
+    monitorID: Accessor<string>,
+    monitors: Accessor<MonitorItem[]>,
   ) => {
     const theme = currentTheme();
     if (!theme || !config()) return;
@@ -49,16 +47,13 @@ export const useThemeApplication = (
       monitorSpecificWallpapers[monitorID()!] = theme.id;
     } else {
       // Set the same theme for all monitors
-      for (const [id, _] of monitorSpecificThemes()) {
-        monitorSpecificWallpapers[id] = theme.id;
+      for (const { value } of monitors()) {
+        if (value === "all") continue;
+        monitorSpecificWallpapers[value] = theme.id;
       }
     }
 
     currentConfig.monitor_specific_wallpapers = monitorSpecificWallpapers;
-
-    if (!currentConfig.selected_theme_id) {
-      currentConfig.selected_theme_id = theme.id;
-    }
 
     try {
       await applyTheme(currentConfig);
