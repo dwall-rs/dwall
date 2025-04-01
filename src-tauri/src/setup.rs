@@ -48,11 +48,7 @@ pub fn setup_app(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>>
     tauri::async_runtime::spawn(async move {
         let _ = read_config_file()
             .await
-            .and_then(|config| {
-                config
-                    .default_theme_id()
-                    .map_or(Ok(None), |_| find_daemon_process())
-            })
+            .and_then(|_| find_daemon_process())
             .and_then(|pid| pid.map_or_else(|| spawn_apply_daemon().map(|_| ()), |_| Ok(())));
     });
 

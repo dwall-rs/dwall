@@ -153,11 +153,6 @@ async fn apply_theme(config: Config<'_>) -> DwallSettingsResult<()> {
 
     dwall_write_config(&config).await?;
 
-    if config.default_theme_id().is_err() {
-        info!("No theme selected, skipping daemon spawn");
-        return Ok(());
-    }
-
     match spawn_apply_daemon() {
         Ok(_) => {
             info!("Successfully spawned theme daemon");
@@ -247,7 +242,7 @@ pub fn run() -> DwallSettingsResult<()> {
             kill_daemon,
             get_or_save_cached_thumbnails,
             get_translations,
-            get_monitors
+            get_monitors,
         ]);
 
     if cfg!(debug_assertions) {
