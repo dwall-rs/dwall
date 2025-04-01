@@ -1,11 +1,6 @@
 import { createContext, type ParentProps, useContext } from "solid-js";
 import { useMonitorSelection, useMonitorThemeSync } from "~/hooks/monitor";
 
-interface MonitorItem {
-  value: string;
-  label: string;
-}
-
 interface MonitorContext {
   id: Accessor<string>;
   setId: Setter<string>;
