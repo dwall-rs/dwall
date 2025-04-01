@@ -1,4 +1,6 @@
 import { createEffect } from "solid-js";
+import { useConfig, useTheme } from "~/contexts";
+import { themes } from "~/themes";
 
 /**
  * Hook for monitoring display selection changes and synchronizing theme state
@@ -11,13 +13,12 @@ import { createEffect } from "solid-js";
  * @returns No return value, only provides side effects
  */
 export const useMonitorThemeSync = (
-  themes: ThemeItem[],
   monitorID: () => string,
-  config: () => Config | undefined,
   monitorSpecificThemesIsSame: () => boolean,
-  setAppliedThemeID: (id?: string) => void,
-  setMenuItemIndex: (index: number) => void,
 ) => {
+  const { data: config } = useConfig();
+  const { setAppliedThemeID, setMenuItemIndex } = useTheme();
+
   // Monitor display selection changes, update theme state
   createEffect(() => {
     const id =

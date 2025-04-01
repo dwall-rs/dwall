@@ -3,10 +3,10 @@ import { LazyFlex } from "~/lazy";
 import ImageCarousel from "./ImageCarousel";
 import { ThemeActions } from "./ThemeActions";
 import Download from "./Download";
-import { useAppContext } from "~/context";
+import { useTheme } from "~/contexts";
 
 const ThemeShowcase = () => {
-  const { theme } = useAppContext();
+  const theme = useTheme();
 
   return (
     <LazyFlex

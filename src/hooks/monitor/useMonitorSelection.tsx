@@ -5,13 +5,11 @@ import {
   createEffect,
 } from "solid-js";
 import { getMonitors } from "~/commands";
+import { useConfig } from "~/contexts";
 
-/**
- * Monitor management Hook, used to handle display selection and related states
- * @param config Application configuration
- * @returns Display selection related states and methods
- */
-export const useMonitorSelection = (config: () => Config | undefined) => {
+export const useMonitorSelection = () => {
+  const { data: config } = useConfig();
+
   const [monitorInfoObject] = createResource(getMonitors);
   const [monitorID, setMonitorID] = createSignal<string>("all");
 

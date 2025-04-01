@@ -15,13 +15,14 @@ export const useThemeApplication = (
   config: () => Config | undefined,
   refetchConfig: () => void,
   currentTheme: () => ThemeItem | undefined,
-  monitorID: () => string,
-  monitorSpecificThemes: () => [string, string][],
   checkLocationPermission: () => Promise<boolean>,
   setAppliedThemeID: (id?: string) => void,
 ) => {
   // Handle theme application
-  const handleThemeApplication = async () => {
+  const handleThemeApplication = async (
+    monitorID: () => string,
+    monitorSpecificThemes: () => [string, string][],
+  ) => {
     const theme = currentTheme();
     if (!theme || !config()) return;
 
@@ -61,33 +62,14 @@ export const useThemeApplication = (
 
     try {
       await applyTheme(currentConfig);
-      await refetchConfig();
+      refetchConfig();
       setAppliedThemeID(theme.id);
     } catch (e) {
       console.error("Failed to apply theme:", e);
     }
   };
 
-  // Handle task closure
-  const handleTaskClosure = async () => {
-    if (!config()) return;
-
-    const updatedConfig = {
-      ...config()!,
-      selected_theme_id: undefined,
-    };
-
-    try {
-      await applyTheme(updatedConfig);
-      await refetchConfig();
-      setAppliedThemeID(undefined);
-    } catch (e) {
-      console.error("Failed to close task:", e);
-    }
-  };
-
   return {
     handleThemeApplication,
-    handleTaskClosure,
   };
 };

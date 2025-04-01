@@ -1,15 +1,13 @@
 import { Show } from "solid-js";
-import { useAppContext } from "~/context";
 import UpdateDialog from "./UpdateDialog";
+import { useUpdate } from "~/contexts";
 
 const Updater = () => {
-  const {
-    update: { resource, showDialog },
-  } = useAppContext();
+  const { update, showUpdateDialog } = useUpdate();
 
   return (
-    <Show when={showDialog()}>
-      <UpdateDialog update={resource()!} />
+    <Show when={showUpdateDialog()}>
+      <UpdateDialog update={update()!} />
     </Show>
   );
 };

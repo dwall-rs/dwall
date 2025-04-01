@@ -1,7 +1,6 @@
 import { createSignal, Show } from "solid-js";
 import { LazyButton, LazySpace } from "~/lazy";
-import { useTranslations } from "~/contexts";
-import { useAppContext } from "~/context";
+import { useMonitor, useTask, useTheme, useTranslations } from "~/contexts";
 
 export interface ThemeActionsProps {
   themeExists: boolean;
@@ -14,21 +13,23 @@ export interface ThemeActionsProps {
 }
 
 export const ThemeActions = () => {
-  const { theme, task } = useAppContext();
+  const theme = useTheme();
+  const { id: monitorID, specificThemes: monitorSpecificThemes } = useMonitor();
 
   const { translate } = useTranslations();
+  const { handleTaskClosure } = useTask();
 
   const [spinning, setSpinning] = createSignal(false);
 
   const onApply = () => {
     setSpinning(true);
-    theme.handleThemeApplication();
+    theme.handleThemeApplication(monitorID, monitorSpecificThemes);
     setSpinning(false);
   };
 
   const onClose = () => {
     setSpinning(true);
-    task.handleClosure();
+    handleTaskClosure();
     setSpinning(false);
   };
 

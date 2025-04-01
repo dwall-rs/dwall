@@ -7,17 +7,14 @@ import { LazyFlex } from "~/lazy";
 import { ThemeMenu } from "./components/ThemeMenu";
 import Settings from "./components/Settings";
 import SidebarButtons from "./components/SidebarButtons";
-import { useThemeSelector } from "./hooks/useThemeManager";
 import ThemeShowcase from "./components/ThemeShowcase";
 import Updater from "./components/Update";
 import Select from "./components/Select";
 
 import { useColorMode } from "./hooks/useColorMode";
-import { useUpdateManager } from "./hooks/useUpdateManager";
 import { useAppInitialization } from "./hooks/useAppInitialization";
 
-import { AppContext } from "./context";
-import { useTranslations } from "~/contexts";
+import { useMonitor, useTheme, useTranslations, useSettings } from "~/contexts";
 
 import { themes } from "./themes";
 
@@ -25,47 +22,18 @@ import "./App.scss";
 
 const App = () => {
   const { translate } = useTranslations();
-  const themeManager = useThemeSelector(themes);
+  const theme = useTheme();
 
-  // 解构主题管理器中的各个部分
-  const {
-    theme,
-    config: configManager,
-    monitor,
-    task,
-    settings,
-    update,
-  } = themeManager;
+  const { currentTheme, downloadThemeID, menuItemIndex, handleThemeSelection } =
+    theme;
 
-  // 从各部分中提取需要的状态和方法
-  const {
-    currentTheme,
-    appliedThemeID,
-    downloadThemeID,
-    setDownloadThemeID,
-    menuItemIndex,
-    setMenuItemIndex,
-    themeExists,
-    handleThemeSelection,
-    handleThemeApplication,
-    setAppliedThemeID,
-  } = theme;
-
-  const { data: config, refetch: refetchConfig } = configManager;
   const {
     list: monitors,
     handleChange: handleMonitorChange,
     id: monitorID,
-  } = monitor;
-  const { handleClosure: handleTaskClosure } = task;
-  const { show: showSettings, setShow: setShowSettings } = settings;
-  const { data: updateData, recheck: recheckUpdate } = update;
-
-  // 使用更新管理Hook
-  const { showUpdateDialog, setShowUpdateDialog } = useUpdateManager(
-    updateData,
-    recheckUpdate,
-  );
+  } = useMonitor();
+  // const { handleClosure: handleTaskClosure } = task;
+  const { showSettings } = useSettings();
 
   useDark();
   useColorMode();
@@ -73,39 +41,7 @@ const App = () => {
   useAppInitialization(menuItemIndex, handleThemeSelection);
 
   return (
-    <AppContext.Provider
-      value={{
-        update: {
-          resource: updateData,
-          refetch: recheckUpdate,
-          showDialog: showUpdateDialog,
-          setShowDialog: setShowUpdateDialog,
-        },
-        config,
-        refetchConfig,
-        settings: { show: showSettings, setShow: setShowSettings },
-        theme: {
-          currentTheme,
-          appliedThemeID,
-          setAppliedThemeID,
-          downloadThemeID,
-          setDownloadThemeID,
-          menuItemIndex,
-          setMenuItemIndex,
-          themeExists,
-          handleThemeSelection,
-          handleThemeApplication,
-        },
-        monitor: {
-          list: monitors,
-          handleChange: handleMonitorChange,
-          id: monitorID,
-        },
-        task: {
-          handleClosure: handleTaskClosure,
-        },
-      }}
-    >
+    <>
       <LazyFlex class="app" align="center">
         <LazyFlex
           direction="vertical"
@@ -135,7 +71,7 @@ const App = () => {
       </LazyFlex>
 
       <Updater />
-    </AppContext.Provider>
+    </>
   );
 };
 
