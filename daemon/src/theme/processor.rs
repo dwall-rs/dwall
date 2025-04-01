@@ -14,8 +14,6 @@ use crate::{
 
 /// Manages the lifecycle and processing of a specific theme
 pub struct ThemeProcessor<'a> {
-    // /// Unique identifier for the current theme
-    // theme_id: String,
     /// Configuration settings for theme processing
     config: &'a Config<'a>,
     /// Manages geographic position tracking
@@ -24,16 +22,14 @@ pub struct ThemeProcessor<'a> {
 
 impl<'a> ThemeProcessor<'a> {
     /// Creates a new ThemeProcessor instance
-    pub fn new(theme_id: &str, config: &'a Config<'a>) -> Self {
+    pub fn new(config: &'a Config<'a>) -> Self {
         debug!(
-            theme_id = theme_id,
             auto_detect_color_mode = ?config.auto_detect_color_mode(),
             image_format = ?config.image_format(),
             "Initializing ThemeProcessor for theme with configuration"
         );
 
         Self {
-            //     theme_id: theme_id.to_string(),
             position_manager: PositionManager::new(config.coordinate_source().clone()),
             config,
         }
@@ -216,8 +212,6 @@ async fn process_theme_cycle(
         "Processing theme cycle with parameters"
     );
 
-    let default_theme_id = config.default_theme_id()?;
-
     // Create WallpaperManager instance
     let wallpaper_manager = WallpaperManager::new()?;
     let monitors = wallpaper_manager.monitor_manager.get_monitors()?;
@@ -232,14 +226,22 @@ async fn process_theme_cycle(
         current_time,
     );
 
+    let mut lock_screen_wallpaper: Option<String> = None;
+
     // Process each monitor
     for monitor_id in monitors.keys() {
         // Determine which theme to use for this monitor
-        let monitor_theme_id = monitor_specific_wallpapers
-            .get(monitor_id)
-            .map(|theme| theme.as_ref())
-            .unwrap_or(default_theme_id);
+        let monitor_theme_id = match monitor_specific_wallpapers.get(monitor_id) {
+            Some(theme_id) => theme_id.as_ref(),
+            None => continue,
+        };
+
         info!(monitor_theme_id, monitor_id, "Determined theme for monitor");
+
+        // 将第一个有效的主题设置为锁屏壁纸
+        if lock_screen_wallpaper.is_none() {
+            lock_screen_wallpaper = Some(monitor_theme_id.to_string());
+        }
 
         if let Err(e) =
             process_monitor_wallpaper(config, monitor_id, monitor_theme_id, &sun_position).await
@@ -256,22 +258,24 @@ async fn process_theme_cycle(
 
     // Update lock screen wallpaper if enabled
     if config.lock_screen_wallpaper_enabled() {
-        let theme_directory = config.themes_directory().join(default_theme_id); // 锁屏壁纸使用默认主题
-        let solar_angles = load_solar_angles(&theme_directory).await?;
+        if let Some(theme_id) = lock_screen_wallpaper {
+            let theme_directory = config.themes_directory().join(theme_id);
+            let solar_angles = load_solar_angles(&theme_directory).await?;
 
-        let closest_image_index = WallpaperManager::find_closest_image(
-            &solar_angles,
-            sun_position.altitude(),
-            sun_position.azimuth(),
-        )
-        .ok_or_else(|| ThemeError::ImageCountMismatch)?;
+            let closest_image_index = WallpaperManager::find_closest_image(
+                &solar_angles,
+                sun_position.altitude(),
+                sun_position.azimuth(),
+            )
+            .ok_or_else(|| ThemeError::ImageCountMismatch)?;
 
-        let wallpaper_path = theme_directory
-            .join(std::convert::Into::<&str>::into(config.image_format()))
-            .join(format!("{}.jpg", closest_image_index + 1));
+            let wallpaper_path = theme_directory
+                .join(std::convert::Into::<&str>::into(config.image_format()))
+                .join(format!("{}.jpg", closest_image_index + 1));
 
-        if wallpaper_path.exists() {
-            WallpaperManager::set_lock_screen_image(&wallpaper_path)?;
+            if wallpaper_path.exists() {
+                WallpaperManager::set_lock_screen_image(&wallpaper_path)?;
+            }
         }
     }
 
