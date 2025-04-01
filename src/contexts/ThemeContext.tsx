@@ -22,8 +22,8 @@ interface ThemeContext {
   themeExists: Accessor<boolean>;
   handleThemeSelection: (index: number) => void;
   handleThemeApplication: (
-    monitorID: () => string,
-    monitorSpecificThemes: () => [string, string][],
+    monitorID: Accessor<string>,
+    monitors: Accessor<MonitorItem[]>,
   ) => Promise<void>;
 }
 
