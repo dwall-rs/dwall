@@ -23,7 +23,7 @@ export const useAppInitialization = (
   onMount(async () => {
     await setTitlebarColorMode(detectColorMode());
 
-    if (!import.meta.env.PROD) await showWindow("main");
+    if (import.meta.env.PROD) await showWindow("main");
 
     const mii = menuItemIndex();
     if (mii !== undefined) handleThemeSelection(mii);

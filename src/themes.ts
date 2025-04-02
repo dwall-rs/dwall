@@ -109,6 +109,16 @@ const images = {
     "https://github.com/dwall-rs/dwall-assets/blob/main/thumbnails/MontereyBay1/15.avif",
     "https://github.com/dwall-rs/dwall-assets/blob/main/thumbnails/MontereyBay1/16.avif",
   ],
+  "Monterey Graphic": [
+    "https://github.com/dwall-rs/dwall-assets/blob/main/thumbnails/MontereyGraphic/1.avif",
+    "https://github.com/dwall-rs/dwall-assets/blob/main/thumbnails/MontereyGraphic/2.avif",
+    "https://github.com/dwall-rs/dwall-assets/blob/main/thumbnails/MontereyGraphic/3.avif",
+    "https://github.com/dwall-rs/dwall-assets/blob/main/thumbnails/MontereyGraphic/4.avif",
+    "https://github.com/dwall-rs/dwall-assets/blob/main/thumbnails/MontereyGraphic/5.avif",
+    "https://github.com/dwall-rs/dwall-assets/blob/main/thumbnails/MontereyGraphic/6.avif",
+    "https://github.com/dwall-rs/dwall-assets/blob/main/thumbnails/MontereyGraphic/7.avif",
+    "https://github.com/dwall-rs/dwall-assets/blob/main/thumbnails/MontereyGraphic/8.avif",
+  ],
   "Ventura Graphic": [
     "https://github.com/dwall-rs/dwall-assets/blob/main/thumbnails/VenturaGraphic/1.avif",
     "https://github.com/dwall-rs/dwall-assets/blob/main/thumbnails/VenturaGraphic/2.avif",
