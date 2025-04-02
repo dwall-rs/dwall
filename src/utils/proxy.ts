@@ -9,7 +9,7 @@ export const generateGitHubThumbnailMirrorUrl = (
     mirrorTemplate.indexOf("<repo>") + "<repo>".length,
   );
 
-  const originalPath = originalUrl.slice(originalUrl.indexOf("/blob/"));
+  const originalPath = originalUrl.slice(originalUrl.indexOf("/raw/"));
 
   return (
     baseMirrorPath
