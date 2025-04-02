@@ -41,7 +41,7 @@ const App = () => {
 
   return (
     <>
-      <LazyFlex class="app" align="center">
+      <LazyFlex class="app" align="center" gap={24}>
         <LazyFlex
           direction="vertical"
           align="center"
