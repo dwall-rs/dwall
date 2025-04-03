@@ -1,7 +1,7 @@
 import { createSignal } from "solid-js";
 import type { NumericInputProps } from "./types";
 
-import { useTranslations } from "../TranslationsContext";
+import { useTranslations } from "~/contexts";
 
 export const numberValidation = {
   isValidNumberInput: (value: string): boolean => {

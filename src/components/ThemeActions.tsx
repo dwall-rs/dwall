@@ -1,7 +1,6 @@
 import { createSignal, Show } from "solid-js";
 import { LazyButton, LazySpace } from "~/lazy";
-import { useTranslations } from "./TranslationsContext";
-import { useAppContext } from "~/context";
+import { useMonitor, useTask, useTheme, useTranslations } from "~/contexts";
 
 export interface ThemeActionsProps {
   themeExists: boolean;
@@ -14,21 +13,23 @@ export interface ThemeActionsProps {
 }
 
 export const ThemeActions = () => {
-  const { theme, task } = useAppContext();
+  const theme = useTheme();
+  const { id: monitorID, list: monitors } = useMonitor();
 
   const { translate } = useTranslations();
+  const { handleTaskClosure } = useTask();
 
   const [spinning, setSpinning] = createSignal(false);
 
   const onApply = () => {
     setSpinning(true);
-    theme.handleThemeApplication();
+    theme.handleThemeApplication(monitorID, monitors);
     setSpinning(false);
   };
 
   const onClose = () => {
     setSpinning(true);
-    task.handleClosure();
+    handleTaskClosure();
     setSpinning(false);
   };
 
@@ -37,12 +38,14 @@ export const ThemeActions = () => {
       <Show
         when={theme.themeExists()}
         fallback={
-          <LazyButton
-            onClick={() => theme.setDownloadThemeID(theme.currentTheme()!.id)}
-            disabled={!!theme.downloadThemeID()}
-          >
-            {translate("button-download")}
-          </LazyButton>
+          <Show when={!theme.downloadThemeID()}>
+            <LazyButton
+              onClick={() => theme.setDownloadThemeID(theme.currentTheme()!.id)}
+              disabled={!!theme.downloadThemeID()}
+            >
+              {translate("button-download")}
+            </LazyButton>
+          </Show>
         }
       >
         <Show

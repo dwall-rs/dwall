@@ -1,17 +1,18 @@
 import { createSignal, createEffect, onCleanup, createMemo } from "solid-js";
 import { BiSolidChevronLeft, BiSolidChevronRight } from "solid-icons/bi";
 import { LazyButton } from "~/lazy";
-import { useAppContext } from "~/context";
 import Image from "../Image";
 import "./index.scss";
 import { generateGitHubThumbnailMirrorUrl } from "~/utils/proxy";
+import { useConfig, useTheme } from "~/contexts";
 
 interface ImageCarouselProps {
   interval?: number;
 }
 
 export default function ImageCarousel(props: ImageCarouselProps) {
-  const { theme, config } = useAppContext();
+  const theme = useTheme();
+  const { data: config } = useConfig();
 
   const [currentIndex, setCurrentIndex] = createSignal(0);
   const [isPlaying, setIsPlaying] = createSignal(true);

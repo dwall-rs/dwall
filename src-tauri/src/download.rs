@@ -2,6 +2,7 @@ use std::borrow::Cow;
 use std::collections::HashMap;
 use std::error::Error;
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, LazyLock};
 use std::time::Duration;
 
@@ -15,13 +16,22 @@ use tokio::sync::Mutex;
 
 use crate::error::DwallSettingsResult;
 
-static DOWNLOAD_TASKS: LazyLock<Arc<Mutex<HashMap<String, bool>>>> =
+/// Download task information
+#[derive(Debug)]
+struct DownloadTask {
+    /// Flag to indicate if the download should be cancelled
+    cancel: Arc<AtomicBool>,
+}
+
+static DOWNLOAD_TASKS: LazyLock<Arc<Mutex<HashMap<String, DownloadTask>>>> =
     LazyLock::new(|| Arc::new(Mutex::new(HashMap::new())));
 
 #[derive(Debug, thiserror::Error)]
 pub enum DownloadError {
     #[error("{0}")]
     Connect(String),
+    #[error("Download cancelled")]
+    Cancelled,
     #[error("Unhandled Error: {0}")]
     Unknown(String),
 }
@@ -97,8 +107,14 @@ impl<'a> ThemeDownloader<'a> {
                 DownloadError::Unknown("Theme is already being downloaded".to_string()).into(),
             );
         }
-        // Mark theme as being downloaded
-        tasks.insert(theme_id.to_string(), true);
+        // Mark theme as being downloaded with cancel flag
+        let cancel_flag = Arc::new(AtomicBool::new(false));
+        tasks.insert(
+            theme_id.to_string(),
+            DownloadTask {
+                cancel: cancel_flag.clone(),
+            },
+        );
         drop(tasks);
 
         // Construct download URL
@@ -151,6 +167,22 @@ impl<'a> ThemeDownloader<'a> {
         // Download and write chunks
         let mut downloaded_bytes: u64 = 0;
         while let Some(chunk_result) = stream.next().await {
+            // Check if download has been cancelled
+            if cancel_flag.load(Ordering::Relaxed) {
+                info!(theme_id = theme_id, "Download cancelled by user");
+
+                // Clean up temporary file
+                if temp_theme_zip_file.exists() {
+                    let _ = fs::remove_file(&temp_theme_zip_file).await;
+                    debug!(file_path = %temp_theme_zip_file.display(), "Removed temporary download file");
+                }
+
+                // Remove download task from tracking
+                let mut tasks = DOWNLOAD_TASKS.lock().await;
+                tasks.remove(theme_id);
+
+                return Err(DownloadError::Cancelled.into());
+            }
             let chunk = match chunk_result {
                 Ok(chunk) => chunk,
                 Err(e) => {
@@ -315,4 +347,27 @@ pub async fn download_theme_and_extract<'a>(
     downloader
         .extract_theme(config.themes_directory(), &zip_path, &theme_id)
         .await
+}
+
+/// Cancel an ongoing theme download
+#[tauri::command]
+pub async fn cancel_theme_download(theme_id: String) -> DwallSettingsResult<()> {
+    let tasks = DOWNLOAD_TASKS.lock().await;
+
+    if let Some(task) = tasks.get(&theme_id) {
+        // Set the cancel flag to true
+        task.cancel.store(true, Ordering::Relaxed);
+        info!(
+            theme_id = theme_id,
+            "Requested cancellation of theme download"
+        );
+        Ok(())
+    } else {
+        // Theme is not being downloaded
+        warn!(
+            theme_id = theme_id,
+            "Attempted to cancel download for theme that is not being downloaded"
+        );
+        Ok(())
+    }
 }

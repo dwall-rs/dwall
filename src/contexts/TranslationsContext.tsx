@@ -1,5 +1,5 @@
-import { createContext, useContext, type JSX } from "solid-js";
-import { createResource } from "solid-js";
+import type { JSX } from "solid-js";
+import { createContext, useContext, createResource } from "solid-js";
 import { getTranslations } from "~/commands";
 import {
   translate as translateFn,

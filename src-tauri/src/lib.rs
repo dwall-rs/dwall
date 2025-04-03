@@ -10,7 +10,7 @@ use tokio::sync::OnceCell;
 
 use crate::auto_start::{check_auto_start, disable_auto_start, enable_auto_start};
 use crate::cache::get_or_save_cached_thumbnails;
-use crate::download::download_theme_and_extract;
+use crate::download::{cancel_theme_download, download_theme_and_extract};
 use crate::error::DwallSettingsResult;
 use crate::fs::move_themes_directory;
 use crate::i18n::get_translations;
@@ -75,8 +75,8 @@ async fn check_theme_exists(themes_direcotry: &Path, theme_id: &str) -> DwallSet
 }
 
 #[tauri::command]
-async fn get_applied_theme_id() -> DwallSettingsResult<Option<String>> {
-    trace!("Attempting to get currently applied theme ID");
+async fn get_applied_theme_id(monitor_id: &str) -> DwallSettingsResult<Option<String>> {
+    debug!(monitor_id, "Attempting to get currently applied theme ID");
 
     let daemon_process = find_daemon_process()?;
     if daemon_process.is_none() {
@@ -86,9 +86,24 @@ async fn get_applied_theme_id() -> DwallSettingsResult<Option<String>> {
 
     match dwall::config::read_config_file().await {
         Ok(config) => {
-            let default_theme_id = config.default_theme_id().ok();
-            info!(default_theme_id = ?default_theme_id, "Retrieved current theme ID");
-            Ok(default_theme_id.map(|s| s.to_owned()))
+            let monitor_themes = config.monitor_specific_wallpapers();
+            let theme_id = if monitor_id == "all" {
+                let mut iter = monitor_themes.values();
+                let first_value = iter.next();
+                let theme_id = if iter.all(|value| Some(value) == first_value) {
+                    first_value
+                } else {
+                    None
+                };
+                info!(theme_id = ?theme_id, "Retrieved all theme ID");
+                theme_id
+            } else {
+                let theme_id = monitor_themes.get(monitor_id);
+                info!(monitor_id, theme_id =?theme_id, "Retrieved current theme ID");
+                theme_id
+            };
+
+            Ok(theme_id.map(|s| s.to_string()))
         }
         Err(e) => {
             error!(error = ?e, "Failed to read config file while getting theme ID");
@@ -137,11 +152,6 @@ async fn apply_theme(config: Config<'_>) -> DwallSettingsResult<()> {
     }
 
     dwall_write_config(&config).await?;
-
-    if config.default_theme_id().is_err() {
-        info!("No theme selected, skipping daemon spawn");
-        return Ok(());
-    }
 
     match spawn_apply_daemon() {
         Ok(_) => {
@@ -223,6 +233,7 @@ pub fn run() -> DwallSettingsResult<()> {
             disable_auto_start,
             enable_auto_start,
             download_theme_and_extract,
+            cancel_theme_download,
             request_location_permission,
             open_dir,
             open_config_dir,
@@ -231,7 +242,7 @@ pub fn run() -> DwallSettingsResult<()> {
             kill_daemon,
             get_or_save_cached_thumbnails,
             get_translations,
-            get_monitors
+            get_monitors,
         ]);
 
     if cfg!(debug_assertions) {

@@ -55,11 +55,3 @@ tauri-plugin-process = "2"
 [features]
 default = []
 log-color = ["dwall/log-color"]
-
-[profile.release]
-panic = "abort"
-codegen-units = 1
-lto = true
-incremental = false
-opt-level = "s"
-strip = true

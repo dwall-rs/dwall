@@ -1,4 +1,4 @@
-import { onMount, Show } from "solid-js";
+import { Show } from "solid-js";
 
 import useDark from "alley-components/lib/hooks/useDark";
 
@@ -7,131 +7,41 @@ import { LazyFlex } from "~/lazy";
 import { ThemeMenu } from "./components/ThemeMenu";
 import Settings from "./components/Settings";
 import SidebarButtons from "./components/SidebarButtons";
-import { useThemeSelector } from "./hooks/useThemeManager";
 import ThemeShowcase from "./components/ThemeShowcase";
 import Updater from "./components/Update";
 import Select from "./components/Select";
 
 import { useColorMode } from "./hooks/useColorMode";
-import { useUpdateManager } from "./hooks/useUpdateManager";
+import { useAppInitialization } from "./hooks/useAppInitialization";
 
-import { detectColorMode } from "./utils/color";
-
-import { AppContext } from "./context";
-
-import {
-  showWindow,
-  getAppliedThemeID,
-  setTitlebarColorMode,
-} from "~/commands";
+import { useMonitor, useTheme, useTranslations, useSettings } from "~/contexts";
 
 import { themes } from "./themes";
 
 import "./App.scss";
-import { useTranslations } from "./components/TranslationsContext";
 
 const App = () => {
   const { translate } = useTranslations();
-  const themeManager = useThemeSelector(themes);
+  const theme = useTheme();
 
-  // 解构主题管理器中的各个部分
-  const {
-    theme,
-    config: configManager,
-    monitor,
-    task,
-    settings,
-    update,
-  } = themeManager;
+  const { currentTheme, downloadThemeID, menuItemIndex, handleThemeSelection } =
+    theme;
 
-  // 从各部分中提取需要的状态和方法
-  const {
-    currentTheme,
-    appliedThemeID,
-    downloadThemeID,
-    setDownloadThemeID,
-    menuItemIndex,
-    setMenuItemIndex,
-    themeExists,
-    handleThemeSelection,
-    handleThemeApplication,
-    setAppliedThemeID,
-  } = theme;
-
-  const { data: config, refetch: refetchConfig } = configManager;
   const {
     list: monitors,
     handleChange: handleMonitorChange,
     id: monitorID,
-  } = monitor;
-  const { handleClosure: handleTaskClosure } = task;
-  const { show: showSettings, setShow: setShowSettings } = settings;
-  const { data: updateData, recheck: recheckUpdate } = update;
-
-  // 使用更新管理Hook
-  const { showUpdateDialog, setShowUpdateDialog } = useUpdateManager(
-    updateData,
-    recheckUpdate,
-  );
+  } = useMonitor();
+  const { showSettings } = useSettings();
 
   useDark();
   useColorMode();
 
-  onMount(async () => {
-    await setTitlebarColorMode(detectColorMode());
-
-    if (!import.meta.env.PRODEV) await showWindow("main");
-
-    const mii = menuItemIndex();
-    if (mii !== undefined) handleThemeSelection(mii);
-
-    const applied_theme_id = await getAppliedThemeID();
-    if (applied_theme_id) {
-      const themeIndex = themes.findIndex((t) => t.id === applied_theme_id);
-      if (themeIndex !== -1) {
-        setMenuItemIndex(themeIndex);
-        handleThemeSelection(themeIndex);
-        setAppliedThemeID(applied_theme_id);
-        return;
-      }
-    }
-  });
+  useAppInitialization(menuItemIndex, handleThemeSelection);
 
   return (
-    <AppContext.Provider
-      value={{
-        update: {
-          resource: updateData,
-          refetch: recheckUpdate,
-          showDialog: showUpdateDialog,
-          setShowDialog: setShowUpdateDialog,
-        },
-        config,
-        refetchConfig,
-        settings: { show: showSettings, setShow: setShowSettings },
-        theme: {
-          currentTheme,
-          appliedThemeID,
-          setAppliedThemeID,
-          downloadThemeID,
-          setDownloadThemeID,
-          menuItemIndex,
-          setMenuItemIndex,
-          themeExists,
-          handleThemeSelection,
-          handleThemeApplication,
-        },
-        monitor: {
-          list: monitors,
-          handleChange: handleMonitorChange,
-          id: monitorID,
-        },
-        task: {
-          handleClosure: handleTaskClosure,
-        },
-      }}
-    >
-      <LazyFlex class="app" align="center">
+    <>
+      <LazyFlex class="app" align="center" gap={24}>
         <LazyFlex
           direction="vertical"
           align="center"
@@ -160,7 +70,7 @@ const App = () => {
       </LazyFlex>
 
       <Updater />
-    </AppContext.Provider>
+    </>
   );
 };
 

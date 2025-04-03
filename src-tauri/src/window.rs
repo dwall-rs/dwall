@@ -42,7 +42,7 @@ pub fn create_main_window(app: &tauri::AppHandle) -> Result<(), Box<dyn Error>> 
         .title(WINDOW_TITLE)
         .resizable(false)
         .maximizable(false)
-        .visible(false)
+        .visible(cfg!(debug_assertions))
         .inner_size(WINDOW_WIDTH, WINDOW_HEIGHT);
 
     // Attempt to build the window

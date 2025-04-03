@@ -1,9 +1,10 @@
 type TranslationKey =
   | "button-apply"
-  | "button-stop"
+  | "button-cancel"
   | "button-download"
   | "button-open-log-directory"
   | "button-select-folder"
+  | "button-stop"
   | "help-manually-set-coordinates"
   | "label-automatically-retrieve-coordinates"
   | "label-automatically-switch-to-dark-mode"

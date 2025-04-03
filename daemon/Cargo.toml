@@ -55,11 +55,3 @@ windows-result = { version = '0.3.1', features = ['std'] }
 [features]
 default = []
 log-color = ["tracing-subscriber/ansi"]
-
-[profile.release]
-panic = "abort"
-codegen-units = 1
-lto = true
-incremental = false
-opt-level = "s"
-strip = true

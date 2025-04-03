@@ -1,10 +1,13 @@
-import { LazySwitch } from "~/lazy";
-import SettingsItem from "./item";
 import { createSignal, onMount } from "solid-js";
-import { checkAutoStart, disableAutoStart, enableAutoStart } from "~/commands";
+
 import { message } from "@tauri-apps/plugin-dialog";
 
-import { useTranslations } from "../TranslationsContext";
+import SettingsItem from "./item";
+import { LazySwitch } from "~/lazy";
+
+import { checkAutoStart, disableAutoStart, enableAutoStart } from "~/commands";
+
+import { useTranslations } from "~/contexts";
 
 const AutoStart = () => {
   const { translate, translateErrorMessage } = useTranslations();

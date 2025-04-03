@@ -2,7 +2,7 @@ import { requestLocationPermission } from "~/commands";
 import { ask } from "@tauri-apps/plugin-dialog";
 import { exit } from "@tauri-apps/plugin-process";
 import { translate } from "~/utils/i18n";
-import { useTranslations } from "~/components/TranslationsContext";
+import { useTranslations } from "~/contexts";
 
 /**
  * Location permission management Hook, used to handle location permission requests and related operations

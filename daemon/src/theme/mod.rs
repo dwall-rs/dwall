@@ -1,9 +1,6 @@
-use std::path::Path;
-
-use processor::ThemeProcessor;
-
 use crate::{config::Config, error::DwallResult};
 
+use self::processor::ThemeProcessor;
 pub use self::validator::ThemeValidator;
 
 mod manager;
@@ -27,15 +24,7 @@ pub enum ThemeError {
 
 /// Applies a theme and starts a background task for periodic wallpaper updates
 pub async fn apply_theme(config: Config<'_>) -> DwallResult<()> {
-    let theme_id = config.default_theme_id()?;
-
-    validate_theme(config.themes_directory(), theme_id).await?;
-
-    let theme_processor = ThemeProcessor::new(theme_id, &config);
+    let theme_processor = ThemeProcessor::new(&config);
 
     theme_processor.start_update_loop().await
-}
-
-async fn validate_theme(themes_directory: &Path, theme_id: &str) -> DwallResult<()> {
-    ThemeValidator::validate_theme(themes_directory, theme_id).await
 }

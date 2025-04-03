@@ -1,16 +1,23 @@
-import { createSignal } from "solid-js";
+import { createResource, createSignal } from "solid-js";
+import { message } from "@tauri-apps/plugin-dialog";
+import { check } from "@tauri-apps/plugin-updater";
+import { useTranslations } from "~/contexts";
 
-/**
- * Update Manager Hook for handling application update related functionalities
- * @param update Update resource
- * @param recheckUpdate Function to recheck for updates
- * @returns Update manager related states and methods
- */
-export const useUpdateManager = (
-  update: Resource<Update | null>,
-  recheckUpdate: () => void,
-) => {
+export const useUpdateManager = () => {
+  const { translateErrorMessage } = useTranslations();
+
   const [showUpdateDialog, setShowUpdateDialog] = createSignal<boolean>();
+  const [update, { refetch: recheckUpdate }] = createResource(async () => {
+    try {
+      return await check();
+    } catch (e) {
+      console.error(e);
+      message(translateErrorMessage("message-update-failed", e), {
+        kind: "error",
+      });
+      return null;
+    }
+  });
 
   return {
     showUpdateDialog,
