@@ -194,7 +194,9 @@ async fn process_monitor_wallpaper(
     let wallpaper_manager = WallpaperManager::new()?;
 
     // Set wallpaper for the specific monitor
-    wallpaper_manager.set_monitor_wallpaper(monitor_id, &wallpaper_path)?;
+    wallpaper_manager
+        .set_monitor_wallpaper(monitor_id, &wallpaper_path)
+        .await?;
 
     Ok(())
 }
@@ -214,7 +216,7 @@ async fn process_theme_cycle(
 
     // Create WallpaperManager instance
     let wallpaper_manager = WallpaperManager::new()?;
-    let monitors = wallpaper_manager.monitor_manager.get_monitors()?;
+    let monitors = wallpaper_manager.monitor_manager.get_monitors().await?;
 
     // Get monitor specific wallpapers
     let monitor_specific_wallpapers = config.monitor_specific_wallpapers();
