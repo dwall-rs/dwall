@@ -27,17 +27,6 @@ impl WallpaperManager {
         monitor_id: &str,
         image_path: &Path,
     ) -> DwallResult<()> {
-        // Validate image path before proceeding
-        if !image_path.exists() {
-            error!(
-                image_path = %image_path.display(),
-                "Image path does not exist. Cannot proceed with wallpaper setting."
-            );
-            return Err(
-                std::io::Error::new(std::io::ErrorKind::NotFound, "Image file not found").into(),
-            );
-        }
-
         self.monitor_manager
             .set_wallpaper(monitor_id, image_path)
             .await
