@@ -1,5 +1,6 @@
 use std::mem;
 
+use windows::core::Error as WindowsError;
 use windows::Win32::{
     Devices::Display::{
         DisplayConfigGetDeviceInfo, GetDisplayConfigBufferSizes, QueryDisplayConfig,
@@ -48,9 +49,11 @@ pub fn query_target_name(
         r#type: DISPLAYCONFIG_DEVICE_INFO_GET_TARGET_NAME,
     };
 
-    if unsafe { DisplayConfigGetDeviceInfo(&mut target_name as *mut _ as *mut _) } != 0 {
-        error!("Failed to get target name");
-        return Err(MonitorError::GetTargetName.into());
+    let result = unsafe { DisplayConfigGetDeviceInfo(&mut target_name as *mut _ as *mut _) };
+    if result != 0 {
+        let win_error = WindowsError::from_win32();
+        error!(error = ?win_error, "Failed to get target name, error code: {}", result);
+        return Err(MonitorError::GetTargetName(win_error).into());
     }
 
     debug!("Got target name");
@@ -61,11 +64,12 @@ fn get_buffer_sizes() -> DwallResult<(u32, u32)> {
     let mut path_count = 0;
     let mut mode_count = 0;
 
-    if unsafe { GetDisplayConfigBufferSizes(QDC_ALL_PATHS, &mut path_count, &mut mode_count) }.0
-        != 0
-    {
+    let error =
+        unsafe { GetDisplayConfigBufferSizes(QDC_ALL_PATHS, &mut path_count, &mut mode_count) };
+
+    if error != ERROR_SUCCESS {
         error!("Failed to get buffer sizes");
-        return Err(MonitorError::GetBufferSizes.into());
+        return Err(MonitorError::GetBufferSizes(error).into());
     }
     debug!(path_count, mode_count, "Got buffer sizes",);
 
