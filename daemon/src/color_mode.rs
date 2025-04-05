@@ -1,3 +1,5 @@
+use std::fmt;
+
 use serde::Deserialize;
 use windows::{
     core::PCWSTR,
@@ -36,12 +38,25 @@ pub enum ColorMode {
     Dark,
 }
 
-/// Windows registry helper utilities
-struct RegistryHelper;
+impl fmt::Display for ColorMode {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            ColorMode::Light => write!(f, "Light"),
+            ColorMode::Dark => write!(f, "Dark"),
+        }
+    }
+}
 
-impl RegistryHelper {
+/// RAII wrapper for Windows registry key handles
+/// Automatically closes the key handle when dropped
+struct RegistryKey {
+    hkey: HKEY,
+    path: String,
+}
+
+impl RegistryKey {
     /// Open a registry key with specified access rights
-    fn open_key(path: &str, access: REG_SAM_FLAGS) -> DwallResult<HKEY> {
+    fn open(path: &str, access: REG_SAM_FLAGS) -> DwallResult<Self> {
         debug!(path = path, "Attempting to open registry key");
         let wide_path = Vec::from_str(path);
         let mut hkey = HKEY::default();
@@ -58,7 +73,10 @@ impl RegistryHelper {
             match result {
                 ERROR_SUCCESS => {
                     info!(path = path, "Successfully opened registry key");
-                    Ok(hkey)
+                    Ok(Self {
+                        hkey,
+                        path: path.to_string(),
+                    })
                 }
                 err => {
                     error!(
@@ -72,25 +90,31 @@ impl RegistryHelper {
         }
     }
 
-    /// Close a previously opened registry key
-    fn close_key(hkey: HKEY) -> DwallResult<()> {
-        trace!("Attempting to close registry key");
+    /// Get the raw HKEY handle
+    fn as_raw(&self) -> HKEY {
+        self.hkey
+    }
+}
+
+impl Drop for RegistryKey {
+    fn drop(&mut self) {
+        trace!(path = self.path, "Automatically closing registry key");
         unsafe {
-            match RegCloseKey(hkey) {
-                ERROR_SUCCESS => {
-                    debug!("Successfully closed registry key");
-                    Ok(())
-                }
-                err => {
-                    warn!(error_code = err.0, "Failed to close registry key");
-                    Err(ColorModeRegistryError::Close(err.0).into())
-                }
+            let err = RegCloseKey(self.hkey);
+            if err != ERROR_SUCCESS {
+                warn!(
+                    path = self.path,
+                    error_code = err.0,
+                    "Failed to close registry key on drop"
+                );
+            } else {
+                debug!(path = self.path, "Successfully closed registry key");
             }
         }
     }
 }
 
-/// Color mode management utility
+/// Color mode management utility for Windows
 pub struct ColorModeManager;
 
 impl ColorModeManager {
@@ -100,9 +124,13 @@ impl ColorModeManager {
     const SYSTEM_THEME_VALUE: &str = "SystemUsesLightTheme";
 
     /// Retrieve the current system color mode from registry
-    fn get_current_mode() -> DwallResult<ColorMode> {
+    ///
+    /// # Returns
+    /// - `Ok(ColorMode)` - The current system color mode
+    /// - `Err(DwallError)` - If registry operations fail
+    pub fn get_current_mode() -> DwallResult<ColorMode> {
         info!("Retrieving current system color mode");
-        let hkey = RegistryHelper::open_key(Self::PERSONALIZE_KEY_PATH, KEY_QUERY_VALUE)?;
+        let registry_key = RegistryKey::open(Self::PERSONALIZE_KEY_PATH, KEY_QUERY_VALUE)?;
 
         let value_name = Vec::from_str(Self::APPS_THEME_VALUE);
         let mut value: u32 = 0;
@@ -110,15 +138,13 @@ impl ColorModeManager {
 
         unsafe {
             let result = RegQueryValueExW(
-                hkey,
+                registry_key.as_raw(),
                 PCWSTR(value_name.as_ptr()),
                 None,
                 None,
                 Some(&mut value as *mut u32 as *mut u8),
                 Some(&mut size),
             );
-
-            RegistryHelper::close_key(hkey)?;
 
             match result {
                 ERROR_SUCCESS => {
@@ -132,7 +158,11 @@ impl ColorModeManager {
                     Ok(mode)
                 }
                 err => {
-                    error!(error_code = err.0, "Failed to query color mode value");
+                    error!(
+                        value_name = Self::APPS_THEME_VALUE,
+                        error_code = err.0,
+                        "Failed to query color mode value"
+                    );
                     Err(ColorModeRegistryError::Query(err.0).into())
                 }
             }
@@ -140,9 +170,16 @@ impl ColorModeManager {
     }
 
     /// Set the system color mode in the registry
+    ///
+    /// # Arguments
+    /// * `mode` - The color mode to set (Light or Dark)
+    ///
+    /// # Returns
+    /// - `Ok(())` - If the color mode was set successfully
+    /// - `Err(DwallError)` - If registry operations fail
     pub fn set_color_mode(mode: ColorMode) -> DwallResult<()> {
-        info!(mode = ?mode, "Setting system color mode");
-        let hkey = RegistryHelper::open_key(Self::PERSONALIZE_KEY_PATH, KEY_SET_VALUE)?;
+        info!(mode = %mode, "Setting system color mode");
+        let registry_key = RegistryKey::open(Self::PERSONALIZE_KEY_PATH, KEY_SET_VALUE)?;
 
         let value = match mode {
             ColorMode::Light => [1u8, 0, 0, 0],
@@ -154,7 +191,7 @@ impl ColorModeManager {
 
         unsafe {
             let set_apps_result = RegSetValueExW(
-                hkey,
+                registry_key.as_raw(),
                 PCWSTR(apps_value.as_ptr()),
                 None,
                 REG_DWORD,
@@ -162,21 +199,20 @@ impl ColorModeManager {
             );
 
             let set_system_result = RegSetValueExW(
-                hkey,
+                registry_key.as_raw(),
                 PCWSTR(system_value.as_ptr()),
                 None,
                 REG_DWORD,
                 Some(&value),
             );
 
-            RegistryHelper::close_key(hkey)?;
-
             match (set_apps_result, set_system_result) {
                 (ERROR_SUCCESS, ERROR_SUCCESS) => {
-                    info!(mode = ?mode, "Successfully set color mode");
+                    info!(mode = %mode, "Successfully set color mode");
                 }
                 _ => {
                     error!(
+                        mode = %mode,
                         apps_result = set_apps_result.0,
                         system_result = set_system_result.0,
                         "Failed to set color mode"
@@ -207,7 +243,7 @@ pub fn determine_color_mode(altitude: f64) -> ColorMode {
         // Daytime: Sun is above the horizon
         trace!("Altitude above threshold, returning Light mode");
         ColorMode::Light
-    } else if altitude < TWILIGHT_ALTITUDE_THRESHOLD {
+    } else if altitude <= TWILIGHT_ALTITUDE_THRESHOLD {
         // Nighttime: Sun is significantly below the horizon
         trace!("Altitude below threshold, returning Dark mode");
         ColorMode::Dark
@@ -219,17 +255,30 @@ pub fn determine_color_mode(altitude: f64) -> ColorMode {
     }
 }
 
+/// Set the system color mode, checking first if it needs to be changed
+///
+/// # Arguments
+/// * `color_mode` - The color mode to set (Light or Dark)
+///
+/// # Returns
+/// - `Ok(())` - If the color mode was set successfully or was already set
+/// - `Err(DwallError)` - If registry operations fail
 pub fn set_color_mode(color_mode: ColorMode) -> DwallResult<()> {
     let current_color_mode = ColorModeManager::get_current_mode()?;
     if current_color_mode == color_mode {
-        info!(mode = ?color_mode, "Color mode is already set");
+        info!(mode = %color_mode, "Color mode is already set");
         return Ok(());
     }
 
+    info!(from = %current_color_mode, to = %color_mode, "Changing color mode");
     ColorModeManager::set_color_mode(color_mode)
 }
 
+/// Notify the system about theme changes
+///
+/// This function broadcasts Windows messages to notify applications about theme changes
 fn notify_theme_change() -> DwallResult<()> {
+    debug!("Broadcasting theme change notifications");
     let notifications = [
         "ImmersiveColorSet",
         "WindowsThemeElement",
@@ -247,9 +296,44 @@ fn notify_theme_change() -> DwallResult<()> {
                 LPARAM(theme_name.as_ptr() as isize),
             ) {
                 warn!(notification = notification, error = ?e, "Failed to broadcast notification");
+            } else {
+                debug!(
+                    notification = notification,
+                    "Successfully broadcast notification"
+                );
             }
         }
     }
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_determine_color_mode() {
+        // Test daytime (sun above horizon)
+        let altitude = 10.0;
+        assert_eq!(determine_color_mode(altitude), ColorMode::Light);
+
+        // Test nighttime (sun well below horizon)
+        let altitude = -10.0;
+        assert_eq!(determine_color_mode(altitude), ColorMode::Dark);
+
+        // Test twilight (sun slightly below horizon)
+        let altitude = -3.0;
+        assert_eq!(determine_color_mode(altitude), ColorMode::Light);
+
+        // Test edge cases
+        assert_eq!(determine_color_mode(0.0), ColorMode::Light); // Exactly at horizon
+        assert_eq!(determine_color_mode(-6.0), ColorMode::Dark); // Exactly at twilight threshold
+    }
+
+    #[test]
+    fn test_color_mode_display() {
+        assert_eq!(format!("{}", ColorMode::Light), "Light");
+        assert_eq!(format!("{}", ColorMode::Dark), "Dark");
+    }
 }
