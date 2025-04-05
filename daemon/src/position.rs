@@ -18,7 +18,7 @@ impl Position {
     }
 }
 
-pub fn get_geo_position() -> DwallResult<Position> {
+pub async fn get_geo_position() -> DwallResult<Position> {
     trace!("Initializing Geolocator...");
     let geolocator = Geolocator::new().map_err(|e| {
         error!(error = ?e, "Failed to initialize Geolocator");
@@ -80,7 +80,9 @@ pub fn get_geo_position() -> DwallResult<Position> {
 
 pub struct PositionManager {
     coordinate_source: CoordinateSource,
-    fixed_position: Mutex<Option<Position>>,
+    fixed_position: Mutex<Option<(Position, std::time::Instant)>>,
+    cache_duration: std::time::Duration,
+    timeout: std::time::Duration,
 }
 
 impl PositionManager {
@@ -88,8 +90,20 @@ impl PositionManager {
         Self {
             coordinate_source,
             fixed_position: Mutex::new(None),
+            cache_duration: std::time::Duration::from_secs(60 * 5),
+            timeout: std::time::Duration::from_secs(10),
         }
     }
+
+    // pub fn with_cache_duration(mut self, duration: std::time::Duration) -> Self {
+    //     self.cache_duration = duration;
+    //     self
+    // }
+
+    // pub fn with_timeout(mut self, duration: std::time::Duration) -> Self {
+    //     self.timeout = duration;
+    //     self
+    // }
 
     pub async fn get_current_position(&self) -> DwallResult<Position> {
         match &self.coordinate_source {
@@ -97,12 +111,25 @@ impl PositionManager {
                 update_on_each_calculation,
             } => {
                 if *update_on_each_calculation {
-                    get_geo_position()
+                    get_geo_position().await
                 } else {
                     let mut position = self.fixed_position.lock().await;
-                    Ok(position
-                        .get_or_insert_with(|| get_geo_position().unwrap())
-                        .clone())
+                    match position.as_ref() {
+                        Some((pos, timestamp)) if timestamp.elapsed() < self.cache_duration => {
+                            Ok(pos.clone())
+                        }
+                        _ => {
+                            let new_pos = tokio::time::timeout(self.timeout, get_geo_position())
+                                .await
+                                .map_err(|_| {
+                                    crate::error::DwallError::TimeoutError(
+                                        "Get position".to_string(),
+                                    )
+                                })??;
+                            *position = Some((new_pos.clone(), std::time::Instant::now()));
+                            Ok(new_pos)
+                        }
+                    }
                 }
             }
             CoordinateSource::Manual {
