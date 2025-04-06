@@ -113,7 +113,7 @@ jobs:
       - name: install frontend dependencies
         run: bun i
 
-      - name: Cache Rust cache and target directory
+      - name: Cache Rust cache
         uses: actions/cache@v4
         with:
           path: |
@@ -121,10 +121,17 @@ jobs:
             ~/.cargo/registry/index/
             ~/.cargo/registry/cache/
             ~/.cargo/git/db/
-            target/
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: |
             ${{ runner.os }}-cargo-
+
+      - name: Restore cached target
+        id: cache-target-restore
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            target/
+          key: ${{ runner.os }}-target-${{ hashFiles('**/Cargo.lock') }}
 
       - uses: tauri-apps/tauri-action@v0.5.16
         env:
@@ -136,6 +143,14 @@ jobs:
           releaseBody: ${{ needs.create-release.outputs.changelog }}
           updaterJsonPreferNsis: true
           args: ${{ matrix.args }}
+
+      - name: Save target
+        id: cache-target-save
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            target/
+          key: ${{ steps.cache-target-restore.outputs.cache-primary-key }}
 
   publish-release:
     permissions:
