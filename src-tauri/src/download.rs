@@ -340,11 +340,11 @@ pub async fn download_theme_and_extract(
     let downloader = ThemeDownloader::new(&window);
 
     // Download theme
-    let zip_path = downloader.download_theme(&config, &theme_id).await?;
+    let zip_path = downloader.download_theme(&config, theme_id).await?;
 
     // Extract theme
     downloader
-        .extract_theme(config.themes_directory(), &zip_path, &theme_id)
+        .extract_theme(config.themes_directory(), &zip_path, theme_id)
         .await
 }
 
