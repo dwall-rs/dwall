@@ -13,16 +13,16 @@ use crate::{
 };
 
 /// Manages the lifecycle and processing of a specific theme
-pub struct ThemeProcessor<'a> {
+pub struct ThemeProcessor {
     /// Configuration settings for theme processing
-    config: &'a Config<'a>,
+    config: Config,
     /// Manages geographic position tracking
     position_manager: PositionManager,
 }
 
-impl<'a> ThemeProcessor<'a> {
+impl ThemeProcessor {
     /// Creates a new ThemeProcessor instance
-    pub fn new(config: &'a Config<'a>) -> Self {
+    pub fn new(config: &Config) -> Self {
         debug!(
             auto_detect_color_mode = ?config.auto_detect_color_mode(),
             image_format = ?config.image_format(),
@@ -31,7 +31,7 @@ impl<'a> ThemeProcessor<'a> {
 
         Self {
             position_manager: PositionManager::new(config.coordinate_source().clone()),
-            config,
+            config: config.clone(),
         }
     }
 
@@ -94,7 +94,7 @@ impl<'a> ThemeProcessor<'a> {
 
     /// Process theme cycle for the current geographic position
     async fn process_theme_cycle(&self, position: &Position) -> DwallResult<()> {
-        process_theme_cycle(self.config, position).await
+        process_theme_cycle(&self.config, position).await
     }
 }
 
@@ -191,7 +191,7 @@ async fn find_matching_wallpaper(
 
 /// Process theme cycle for a specific monitor
 async fn process_monitor_wallpaper(
-    config: &Config<'_>,
+    config: &Config,
     monitor_id: &str,
     theme_id: &str,
     sun_position: &SunPosition,
@@ -233,7 +233,7 @@ async fn process_monitor_wallpaper(
 
 /// Set lock screen wallpaper based on theme and sun position
 async fn set_lock_screen_wallpaper(
-    config: &Config<'_>,
+    config: &Config,
     theme_id: &str,
     sun_position: &SunPosition,
 ) -> DwallResult<()> {
@@ -271,10 +271,7 @@ async fn set_lock_screen_wallpaper(
 }
 
 /// Core theme processing function
-async fn process_theme_cycle(
-    config: &Config<'_>,
-    geographic_position: &Position,
-) -> DwallResult<()> {
+async fn process_theme_cycle(config: &Config, geographic_position: &Position) -> DwallResult<()> {
     debug!(
         auto_detect_color_mode = config.auto_detect_color_mode(),
         image_format = ?config.image_format(),
@@ -303,7 +300,7 @@ async fn process_theme_cycle(
     // Process each monitor
     for monitor_id in monitors.keys() {
         // Determine which theme to use for this monitor
-        let monitor_theme_id = match monitor_specific_wallpapers.get(monitor_id) {
+        let monitor_theme_id: &str = match monitor_specific_wallpapers.get(monitor_id) {
             Some(theme_id) => theme_id.as_ref(),
             None => continue,
         };

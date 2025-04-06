@@ -113,7 +113,7 @@ async fn get_applied_theme_id(monitor_id: &str) -> DwallSettingsResult<Option<St
 }
 
 #[tauri::command]
-async fn read_config_file<'a>() -> DwallSettingsResult<Config<'a>> {
+async fn read_config_file() -> DwallSettingsResult<Config> {
     trace!("Reading configuration file");
     match dwall::config::read_config_file().await {
         Ok(config) => {
@@ -128,7 +128,7 @@ async fn read_config_file<'a>() -> DwallSettingsResult<Config<'a>> {
 }
 
 #[tauri::command]
-async fn write_config_file(config: Config<'_>) -> DwallSettingsResult<()> {
+async fn write_config_file(config: Config) -> DwallSettingsResult<()> {
     trace!("Writing configuration file");
     match dwall_write_config(&config).await {
         Ok(_) => {
@@ -143,7 +143,7 @@ async fn write_config_file(config: Config<'_>) -> DwallSettingsResult<()> {
 }
 
 #[tauri::command]
-async fn apply_theme(config: Config<'_>) -> DwallSettingsResult<()> {
+async fn apply_theme(config: Config) -> DwallSettingsResult<()> {
     trace!("Starting theme application process");
 
     match kill_daemon() {
