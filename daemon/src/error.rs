@@ -45,6 +45,10 @@ pub enum DwallError {
     /// Monitor related error
     #[error("Monitor operation failed: {0}")]
     Monitor(#[from] crate::monitor::error::MonitorError),
+
+    /// Timeout error
+    #[error("Operation timed out: {0}")]
+    TimeoutError(String),
 }
 
 /// Registry operation related errors

@@ -1,5 +1,4 @@
 use std::{
-    borrow::Cow,
     collections::HashMap,
     path::{Path, PathBuf},
 };
@@ -23,9 +22,6 @@ pub enum ConfigError {
 
     #[error("Configuration validation failed")]
     Validation,
-
-    #[error("Config file not found or inaccessible")]
-    FileNotFound,
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Default, Clone)]
@@ -82,14 +78,14 @@ impl CoordinateSource {
 }
 
 #[derive(Debug, Serialize, Deserialize, Validate, Clone, PartialEq)]
-pub struct Config<'a> {
+pub struct Config {
     #[serde(skip_serializing_if = "Option::is_none")]
-    github_mirror_template: Option<Cow<'a, str>>,
+    github_mirror_template: Option<String>,
 
     /// When `monitor_specific_wallpapers` is not set, `selected_theme_id` will be applied to all monitors.
     /// Otherwise, `selected_theme_id` will not take effect, and wallpapers will be set according to `monitor_specific_wallpapers`.
     #[serde(skip_serializing_if = "Option::is_none")]
-    selected_theme_id: Option<Cow<'a, str>>,
+    selected_theme_id: Option<String>,
 
     #[serde(default = "default_image_format")]
     image_format: ImageFormat,
@@ -104,11 +100,11 @@ pub struct Config<'a> {
     lock_screen_wallpaper_enabled: bool,
 
     #[serde(default = "default_themes_directory")]
-    themes_directory: Cow<'a, Path>,
+    themes_directory: PathBuf,
 
     /// Wallpapers specific to each monitor, using monitor ID as key
     #[serde(default = "default_monitor_specific_wallpapers")]
-    monitor_specific_wallpapers: HashMap<String, Cow<'a, str>>,
+    monitor_specific_wallpapers: HashMap<String, String>,
 
     /// Time interval for detecting solar altitude angle and azimuth angle
     /// Measured in seconds, range: [1, 600]
@@ -138,64 +134,83 @@ fn default_interval() -> u16 {
     15
 }
 
-fn default_themes_directory<'a>() -> Cow<'a, Path> {
-    DWALL_CONFIG_DIR.join("themes").into()
+fn default_themes_directory() -> PathBuf {
+    DWALL_CONFIG_DIR.join("themes")
 }
 
-fn default_monitor_specific_wallpapers<'a>() -> HashMap<String, Cow<'a, str>> {
+fn default_monitor_specific_wallpapers() -> HashMap<String, String> {
     HashMap::new()
 }
 
-impl<'a> Config<'a> {
+impl Config {
+    /// Validates the configuration values
+    ///
+    /// Checks if the interval is within the valid range and if the coordinate source is valid
     pub fn validate(&self) -> DwallResult<()> {
         if self.interval < 1 || self.interval > 600 {
             error!(interval = self.interval, "Interval validation failed");
             return Err(ConfigError::Validation.into());
         }
+
+        if !self.coordinate_source.validate() {
+            error!("Latitude or longitude is invalid");
+            return Err(ConfigError::Validation.into());
+        }
+
         Ok(())
     }
 
+    /// Returns the default theme ID or an error if not set
     pub fn default_theme_id(&self) -> DwallResult<&str> {
         self.selected_theme_id
             .as_deref()
             .ok_or(ThemeError::MissingDefaultTheme.into())
     }
 
+    /// Returns the themes directory path
     pub fn themes_directory(&self) -> &Path {
         &self.themes_directory
     }
 
-    pub fn with_themes_directory(&self, themes_directory: &'a Path) -> Config<'a> {
+    /// Creates a new Config with a different themes directory
+    pub fn with_themes_directory(&self, themes_directory: &Path) -> Config {
         let mut config = self.clone();
-        config.themes_directory = themes_directory.into();
+        config.themes_directory = themes_directory.to_path_buf();
         config
     }
 
+    /// Returns the update interval in seconds
     pub fn interval(&self) -> u16 {
         self.interval
     }
 
+    /// Returns the image format
     pub fn image_format(&self) -> &ImageFormat {
         &self.image_format
     }
 
+    /// Returns whether auto detection of color mode is enabled
     pub fn auto_detect_color_mode(&self) -> bool {
         self.auto_detect_color_mode
     }
 
+    /// Returns whether lock screen wallpaper is enabled
     pub fn lock_screen_wallpaper_enabled(&self) -> bool {
         self.lock_screen_wallpaper_enabled
     }
 
-    pub fn coordinate_source(&'a self) -> &'a CoordinateSource {
+    /// Returns the coordinate source
+    pub fn coordinate_source(&self) -> &CoordinateSource {
         &self.coordinate_source
     }
 
-    pub fn monitor_specific_wallpapers(&'a self) -> &'a HashMap<String, Cow<'a, str>> {
+    /// Returns the monitor-specific wallpapers map
+    pub fn monitor_specific_wallpapers(&self) -> &HashMap<String, String> {
         &self.monitor_specific_wallpapers
     }
 
-    pub fn github_asset_url(&self, github_url: &'a str) -> String {
+    /// Converts a GitHub URL to a mirrored URL if a mirror template is configured
+    pub fn github_asset_url(&self, github_url: &str) -> String {
         self.github_mirror_template
             .as_ref()
             .and_then(|v| if v == "" { None } else { Some(v) })
@@ -218,7 +233,7 @@ impl<'a> Config<'a> {
     }
 }
 
-impl Default for Config<'_> {
+impl Default for Config {
     fn default() -> Self {
         Self {
             image_format: Default::default(),
@@ -242,18 +257,23 @@ impl Default for Config<'_> {
     }
 }
 
+/// Manages configuration file operations
 pub struct ConfigManager {
     config_path: PathBuf,
 }
 
-impl<'a> ConfigManager {
-    pub fn new(config_dir: &'a Path) -> Self {
+impl ConfigManager {
+    /// Creates a new ConfigManager with the given config directory
+    pub fn new(config_dir: &Path) -> Self {
         Self {
             config_path: config_dir.join("config.toml"),
         }
     }
 
-    pub async fn read_config(&self) -> DwallResult<Config<'a>> {
+    /// Reads the configuration from the file system
+    ///
+    /// Returns the default configuration if the file doesn't exist
+    pub async fn read_config(&self) -> DwallResult<Config> {
         // Return default configuration if config file does not exist
         if !self.config_path.exists() {
             warn!("Config file not found, using default configuration");
@@ -264,13 +284,10 @@ impl<'a> ConfigManager {
 
         let content = tokio::fs::read_to_string(&self.config_path).await?;
 
-        let config: Config = match toml::from_str(&content) {
-            Ok(config) => config,
-            Err(e) => {
-                error!(error = ?e, "Failed to parse configuration");
-                return Err(ConfigError::Deserialization(e).into());
-            }
-        };
+        let config: Config = toml::from_str(&content).map_err(|e| {
+            error!(error = ?e, "Failed to parse configuration");
+            ConfigError::Deserialization(e)
+        })?;
 
         // Validate configuration
         config.validate()?;
@@ -280,32 +297,35 @@ impl<'a> ConfigManager {
         Ok(config)
     }
 
-    pub async fn write_config(&self, config: &Config<'a>) -> DwallResult<()> {
+    /// Writes the configuration to the file system
+    ///
+    /// Skips writing if the configuration is unchanged
+    pub async fn write_config(&self, config: &Config) -> DwallResult<()> {
         // Validate configuration before writing
         config.validate()?;
 
+        // If file doesn't exist, write directly
         if !self.config_path.exists() {
             return self.write_config_to_file(config).await;
         }
 
-        let existing_config = self.read_config().await?;
-
-        if existing_config == *config {
-            debug!("Configuration unchanged, skipping write");
-            return Ok(());
+        // Check if config has changed
+        if let Ok(existing_config) = self.read_config().await {
+            if existing_config == *config {
+                debug!("Configuration unchanged, skipping write");
+                return Ok(());
+            }
         }
 
         self.write_config_to_file(config).await
     }
 
-    async fn write_config_to_file(&self, config: &Config<'a>) -> DwallResult<()> {
-        let toml_string = match toml::to_string(config) {
-            Ok(s) => s,
-            Err(e) => {
-                error!(error = ?e, "Failed to serialize configuration");
-                return Err(ConfigError::Serialization(e).into());
-            }
-        };
+    /// Writes the configuration to the file
+    async fn write_config_to_file(&self, config: &Config) -> DwallResult<()> {
+        let toml_string = toml::to_string(config).map_err(|e| {
+            error!(error = ?e, "Failed to serialize configuration");
+            ConfigError::Serialization(e)
+        })?;
 
         info!(path = %self.config_path.display(), "Writing configuration file");
 
@@ -314,12 +334,14 @@ impl<'a> ConfigManager {
     }
 }
 
-pub async fn read_config_file<'a>() -> DwallResult<Config<'a>> {
+/// Reads the configuration file from the default location
+pub async fn read_config_file() -> DwallResult<Config> {
     let config_manager = ConfigManager::new(&DWALL_CONFIG_DIR);
     config_manager.read_config().await
 }
 
-pub async fn write_config_file(config: &Config<'_>) -> DwallResult<()> {
+/// Writes the configuration to the default location
+pub async fn write_config_file(config: &Config) -> DwallResult<()> {
     let config_manager = ConfigManager::new(&DWALL_CONFIG_DIR);
     config_manager.write_config(config).await
 }

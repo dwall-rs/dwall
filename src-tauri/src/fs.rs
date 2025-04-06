@@ -1,5 +1,4 @@
-use std::borrow::Cow;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use dwall::config::{write_config_file, Config};
 use tokio::fs;
@@ -62,10 +61,7 @@ impl From<ThemeDirectoryMoveError> for DwallSettingsResult<()> {
 }
 
 #[tauri::command]
-pub async fn move_themes_directory(
-    config: Config<'_>,
-    dir_path: Cow<'_, Path>,
-) -> DwallSettingsResult<()> {
+pub async fn move_themes_directory(config: Config, dir_path: PathBuf) -> DwallSettingsResult<()> {
     // Validate input parameters
     if dir_path.to_path_buf().as_path() == config.themes_directory() {
         debug!("Source and destination paths are the same. No move necessary.");
@@ -106,7 +102,7 @@ pub async fn move_themes_directory(
 }
 
 /// Validates the directory move operation
-fn validate_directory_move(config: &Config<'_>, destination: &Path) -> DwallSettingsResult<()> {
+fn validate_directory_move(config: &Config, destination: &Path) -> DwallSettingsResult<()> {
     debug!("Performing pre-move directory validation");
 
     // Check if destination directory already exists
@@ -136,10 +132,7 @@ fn validate_directory_move(config: &Config<'_>, destination: &Path) -> DwallSett
 }
 
 /// Prepares the new configuration
-async fn prepare_new_config<'a>(
-    config: &Config<'a>,
-    new_path: &'a Path,
-) -> DwallSettingsResult<()> {
+async fn prepare_new_config(config: &Config, new_path: &Path) -> DwallSettingsResult<()> {
     debug!("Preparing new configuration with updated themes directory");
 
     let new_config = config.with_themes_directory(new_path);
@@ -152,7 +145,7 @@ async fn prepare_new_config<'a>(
 
 /// Performs the actual themes directory move
 async fn perform_themes_directory_move(
-    config: &Config<'_>,
+    config: &Config,
     destination: &Path,
 ) -> Result<(), ThemeDirectoryMoveError> {
     let source = config.themes_directory();

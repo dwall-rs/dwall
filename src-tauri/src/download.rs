@@ -1,4 +1,3 @@
-use std::borrow::Cow;
 use std::collections::HashMap;
 use std::error::Error;
 use std::path::{Path, PathBuf};
@@ -96,7 +95,7 @@ impl<'a> ThemeDownloader<'a> {
     /// Download theme zip file
     pub async fn download_theme(
         &self,
-        config: &Config<'_>,
+        config: &Config,
         theme_id: &str,
     ) -> DwallSettingsResult<PathBuf> {
         // Check if theme is already being downloaded
@@ -333,10 +332,10 @@ impl<'a> ThemeDownloader<'a> {
 }
 
 #[tauri::command]
-pub async fn download_theme_and_extract<'a>(
+pub async fn download_theme_and_extract(
     window: WebviewWindow,
-    config: Config<'a>,
-    theme_id: Cow<'a, str>,
+    config: Config,
+    theme_id: &str,
 ) -> DwallSettingsResult<()> {
     let downloader = ThemeDownloader::new(&window);
 
