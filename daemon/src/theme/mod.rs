@@ -23,7 +23,7 @@ pub enum ThemeError {
 }
 
 /// Applies a theme and starts a background task for periodic wallpaper updates
-pub async fn apply_theme(config: Config<'_>) -> DwallResult<()> {
+pub async fn apply_theme(config: Config) -> DwallResult<()> {
     let theme_processor = ThemeProcessor::new(&config);
 
     theme_processor.start_update_loop().await
