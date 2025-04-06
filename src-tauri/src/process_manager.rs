@@ -211,10 +211,10 @@ fn is_daemon_process(process_path: &str, expected_path: &str) -> bool {
             }
         }
         // If canonicalization fails, compare using original paths
-        _ => process_path.to_str().map_or(false, |p| {
+        _ => process_path.to_str().is_some_and(|p| {
             expected_path
                 .to_str()
-                .map_or(false, |e| p.eq_ignore_ascii_case(e))
+                .is_some_and(|e| p.eq_ignore_ascii_case(e))
         }),
     }
 }

@@ -21,9 +21,7 @@ impl<const N: usize> WideStringExt for [u16; N] {
         let wide_chars: Vec<u16> = OsStr::new(s).encode_wide().collect();
         let copy_len = wide_chars.len().min(N - 1); // Ensure one position is reserved for the null terminator
 
-        for i in 0..copy_len {
-            buf[i] = wide_chars[i];
-        }
+        buf[..copy_len].copy_from_slice(&wide_chars[..copy_len]);
 
         buf
     }

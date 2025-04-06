@@ -70,12 +70,18 @@ pub struct MonitorInfoProvider {
     cache: Arc<RwLock<MonitorCache>>,
 }
 
-impl MonitorInfoProvider {
-    /// Creates a new MonitorInfoProvider instance
-    pub fn new() -> Self {
+impl Default for MonitorInfoProvider {
+    fn default() -> Self {
         Self {
             cache: Arc::new(RwLock::new(MonitorCache::new())),
         }
+    }
+}
+
+impl MonitorInfoProvider {
+    /// Creates a new MonitorInfoProvider instance
+    pub fn new() -> Self {
+        Default::default()
     }
 
     /// Gets all available monitors with caching
@@ -121,7 +127,7 @@ impl MonitorInfoProvider {
         }
 
         // Check if any monitor IDs changed
-        for (id, _) in &current_monitors {
+        for id in current_monitors.keys() {
             if !cached_monitors.contains_key(id) {
                 return Ok(true);
             }
@@ -304,9 +310,11 @@ impl MonitorManager {
 fn query_monitor_info() -> DwallResult<HashMap<String, Monitor>> {
     debug!("Querying monitor information from system");
     let mut monitors = HashMap::new();
-    let mut index = 0;
 
-    for display_path in display_config::query_display_paths()?.into_iter() {
+    for (index, display_path) in display_config::query_display_paths()?
+        .into_iter()
+        .enumerate()
+    {
         let target_info =
             display_config::query_target_name(display_path.adapter_id, display_path.target_id)?;
         let device_path = target_info.monitorDevicePath.to_string();
@@ -333,11 +341,9 @@ fn query_monitor_info() -> DwallResult<HashMap<String, Monitor>> {
                 id: device_path.clone(),
                 device_path,
                 friendly_name,
-                index: Some(index),
+                index: Some(index as u32),
             },
         );
-
-        index += 1;
     }
 
     info!("Found {} monitors in total", monitors.len());
