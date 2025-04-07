@@ -103,6 +103,12 @@ impl TranslationMap for EnglishUSTranslations {
             },
         );
         translations.insert(
+            MESSAGE_GITHUB_STAR,
+            TranslationValue::Text(
+                "If this application has helped you, please give us a star on GitHub to support the open-source project: ",
+            ),
+        );
+        translations.insert(
             MESSAGE_INVALID_NUMBER_INPUT,
             TranslationValue::Text("Please enter a valid number."),
         );

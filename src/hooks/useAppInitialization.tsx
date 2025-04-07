@@ -1,9 +1,11 @@
+import { open } from "@tauri-apps/plugin-shell";
 import { onMount } from "solid-js";
 import {
   getAppliedThemeID,
   setTitlebarColorMode,
   showWindow,
 } from "~/commands";
+import { showToast } from "~/components/Toast";
 import { useMonitor, useTheme } from "~/contexts";
 import { themes } from "~/themes";
 import { detectColorMode } from "~/utils/color";
@@ -14,11 +16,16 @@ import { detectColorMode } from "~/utils/color";
  * @param handleThemeSelection Function to handle theme selection
  */
 export const useAppInitialization = (
+  translate: (key: TranslationKey, params?: Record<string, string>) => string,
   menuItemIndex: Accessor<number | undefined>,
   handleThemeSelection: (index: number) => void,
 ) => {
   const { setMenuItemIndex, setAppliedThemeID } = useTheme();
   const { id: monitorID } = useMonitor();
+
+  const openGithubRepository = async () => {
+    await open("https://github.com/dwall-rs/dwall");
+  };
 
   onMount(async () => {
     await setTitlebarColorMode(detectColorMode());
@@ -27,6 +34,23 @@ export const useAppInitialization = (
 
     const mii = menuItemIndex();
     if (mii !== undefined) handleThemeSelection(mii);
+
+    showToast({
+      message: (
+        <span>
+          {translate("message-github-star")}
+          <button
+            type="button"
+            class="toast-message-link-like-button"
+            onClick={openGithubRepository}
+          >
+            dwall
+          </button>
+        </span>
+      ),
+      position: "top-right",
+      duration: 5000,
+    });
 
     const applied_theme_id = await getAppliedThemeID(monitorID());
     if (applied_theme_id) {

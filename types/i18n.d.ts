@@ -23,6 +23,7 @@ type TranslationKey =
   | "message-change-themes-directory"
   | "message-disable-startup-failed"
   | "message-download-faild"
+  | "message-github-star"
   | "message-invalid-number-input"
   | "message-location-permission"
   | "message-coordinates-saved"
