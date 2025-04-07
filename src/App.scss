@@ -86,3 +86,19 @@
     border-radius: 4px;
   }
 }
+
+.toast-message-link-like-button {
+  background-color: transparent;
+  border: none;
+  text-decoration: underline;
+  color: var(--colorBrandForegroundLink);
+  cursor: pointer;
+
+  &:hover {
+    color: var(--colorBrandForegroundLinkHover);
+  }
+
+  &:active {
+    color: var(--colorBrandForegroundLinkPressed);
+  }
+}

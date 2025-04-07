@@ -37,7 +37,7 @@ const App = () => {
   useDark();
   useColorMode();
 
-  useAppInitialization(menuItemIndex, handleThemeSelection);
+  useAppInitialization(translate, menuItemIndex, handleThemeSelection);
 
   return (
     <>

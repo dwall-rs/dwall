@@ -87,6 +87,12 @@ impl TranslationMap for ChineseSimplifiedTranslations {
             },
         );
         translations.insert(
+            MESSAGE_GITHUB_STAR,
+            TranslationValue::Text(
+                "若本程序帮助到了你，请去 Github 为本项目标星，谢谢支持开源项目：",
+            ),
+        );
+        translations.insert(
             MESSAGE_INVALID_NUMBER_INPUT,
             TranslationValue::Text("请输入有效的数字"),
         );
