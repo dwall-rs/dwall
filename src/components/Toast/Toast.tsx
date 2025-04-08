@@ -22,6 +22,7 @@ const Toast: Component<ToastProps> = (props) => {
       position: "top" as NonNullable<ToastProps["position"]>,
       type: "info" as NonNullable<ToastProps["type"]>,
       closable: true,
+      maxWidth: 400,
     },
     props,
   );
@@ -67,6 +68,7 @@ const Toast: Component<ToastProps> = (props) => {
       <ToastContainer
         position={merged.position}
         zIndex={merged.zIndex}
+        maxWidth={merged.maxWidth}
         style={props.style}
       >
         <ToastContent
