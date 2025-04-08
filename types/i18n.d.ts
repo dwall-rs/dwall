@@ -22,6 +22,7 @@ type TranslationKey =
   | "tooltip-settings"
   | "message-change-themes-directory"
   | "message-disable-startup-failed"
+  | "message-download-cancelled"
   | "message-download-faild"
   | "message-github-star"
   | "message-invalid-number-input"

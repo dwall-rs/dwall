@@ -95,6 +95,10 @@ impl TranslationMap for EnglishUSTranslations {
             },
         );
         translations.insert(
+            MESSAGE_DOWNLOAD_CANCELLED,
+            TranslationValue::Text("Download cancelled"),
+        );
+        translations.insert(
             MESSAGE_DOWNLOAD_FAILED,
             TranslationValue::Template {
                 template:

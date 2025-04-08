@@ -80,6 +80,10 @@ impl TranslationMap for ChineseSimplifiedTranslations {
             },
         );
         translations.insert(
+            MESSAGE_DOWNLOAD_CANCELLED,
+            TranslationValue::Text("已取消下载"),
+        );
+        translations.insert(
             MESSAGE_DOWNLOAD_FAILED,
             TranslationValue::Template {
                 template: "{{error}}\n\n具体错误请查看日志文件：dwall_settings_lib.log",
