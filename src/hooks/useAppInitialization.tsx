@@ -49,7 +49,7 @@ export const useAppInitialization = (
         </span>
       ),
       position: "top-right",
-      duration: 5000,
+      duration: 10000,
     });
 
     const applied_theme_id = await getAppliedThemeID(monitorID());
