@@ -38,6 +38,8 @@ export interface ToastProps
   maxCount?: number;
   /** Custom z-index value */
   zIndex?: number;
+  /** Custom max-width value */
+  maxWidth?: number | string;
   /** Custom CSS styles */
   style?: JSX.CSSProperties;
 }
@@ -58,6 +60,7 @@ export interface ToastContentProps {
 export interface ToastContainerProps {
   position: ToastPosition;
   zIndex?: number;
+  maxWidth?: number | string;
   style?: JSX.CSSProperties;
   children: JSX.Element;
 }

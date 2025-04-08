@@ -17,6 +17,10 @@ const ToastContainer: Component<ToastContainerProps> = (props) => {
         style={{
           ...props.style,
           "z-index": props.zIndex,
+          "--fui-toast-max-width":
+            typeof props.maxWidth === "number"
+              ? `${props.maxWidth}px`
+              : props.maxWidth,
         }}
         role="alert"
         aria-live="assertive"
