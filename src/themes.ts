@@ -137,6 +137,16 @@ const images = {
     "https://github.com/dwall-rs/dwall-assets/raw/refs/heads/main/thumbnails/SolarGradients/15.avif",
     "https://github.com/dwall-rs/dwall-assets/raw/refs/heads/main/thumbnails/SolarGradients/16.avif",
   ],
+  "The Beach": [
+    "https://github.com/dwall-rs/dwall-assets/raw/refs/heads/main/thumbnails/TheBeach/1.avif",
+    "https://github.com/dwall-rs/dwall-assets/raw/refs/heads/main/thumbnails/TheBeach/2.avif",
+    "https://github.com/dwall-rs/dwall-assets/raw/refs/heads/main/thumbnails/TheBeach/3.avif",
+    "https://github.com/dwall-rs/dwall-assets/raw/refs/heads/main/thumbnails/TheBeach/4.avif",
+    "https://github.com/dwall-rs/dwall-assets/raw/refs/heads/main/thumbnails/TheBeach/5.avif",
+    "https://github.com/dwall-rs/dwall-assets/raw/refs/heads/main/thumbnails/TheBeach/6.avif",
+    "https://github.com/dwall-rs/dwall-assets/raw/refs/heads/main/thumbnails/TheBeach/7.avif",
+    "https://github.com/dwall-rs/dwall-assets/raw/refs/heads/main/thumbnails/TheBeach/8.avif",
+  ],
   "Ventura Graphic": [
     "https://github.com/dwall-rs/dwall-assets/raw/refs/heads/main/thumbnails/VenturaGraphic/1.avif",
     "https://github.com/dwall-rs/dwall-assets/raw/refs/heads/main/thumbnails/VenturaGraphic/2.avif",
