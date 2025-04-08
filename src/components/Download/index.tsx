@@ -78,7 +78,7 @@ const Download = () => {
 
   createEffect(
     () =>
-      warning() && toast.warning(warning(), { duration: 10000, maxWidth: 600 }),
+      warning() && toast.warning(warning(), { duration: 10000, maxWidth: 480 }),
   );
 
   return (
