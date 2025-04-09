@@ -12,6 +12,8 @@ export type ToastPosition =
 
 export type ToastRef = HTMLDivElement & {
   close: () => void;
+  pause: () => void;
+  resume: () => void;
 };
 
 export interface ToastProps
@@ -63,6 +65,8 @@ export interface ToastContainerProps {
   maxWidth?: number | string;
   style?: JSX.CSSProperties;
   children: JSX.Element;
+  onMouseEnter?: () => void;
+  onMouseLeave?: () => void;
 }
 
 export interface ToastInstance {

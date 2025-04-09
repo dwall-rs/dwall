@@ -6,8 +6,9 @@ import {
   type Component,
   onMount,
   mergeProps,
+  on,
 } from "solid-js";
-import { useTimeout } from "fluent-solid";
+import { usePausableTimeout } from "~/hooks/usePausableTimeout";
 import type { ToastProps } from "./types";
 import ToastContainer from "./ToastContainer";
 import ToastContent from "./ToastContent";
@@ -29,38 +30,45 @@ const Toast: Component<ToastProps> = (props) => {
 
   const [visible, setVisible] = createSignal(true);
 
-  const [setTimer, cancelTimer] = useTimeout();
-
   // Close Toast
   const close = () => {
     setVisible(false);
-    props.onClose?.();
+    merged.onClose?.();
   };
+
+  const {
+    start: startTimer,
+    pause: pauseTimer,
+    resume: resumeTimer,
+    clear: clearTimer,
+  } = usePausableTimeout(close, merged.duration);
 
   onMount(() => {
     // If ref is provided, pass component instance to ref
-    if (props.ref && typeof props.ref === "function") {
-      props.ref = (el) => {
+    if (merged.ref && typeof merged.ref === "function") {
+      merged.ref = (el) => {
         el.close = close;
+        el.pause = pauseTimer;
+        el.resume = () => resumeTimer();
       };
     }
   });
 
   // Auto-close timer
-  createEffect(() => {
-    if (visible() && merged.duration > 0) {
-      setTimer(() => {
-        close();
-      }, merged.duration);
-    }
-    return () => {
-      cancelTimer();
-    };
-  });
+  createEffect(
+    on([visible, () => merged.duration], ([v, duration]) => {
+      if (v && duration > 0) {
+        startTimer();
+      }
+      return () => {
+        clearTimer();
+      };
+    }),
+  );
 
   // Clean up timer when component unmounts
   onCleanup(() => {
-    cancelTimer();
+    clearTimer();
   });
 
   return (
@@ -69,11 +77,13 @@ const Toast: Component<ToastProps> = (props) => {
         position={merged.position}
         zIndex={merged.zIndex}
         maxWidth={merged.maxWidth}
-        style={props.style}
+        style={merged.style}
+        onMouseEnter={pauseTimer}
+        onMouseLeave={() => resumeTimer()}
       >
         <ToastContent
           type={merged.type}
-          message={props.message}
+          message={merged.message}
           icon={merged.icon}
           action={merged.action}
           closable={merged.closable}

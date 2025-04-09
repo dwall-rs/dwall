@@ -24,6 +24,8 @@ const ToastContainer: Component<ToastContainerProps> = (props) => {
         }}
         role="alert"
         aria-live="assertive"
+        onMouseEnter={() => props.onMouseEnter?.()}
+        onMouseLeave={() => props.onMouseLeave?.()}
       >
         {props.children}
       </div>
