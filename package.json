@@ -11,7 +11,8 @@
     "tauri": "tauri",
     "start:dev": "cargo build -p dwall --features log-color && cross-env RUST_BACKTRACE=1 tauri dev --features log-color",
     "check": "biome check --write src",
-    "dev": "bun run start:dev"
+    "dev": "bun run start:dev",
+    "test": "vitest"
   },
   "license": "MIT",
   "dependencies": {
@@ -30,9 +31,11 @@
     "@tauri-apps/cli": "^2.4.1",
     "@types/node": "^22.14.0",
     "cross-env": "^7.0.3",
+    "jsdom": "^26.0.0",
     "sass": "^1.86.3",
     "typescript": "^5.8.3",
     "vite": "^6.2.5",
-    "vite-plugin-solid": "^2.11.6"
+    "vite-plugin-solid": "^2.11.6",
+    "vitest": "^3.1.1"
   }
 }
