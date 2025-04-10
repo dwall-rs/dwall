@@ -12,6 +12,7 @@
     "start:dev": "cargo build -p dwall --features log-color && cross-env RUST_BACKTRACE=1 tauri dev --features log-color",
     "check": "biome check --write src",
     "dev": "bun run start:dev",
+    "stage": "cargo build -r -p dwall --features log-color && cross-env RUST_BACKTRACE=1 tauri dev --features log-color devtools --release",
     "test": "vitest"
   },
   "license": "MIT",
