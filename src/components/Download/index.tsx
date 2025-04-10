@@ -2,7 +2,7 @@ import { createEffect, createSignal, onMount, Show } from "solid-js";
 import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
 import { message } from "@tauri-apps/plugin-dialog";
 import { LazyButton, LazyProgress } from "~/lazy";
-import { toast } from "~/components/Toast";
+import { useToast } from "~/components//Toast";
 import { downloadThemeAndExtract, cancelThemeDownload } from "~/commands";
 import { useConfig, useTheme, useTranslations } from "~/contexts";
 import "./index.scss";
@@ -22,6 +22,7 @@ const Download = () => {
   const [percent, setPercent] = createSignal<number>();
   const [isCancelling, setIsCancelling] = createSignal(false);
   const [warning, setWarning] = createSignal<string>();
+  const toast = useToast();
 
   const onFinished = () => {
     theme.setDownloadThemeID();
@@ -62,7 +63,9 @@ const Download = () => {
     } catch (e) {
       // 检查是否是取消下载导致的错误
       if (String(e).includes("Download cancelled")) {
-        toast.success("下载已取消", { closable: false });
+        toast.success("下载已取消", {
+          closable: false,
+        });
       } else {
         message(translateErrorMessage("message-download-faild", e), {
           title: translate("title-download-faild"),
@@ -78,7 +81,11 @@ const Download = () => {
 
   createEffect(
     () =>
-      warning() && toast.warning(warning(), { duration: 10000, maxWidth: 480 }),
+      warning() &&
+      toast.warning(warning(), {
+        duration: 10000,
+        maxWidth: 480,
+      }),
   );
 
   return (
