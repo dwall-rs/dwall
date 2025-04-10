@@ -11,13 +11,13 @@ use tokio::sync::OnceCell;
 use crate::auto_start::{check_auto_start, disable_auto_start, enable_auto_start};
 use crate::cache::get_or_save_cached_thumbnails;
 use crate::download::{cancel_theme_download, download_theme_and_extract};
-use crate::error::DwallSettingsResult;
+use crate::error::{DwallSettingsError, DwallSettingsResult};
 use crate::fs::move_themes_directory;
 use crate::i18n::get_translations;
 use crate::postion::request_location_permission;
 use crate::process_manager::{find_daemon_process, kill_daemon};
 use crate::setup::setup_app;
-use crate::theme::spawn_apply_daemon;
+use crate::theme::{read_daemon_error_log, spawn_apply_daemon};
 use crate::window::create_main_window;
 
 mod auto_start;
@@ -147,22 +147,24 @@ async fn apply_theme(config: Config) -> DwallSettingsResult<()> {
     trace!("Starting theme application process");
 
     match kill_daemon() {
-        Ok(_) => debug!("Successfully killed existing daemon process"),
+        Ok(()) => debug!("Successfully killed existing daemon process"),
         Err(e) => warn!(error = ?e, "Failed to kill existing daemon process"),
     }
 
     dwall_write_config(&config).await?;
 
-    match spawn_apply_daemon() {
-        Ok(_) => {
-            info!("Successfully spawned theme daemon");
-            Ok(())
+    if let Err(e) = spawn_apply_daemon() {
+        error!(error =?e, "Failed to spawn or monitor theme daemon");
+
+        if let Some(e) = read_daemon_error_log() {
+            return Err(DwallSettingsError::Daemon(e));
         }
-        Err(e) => {
-            error!(error = ?e, "Failed to spawn theme daemon");
-            Err(e)
-        }
+
+        return Err(e);
     }
+    info!("Successfully spawned and monitored theme daemon");
+
+    Ok(())
 }
 
 #[tauri::command]
@@ -258,6 +260,6 @@ pub fn run() -> DwallSettingsResult<()> {
         builder.run(tauri::generate_context!())?
     }
 
-    info!("DWall settings application run completed");
+    info!("Dwall Settings application run completed");
     Ok(())
 }
