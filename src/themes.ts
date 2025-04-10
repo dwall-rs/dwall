@@ -20,7 +20,7 @@ export const themes: ThemeItem[] = Object.entries(thumbnails_count)
     id,
     thumbnail: Array.from(
       { length: count },
-      (_, i) => `${thumbnails_base_url}${id.replace(" ", "")}/${i + 1}.avif`,
+      (_, i) => `${thumbnails_base_url}${id.replaceAll(" ", "")}/${i + 1}.avif`,
     ),
   }))
   .sort((a, b) => (a.id > b.id ? 1 : -1));
