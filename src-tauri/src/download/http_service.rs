@@ -73,6 +73,7 @@ impl HttpDownloadService {
             if let StatusCode::NOT_FOUND = response.status() {
                 error!(
                     theme_id = theme_id,
+                    url = %url,
                     "The theme does not exist on the server"
                 );
                 return Err(DownloadError::NotFound(theme_id.to_string()).into());
