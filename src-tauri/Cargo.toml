@@ -55,3 +55,4 @@ tauri-plugin-process = "2"
 [features]
 default = []
 log-color = ["dwall/log-color"]
+devtools = ["tauri/devtools"]
