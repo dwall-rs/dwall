@@ -81,6 +81,13 @@ impl TranslationMap for EnglishUSTranslations {
 
         // messages
         translations.insert(
+            MESSAGE_APPLY_THEME_FAILED,
+            TranslationValue::Template {
+                template: "Failed to apply theme: \n{{error}}",
+                params: &["error"],
+            },
+        );
+        translations.insert(
             MESSAGE_CHANGE_THEMES_DIRECTORY,
             TranslationValue::Template {
                 template: "Change the themes directory to: {{newThemesDirectory}}?",
