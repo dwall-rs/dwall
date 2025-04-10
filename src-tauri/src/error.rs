@@ -29,6 +29,8 @@ pub enum DwallSettingsError {
     GeolocationAccess(#[from] crate::postion::GeolocationAccessError),
     #[error(transparent)]
     Download(#[from] DownloadError),
+    #[error("Failed to spawn daemon: {0}")]
+    Daemon(String),
 }
 
 impl Serialize for DwallSettingsError {
