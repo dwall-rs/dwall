@@ -13,7 +13,13 @@ export const useTaskManager = () => {
       ...config()?.monitor_specific_wallpapers,
     };
 
-    delete monitor_specific_wallpapers[monitorID()!];
+    if (monitorID() === "all") {
+      for (const monitorID in monitor_specific_wallpapers) {
+        delete monitor_specific_wallpapers[monitorID];
+      }
+    } else {
+      delete monitor_specific_wallpapers[monitorID()!];
+    }
 
     const updatedConfig: Config = {
       ...config()!,
