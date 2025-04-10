@@ -58,7 +58,7 @@ export const useMonitorSelection = () => {
 
     const selectValue = monitorSpecificThemesIsSame()
       ? "all"
-      : monitorSpecificThemes()[0][0];
+      : (monitorSpecificThemes()[0]?.[0] ?? "all");
     setMonitorID(selectValue);
   });
 

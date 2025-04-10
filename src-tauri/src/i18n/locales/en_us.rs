@@ -81,6 +81,13 @@ impl TranslationMap for EnglishUSTranslations {
 
         // messages
         translations.insert(
+            MESSAGE_APPLY_THEME_FAILED,
+            TranslationValue::Template {
+                template: "Failed to apply theme: \n{{error}}",
+                params: &["error"],
+            },
+        );
+        translations.insert(
             MESSAGE_CHANGE_THEMES_DIRECTORY,
             TranslationValue::Template {
                 template: "Change the themes directory to: {{newThemesDirectory}}?",
@@ -95,12 +102,22 @@ impl TranslationMap for EnglishUSTranslations {
             },
         );
         translations.insert(
+            MESSAGE_DOWNLOAD_CANCELLED,
+            TranslationValue::Text("Download cancelled"),
+        );
+        translations.insert(
             MESSAGE_DOWNLOAD_FAILED,
             TranslationValue::Template {
                 template:
                     "{{error}}\n\nFor specific errors, please check the log: dwall_settings_lib.log",
                 params: &["error"],
             },
+        );
+        translations.insert(
+            MESSAGE_GITHUB_STAR,
+            TranslationValue::Text(
+                "If this application has helped you, please give us a star on GitHub to support the open-source project: ",
+            ),
         );
         translations.insert(
             MESSAGE_INVALID_NUMBER_INPUT,

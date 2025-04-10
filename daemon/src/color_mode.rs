@@ -287,7 +287,7 @@ fn notify_theme_change() -> DwallResult<()> {
     ];
 
     for notification in notifications {
-        let theme_name: Vec<u16> = format!("{}\0", notification).encode_utf16().collect();
+        let theme_name = Vec::from_str(notification);
         unsafe {
             if let Err(e) = SendNotifyMessageW(
                 HWND_BROADCAST,

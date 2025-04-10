@@ -66,6 +66,13 @@ impl TranslationMap for ChineseSimplifiedTranslations {
 
         // messages
         translations.insert(
+            MESSAGE_APPLY_THEME_FAILED,
+            TranslationValue::Template {
+                template: "应用主题失败: \n{{error}}",
+                params: &["error"],
+            },
+        );
+        translations.insert(
             MESSAGE_CHANGE_THEMES_DIRECTORY,
             TranslationValue::Template {
                 template: "修改主题文件夹为：{{newThemesDirectory}}？",
@@ -80,11 +87,21 @@ impl TranslationMap for ChineseSimplifiedTranslations {
             },
         );
         translations.insert(
+            MESSAGE_DOWNLOAD_CANCELLED,
+            TranslationValue::Text("已取消下载"),
+        );
+        translations.insert(
             MESSAGE_DOWNLOAD_FAILED,
             TranslationValue::Template {
                 template: "{{error}}\n\n具体错误请查看日志文件：dwall_settings_lib.log",
                 params: &["error"],
             },
+        );
+        translations.insert(
+            MESSAGE_GITHUB_STAR,
+            TranslationValue::Text(
+                "若本程序帮助到了你，请去 Github 为本项目标星，谢谢支持开源项目：",
+            ),
         );
         translations.insert(
             MESSAGE_INVALID_NUMBER_INPUT,

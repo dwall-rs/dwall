@@ -241,7 +241,7 @@ pub async fn get_or_save_cached_thumbnails(
             let _ = cell.set(path.clone());
         }
         Err(e) => {
-            error!(error = ?e, "Failed to cache image");
+            error!(error = ?e, url = url, "Failed to cache image");
             // Don't cache errors
         }
     }

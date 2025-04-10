@@ -21,9 +21,9 @@ export const ThemeActions = () => {
 
   const [spinning, setSpinning] = createSignal(false);
 
-  const onApply = () => {
+  const onApply = async () => {
     setSpinning(true);
-    theme.handleThemeApplication(monitorID, monitors);
+    await theme.handleThemeApplication(monitorID, monitors);
     setSpinning(false);
   };
 
