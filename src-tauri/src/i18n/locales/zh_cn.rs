@@ -66,6 +66,13 @@ impl TranslationMap for ChineseSimplifiedTranslations {
 
         // messages
         translations.insert(
+            MESSAGE_APPLY_THEME_FAILED,
+            TranslationValue::Template {
+                template: "应用主题失败: \n{{error}}",
+                params: &["error"],
+            },
+        );
+        translations.insert(
             MESSAGE_CHANGE_THEMES_DIRECTORY,
             TranslationValue::Template {
                 template: "修改主题文件夹为：{{newThemesDirectory}}？",

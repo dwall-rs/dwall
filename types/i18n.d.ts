@@ -20,6 +20,7 @@ type TranslationKey =
   | "tooltip-new-version-available"
   | "tooltip-open-themes-directory"
   | "tooltip-settings"
+  | "message-apply-theme-failed"
   | "message-change-themes-directory"
   | "message-disable-startup-failed"
   | "message-download-cancelled"

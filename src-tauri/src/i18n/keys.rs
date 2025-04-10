@@ -31,6 +31,7 @@ pub(super) const TOOLTIP_OPEN_THEMES_DIRECTORY: &str = "tooltip-open-themes-dire
 pub(super) const TOOLTIP_SETTINGS: &str = "tooltip-settings";
 
 // ---------------- messages ----------------
+pub(super) const MESSAGE_APPLY_THEME_FAILED: &str = "message-apply-theme-failed";
 pub(super) const MESSAGE_CHANGE_THEMES_DIRECTORY: &str = "message-change-themes-directory";
 pub(super) const MESSAGE_DISABLE_STARTUP_FAILED: &str = "message-disable-startup-failed";
 pub(super) const MESSAGE_DOWNLOAD_CANCELLED: &str = "message-download-cancelled";

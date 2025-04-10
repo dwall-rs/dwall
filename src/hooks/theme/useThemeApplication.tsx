@@ -1,4 +1,6 @@
+import { message } from "@tauri-apps/plugin-dialog";
 import { applyTheme } from "~/commands";
+import { useTranslations } from "~/contexts";
 
 /**
  * Theme application management Hook, used to handle theme application and task closure
@@ -16,6 +18,8 @@ export const useThemeApplication = (
   checkLocationPermission: () => Promise<boolean>,
   setAppliedThemeID: (id?: string) => void,
 ) => {
+  const { translateErrorMessage } = useTranslations();
+
   // Handle theme application
   const handleThemeApplication = async (
     monitorID: Accessor<string>,
@@ -60,7 +64,9 @@ export const useThemeApplication = (
       refetchConfig();
       setAppliedThemeID(theme.id);
     } catch (e) {
-      console.error("Failed to apply theme:", e);
+      message(translateErrorMessage("message-apply-theme-failed", e), {
+        kind: "error",
+      });
     }
   };
 
