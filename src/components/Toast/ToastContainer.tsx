@@ -10,25 +10,10 @@ const ToastContainer: Component<ToastContainerProps> = (props) => {
     <Portal
       ref={(el) => {
         el.classList.add("fluent-toast-container");
+        el.classList.add(`fluent-toast-container-${props.position}`);
       }}
     >
-      <div
-        class={`fluent-toast fluent-toast-${props.position}`}
-        style={{
-          ...props.style,
-          "z-index": props.zIndex,
-          "--fui-toast-max-width":
-            typeof props.maxWidth === "number"
-              ? `${props.maxWidth}px`
-              : props.maxWidth,
-        }}
-        role="alert"
-        aria-live="assertive"
-        onMouseEnter={() => props.onMouseEnter?.()}
-        onMouseLeave={() => props.onMouseLeave?.()}
-      >
-        {props.children}
-      </div>
+      {props.children}
     </Portal>
   );
 };
