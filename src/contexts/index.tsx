@@ -7,22 +7,25 @@ import { MonitorProvider } from "./MonitorContext";
 import { UpdateProvider } from "./UpdateContext";
 import { SettingsProvider } from "./SettingsContext";
 import { TaskProvider } from "./TaskContext";
+import { ToastProvider } from "~/components/Toast";
 
 export const AppProvider = (props: ParentProps) => {
   return (
-    <TranslationsProvider>
-      <ConfigProvider>
-        <ThemeProvider>
-          <MonitorProvider>
-            <SettingsProvider>
-              <UpdateProvider>
-                <TaskProvider>{props.children}</TaskProvider>
-              </UpdateProvider>
-            </SettingsProvider>
-          </MonitorProvider>
-        </ThemeProvider>
-      </ConfigProvider>
-    </TranslationsProvider>
+    <ToastProvider>
+      <TranslationsProvider>
+        <ConfigProvider>
+          <ThemeProvider>
+            <MonitorProvider>
+              <SettingsProvider>
+                <UpdateProvider>
+                  <TaskProvider>{props.children}</TaskProvider>
+                </UpdateProvider>
+              </SettingsProvider>
+            </MonitorProvider>
+          </ThemeProvider>
+        </ConfigProvider>
+      </TranslationsProvider>
+    </ToastProvider>
   );
 };
 
