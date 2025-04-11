@@ -5,6 +5,10 @@
       "labels": ["feature"]
     },
     {
+      "title": "## ⚙️ Refactors",
+      "labels": ["refactor"]
+    },
+    {
       "title": "## 🚀 Enhancements",
       "labels": ["enhancement"]
     },
