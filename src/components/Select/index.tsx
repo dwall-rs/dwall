@@ -1,8 +1,16 @@
-import { createSignal, For, Show, type Component } from "solid-js";
-import styles from "./index.module.scss";
+import {
+  createEffect,
+  onCleanup,
+  createUniqueId,
+  createSignal,
+  For,
+  Show,
+  type Component,
+} from "solid-js";
+import { BiSolidChevronDown } from "solid-icons/bi";
 import type { SelectProps, SelectOption } from "./types";
 import InputContainer from "./InputContainer";
-import { createEffect, onCleanup } from "solid-js";
+import styles from "./index.module.scss";
 
 const Select: Component<SelectProps> = (props) => {
   const [isOpen, setIsOpen] = createSignal(false);
@@ -11,9 +19,14 @@ const Select: Component<SelectProps> = (props) => {
     props.value,
   );
 
+  // 创建唯一ID用于ARIA属性
+  const selectId = createUniqueId();
+  const listboxId = `${selectId}-listbox`;
+
   // 引用下拉菜单和选择器容器
   let dropdownRef: HTMLDivElement | undefined;
   let selectRef: HTMLDivElement | undefined;
+  const optionsRef: HTMLOptionElement[] = [];
 
   // 当props.value变化时更新内部状态
   createEffect(() => {
@@ -43,7 +56,21 @@ const Select: Component<SelectProps> = (props) => {
   // 切换下拉菜单的开关状态
   const toggleDropdown = () => {
     if (!props.disabled) {
-      setIsOpen(!isOpen());
+      const newIsOpen = !isOpen();
+      setIsOpen(newIsOpen);
+
+      if (newIsOpen) {
+        // 当打开下拉菜单时，高亮当前选中项
+        const selectedIndex = props.options.findIndex(
+          (opt) => opt.value === selectedValue(),
+        );
+        // 下一帧滚动到选中项
+        setTimeout(() => {
+          if (optionsRef[selectedIndex]) {
+            optionsRef[selectedIndex].scrollIntoView({ block: "nearest" });
+          }
+        }, 0);
+      }
     }
   };
 
@@ -55,6 +82,51 @@ const Select: Component<SelectProps> = (props) => {
     setIsOpen(false);
     props.onChange?.(option.value);
   };
+
+  // // 处理键盘导航
+  // const handleKeyDown = (event: KeyboardEvent) => {
+  //   if (props.disabled) return;
+
+  //   switch (event.key) {
+  //     case "ArrowDown":
+  //       event.preventDefault();
+  //       break;
+
+  //     case "ArrowUp":
+  //       event.preventDefault();
+  //       break;
+
+  //     case "Enter":
+  //     case " ":
+  //       event.preventDefault();
+  //       break;
+
+  //     case "Escape":
+  //       event.preventDefault();
+  //       if (isOpen()) {
+  //         setIsOpen(false);
+  //       }
+  //       break;
+
+  //     case "Tab":
+  //       if (isOpen()) {
+  //         setIsOpen(false);
+  //       }
+  //       break;
+
+  //     case "Home":
+  //       if (isOpen()) {
+  //         event.preventDefault();
+  //       }
+  //       break;
+
+  //     case "End":
+  //       if (isOpen()) {
+  //         event.preventDefault();
+  //       }
+  //       break;
+  //   }
+  // };
 
   // 获取当前选中选项的标签
   const getSelectedLabel = () => {
@@ -91,19 +163,33 @@ const Select: Component<SelectProps> = (props) => {
   const optionClass = (option: SelectOption) => {
     const classes = [styles.option];
     if (option.disabled) classes.push(styles.disabled);
+    if (option.value === selectedValue()) classes.push(styles.selected);
     return classes.join(" ");
   };
 
   return (
-    <InputContainer label={props.label} required={props.required}>
+    <InputContainer
+      label={props.label}
+      required={props.required}
+      labelId={`${selectId}-label`}
+    >
       <div
         ref={selectRef}
         class={selectWrapperClass()}
         onClick={toggleDropdown}
         onFocus={() => setFocused(true)}
         onBlur={() => setFocused(false)}
+        // onKeyDown={handleKeyDown}
         style={props.style}
         tabIndex={props.disabled ? undefined : 0}
+        // biome-ignore lint/a11y/useSemanticElements: <explanation>
+        role="combobox"
+        aria-haspopup="listbox"
+        aria-expanded={isOpen()}
+        aria-disabled={props.disabled}
+        aria-controls={listboxId}
+        aria-labelledby={props.label ? `${selectId}-label` : undefined}
+        id={selectId}
       >
         <Show
           when={getSelectedLabel()}
@@ -115,20 +201,36 @@ const Select: Component<SelectProps> = (props) => {
         >
           <div class={styles.value}>{getSelectedLabel()}</div>
         </Show>
-        <div class={arrowClass()}>▼</div>
+        <div class={arrowClass()}>
+          <BiSolidChevronDown size={16} />
+        </div>
 
-        <div ref={dropdownRef} class={dropdownClass()}>
+        <div
+          tabIndex={0}
+          ref={dropdownRef}
+          class={dropdownClass()}
+          // biome-ignore lint/a11y/useSemanticElements: <explanation>
+          role="listbox"
+          id={listboxId}
+          aria-labelledby={props.label ? `${selectId}-label` : undefined}
+        >
           <For each={props.options}>
-            {(option) => (
-              <div
+            {(option, index) => (
+              <option
+                tabIndex={0}
+                ref={(el) => {
+                  optionsRef[index()] = el;
+                }}
                 class={optionClass(option)}
                 onClick={(e) => {
                   e.stopPropagation();
                   handleOptionSelect(option);
                 }}
+                aria-selected={option.value === selectedValue()}
+                aria-disabled={option.disabled}
               >
                 {option.label}
-              </div>
+              </option>
             )}
           </For>
         </div>
