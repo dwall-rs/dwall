@@ -49,12 +49,14 @@ const Download = () => {
       "download-theme",
       (e) => {
         const { total_bytes, downloaded_bytes } = e.payload;
-        if (total_bytes === 0 && downloaded_bytes > 0) {
+        if (total_bytes === 0) {
           setWarning(
             "因无法获取文件大小导致无法计算下载进度，请更换支持转发响应头的 Github 镜像模板",
           );
+          setPercent(100);
+        } else {
+          setPercent(Math.round((downloaded_bytes / total_bytes) * 1000) / 10);
         }
-        setPercent(Math.round((downloaded_bytes / total_bytes) * 1000) / 10);
       },
     );
 
