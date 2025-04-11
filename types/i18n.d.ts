@@ -25,6 +25,7 @@ type TranslationKey =
   | "message-disable-startup-failed"
   | "message-download-cancelled"
   | "message-download-faild"
+  | "message-file-size-warning"
   | "message-github-star"
   | "message-invalid-number-input"
   | "message-location-permission"

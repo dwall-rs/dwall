@@ -98,6 +98,12 @@ impl TranslationMap for ChineseSimplifiedTranslations {
             },
         );
         translations.insert(
+            MESSAGE_FILE_SIZE_WARNING,
+            TranslationValue::Text(
+                "因无法获取文件大小导致无法计算下载进度，请更换支持转发响应头的 Github 镜像模板",
+            ),
+        );
+        translations.insert(
             MESSAGE_GITHUB_STAR,
             TranslationValue::Text(
                 "若本程序帮助到了你，请去 Github 为本项目标星，谢谢支持开源项目：",
