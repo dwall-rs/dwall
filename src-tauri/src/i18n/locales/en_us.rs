@@ -114,6 +114,12 @@ impl TranslationMap for EnglishUSTranslations {
             },
         );
         translations.insert(
+            MESSAGE_FILE_SIZE_WARNING,
+            TranslationValue::Text(
+                "Unable to calculate download progress due to failure in getting file size. Please switch to a Github mirror template that supports forwarding response headers",
+            ),
+        );
+        translations.insert(
             MESSAGE_GITHUB_STAR,
             TranslationValue::Text(
                 "If this application has helped you, please give us a star on GitHub to support the open-source project: ",

@@ -35,7 +35,7 @@ const Download = () => {
     setIsCancelling(true);
     try {
       await cancelThemeDownload(theme.downloadThemeID()!);
-      // 取消操作已发送，但实际取消会在后端处理
+      // Cancellation request sent, but actual cancellation will be handled by backend
     } catch (e) {
       message(translateErrorMessage("message-download-faild", e), {
         title: translate("title-download-faild"),
@@ -50,9 +50,7 @@ const Download = () => {
       (e) => {
         const { total_bytes, downloaded_bytes } = e.payload;
         if (total_bytes === 0) {
-          setWarning(
-            "因无法获取文件大小导致无法计算下载进度，请更换支持转发响应头的 Github 镜像模板",
-          );
+          setWarning(translate("message-file-size-warning"));
           setPercent(100);
         } else {
           setPercent(Math.round((downloaded_bytes / total_bytes) * 1000) / 10);
@@ -63,9 +61,9 @@ const Download = () => {
     try {
       await downloadThemeAndExtract(config()!, theme.downloadThemeID()!);
     } catch (e) {
-      // 检查是否是取消下载导致的错误
+      // Check if the error is caused by download cancellation
       if (String(e).includes("Download cancelled")) {
-        toast.success("下载已取消", {
+        toast.success(translate("message-download-cancelled"), {
           closable: false,
         });
       } else {
