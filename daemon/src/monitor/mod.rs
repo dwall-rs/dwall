@@ -346,6 +346,6 @@ fn query_monitor_info() -> DwallResult<HashMap<String, Monitor>> {
         );
     }
 
-    info!("Found {} monitors in total", monitors.len());
+    info!(monitors = ?monitors, "Found all active monitors");
     Ok(monitors)
 }

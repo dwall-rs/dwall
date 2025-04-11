@@ -45,7 +45,7 @@ pub(super) fn get_user_preferred_language() -> DwallSettingsResult<String> {
 
     let language = &languages[0];
 
-    info!(
+    debug!(
         language = language,
         "Successfully got user preferred language"
     );

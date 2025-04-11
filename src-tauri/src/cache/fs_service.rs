@@ -22,7 +22,7 @@ impl FsService {
 
     /// Update file access time to prevent premature expiration
     pub fn update_file_access_time(path: &Path) -> std::io::Result<()> {
-        // 简单打开并关闭文件，这会更新访问时间
+        // Simply open and close the file to update access time
         File::open(path)?;
         Ok(())
     }

@@ -43,7 +43,6 @@ pub fn setup_app(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>>
     let theme_downloader = ThemeDownloader::new();
     app.manage(theme_downloader);
 
-    info!("Creating main window");
     create_main_window(app.app_handle())?;
 
     // If a theme is configured in the configuration file but the background process is not detected,
