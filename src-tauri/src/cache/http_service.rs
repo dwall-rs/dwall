@@ -12,12 +12,12 @@ use tokio::time::sleep;
 
 use super::error::{CacheError, CacheResult};
 
-// 下载配置常量
-const MAX_DOWNLOAD_RETRIES: u32 = 3; // 最大重试次数
-const RETRY_DELAY_MS: u64 = 1000; // 重试延迟（毫秒）
-const MAX_CONCURRENT_DOWNLOADS: usize = 5; // 最大并发下载数
+// Download configuration constants
+const MAX_DOWNLOAD_RETRIES: u32 = 3; // Maximum retry attempts
+const RETRY_DELAY_MS: u64 = 1000; // Retry delay (milliseconds)
+const MAX_CONCURRENT_DOWNLOADS: usize = 5; // Maximum concurrent downloads
 
-// 下载信号量，控制并发下载数量
+// Download semaphore to control concurrent download count
 static DOWNLOAD_SEMAPHORE: LazyLock<Semaphore> =
     LazyLock::new(|| Semaphore::new(MAX_CONCURRENT_DOWNLOADS));
 
@@ -40,11 +40,11 @@ impl HttpService {
 
         let temp_path = image_path.with_extension("temp");
 
-        // 获取下载信号量许可，控制并发下载数量
+        // Acquire download semaphore permit to control concurrent downloads
         let _permit = DOWNLOAD_SEMAPHORE.acquire().await;
         debug!(url = url, "Acquired download semaphore permit");
 
-        // 实现重试逻辑
+        // Implement retry logic
         let mut retry_count = 0;
         let mut last_error = None;
 
@@ -136,7 +136,7 @@ impl HttpService {
             }
         }
 
-        // 清理临时文件
+        // Clean up temporary file
         if temp_path.exists() {
             if let Err(e) = fs::remove_file(&temp_path) {
                 error!(

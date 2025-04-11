@@ -24,7 +24,7 @@ struct CacheKey {
     url: String,
 }
 
-// 缓存项元数据
+// Initialize the cache system
 #[derive(Clone, Debug)]
 struct CacheMetadata {
     path: PathBuf,
@@ -53,7 +53,7 @@ impl ThumbnailCache {
                     );
                 }
 
-                // 初始化时执行一次缓存清理
+                // Perform cache cleanup during initialization
                 match CleanupService::cleanup_expired_cache().await {
                     Ok(cleaned_bytes) => {
                         if cleaned_bytes > 0 {
@@ -113,12 +113,12 @@ impl ThumbnailCache {
         drop(cache); // Release the lock early
 
         if let Some(metadata) = cell.get() {
-            info!(
+            debug!(
                 path = %metadata.path.display(),
                 "Found the cached image"
             );
 
-            // 更新文件访问时间（如果文件存在）
+            // Update file access time (if file exists)
             if metadata.path.exists() {
                 if let Err(e) = FsService::update_file_access_time(&metadata.path) {
                     warn!(
@@ -129,7 +129,7 @@ impl ThumbnailCache {
                 }
                 return Ok(metadata.path.clone());
             } else {
-                // 缓存记录存在但文件不存在，需要重新下载
+                // Cache record exists but file doesn't, need to re-download
                 warn!(
                     path = %metadata.path.display(),
                     "Cached file does not exist, will re-download"
@@ -138,9 +138,10 @@ impl ThumbnailCache {
         }
 
         let result = async {
-            // 定期执行缓存清理（概率性触发，避免每次请求都执行）
+            // Periodically perform cache cleanup
+            // (triggered probabilistically to avoid executing on every request)
             if rand::random::<f32>() < 0.05 {
-                // 5%概率触发清理
+                // 5% chance to trigger cleanup
                 tokio::spawn(async {
                     if let Err(e) = CleanupService::cleanup_expired_cache().await {
                         error!(error = ?e, "Failed to clean up expired cache");
@@ -167,12 +168,12 @@ impl ThumbnailCache {
             let image_path = theme_dir.join(format!("{}.{}", cache_key.serial_number, extension));
 
             if image_path.exists() {
-                info!(
+                debug!(
                     image_path = %image_path.display(),
                     "Image already cached"
                 );
 
-                // 获取文件大小
+                // Get file size
                 let metadata = tokio::fs::metadata(&image_path).await.map_err(|e| {
                     error!(
                         path = %image_path.display(),
@@ -204,20 +205,21 @@ impl ThumbnailCache {
 
         match result {
             Ok((path, size)) => {
-                info!(
+                debug!(
                     path = %path.display(),
                     size = size,
                     "Image successfully cached"
                 );
 
-                // 创建缓存元数据
+                // Create cache metadata
                 let metadata = CacheMetadata {
                     path: path.clone(),
                     // created_at: SystemTime::now(),
                     // size,
                 };
 
-                // 忽略初始化失败的错误（另一个任务可能已经初始化了它）
+                // Ignore initialization failure errors
+                // (another task may have already initialized it)
                 let _ = cell.set(metadata);
 
                 Ok(path)
@@ -244,10 +246,10 @@ pub async fn get_or_save_cached_thumbnails(
 pub async fn clear_thumbnail_cache() -> DwallSettingsResult<u64> {
     info!("Manual cache cleanup requested");
 
-    // 清理过期缓存
+    // Clean up expired cache
     let expired_bytes = CleanupService::cleanup_expired_cache().await?;
 
-    // 强制执行大小限制
+    // Enforce size limit
     let size_limited_bytes = CleanupService::enforce_cache_size_limit().await?;
 
     let total_cleaned = expired_bytes + size_limited_bytes;
@@ -258,7 +260,7 @@ pub async fn clear_thumbnail_cache() -> DwallSettingsResult<u64> {
         "Cache cleanup completed"
     );
 
-    // 清空内存缓存
+    // Clear in-memory cache
     let mut cache = THUMBNAIL_CACHE.lock().await;
     let cache_size = cache.len();
     cache.clear();
