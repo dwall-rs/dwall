@@ -31,6 +31,8 @@ pub enum DwallSettingsError {
     Download(#[from] DownloadError),
     #[error("Failed to spawn daemon: {0}")]
     Daemon(String),
+    #[error("{0}")]
+    Other(String),
 }
 
 impl Serialize for DwallSettingsError {
