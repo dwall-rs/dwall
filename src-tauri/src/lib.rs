@@ -9,7 +9,7 @@ use tauri::{AppHandle, Manager, RunEvent, WebviewWindow};
 use tokio::sync::OnceCell;
 
 use crate::auto_start::{check_auto_start, disable_auto_start, enable_auto_start};
-use crate::cache::get_or_save_cached_thumbnails;
+use crate::cache::{clear_thumbnail_cache, get_or_save_cached_thumbnails};
 use crate::download::{cancel_theme_download, download_theme_and_extract};
 use crate::error::{DwallSettingsError, DwallSettingsResult};
 use crate::fs::move_themes_directory;
@@ -241,6 +241,7 @@ pub fn run() -> DwallSettingsResult<()> {
             move_themes_directory,
             kill_daemon,
             get_or_save_cached_thumbnails,
+            clear_thumbnail_cache,
             get_translations,
             get_monitors,
         ]);
