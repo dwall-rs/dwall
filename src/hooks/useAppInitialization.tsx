@@ -28,6 +28,19 @@ export const useAppInitialization = (
     await open("https://github.com/dwall-rs/dwall");
   };
 
+  const githubStarMessage = (
+    <span>
+      {translate("message-github-star")}
+      <button
+        type="button"
+        class="toast-message-link-like-button"
+        onClick={openGithubRepository}
+      >
+        dwall
+      </button>
+    </span>
+  );
+
   onMount(async () => {
     await setTitlebarColorMode(detectColorMode());
 
@@ -36,22 +49,10 @@ export const useAppInitialization = (
     const mii = menuItemIndex();
     if (mii !== undefined) handleThemeSelection(mii);
 
-    toast.info(
-      <span>
-        {translate("message-github-star")}
-        <button
-          type="button"
-          class="toast-message-link-like-button"
-          onClick={openGithubRepository}
-        >
-          dwall
-        </button>
-      </span>,
-      {
-        position: "top-right",
-        duration: 5000,
-      },
-    );
+    toast.info(githubStarMessage, {
+      position: "top-right",
+      duration: 5000,
+    });
 
     const applied_theme_id = await getAppliedThemeID(monitorID());
     if (applied_theme_id) {
