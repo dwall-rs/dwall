@@ -56,9 +56,22 @@ impl ThemeFileManager {
         Ok(())
     }
 
-    /// Clean up temporary file if download is cancelled
-    pub async fn cleanup_temp_file(temp_file_path: &Path) {
+    /// Clean up temporary file if download is cancelled or failed
+    ///
+    /// If force_cleanup is false, the file will only be removed if it's empty
+    pub async fn cleanup_temp_file(temp_file_path: &Path, force_cleanup: bool) {
         if temp_file_path.exists() {
+            // Check if we should keep the file for resuming download
+            if !force_cleanup {
+                if let Ok(metadata) = fs::metadata(temp_file_path).await {
+                    if metadata.len() > 0 {
+                        debug!(file_path = %temp_file_path.display(), size = metadata.len(), "Keeping temporary file for resume");
+                        return;
+                    }
+                }
+            }
+
+            // Remove the file
             if let Err(e) = fs::remove_file(temp_file_path).await {
                 error!(
                     file_path = %temp_file_path.display(),

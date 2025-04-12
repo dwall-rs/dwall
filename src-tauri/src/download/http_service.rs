@@ -57,8 +57,123 @@ impl HttpDownloadService {
     ) -> DwallSettingsResult<()> {
         debug!(theme_id = theme_id, url = %url, "Downloading file from URL");
 
-        // Initiate download
-        let response = self.client.get(url).send().await.map_err(|e| {
+        // Prepare file for writing and get initial downloaded bytes
+        let (mut file, mut downloaded_bytes) = self.prepare_file(file_path, theme_id).await?;
+
+        // Build request with resume support if needed
+        let request = self.build_request(url, downloaded_bytes, theme_id);
+
+        // Send request and validate response
+        let response = self.send_request(request, url, theme_id).await?;
+
+        // Process response and get total size
+        let total_size = self
+            .process_response(&response, downloaded_bytes, theme_id)
+            .await?;
+
+        // Download and process the file stream
+        self.process_download_stream(
+            response,
+            &mut file,
+            &mut downloaded_bytes,
+            total_size,
+            theme_id,
+            cancel_flag,
+            progress_emitter,
+            task_manager,
+        )
+        .await?;
+
+        info!(
+            theme_id = theme_id,
+            downloaded_bytes,
+            total_bytes = total_size,
+            "Successfully downloaded file"
+        );
+
+        Ok(())
+    }
+
+    /// Prepare file for writing and return file handle and current downloaded bytes
+    async fn prepare_file(
+        &self,
+        file_path: &Path,
+        theme_id: &str,
+    ) -> DwallSettingsResult<(fs::File, u64)> {
+        let mut downloaded_bytes: u64 = 0;
+        let file = if file_path.exists() {
+            // Get the size of existing file for resuming download
+            let metadata = fs::metadata(file_path).await.map_err(|e| {
+                error!(
+                    theme_id = theme_id,
+                    file_path = %file_path.display(),
+                    error = ?e,
+                    "Failed to get metadata of existing temp file"
+                );
+                e
+            })?;
+
+            downloaded_bytes = metadata.len();
+            debug!(
+                theme_id = theme_id,
+                downloaded_bytes, "Found existing temp file, resuming download"
+            );
+
+            // Open file in append mode
+            fs::OpenOptions::new()
+                .write(true)
+                .append(true)
+                .open(file_path)
+                .await
+                .map_err(|e| {
+                    error!(
+                        theme_id = theme_id,
+                        file_path = %file_path.display(),
+                        error = ?e,
+                        "Failed to open existing temp file"
+                    );
+                    e
+                })?
+        } else {
+            // Create new file if it doesn't exist
+            fs::File::create(file_path).await.map_err(|e| {
+                error!(
+                    theme_id = theme_id,
+                    file_path = %file_path.display(),
+                    error = ?e,
+                    "Failed to create temp file"
+                );
+                e
+            })?
+        };
+
+        Ok((file, downloaded_bytes))
+    }
+
+    /// Build request with Range header if resuming
+    fn build_request(
+        &self,
+        url: &str,
+        downloaded_bytes: u64,
+        theme_id: &str,
+    ) -> reqwest::RequestBuilder {
+        let mut request = self.client.get(url);
+        if downloaded_bytes > 0 {
+            let range = format!("bytes={}-", downloaded_bytes);
+            request = request.header("Range", &range);
+            debug!(theme_id = theme_id, range = range, "Setting Range header");
+        }
+        request
+    }
+
+    /// Send request and handle connection errors
+    async fn send_request(
+        &self,
+        request: reqwest::RequestBuilder,
+        url: &str,
+        theme_id: &str,
+    ) -> DwallSettingsResult<reqwest::Response> {
+        let response = request.send().await.map_err(|e| {
             let err = DownloadError::from(e);
             error!(
                 theme_id = theme_id,
@@ -69,11 +184,24 @@ impl HttpDownloadService {
             err
         })?;
 
+        let response_header = response.headers();
+        debug!(response_header = ?response_header, "Got response headers");
+
+        Ok(response)
+    }
+
+    /// Process response, validate status code and calculate total size
+    async fn process_response(
+        &self,
+        response: &reqwest::Response,
+        downloaded_bytes: u64,
+        theme_id: &str,
+    ) -> DwallSettingsResult<u64> {
         if let Err(e) = response.error_for_status_ref() {
             if let StatusCode::NOT_FOUND = response.status() {
                 error!(
                     theme_id = theme_id,
-                    url = %url,
+                    url = %response.url(),
                     "The theme does not exist on the server"
                 );
                 return Err(DownloadError::NotFound(theme_id.to_string()).into());
@@ -83,25 +211,33 @@ impl HttpDownloadService {
             return Err(e.into());
         }
 
-        let response_header = response.headers();
-        debug!(response_header = ?response_header, "Got response headers");
+        let content_length = response.content_length().unwrap_or(0);
+        let total_size = if downloaded_bytes > 0 && response.status() == StatusCode::PARTIAL_CONTENT
+        {
+            // For resumed downloads with 206 Partial Content response
+            downloaded_bytes + content_length
+        } else {
+            // For new downloads or if server doesn't support range requests
+            content_length
+        };
 
-        let total_size = response.content_length().unwrap_or(0);
+        Ok(total_size)
+    }
+
+    /// Process download stream, handle cancellation, write chunks and report progress
+    async fn process_download_stream<R: Runtime>(
+        &self,
+        response: reqwest::Response,
+        file: &mut fs::File,
+        downloaded_bytes: &mut u64,
+        total_size: u64,
+        theme_id: &str,
+        cancel_flag: Arc<AtomicBool>,
+        progress_emitter: Option<&ProgressEmitter<'_, R>>,
+        task_manager: &DownloadTaskManager,
+    ) -> DwallSettingsResult<()> {
         let mut stream = response.bytes_stream();
 
-        // Create file for writing
-        let mut file = fs::File::create(file_path).await.map_err(|e| {
-            error!(
-                theme_id = theme_id,
-                file_path = %file_path.display(),
-                error = ?e,
-                "Failed to create temp file"
-            );
-            e
-        })?;
-
-        // Download and write chunks
-        let mut downloaded_bytes: u64 = 0;
         while let Some(chunk_result) = stream.next().await {
             // Check if download has been cancelled
             if task_manager.is_cancelled(&cancel_flag) {
@@ -124,7 +260,7 @@ impl HttpDownloadService {
             if let Err(e) = file.write_all(&chunk).await {
                 error!(
                     theme_id = theme_id,
-                    downloaded_bytes,
+                    downloaded_bytes = *downloaded_bytes,
                     total_bytes = total_size,
                     error = ?e,
                     "Failed to write chunk to file"
@@ -132,35 +268,42 @@ impl HttpDownloadService {
                 return Err(e.into());
             };
 
-            downloaded_bytes += chunk.len() as u64;
+            *downloaded_bytes += chunk.len() as u64;
 
             // Emit progress if emitter is provided
             if let Some(emitter) = progress_emitter {
-                emitter
-                    .emit_progress(DownloadProgress {
-                        theme_id,
-                        downloaded_bytes,
-                        total_bytes: total_size,
-                    })
-                    .map_err(|e| {
-                        error!(
-                            theme_id = theme_id,
-                            downloaded_bytes,
-                            total_bytes = total_size,
-                            error = ?e,
-                            "Failed to emit download progress"
-                        );
-                        e
-                    })?;
+                self.emit_progress(emitter, theme_id, *downloaded_bytes, total_size)
+                    .await?;
             }
         }
 
-        info!(
-            theme_id = theme_id,
-            downloaded_bytes,
-            total_bytes = total_size,
-            "Successfully downloaded file"
-        );
+        Ok(())
+    }
+
+    /// Emit download progress
+    async fn emit_progress<R: Runtime>(
+        &self,
+        emitter: &ProgressEmitter<'_, R>,
+        theme_id: &str,
+        downloaded_bytes: u64,
+        total_bytes: u64,
+    ) -> DwallSettingsResult<()> {
+        emitter
+            .emit_progress(DownloadProgress {
+                theme_id,
+                downloaded_bytes,
+                total_bytes,
+            })
+            .map_err(|e| {
+                error!(
+                    theme_id = theme_id,
+                    downloaded_bytes,
+                    total_bytes,
+                    error = ?e,
+                    "Failed to emit download progress"
+                );
+                e
+            })?;
 
         Ok(())
     }
