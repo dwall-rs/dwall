@@ -20,10 +20,17 @@ pub enum ThemeError {
     ImageCountMismatch,
     #[error("Wallpaper file does not exist")]
     MissingWallpaperFile,
+    #[error("No monitor-specific wallpapers found")]
+    NoMonitorSpecificWallpapers,
 }
 
 /// Applies a theme and starts a background task for periodic wallpaper updates
 pub async fn apply_theme(config: Config) -> DwallResult<()> {
+    if config.monitor_specific_wallpapers().is_empty() {
+        warn!("No monitor-specific wallpapers found, daemon will not be started");
+        return Err(ThemeError::NoMonitorSpecificWallpapers.into());
+    }
+
     let theme_processor = ThemeProcessor::new(&config);
 
     theme_processor.start_update_loop().await
