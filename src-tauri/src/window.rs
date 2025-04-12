@@ -31,7 +31,7 @@ pub fn create_main_window(app: &tauri::AppHandle) -> Result<(), Box<dyn Error>> 
     const WINDOW_WIDTH: f64 = 660.0;
     const WINDOW_HEIGHT: f64 = 600.0;
 
-    info!(
+    debug!(
         title = WINDOW_TITLE,
         width = WINDOW_WIDTH,
         height = WINDOW_HEIGHT,

@@ -1,10 +1,21 @@
-import { createSignal, createEffect, onCleanup, createMemo } from "solid-js";
+import {
+  createSignal,
+  createEffect,
+  onCleanup,
+  createMemo,
+  For,
+} from "solid-js";
 import { BiSolidChevronLeft, BiSolidChevronRight } from "solid-icons/bi";
-import { LazyButton } from "~/lazy";
-import Image from "../Image";
-import "./index.scss";
-import { generateGitHubThumbnailMirrorUrl } from "~/utils/proxy";
+
 import { useConfig, useTheme } from "~/contexts";
+
+import { LazyButton } from "~/lazy";
+
+import Image from "~/components/Image";
+
+import { generateGitHubThumbnailMirrorUrl } from "~/utils/proxy";
+
+import "./index.scss";
 
 interface ImageCarouselProps {
   interval?: number;
@@ -18,15 +29,20 @@ export default function ImageCarousel(props: ImageCarouselProps) {
   const [isPlaying, setIsPlaying] = createSignal(true);
   const [indicatorsBottom, setIndicatorsBottom] = createSignal(10);
   const [isHovered, setIsHovered] = createSignal(false);
+  const [wrapperHeight, setWrapperHeight] = createSignal("auto");
 
-  let containerRef: HTMLDivElement | undefined;
+  const images = createMemo(() => {
+    const currentConfig = config();
+    if (!currentConfig) return [];
 
-  const images = createMemo(() =>
-    theme.currentTheme()!.thumbnail.map((src) => ({
-      src,
+    return theme.currentTheme()!.thumbnail.map((src) => ({
+      src: generateGitHubThumbnailMirrorUrl(
+        src,
+        currentConfig.github_mirror_template,
+      ),
       alt: theme.currentTheme()!.id,
-    })),
-  );
+    }));
+  });
 
   // reset index
   createEffect(() => images() && setCurrentIndex(0));
@@ -68,65 +84,66 @@ export default function ImageCarousel(props: ImageCarouselProps) {
   };
 
   return (
-    <div
-      ref={containerRef}
-      class="fluent-carousel"
-      style={{ width: "480px", height: "480px" }}
-      onMouseEnter={handleMouseEnter}
-      onMouseLeave={handleMouseLeave}
-    >
-      {images().map((image, index) => (
-        <div
-          class={`fluent-carousel-slide ${
-            index === currentIndex() ? "active" : ""
-          }`}
-        >
-          <Image
-            src={generateGitHubThumbnailMirrorUrl(
-              image.src,
-              config()?.github_mirror_template,
-            )}
-            class="fluent-carousel-image"
-            themeID={theme.currentTheme()!.id}
-            serialNumber={index + 1}
-            width={480}
-            height={480}
-            onLoad={({ width, height }) => {
-              const clientHeight = height / (width / 480);
-              setIndicatorsBottom((480 - clientHeight) / 2 + 10);
-            }}
+    <div class="fluent-carousel">
+      <div
+        class="fluent-carousel-wrapper"
+        style={{ height: wrapperHeight() }}
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
+      >
+        <For each={images()}>
+          {(image, index) => (
+            <div
+              class={`fluent-carousel-slide ${
+                index() === currentIndex() ? "active" : ""
+              }`}
+            >
+              <Image
+                src={image.src}
+                class="fluent-carousel-image"
+                themeID={theme.currentTheme()!.id}
+                serialNumber={index() + 1}
+                onLoad={({ width, height }) => {
+                  const clientHeight = height / (width / 480);
+                  setWrapperHeight(`${clientHeight}px`);
+                  setIndicatorsBottom(10);
+                }}
+              />
+            </div>
+          )}
+        </For>
+
+        <div class={`fluent-carousel-controls ${isHovered() ? "visible" : ""}`}>
+          <LazyButton
+            class="fluent-carousel-button prev"
+            icon={<BiSolidChevronLeft />}
+            shape="circular"
+            onClick={prevImage}
+          />
+
+          <LazyButton
+            class="fluent-carousel-button next"
+            icon={<BiSolidChevronRight />}
+            shape="circular"
+            onClick={nextImage}
           />
         </div>
-      ))}
 
-      <div class={`fluent-carousel-controls ${isHovered() ? "visible" : ""}`}>
-        <LazyButton
-          class="fluent-carousel-button prev"
-          icon={<BiSolidChevronLeft />}
-          shape="circular"
-          onClick={prevImage}
-        />
-
-        <LazyButton
-          class="fluent-carousel-button next"
-          icon={<BiSolidChevronRight />}
-          shape="circular"
-          onClick={nextImage}
-        />
-      </div>
-
-      <div
-        class="fluent-carousel-indicators"
-        style={{ bottom: `${indicatorsBottom()}px` }}
-      >
-        {images().map((_, index) => (
-          <button
-            type="button"
-            class={`fluent-indicator ${index === currentIndex() ? "active" : ""}`}
-            onClick={() => goToImage(index)}
-            aria-label={`Go to slide ${index + 1}`}
-          />
-        ))}
+        <div
+          class="fluent-carousel-indicators"
+          style={{ bottom: `${indicatorsBottom()}px` }}
+        >
+          <For each={images()}>
+            {(_, index) => (
+              <button
+                type="button"
+                class={`fluent-indicator ${index() === currentIndex() ? "active" : ""}`}
+                onClick={() => goToImage(index())}
+                aria-label={`Go to slide ${index() + 1}`}
+              />
+            )}
+          </For>
+        </div>
       </div>
     </div>
   );

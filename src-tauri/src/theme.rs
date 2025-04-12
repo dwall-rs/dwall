@@ -69,7 +69,8 @@ pub fn read_daemon_error_log() -> Option<String> {
 }
 
 pub fn spawn_apply_daemon() -> DwallSettingsResult<()> {
-    let daemon_path = DAEMON_EXE_PATH.get().unwrap().to_str().unwrap();
+    let daemon_path = DAEMON_EXE_PATH.get().unwrap().as_os_str();
+
     match Command::new(daemon_path)
         .creation_flags(CREATE_NO_WINDOW.0)
         .spawn()
@@ -79,7 +80,7 @@ pub fn spawn_apply_daemon() -> DwallSettingsResult<()> {
             Ok(())
         }
         Err(e) => {
-            error!(error = ?e, path = %daemon_path, "Failed to spawn daemon");
+            error!(error = ?e, path = ?daemon_path, "Failed to spawn daemon");
             Err(e.into())
         }
     }

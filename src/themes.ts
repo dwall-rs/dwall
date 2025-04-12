@@ -12,6 +12,7 @@ const thumbnails_count = {
   "Monterey Graphic": 8,
   "Solar Gradients": 16,
   "The Beach": 8,
+  "The Cliffs": 8,
   "Ventura Graphic": 5,
 };
 

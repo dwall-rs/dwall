@@ -5,7 +5,7 @@ import {
   setTitlebarColorMode,
   showWindow,
 } from "~/commands";
-import { showToast } from "~/components/Toast";
+import { useToast } from "~/components/Toast";
 import { useMonitor, useTheme } from "~/contexts";
 import { themes } from "~/themes";
 import { detectColorMode } from "~/utils/color";
@@ -22,10 +22,24 @@ export const useAppInitialization = (
 ) => {
   const { setMenuItemIndex, setAppliedThemeID } = useTheme();
   const { id: monitorID } = useMonitor();
+  const toast = useToast();
 
   const openGithubRepository = async () => {
     await open("https://github.com/dwall-rs/dwall");
   };
+
+  const githubStarMessage = (
+    <span>
+      {translate("message-github-star")}
+      <button
+        type="button"
+        class="toast-message-link-like-button"
+        onClick={openGithubRepository}
+      >
+        dwall
+      </button>
+    </span>
+  );
 
   onMount(async () => {
     await setTitlebarColorMode(detectColorMode());
@@ -35,21 +49,9 @@ export const useAppInitialization = (
     const mii = menuItemIndex();
     if (mii !== undefined) handleThemeSelection(mii);
 
-    showToast({
-      message: (
-        <span>
-          {translate("message-github-star")}
-          <button
-            type="button"
-            class="toast-message-link-like-button"
-            onClick={openGithubRepository}
-          >
-            dwall
-          </button>
-        </span>
-      ),
+    toast.info(githubStarMessage, {
       position: "top-right",
-      duration: 10000,
+      duration: 5000,
     });
 
     const applied_theme_id = await getAppliedThemeID(monitorID());

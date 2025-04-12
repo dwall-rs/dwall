@@ -8,10 +8,13 @@ const InputContainer: Component<{
   label?: string;
   required?: boolean;
   warning?: string;
+  labelId?: string;
 }> = (props) => (
   <div class={styles.container}>
     <Show when={props.label}>
-      <LazyLabel required={props.required}>{props.label}</LazyLabel>
+      <LazyLabel id={props.labelId} required={props.required}>
+        {props.label}
+      </LazyLabel>
     </Show>
     {props.children}
     <Show when={props.warning}>

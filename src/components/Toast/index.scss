@@ -1,14 +1,45 @@
 .fluent-toast-container {
+  --fluent-toast-top: 0;
+  --fluent-toast-bottom: 8px;
+
   position: fixed;
   width: 100%;
   z-index: 1100;
   pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 8px;
+  padding: 8px;
+  box-sizing: border-box;
+
+  &[class*="fluent-toast-container-top"] {
+    top: var(--fluent-toast-top);
+  }
+
+  &[class*="fluent-toast-container-bottom"] {
+    bottom: var(--fluent-toast-bottom);
+  }
+
+  &-top,
+  &-bottom {
+    align-items: center;
+  }
+
+  &-top-left,
+  &-bottom-left {
+    align-items: flex-start;
+  }
+
+  &-top-right,
+  &-bottom-right {
+    align-items: flex-end;
+  }
 }
 
 .fluent-toast {
   --fui-toast-max-width: 350px;
 
-  position: fixed;
   z-index: 1100;
   max-width: var(--fui-toast-max-width);
   width: 100%;
@@ -16,6 +47,37 @@
   pointer-events: auto;
   animation-duration: 0.3s;
   animation-fill-mode: both;
+  transition: opacity 0.3s, transform 0.3s;
+
+  &.fluent-toast-exiting {
+    animation-duration: 0.3s;
+    animation-fill-mode: both;
+  }
+
+  &-top.fluent-toast-exiting {
+    animation-name: toastSlideUpExit;
+  }
+
+  &-top-left.fluent-toast-exiting {
+    animation-name: toastSlideLeftExit;
+  }
+
+  &-top-right.fluent-toast-exiting {
+    animation-name: toastSlideRightExit;
+  }
+
+  &-bottom.fluent-toast-exiting {
+    animation-name: toastSlideDownExit;
+  }
+
+  &-bottom-left.fluent-toast-exiting {
+    animation-name: toastSlideLeftExit;
+  }
+
+  &-bottom-right.fluent-toast-exiting {
+    animation-name: toastSlideRightExit;
+  }
+
   font-family: var(
     --fontFamilyBase,
     -apple-system,
@@ -28,40 +90,26 @@
   );
 
   &-top {
-    top: 16px;
-    left: 50%;
-    transform: translateX(-50%);
     animation-name: toastSlideDown;
   }
 
-  &-bottom {
-    bottom: 16px;
-    left: 50%;
-    transform: translateX(-50%);
-    animation-name: toastSlideUp;
-  }
-
   &-top-left {
-    top: 16px;
-    left: 16px;
     animation-name: toastSlideRight;
   }
 
   &-top-right {
-    top: 16px;
-    right: 16px;
     animation-name: toastSlideLeft;
   }
 
+  &-bottom {
+    animation-name: toastSlideUp;
+  }
+
   &-bottom-left {
-    bottom: 16px;
-    left: 16px;
     animation-name: toastSlideRight;
   }
 
   &-bottom-right {
-    bottom: 16px;
-    right: 16px;
     animation-name: toastSlideLeft;
   }
 
@@ -162,26 +210,25 @@
   }
 }
 
-/* 动画效果 */
 @keyframes toastSlideDown {
   from {
     opacity: 0;
-    transform: translate(-50%, -20px);
+    transform: translateY(-20px);
   }
   to {
     opacity: 1;
-    transform: translate(-50%, 0);
+    transform: translateY(0);
   }
 }
 
 @keyframes toastSlideUp {
   from {
     opacity: 0;
-    transform: translate(-50%, 20px);
+    transform: translateY(20px);
   }
   to {
     opacity: 1;
-    transform: translate(-50%, 0);
+    transform: translateY(0);
   }
 }
 
@@ -204,5 +251,49 @@
   to {
     opacity: 1;
     transform: translateX(0);
+  }
+}
+
+@keyframes toastSlideDownExit {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+}
+
+@keyframes toastSlideUpExit {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+}
+
+@keyframes toastSlideRightExit {
+  from {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+}
+
+@keyframes toastSlideLeftExit {
+  from {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateX(-20px);
   }
 }
