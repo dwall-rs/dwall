@@ -65,3 +65,6 @@ export const getTranslations = async () =>
 
 export const getMonitors = async () =>
   invoke<Record<string, MonitorInfo>>("get_monitors");
+
+export const clearThumbnailCache = async () =>
+  invoke<number>("clear_thumbnail_cache");
