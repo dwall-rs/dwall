@@ -73,8 +73,19 @@ impl ThemeDownloader {
                 Ok(theme_zip_file)
             }
             Err(e) => {
-                // Clean up temporary file
-                ThemeFileManager::cleanup_temp_file(&temp_theme_zip_file).await;
+                // Only clean up temporary file if it's a non-resumable error or empty file
+                if let Ok(metadata) = tokio::fs::metadata(&temp_theme_zip_file).await {
+                    if metadata.len() == 0 {
+                        // Clean up empty temporary file
+                        ThemeFileManager::cleanup_temp_file(&temp_theme_zip_file, false).await;
+                    } else {
+                        // Keep the partial download for future resume
+                        debug!(
+                            theme_id = theme_id,
+                            "Keeping partial download for future resume"
+                        );
+                    }
+                }
                 // Remove download task from tracking
                 self.task_manager.remove_task(theme_id).await;
                 Err(e)
