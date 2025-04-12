@@ -9,8 +9,9 @@
 .selectWrapper {
   display: flex;
   align-items: center;
-  border: 1px solid var(--colorNeutralStroke1);
   border-radius: var(--borderRadiusMedium, 4px);
+  border: 1px solid var(--colorNeutralStroke1);
+  border-bottom-color: var(--colorNeutralStrokeAccessible);
   padding: 0 8px 0 12px;
   height: 32px;
   background: var(--colorNeutralBackground1);
@@ -23,7 +24,6 @@
   line-height: var(--lineHeightBase300, 20px);
 
   &:hover {
-    border-color: var(--colorNeutralStrokeAccessible);
     background: var(--colorNeutralBackground1Hover);
   }
 
@@ -47,7 +47,6 @@
   }
 
   &.focused {
-    border-color: var(--colorNeutralStrokeAccessible);
     outline: transparent solid 2px;
 
     &:after {
