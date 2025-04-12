@@ -7,7 +7,7 @@ import {
   Show,
   type Component,
 } from "solid-js";
-import { BiSolidChevronDown } from "solid-icons/bi";
+import { VsChevronDown } from "solid-icons/vs";
 import type { SelectProps, SelectOption } from "./types";
 import InputContainer from "./InputContainer";
 import styles from "./index.module.scss";
@@ -202,7 +202,7 @@ const Select: Component<SelectProps> = (props) => {
           <div class={styles.value}>{getSelectedLabel()}</div>
         </Show>
         <div class={arrowClass()}>
-          <BiSolidChevronDown size={16} />
+          <VsChevronDown size={16} />
         </div>
 
         <div
