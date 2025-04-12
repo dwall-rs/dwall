@@ -57,18 +57,21 @@ export const ToastProvider = (props: { children: JSX.Element }) => {
   const addToast = (toast: ToastContentProps) => {
     toast.id = toast.id ?? createUniqueId();
     const position = toast.position ?? "top";
+    const isTopPosition = position.startsWith("top");
 
     setToasts(position, (currentToasts) => {
+      let newToasts = [...currentToasts];
+
       // Remove the oldest one if exceeds max count
       if (currentToasts.length >= MAX_TOASTS_PER_POSITION) {
-        return position.startsWith("top")
-          ? [...currentToasts.slice(1), toast]
-          : [toast, ...currentToasts.slice(0, currentToasts.length - 1)];
+        // Remove the oldest toast (for top positions remove the first one,
+        // for bottom positions remove the last one)
+        newToasts = isTopPosition ? newToasts.slice(1) : newToasts.slice(0, -1);
       }
 
-      return position.startsWith("top")
-        ? [...currentToasts, toast]
-        : [toast, ...currentToasts];
+      // Add new toast based on position (for top positions add to the end,
+      // for bottom positions add to the beginning)
+      return isTopPosition ? [...newToasts, toast] : [toast, ...newToasts];
     });
 
     return toast.id;
