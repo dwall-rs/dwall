@@ -1,13 +1,11 @@
 use std::{
     fs::File,
     io::{BufReader, Read},
-    os::windows::process::CommandExt,
     process::Command,
 };
 
 use serde::Deserialize;
 use serde_json::Value;
-use windows::Win32::System::Threading::CREATE_NO_WINDOW;
 
 use crate::{error::DwallSettingsResult, DAEMON_EXE_PATH, DWALL_CONFIG_DIR};
 
@@ -70,17 +68,50 @@ pub fn read_daemon_error_log() -> Option<String> {
 
 pub fn spawn_apply_daemon() -> DwallSettingsResult<()> {
     let daemon_path = DAEMON_EXE_PATH.get().unwrap().to_str().unwrap();
-    match Command::new(daemon_path)
-        .creation_flags(CREATE_NO_WINDOW.0)
-        .spawn()
+
+    #[cfg(debug_assertions)]
     {
-        Ok(handle) => {
-            info!(pid = handle.id(), "Spawned daemon using subprocess");
-            Ok(())
+        use std::io::BufRead;
+        use std::process::Stdio;
+
+        info!("Debug mode: spawning daemon with visible output");
+        let stdout = Command::new(daemon_path)
+            .stdout(Stdio::piped())
+            .spawn()
+            .map_err(|e| {
+                error!(error = ?e, path = %daemon_path, "Failed to spawn daemon");
+                e
+            })?
+            .stdout
+            .expect("Could not capture standard output.");
+
+        let reader = BufReader::new(stdout);
+
+        for line in reader.lines() {
+            let line = line?;
+            println!("{}", line);
         }
-        Err(e) => {
-            error!(error = ?e, path = %daemon_path, "Failed to spawn daemon");
-            Err(e.into())
+
+        Ok(())
+    }
+
+    #[cfg(not(debug_assertions))]
+    {
+        use std::os::windows::process::CommandExt;
+        use windows::Win32::System::Threading::CREATE_NO_WINDOW;
+
+        match Command::new(daemon_path)
+            .creation_flags(CREATE_NO_WINDOW.0)
+            .spawn()
+        {
+            Ok(handle) => {
+                info!(pid = handle.id(), "Spawned daemon using subprocess");
+                Ok(())
+            }
+            Err(e) => {
+                error!(error = ?e, path = %daemon_path, "Failed to spawn daemon");
+                Err(e.into())
+            }
         }
     }
 }
