@@ -7,6 +7,7 @@ const thumbnails_count = {
   Catalina: 8,
   "Earth ISS": 16,
   "Earth View": 16,
+  "Minya Konka": 24,
   Mojave: 16,
   "Monterey Bay 1": 16,
   "Monterey Graphic": 8,
