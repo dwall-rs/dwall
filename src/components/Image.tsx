@@ -131,8 +131,8 @@ const Image = (props: ImageProps) => {
     <div
       class={props.class}
       style={{
-        width: props.width ? `${props.width}px` : "auto",
-        height: props.height ? `${props.height}px` : "auto",
+        width: props.width && `${props.width}px`,
+        height: props.height && `${props.height}px`,
         position: "relative",
         display: "inline-flex",
         "align-items": "center",

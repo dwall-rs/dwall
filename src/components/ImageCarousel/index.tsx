@@ -24,6 +24,7 @@ export default function ImageCarousel(props: ImageCarouselProps) {
   const [isPlaying, setIsPlaying] = createSignal(true);
   const [indicatorsBottom, setIndicatorsBottom] = createSignal(10);
   const [isHovered, setIsHovered] = createSignal(false);
+  const [wrapperHeight, setWrapperHeight] = createSignal("auto");
 
   let containerRef: HTMLDivElement | undefined;
 
@@ -83,63 +84,63 @@ export default function ImageCarousel(props: ImageCarouselProps) {
     <div
       ref={containerRef}
       class="fluent-carousel"
-      style={{ width: "480px", height: "480px" }}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
     >
-      <For each={images()}>
-        {(image, index) => (
-          <div
-            class={`fluent-carousel-slide ${
-              index() === currentIndex() ? "active" : ""
-            }`}
-          >
-            <Image
-              src={image.src}
-              class="fluent-carousel-image"
-              themeID={theme.currentTheme()!.id}
-              serialNumber={index() + 1}
-              width={480}
-              height={480}
-              onLoad={({ width, height }) => {
-                const clientHeight = height / (width / 480);
-                setIndicatorsBottom((480 - clientHeight) / 2 + 10);
-              }}
-            />
-          </div>
-        )}
-      </For>
-
-      <div class={`fluent-carousel-controls ${isHovered() ? "visible" : ""}`}>
-        <LazyButton
-          class="fluent-carousel-button prev"
-          icon={<BiSolidChevronLeft />}
-          shape="circular"
-          onClick={prevImage}
-        />
-
-        <LazyButton
-          class="fluent-carousel-button next"
-          icon={<BiSolidChevronRight />}
-          shape="circular"
-          onClick={nextImage}
-        />
-      </div>
-
-      <div
-        class="fluent-carousel-indicators"
-        style={{ bottom: `${indicatorsBottom()}px` }}
-      >
+      <div class="fluent-carousel-wrapper" style={{ height: wrapperHeight() }}>
         <For each={images()}>
-          {(_, index) => (
-            <button
-              type="button"
-              class={`fluent-indicator ${index() === currentIndex() ? "active" : ""}`}
-              onClick={() => goToImage(index())}
-              aria-label={`Go to slide ${index() + 1}`}
-            />
+          {(image, index) => (
+            <div
+              class={`fluent-carousel-slide ${
+                index() === currentIndex() ? "active" : ""
+              }`}
+            >
+              <Image
+                src={image.src}
+                class="fluent-carousel-image"
+                themeID={theme.currentTheme()!.id}
+                serialNumber={index() + 1}
+                onLoad={({ width, height }) => {
+                  const clientHeight = height / (width / 480);
+                  setWrapperHeight(`${clientHeight}px`);
+                  setIndicatorsBottom(10);
+                }}
+              />
+            </div>
           )}
         </For>
+
+        <div class={`fluent-carousel-controls ${isHovered() ? "visible" : ""}`}>
+          <LazyButton
+            class="fluent-carousel-button prev"
+            icon={<BiSolidChevronLeft />}
+            shape="circular"
+            onClick={prevImage}
+          />
+
+          <LazyButton
+            class="fluent-carousel-button next"
+            icon={<BiSolidChevronRight />}
+            shape="circular"
+            onClick={nextImage}
+          />
+        </div>
+
+        <div
+          class="fluent-carousel-indicators"
+          style={{ bottom: `${indicatorsBottom()}px` }}
+        >
+          <For each={images()}>
+            {(_, index) => (
+              <button
+                type="button"
+                class={`fluent-indicator ${index() === currentIndex() ? "active" : ""}`}
+                onClick={() => goToImage(index())}
+                aria-label={`Go to slide ${index() + 1}`}
+              />
+            )}
+          </For>
+        </div>
       </div>
     </div>
   );
