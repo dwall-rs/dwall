@@ -36,6 +36,7 @@ impl ThemeExtractor {
             error!(
                 theme_id = theme_id,
                 target_dir = %target_dir.display(),
+                zip_path = %zip_path.display(),
                 error = ?e,
                 "Failed to extract theme archive"
             );

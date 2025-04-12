@@ -2113,6 +2113,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "lockfree-object-pool"
+version = "0.1.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9374ef4228402d4b7e403e5838cb880d9ee663314b0a900d5a6aabf0c213552e"
+
+[[package]]
 name = "log"
 version = "0.4.27"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5923,8 +5929,10 @@ dependencies = [
  "arbitrary",
  "crc32fast",
  "crossbeam-utils",
+ "flate2",
  "indexmap 2.9.0",
  "memchr",
+ "zopfli",
 ]
 
 [[package]]
@@ -5936,6 +5944,20 @@ dependencies = [
  "log",
  "thiserror 2.0.12",
  "zip",
+]
+
+[[package]]
+name = "zopfli"
+version = "0.8.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e5019f391bac5cf252e93bbcc53d039ffd62c7bfb7c150414d61369afe57e946"
+dependencies = [
+ "bumpalo",
+ "crc32fast",
+ "lockfree-object-pool",
+ "log",
+ "once_cell",
+ "simd-adler32",
 ]
 
 [[package]]
