@@ -6,11 +6,16 @@ import {
   For,
 } from "solid-js";
 import { BiSolidChevronLeft, BiSolidChevronRight } from "solid-icons/bi";
-import { LazyButton } from "~/lazy";
-import Image from "../Image";
-import "./index.scss";
-import { generateGitHubThumbnailMirrorUrl } from "~/utils/proxy";
+
 import { useConfig, useTheme } from "~/contexts";
+
+import { LazyButton } from "~/lazy";
+
+import Image from "~/components/Image";
+
+import { generateGitHubThumbnailMirrorUrl } from "~/utils/proxy";
+
+import "./index.scss";
 
 interface ImageCarouselProps {
   interval?: number;
@@ -25,8 +30,6 @@ export default function ImageCarousel(props: ImageCarouselProps) {
   const [indicatorsBottom, setIndicatorsBottom] = createSignal(10);
   const [isHovered, setIsHovered] = createSignal(false);
   const [wrapperHeight, setWrapperHeight] = createSignal("auto");
-
-  let containerRef: HTMLDivElement | undefined;
 
   const images = createMemo(() => {
     const currentConfig = config();
@@ -81,13 +84,13 @@ export default function ImageCarousel(props: ImageCarouselProps) {
   };
 
   return (
-    <div
-      ref={containerRef}
-      class="fluent-carousel"
-      onMouseEnter={handleMouseEnter}
-      onMouseLeave={handleMouseLeave}
-    >
-      <div class="fluent-carousel-wrapper" style={{ height: wrapperHeight() }}>
+    <div class="fluent-carousel">
+      <div
+        class="fluent-carousel-wrapper"
+        style={{ height: wrapperHeight() }}
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
+      >
         <For each={images()}>
           {(image, index) => (
             <div
