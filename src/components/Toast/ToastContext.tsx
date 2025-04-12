@@ -61,12 +61,14 @@ export const ToastProvider = (props: { children: JSX.Element }) => {
     setToasts(position, (currentToasts) => {
       // Remove the oldest one if exceeds max count
       if (currentToasts.length >= MAX_TOASTS_PER_POSITION) {
-        return [...currentToasts.slice(1), toast];
+        return position.startsWith("top")
+          ? [...currentToasts.slice(1), toast]
+          : [toast, ...currentToasts.slice(0, currentToasts.length - 1)];
       }
 
       return position.startsWith("top")
-        ? [toast, ...currentToasts]
-        : [...currentToasts, toast];
+        ? [...currentToasts, toast]
+        : [toast, ...currentToasts];
     });
 
     return toast.id;
