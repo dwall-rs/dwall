@@ -47,8 +47,8 @@ const SettingsFooter = () => {
   const onOpenGithub = () => open("https://github.com/dwall-rs/dwall");
 
   return (
-    <LazyFlex flex={1} justify="between">
-      <LazySpace gap={8}>
+    <LazyFlex justify="between">
+      <LazySpace gap="s">
         <LazyLabel>{translate("label-version")}</LazyLabel>
 
         <LazyTooltip
@@ -66,7 +66,7 @@ const SettingsFooter = () => {
         </LazyTooltip>
       </LazySpace>
 
-      <LazySpace gap={8}>
+      <LazySpace gap="s">
         <LazyLabel>{translate("label-source-code")}</LazyLabel>
 
         <LazyButton
