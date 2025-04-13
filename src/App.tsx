@@ -1,6 +1,5 @@
 import { Show } from "solid-js";
 
-
 import { LazyFlex } from "~/lazy";
 
 import { ThemeMenu } from "./components/ThemeMenu";
@@ -41,7 +40,7 @@ const App = () => {
 
   return (
     <>
-      <LazyFlex class="app" align="center" gap="xxl" justify="stretch">
+      <LazyFlex class="app" align="center" gap="l" justify="stretch">
         <LazyFlex
           direction="column"
           align="center"
