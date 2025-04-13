@@ -10,8 +10,8 @@ const ThemeShowcase = () => {
 
   return (
     <LazyFlex
-      direction="vertical"
-      gap={16}
+      direction="column"
+      gap="l"
       justify="center"
       align="center"
       style={{ position: "relative" }}

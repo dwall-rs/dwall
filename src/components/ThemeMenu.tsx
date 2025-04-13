@@ -63,7 +63,14 @@ export const ThemeMenu = (props: ThemeMenuProps) => {
   );
 
   return (
-    <LazyFlex direction="vertical" gap={8} class="thumbnails-container">
+    <LazyFlex
+      direction="column"
+      gap="s"
+      class="thumbnails-container"
+      grow={7}
+      shrink={1}
+      padding="10px 10px 10px 20px"
+    >
       {menu()}
     </LazyFlex>
   );

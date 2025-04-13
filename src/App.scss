@@ -1,8 +1,6 @@
 .app {
+  --content-width: 500px;
   height: 100vh;
-  flex: 1;
-  padding: 0 0 10px 0;
-  justify-content: stretch;
 }
 
 .sidebar {
