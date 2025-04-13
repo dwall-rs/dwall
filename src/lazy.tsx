@@ -1,14 +1,15 @@
+import type { FlexProps } from "~/components/Flex";
 import { lazy } from "solid-js";
 
-export const LazyFlex = lazy(
-  () => import("alley-components/lib/components/flex"),
-);
+export const LazyFlex = lazy(() => import("~/components/Flex"));
 
-export const LazySpace = lazy(
-  () => import("alley-components/lib/components/space"),
-);
-
-// ------ fluent -----
+export const LazySpace = (props: Omit<FlexProps, "inline" | "align">) => {
+  return (
+    <LazyFlex inline align="center" {...props}>
+      {props.children}
+    </LazyFlex>
+  );
+};
 
 export const LazyButton = lazy(
   () => import("fluent-solid/lib/components/button"),
