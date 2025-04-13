@@ -1,12 +1,12 @@
 import { open } from "@tauri-apps/plugin-shell";
-import { onMount } from "solid-js";
+import { createEffect, onMount } from "solid-js";
 import {
   getAppliedThemeID,
   setTitlebarColorMode,
   showWindow,
 } from "~/commands";
 import { useToast } from "~/components/Toast";
-import { useMonitor, useTheme } from "~/contexts";
+import { useMonitor, useTheme, useUpdate } from "~/contexts";
 import { themes } from "~/themes";
 import { detectColorMode } from "~/utils/color";
 
@@ -23,6 +23,7 @@ export const useAppInitialization = (
   const { setMenuItemIndex, setAppliedThemeID } = useTheme();
   const { id: monitorID } = useMonitor();
   const toast = useToast();
+  const { update } = useUpdate();
 
   const openGithubRepository = async () => {
     await open("https://github.com/dwall-rs/dwall");
@@ -40,6 +41,23 @@ export const useAppInitialization = (
       </button>
     </span>
   );
+
+  const updateMessage = (
+    <span>
+      {translate("message-update-available", {
+        version: update()?.version ?? "",
+        currentVersion: update()?.currentVersion ?? "",
+      })}
+    </span>
+  );
+
+  createEffect(() => {
+    if (update()) {
+      toast.info(updateMessage, {
+        position: "top-right",
+      });
+    }
+  });
 
   onMount(async () => {
     await setTitlebarColorMode(detectColorMode());

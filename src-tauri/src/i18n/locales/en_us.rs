@@ -189,6 +189,13 @@ impl TranslationMap for EnglishUSTranslations {
             },
         );
         translations.insert(
+            MESSAGE_UPDATE_AVAILABLE,
+            TranslationValue::Template {
+                template: "New version {{version}} detected, current version is {{currentVersion}}. Please click the upgrade button in the lower left corner to download and install.",
+                params: &["version", "currentVersion"],
+            },
+        );
+        translations.insert(
             MESSAGE_UPDATE_FAILED,
             TranslationValue::Template {
                 template: "Failed to update: \n{{error}}",

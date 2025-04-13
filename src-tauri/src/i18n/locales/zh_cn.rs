@@ -171,6 +171,14 @@ impl TranslationMap for ChineseSimplifiedTranslations {
             },
         );
         translations.insert(
+            MESSAGE_UPDATE_AVAILABLE,
+            TranslationValue::Template {
+                template: "检测到新版本 {{version}}，当前版本 {{currentVersion}}
+      ，请点击左下角的升级按钮下载安装。",
+                params: &["version", "currentVersion"],
+            },
+        );
+        translations.insert(
             MESSAGE_UPDATE_FAILED,
             TranslationValue::Template {
                 template: "升级失败: \n{{error}}",
