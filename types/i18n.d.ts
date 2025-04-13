@@ -37,6 +37,7 @@ type TranslationKey =
   | "message-switch-auto-light-dark-mode-failed"
   | "message-switching-to-manual-coordinate-config"
   | "message-themes-directory-moved"
+  | "message-update-available"
   | "message-update-failed"
   | "message-version-is-the-latest"
   | "placeholder-latitude"
