@@ -34,7 +34,7 @@ const Interval = () => {
         value={value()}
         style={{ width: "100px" }}
         contentAfter={
-          <LazySpace gap={4}>
+          <LazySpace gap="xs">
             <span>{translate("unit-second")}</span>
             <LazyButton
               disabled={!value()}

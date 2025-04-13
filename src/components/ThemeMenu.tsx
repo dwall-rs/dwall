@@ -69,7 +69,7 @@ export const ThemeMenu = (props: ThemeMenuProps) => {
       class="thumbnails-container"
       grow={7}
       shrink={1}
-      padding="10px 10px 10px 20px"
+      padding="10px 10px 10px 24px"
     >
       {menu()}
     </LazyFlex>
