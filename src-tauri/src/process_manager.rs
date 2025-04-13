@@ -266,19 +266,42 @@ fn is_daemon_process(process_path: &str, expected_path: &str) -> bool {
     let process_path = Path::new(process_path);
     let expected_path = Path::new(expected_path);
 
+    // In debug mode, only compare filenames as we can't match daemon process paths in production environment
+    if cfg!(debug_assertions) {
+        return process_path.file_name() == expected_path.file_name();
+    }
+
     // First try to compare canonical paths (resolves symlinks, etc.)
     if let (Ok(p1), Ok(p2)) = (process_path.canonicalize(), expected_path.canonicalize()) {
-        if let (Some(s1), Some(s2)) = (p1.to_str(), p2.to_str()) {
-            return s1.eq_ignore_ascii_case(s2);
+        #[cfg(windows)]
+        {
+            // Case-insensitive comparison on Windows platform
+            if let (Some(s1), Some(s2)) = (p1.to_str(), p2.to_str()) {
+                return s1.eq_ignore_ascii_case(s2);
+            }
+        }
+
+        #[cfg(unix)]
+        {
+            // Case-sensitive comparison on Unix platform
+            return p1 == p2;
         }
     }
 
     // Fallback to comparing original paths if canonicalization fails
-    process_path.to_str().is_some_and(|p| {
-        expected_path
-            .to_str()
-            .is_some_and(|e| p.eq_ignore_ascii_case(e))
-    })
+    #[cfg(windows)]
+    {
+        process_path.to_str().is_some_and(|p| {
+            expected_path
+                .to_str()
+                .is_some_and(|e| p.eq_ignore_ascii_case(e))
+        })
+    }
+
+    #[cfg(unix)]
+    {
+        process_path == expected_path
+    }
 }
 
 /// Terminates the daemon process if it's running
