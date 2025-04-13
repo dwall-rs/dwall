@@ -51,7 +51,7 @@ const SettingsItem = (props: SettingsItemProps) => {
   const renderContent = children(() => {
     if (props.layout === "vertical") {
       return (
-        <LazyFlex direction="vertical" gap={8}>
+        <LazyFlex direction="column" gap="s" align="stretch">
           {renderLabel()}
           {props.children}
         </LazyFlex>
@@ -59,8 +59,8 @@ const SettingsItem = (props: SettingsItemProps) => {
     }
 
     const mainContent = (
-      <LazyFlex justify="between">
-        <LazySpace class="settings-item-content-wrapper" gap={2}>
+      <LazyFlex justify="between" align="center">
+        <LazySpace class="settings-item-content-wrapper" gap="xs">
           {renderLabel()}
           {props.help && (
             <LazyTooltip
@@ -84,7 +84,7 @@ const SettingsItem = (props: SettingsItemProps) => {
 
     if (props.layout === "horizontal" && props.extra) {
       return (
-        <LazyFlex direction="vertical" gap={8}>
+        <LazyFlex direction="column" gap="s" align="stretch">
           {mainContent}
           {props.extra}
         </LazyFlex>

@@ -13,8 +13,25 @@ import "./index.scss";
 const Settings = () => {
   return (
     <>
-      <LazyFlex direction="vertical" style={{ width: "480px", height: "100%" }}>
-        <LazyFlex direction="vertical" gap={24} flex={15}>
+      <LazyFlex
+        direction="column"
+        style={{
+          width: "var(--content-width)",
+          "box-sizing": "border-box",
+          height: "100%",
+        }}
+        align="stretch"
+        justify="stretch"
+        paddingBottom="xs"
+        paddingTop="xs"
+      >
+        <LazyFlex
+          direction="column"
+          gap="xl"
+          style={{ flex: 15 }}
+          align="stretch"
+          justify="stretch"
+        >
           <AutoStart />
 
           <AutoDetectColorMode />
