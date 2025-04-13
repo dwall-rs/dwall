@@ -11,18 +11,18 @@ const ThemeShowcase = () => {
   return (
     <LazyFlex
       direction="vertical"
-      gap={theme.downloadThemeID() ? 8 : 16}
+      gap={16}
       justify="center"
       align="center"
       style={{ position: "relative" }}
     >
       <ImageCarousel />
 
-      <ThemeActions />
-
-      <Show when={theme.downloadThemeID()}>
-        <Download />
-      </Show>
+      <div style={{ height: "32px" }}>
+        <Show when={theme.downloadThemeID()} fallback={<ThemeActions />}>
+          <Download />
+        </Show>
+      </div>
     </LazyFlex>
   );
 };
