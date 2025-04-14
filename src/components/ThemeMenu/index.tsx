@@ -10,7 +10,7 @@ interface ThemeMenuProps {
   themes: ThemeItem[];
 }
 
-export const ThemeMenu = (props: ThemeMenuProps) => {
+const ThemeMenu = (props: ThemeMenuProps) => {
   const theme = useTheme();
   const settings = useSettings();
   const { data: config } = useConfig();
@@ -76,3 +76,5 @@ export const ThemeMenu = (props: ThemeMenuProps) => {
     </LazyFlex>
   );
 };
+
+export default ThemeMenu;

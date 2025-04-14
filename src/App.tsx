@@ -2,20 +2,17 @@ import { Show } from "solid-js";
 
 import { LazyFlex } from "~/lazy";
 
-import { ThemeMenu } from "./components/ThemeMenu";
 import Settings from "./components/Settings";
-import SidebarButtons from "./components/SidebarButtons";
 import ThemeShowcase from "./components/ThemeShowcase";
 import Updater from "./components/Update";
 import Select from "./components/Select";
+import Sidebar from "./components/Sidebar";
 
 import useDark from "~/hooks/useDark";
 import { useColorMode } from "./hooks/useColorMode";
 import { useAppInitialization } from "./hooks/useAppInitialization";
 
 import { useMonitor, useTheme, useTranslations, useSettings } from "~/contexts";
-
-import { themes } from "./themes";
 
 import "./App.scss";
 
@@ -41,16 +38,7 @@ const App = () => {
   return (
     <>
       <LazyFlex class="app" align="center" gap="l" justify="stretch">
-        <LazyFlex
-          direction="column"
-          align="center"
-          justify="between"
-          class="sidebar"
-        >
-          <ThemeMenu themes={themes} />
-
-          <SidebarButtons />
-        </LazyFlex>
+        <Sidebar />
 
         <Show when={!showSettings() && currentTheme()} fallback={<Settings />}>
           <LazyFlex direction="column" gap="l" align="center">
