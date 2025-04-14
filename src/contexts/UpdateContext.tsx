@@ -4,7 +4,7 @@ import { useUpdateManager } from "~/hooks/useUpdateManager";
 interface UpdateContext {
   showUpdateDialog: Accessor<boolean | undefined>;
   setShowUpdateDialog: Setter<boolean | undefined>;
-  update: Resource<Update | null>;
+  update: Resource<Update | null | undefined>;
   recheckUpdate: Refetcher<Update>;
 }
 
