@@ -3,6 +3,7 @@ import { AiFillSetting } from "solid-icons/ai";
 import { TbArrowBigUpLinesFilled } from "solid-icons/tb";
 import { LazyButton, LazySpace, LazyTooltip } from "~/lazy";
 import { useSettings, useTheme, useTranslations, useUpdate } from "~/contexts";
+import styles from "./index.module.scss";
 
 const SidebarButtons = () => {
   const { translate } = useTranslations();
@@ -15,7 +16,12 @@ const SidebarButtons = () => {
   };
 
   return (
-    <LazySpace direction="column" gap="s" justify="end" class="sidebar-buttons">
+    <LazySpace
+      direction="column"
+      gap="s"
+      justify="end"
+      class={styles.sidebarButtons}
+    >
       <Show when={updateIsAvailable()}>
         <LazyTooltip
           positioning="after"
