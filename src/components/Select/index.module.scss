@@ -27,6 +27,10 @@
     background: var(--colorNeutralBackground1Hover);
   }
 
+  &:active {
+    background: var(--colorNeutralBackground1Pressed);
+  }
+
   &:after {
     box-sizing: border-box;
     content: "";
