@@ -30,7 +30,8 @@ const SettingsFooter = () => {
     }
     const update = resource();
     if (!update) {
-      await message(translate("message-version-is-the-latest"));
+      if (update === null)
+        await message(translate("message-version-is-the-latest"));
       return;
     }
 
