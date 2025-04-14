@@ -1,9 +1,10 @@
 import { children, createMemo } from "solid-js";
 import { LazyBadge, LazyFlex, LazyTooltip } from "~/lazy";
-import Image from "./Image";
+import Image from "../Image";
 import { BsCheckLg } from "solid-icons/bs";
 import { generateGitHubThumbnailMirrorUrl } from "~/utils/proxy";
 import { useConfig, useSettings, useTheme } from "~/contexts";
+import styles from "./index.module.scss";
 
 interface ThemeMenuProps {
   themes: ThemeItem[];
@@ -27,10 +28,10 @@ export const ThemeMenu = (props: ThemeMenuProps) => {
           settings.setShowSettings(false);
         }}
         classList={{
-          "menu-item": true,
-          "menu-item-active": idx === theme.menuItemIndex(),
-          "menu-item-applied": item.id === theme.appliedThemeID(),
-          "menu-item-disabled": disabled(),
+          [styles.menuItem]: true,
+          [styles.menuItemActive]: idx === theme.menuItemIndex(),
+          [styles.menuItemApplied]: item.id === theme.appliedThemeID(),
+          [styles.menuItemDisabled]: disabled(),
         }}
       >
         <LazyTooltip positioning="after" content={item.id} relationship="label">
@@ -49,7 +50,7 @@ export const ThemeMenu = (props: ThemeMenuProps) => {
           />
         </LazyTooltip>
         {item.id === theme.appliedThemeID() && (
-          <div class="menu-item-applied-badge">
+          <div class={styles.menuItemAppliedBadge}>
             <LazyBadge
               shape="rounded"
               icon={<BsCheckLg />}
@@ -66,7 +67,7 @@ export const ThemeMenu = (props: ThemeMenuProps) => {
     <LazyFlex
       direction="column"
       gap="s"
-      class="thumbnails-container"
+      class={styles.thumbnailsContainer}
       grow={7}
       shrink={1}
       padding="10px 10px 10px 24px"
