@@ -40,6 +40,15 @@
     &::after {
       opacity: 1;
     }
+
+    &:active {
+      --menu-item-color-shadow: rgba(0, 0, 0, 0.5);
+      background: var(--colorNeutralCardBackgroundPressed);
+      box-shadow: 0 3px 10px var(--menu-item-color-shadow);
+      scale: 0.95;
+      // transform: translateY(0);
+      // box-shadow: none;
+    }
   }
 
   &::after {
@@ -61,9 +70,10 @@
   }
 
   &-active {
+    --menu-item-color-shadow: rgba(0, 0, 0, 0.5);
     background: var(--colorNeutralCardBackgroundHover);
     transform: translateY(-2px);
-    box-shadow: 0 5px 15px var(--menu-item-color-shadow);
+    box-shadow: 0 3px 10px var(--menu-item-color-shadow);
 
     &::after {
       opacity: 1;
