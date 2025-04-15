@@ -110,6 +110,13 @@ impl TranslationMap for ChineseSimplifiedTranslations {
             ),
         );
         translations.insert(
+            MESSAGE_GITHUB_MIRROR_TEMPLATE_UPDATED,
+            TranslationValue::Template {
+                template: "Github 镜像模板已更新为：{{newTemplate}}",
+                params: &["newTemplate"],
+            },
+        );
+        translations.insert(
             MESSAGE_GITHUB_STAR,
             TranslationValue::Text(
                 "若本程序帮助到了你，请去 Github 为本项目标星，谢谢支持开源项目：",

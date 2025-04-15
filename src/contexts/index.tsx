@@ -36,3 +36,4 @@ export { useMonitor } from "./MonitorContext";
 export { useSettings } from "./SettingsContext";
 export { useUpdate } from "./UpdateContext";
 export { useTask } from "./TaskContext";
+export { useToast } from "~/components/Toast";
