@@ -880,6 +880,7 @@ dependencies = [
  "windows",
  "windows-result",
  "windows-strings 0.3.1",
+ "winresource",
 ]
 
 [[package]]
@@ -5655,6 +5656,16 @@ checksum = "a277a57398d4bfa075df44f501a17cfdf8542d224f0d36095a2adc7aee4ef0a5"
 dependencies = [
  "cfg-if",
  "windows-sys 0.48.0",
+]
+
+[[package]]
+name = "winresource"
+version = "0.1.20"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ba4a67c78ee5782c0c1cb41bebc7e12c6e79644daa1650ebbc1de5d5b08593f7"
+dependencies = [
+ "toml",
+ "version_check",
 ]
 
 [[package]]
