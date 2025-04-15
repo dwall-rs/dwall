@@ -22,19 +22,19 @@
     "@tauri-apps/plugin-process": "~2.2.1",
     "@tauri-apps/plugin-shell": "~2.2.1",
     "@tauri-apps/plugin-updater": "^2.7.0",
-    "fluent-solid": "^0.1.18",
+    "fluent-solid": "^0.1.19",
     "solid-icons": "^1.1.0",
     "solid-js": "^1.9.5"
   },
   "devDependencies": {
     "@biomejs/biome": "^1.9.4",
     "@tauri-apps/cli": "^2.4.1",
-    "@types/node": "^22.14.0",
+    "@types/node": "^22.14.1",
     "cross-env": "^7.0.3",
-    "jsdom": "^26.0.0",
+    "jsdom": "^26.1.0",
     "sass": "^1.86.3",
     "typescript": "^5.8.3",
-    "vite": "^6.2.5",
+    "vite": "^6.2.6",
     "vite-plugin-solid": "^2.11.6",
     "vitest": "^3.1.1"
   }
