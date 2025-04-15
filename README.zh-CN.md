@@ -24,6 +24,9 @@ DWALL 是一款轻量级应用程序，旨在模拟 macOS 壁纸切换行为，�
 
 本项目仍然处于开发阶段，可能存在一些问题。如果您在使用过程中遇到任何问题，请随时在 GitHub 页面上提出问题。
 
+> [!WARNING]  
+> 本程序可能无法在精简版操作系统上运行，如果你使用的是精简版 Windows 操作系统，遇到错误时不需要提交 issue，安装官方 Windows 操作系统后再尝试运行本程序。
+
 ## 使用步骤
 
 1. 在 [releases](https://github.com/dwall-rs/dwall/releases/latest) 中下载最新的 DWALL 可执行文件。

@@ -24,6 +24,9 @@ Recognizing this gap, DWALL was developed to provide an efficient alternative. I
 
 This project is still in the development stage and may have some issues. If you encounter any problems during use, please feel free to raise an issue on the GitHub page.
 
+> [!WARNING]  
+> This program may not run on lightweight operating systems. If you are using a lightweight version of Windows and encounter errors, please do not submit an issue. Try running the program after installing the official Windows operating system.
+
 ## Usage Steps
 
 1. Download the [latest DWALL executable](https://github.com/dwall-rs/dwall/releases/latest).
