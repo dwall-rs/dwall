@@ -126,6 +126,13 @@ impl TranslationMap for EnglishUSTranslations {
             ),
         );
         translations.insert(
+            MESSAGE_GITHUB_MIRROR_TEMPLATE_UPDATED,
+            TranslationValue::Template {
+                template: "Github mirror template has been updated to: {{newTemplate}}",
+                params: &["newTemplate"],
+            },
+        );
+        translations.insert(
             MESSAGE_GITHUB_STAR,
             TranslationValue::Text(
                 "If this application has helped you, please give us a star on GitHub to support the open-source project: ",
