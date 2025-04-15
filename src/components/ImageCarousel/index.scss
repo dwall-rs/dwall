@@ -1,5 +1,5 @@
 .fluent-carousel {
-  width: 480px;
+  width: var(--content-width);
   height: 480px;
   border-radius: 4px;
   display: flex;

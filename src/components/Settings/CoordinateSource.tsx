@@ -154,7 +154,7 @@ const CoordinateSource = () => {
 
   const renderCoordinateInputs = children(() => (
     <Show when={!auto()}>
-      <LazySpace gap={16} justify="end">
+      <LazySpace gap="l" justify="end">
         <CoordinateInput
           placeholder={longitudePlaceholder}
           min={COORDINATE_LIMITS.LONGITUDE.MIN}
@@ -187,9 +187,7 @@ const CoordinateSource = () => {
       help={auto() ? undefined : translate("help-manually-set-coordinates")}
       extra={renderCoordinateInputs()}
     >
-      <LazySpace gap={auto() ? 0 : 8}>
-        <LazySwitch checked={auto()} onChange={handleSwitchCoordinateSource} />
-      </LazySpace>
+      <LazySwitch checked={auto()} onChange={handleSwitchCoordinateSource} />
     </SettingsItem>
   );
 };

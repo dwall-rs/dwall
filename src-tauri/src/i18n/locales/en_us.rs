@@ -24,6 +24,12 @@ impl TranslationMap for EnglishUSTranslations {
 
         // helps
         translations.insert(
+            HELP_LAUNCH_AT_STARTUP,
+            TranslationValue::Text(
+                "Autostart will only launch the background process, not the graphical program, and will not consume much memory.",
+            ),
+        );
+        translations.insert(
             HELP_MANUALLY_SET_COORDINATES,
             TranslationValue::Text("When manually setting coordinates, you must use the WGS84 coordinate system (the international standard, users in China should take note). Otherwise, coordinate offset issues may occur, leading to inaccurate wallpaper alignment."), 
         );
@@ -120,6 +126,13 @@ impl TranslationMap for EnglishUSTranslations {
             ),
         );
         translations.insert(
+            MESSAGE_GITHUB_MIRROR_TEMPLATE_UPDATED,
+            TranslationValue::Template {
+                template: "Github mirror template has been updated to: {{newTemplate}}",
+                params: &["newTemplate"],
+            },
+        );
+        translations.insert(
             MESSAGE_GITHUB_STAR,
             TranslationValue::Text(
                 "If this application has helped you, please give us a star on GitHub to support the open-source project: ",
@@ -186,6 +199,13 @@ impl TranslationMap for EnglishUSTranslations {
             TranslationValue::Template {
                 template: "The themes directory has been moved to: {{newThemesDirectory}}",
                 params: &["newThemesDirectory"],
+            },
+        );
+        translations.insert(
+            MESSAGE_UPDATE_AVAILABLE,
+            TranslationValue::Template {
+                template: "New version {{version}} detected, current version is {{currentVersion}}. Please click the upgrade button in the lower left corner to download and install.",
+                params: &["version", "currentVersion"],
             },
         );
         translations.insert(

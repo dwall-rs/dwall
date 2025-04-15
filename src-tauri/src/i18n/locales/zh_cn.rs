@@ -21,6 +21,12 @@ impl TranslationMap for ChineseSimplifiedTranslations {
 
         // helps
         translations.insert(
+            HELP_LAUNCH_AT_STARTUP,
+            TranslationValue::Text(
+                "开机自启只会启动后台进程，不会启动本图形化程序，不会占用过多内存。",
+            ),
+        );
+        translations.insert(
             HELP_MANUALLY_SET_COORDINATES,
             TranslationValue::Text("手动设置坐标时需要使用WGS84坐标系（国际通用坐标系，中国用户需要注意），否则会存在坐标偏移问题使得壁纸匹配不精确。"), 
         );
@@ -104,6 +110,13 @@ impl TranslationMap for ChineseSimplifiedTranslations {
             ),
         );
         translations.insert(
+            MESSAGE_GITHUB_MIRROR_TEMPLATE_UPDATED,
+            TranslationValue::Template {
+                template: "Github 镜像模板已更新为：{{newTemplate}}",
+                params: &["newTemplate"],
+            },
+        );
+        translations.insert(
             MESSAGE_GITHUB_STAR,
             TranslationValue::Text(
                 "若本程序帮助到了你，请去 Github 为本项目标星，谢谢支持开源项目：",
@@ -168,6 +181,14 @@ impl TranslationMap for ChineseSimplifiedTranslations {
             TranslationValue::Template {
                 template: "主题文件夹已改为：{{newThemesDirectory}}",
                 params: &["newThemesDirectory"],
+            },
+        );
+        translations.insert(
+            MESSAGE_UPDATE_AVAILABLE,
+            TranslationValue::Template {
+                template: "检测到新版本 {{version}}，当前版本 {{currentVersion}}
+      ，请点击左下角的升级按钮下载安装。",
+                params: &["version", "currentVersion"],
             },
         );
         translations.insert(

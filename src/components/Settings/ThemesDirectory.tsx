@@ -52,7 +52,7 @@ const ThemesDirectory = () => {
       label={translate("label-themes-directory")}
       vertical
     >
-      <LazySpace gap={8} justify="between">
+      <LazySpace gap="s" justify="between">
         <LazyTooltip
           content={translate("tooltip-open-themes-directory")}
           relationship="label"

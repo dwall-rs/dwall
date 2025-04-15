@@ -1,22 +1,18 @@
 import { Show } from "solid-js";
 
-import useDark from "alley-components/lib/hooks/useDark";
-
 import { LazyFlex } from "~/lazy";
 
-import { ThemeMenu } from "./components/ThemeMenu";
 import Settings from "./components/Settings";
-import SidebarButtons from "./components/SidebarButtons";
 import ThemeShowcase from "./components/ThemeShowcase";
 import Updater from "./components/Update";
 import Select from "./components/Select";
+import Sidebar from "./components/Sidebar";
 
+import useDark from "~/hooks/useDark";
 import { useColorMode } from "./hooks/useColorMode";
 import { useAppInitialization } from "./hooks/useAppInitialization";
 
 import { useMonitor, useTheme, useTranslations, useSettings } from "~/contexts";
-
-import { themes } from "./themes";
 
 import "./App.scss";
 
@@ -41,20 +37,11 @@ const App = () => {
 
   return (
     <>
-      <LazyFlex class="app" align="center" gap={24}>
-        <LazyFlex
-          direction="vertical"
-          align="center"
-          justify="between"
-          class="sidebar"
-        >
-          <ThemeMenu themes={themes} />
-
-          <SidebarButtons />
-        </LazyFlex>
+      <LazyFlex class="app" align="center" gap="l" justify="stretch">
+        <Sidebar />
 
         <Show when={!showSettings() && currentTheme()} fallback={<Settings />}>
-          <LazyFlex direction="vertical" gap={16} align="center">
+          <LazyFlex direction="column" gap="l" align="center">
             <Select
               options={monitors()}
               placeholder={translate("label-select-monitor")}

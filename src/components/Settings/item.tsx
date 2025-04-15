@@ -1,5 +1,4 @@
 import { children, type JSXElement } from "solid-js";
-import { BsQuestionCircle } from "solid-icons/bs";
 import {
   LazyButton,
   LazyFlex,
@@ -7,6 +6,7 @@ import {
   LazySpace,
   LazyTooltip,
 } from "~/lazy";
+import { AiOutlineInfoCircle } from "solid-icons/ai";
 
 interface BaseProps {
   label: string;
@@ -51,7 +51,7 @@ const SettingsItem = (props: SettingsItemProps) => {
   const renderContent = children(() => {
     if (props.layout === "vertical") {
       return (
-        <LazyFlex direction="vertical" gap={8}>
+        <LazyFlex direction="column" gap="s" align="stretch">
           {renderLabel()}
           {props.children}
         </LazyFlex>
@@ -59,8 +59,8 @@ const SettingsItem = (props: SettingsItemProps) => {
     }
 
     const mainContent = (
-      <LazyFlex justify="between">
-        <LazySpace class="settings-item-content-wrapper" gap={2}>
+      <LazyFlex justify="between" align="center">
+        <LazySpace class="settings-item-content-wrapper" gap="0">
           {renderLabel()}
           {props.help && (
             <LazyTooltip
@@ -69,7 +69,7 @@ const SettingsItem = (props: SettingsItemProps) => {
               withArrow
             >
               <LazyButton
-                icon={<BsQuestionCircle />}
+                icon={<AiOutlineInfoCircle />}
                 shape="circular"
                 size="small"
                 appearance="transparent"
@@ -84,7 +84,7 @@ const SettingsItem = (props: SettingsItemProps) => {
 
     if (props.layout === "horizontal" && props.extra) {
       return (
-        <LazyFlex direction="vertical" gap={8}>
+        <LazyFlex direction="column" gap="s" align="stretch">
           {mainContent}
           {props.extra}
         </LazyFlex>

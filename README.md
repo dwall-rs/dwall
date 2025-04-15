@@ -1,7 +1,11 @@
 <p align="center">
 <img height="64" width="64" src="./src-tauri/icons/128x128.png" />
 <br/>
-<a href="https://github.com/dwall-rs/dwall/releases/latest"><img src="https://img.shields.io/github/downloads/dwall-rs/dwall/total.svg?style=flat-square" alt="GitHub releases"></a>
+<a href="https://github.com/dwall-rs/dwall/releases/latest"><img src="https://img.shields.io/github/downloads/dwall-rs/dwall/total.svg?style=flat-square" alt="GitHub releases"/></a>
+<img src="https://img.shields.io/badge/Windows%2010-%230079d5.svg?style=for-the-badge&logo=Windows%2010&logoColor=white)" alt="Windows 10" height="20" />
+<img src="https://img.shields.io/badge/Windows%2011-%230079d5.svg?style=for-the-badge&logo=Windows%2011&logoColor=white)" alt="Windows 11" height="20" />
+<br/>
+English | <a href="./README.zh-CN.md">简体中文</a>
 </p>
 
 # DWALL
@@ -23,6 +27,9 @@ Recognizing this gap, DWALL was developed to provide an efficient alternative. I
 ## Before You Begin
 
 This project is still in the development stage and may have some issues. If you encounter any problems during use, please feel free to raise an issue on the GitHub page.
+
+> [!WARNING]  
+> This program may not run on lightweight operating systems. If you are using a lightweight version of Windows and encounter errors, please do not submit an issue. Try running the program after installing the official Windows operating system.
 
 ## Usage Steps
 

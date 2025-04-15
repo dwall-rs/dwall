@@ -7,6 +7,7 @@ pub(super) const BUTTON_SELECT_FOLDER: &str = "button-select-folder";
 pub(super) const BUTTON_STOP: &str = "button-stop";
 
 // ---------------- help ----------------
+pub(super) const HELP_LAUNCH_AT_STARTUP: &str = "help-launch-at-startup";
 pub(super) const HELP_MANUALLY_SET_COORDINATES: &str = "help-manually-set-coordinates";
 
 // ---------------- labels ----------------
@@ -37,6 +38,8 @@ pub(super) const MESSAGE_DISABLE_STARTUP_FAILED: &str = "message-disable-startup
 pub(super) const MESSAGE_DOWNLOAD_CANCELLED: &str = "message-download-cancelled";
 pub(super) const MESSAGE_DOWNLOAD_FAILED: &str = "message-download-faild";
 pub(super) const MESSAGE_FILE_SIZE_WARNING: &str = "message-file-size-warning";
+pub(super) const MESSAGE_GITHUB_MIRROR_TEMPLATE_UPDATED: &str =
+    "message-github-mirror-template-updated";
 pub(super) const MESSAGE_GITHUB_STAR: &str = "message-github-star";
 pub(super) const MESSAGE_INVALID_NUMBER_INPUT: &str = "message-invalid-number-input";
 pub(super) const MESSAGE_LOCATION_PERMISSION: &str = "message-location-permission";
@@ -50,6 +53,7 @@ pub(super) const MESSAGE_SWITCH_AUTO_LIGHT_DARK_MODE_FAILED: &str =
 pub(super) const MESSAGE_SWITCHING_TO_MANUAL_COORDINATE_CONFIG: &str =
     "message-switching-to-manual-coordinate-config";
 pub(super) const MESSAGE_THEMES_DIRECTORY_MOVED: &str = "message-themes-directory-moved";
+pub(super) const MESSAGE_UPDATE_AVAILABLE: &str = "message-update-available";
 pub(super) const MESSAGE_UPDATE_FAILED: &str = "message-update-failed";
 pub(super) const MESSAGE_VERSION_IS_THE_LATEST: &str = "message-version-is-the-latest";
 

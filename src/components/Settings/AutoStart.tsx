@@ -42,7 +42,10 @@ const AutoStart = () => {
   };
 
   return (
-    <SettingsItem label={translate("label-launch-at-startup")}>
+    <SettingsItem
+      label={translate("label-launch-at-startup")}
+      help={translate("help-launch-at-startup")}
+    >
       <LazySwitch checked={autoStartState()} onChange={onSwitchAutoStart} />
     </SettingsItem>
   );

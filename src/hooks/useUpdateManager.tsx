@@ -15,7 +15,7 @@ export const useUpdateManager = () => {
       message(translateErrorMessage("message-update-failed", e), {
         kind: "error",
       });
-      return null;
+      return;
     }
   });
 

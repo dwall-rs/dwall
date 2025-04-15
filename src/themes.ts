@@ -14,6 +14,7 @@ const thumbnails_count = {
   "Solar Gradients": 16,
   "The Beach": 8,
   "The Cliffs": 8,
+  "The Desert": 8,
   "Ventura Graphic": 5,
 };
 
