@@ -10,6 +10,9 @@ edition.workspace = true
 repository.workspace = true
 license.workspace = true
 
+[build-dependencies]
+winresource = "0.1.20"
+
 [dependencies]
 serde_valid = "1"
 time = { version = "0", default-features = false, features = [
