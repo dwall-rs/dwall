@@ -7,6 +7,7 @@ pub(super) const BUTTON_SELECT_FOLDER: &str = "button-select-folder";
 pub(super) const BUTTON_STOP: &str = "button-stop";
 
 // ---------------- help ----------------
+pub(super) const HELP_LAUNCH_AT_STARTUP: &str = "help-launch-at-startup";
 pub(super) const HELP_MANUALLY_SET_COORDINATES: &str = "help-manually-set-coordinates";
 
 // ---------------- labels ----------------

@@ -21,6 +21,12 @@ impl TranslationMap for ChineseSimplifiedTranslations {
 
         // helps
         translations.insert(
+            HELP_LAUNCH_AT_STARTUP,
+            TranslationValue::Text(
+                "开机自启只会启动后台进程，不会启动本图形化程序，不会占用过多内存。",
+            ),
+        );
+        translations.insert(
             HELP_MANUALLY_SET_COORDINATES,
             TranslationValue::Text("手动设置坐标时需要使用WGS84坐标系（国际通用坐标系，中国用户需要注意），否则会存在坐标偏移问题使得壁纸匹配不精确。"), 
         );

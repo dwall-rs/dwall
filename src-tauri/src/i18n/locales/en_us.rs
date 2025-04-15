@@ -24,6 +24,12 @@ impl TranslationMap for EnglishUSTranslations {
 
         // helps
         translations.insert(
+            HELP_LAUNCH_AT_STARTUP,
+            TranslationValue::Text(
+                "Autostart will only launch the background process, not the graphical program, and will not consume much memory.",
+            ),
+        );
+        translations.insert(
             HELP_MANUALLY_SET_COORDINATES,
             TranslationValue::Text("When manually setting coordinates, you must use the WGS84 coordinate system (the international standard, users in China should take note). Otherwise, coordinate offset issues may occur, leading to inaccurate wallpaper alignment."), 
         );
