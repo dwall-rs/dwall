@@ -11,7 +11,7 @@ repository.workspace = true
 license.workspace = true
 
 [build-dependencies]
-winresource = "0.1.20"
+winresource = { version = "0", optional = true }
 
 [dependencies]
 serde_valid = "1"
@@ -58,3 +58,4 @@ windows-result = { version = '0.3.1', features = ['std'] }
 [features]
 default = []
 log-color = ["tracing-subscriber/ansi"]
+build-script = ["winresource"]
