@@ -6,10 +6,11 @@ import SettingsItem from "./item";
 
 import { writeConfigFile } from "~/commands";
 
-import { useConfig, useTranslations } from "~/contexts";
+import { useToast, useConfig, useTranslations } from "~/contexts";
 
 const GithubMirror = () => {
   const { translate } = useTranslations();
+  const toast = useToast();
   const { data: config, refetch: refetchConfig } = useConfig();
 
   const [value, setValue] = createSignal(config()?.github_mirror_template);
@@ -21,6 +22,11 @@ const GithubMirror = () => {
   const onConfirm = async () => {
     await writeConfigFile({ ...config()!, github_mirror_template: value() });
     refetchConfig();
+    toast.success(
+      translate("message-github-mirror-template-updated", {
+        newTemplate: value() ?? "",
+      }),
+    );
   };
 
   return (

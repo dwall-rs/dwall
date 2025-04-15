@@ -27,6 +27,7 @@ type TranslationKey =
   | "message-download-cancelled"
   | "message-download-faild"
   | "message-file-size-warning"
+  | "message-github-mirror-template-updated"
   | "message-github-star"
   | "message-invalid-number-input"
   | "message-location-permission"

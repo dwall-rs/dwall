@@ -38,6 +38,8 @@ pub(super) const MESSAGE_DISABLE_STARTUP_FAILED: &str = "message-disable-startup
 pub(super) const MESSAGE_DOWNLOAD_CANCELLED: &str = "message-download-cancelled";
 pub(super) const MESSAGE_DOWNLOAD_FAILED: &str = "message-download-faild";
 pub(super) const MESSAGE_FILE_SIZE_WARNING: &str = "message-file-size-warning";
+pub(super) const MESSAGE_GITHUB_MIRROR_TEMPLATE_UPDATED: &str =
+    "message-github-mirror-template-updated";
 pub(super) const MESSAGE_GITHUB_STAR: &str = "message-github-star";
 pub(super) const MESSAGE_INVALID_NUMBER_INPUT: &str = "message-invalid-number-input";
 pub(super) const MESSAGE_LOCATION_PERMISSION: &str = "message-location-permission";
