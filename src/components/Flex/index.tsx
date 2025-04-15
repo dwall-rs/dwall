@@ -27,7 +27,7 @@ export interface FlexProps {
   /** Whether to wrap */
   wrap?: "wrap" | "nowrap" | "wrap-reverse";
   /** Gap between elements */
-  gap?: "xs" | "s" | "m" | "l" | "xl" | "xxl";
+  gap?: 0 | "0" | "xs" | "s" | "m" | "l" | "xl" | "xxl";
   /** Whether to fill parent container */
   fill?: boolean;
   /** Whether to auto grow */
@@ -160,6 +160,9 @@ const Flex: Component<FlexProps> = (props) => {
 
   const getGapClass = () => {
     switch (local.gap) {
+      case 0:
+      case "0":
+        return styles.noGap;
       case "xs":
         return styles.gapXS;
       case "s":
