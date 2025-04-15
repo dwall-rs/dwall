@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["src-tauri", "daemon"]
+members = ["daemon", "src-tauri"]
 
 [workspace.package]
 authors = ["thep0y"]
