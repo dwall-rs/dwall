@@ -6,14 +6,16 @@
   "scripts": {
     "start": "vite",
     "build:daemon": "cargo build -p dwall --release --features build-script",
+    "build:daemon-debug": "cargo build -p dwall --features log-color,build-script",
+    "build:daemon-stage": "cargo build -p dwall --release --features log-color,build-script",
     "build:vite": "bun run build:daemon && vite build",
     "build": "tauri build",
     "serve": "vite preview",
     "tauri": "tauri",
-    "start:dev": "cargo build -p dwall --features log-color,build-script && cross-env RUST_BACKTRACE=1 tauri dev --features log-color",
+    "start:dev": "bun run build:daemon-debug && cross-env RUST_BACKTRACE=1 tauri dev --features log-color",
     "check": "biome check --write src",
     "dev": "bun run start:dev",
-    "stage": "cargo build -r -p dwall --features log-color && cross-env RUST_BACKTRACE=1 tauri dev --features log-color devtools --release",
+    "stage": "bun run build:daemon-stage && cross-env RUST_BACKTRACE=1 tauri dev --features log-color devtools --release",
     "test": "vitest"
   },
   "license": "MIT",
