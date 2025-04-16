@@ -25,14 +25,16 @@ fn get_log_level() -> Level {
 }
 
 /// Create environment filter for logging
-fn create_env_filter(pkg_names: &[String], level: Level) -> EnvFilter {
+fn create_env_filter<S: AsRef<str>>(pkg_names: &[S], level: Level) -> EnvFilter {
     let filter_str = pkg_names
         .iter()
-        .map(|n| format!("{}={}", n, level))
+        .map(|s| format!("{}={}", s.as_ref(), level))
         .collect::<Vec<String>>()
         .join(",");
 
-    EnvFilter::new(filter_str)
+    EnvFilter::builder()
+        .with_default_directive(level.into())
+        .parse_lossy(filter_str)
 }
 
 /// Get time format based on build configuration
@@ -45,8 +47,9 @@ fn get_time_format<'a>() -> &'a [BorrowedFormatItem<'a>] {
 }
 
 /// Setup logging with given configuration
-pub fn setup_logging(pkg_names: &[String]) {
+pub fn setup_logging<S: AsRef<str>>(pkg_names: &[S]) {
     let timer = LocalTime::new(get_time_format());
+    let level = get_log_level();
 
     let writer = if cfg!(debug_assertions) {
         BoxMakeWriter::new(Mutex::new(std::io::stderr()))
@@ -54,12 +57,11 @@ pub fn setup_logging(pkg_names: &[String]) {
         use crate::lazy::DWALL_CONFIG_DIR;
         use std::fs::File;
 
-        let log_file = File::create(DWALL_CONFIG_DIR.join(format!("{}.log", pkg_names[0])))
-            .expect("Failed to create the log file");
+        let log_file =
+            File::create(DWALL_CONFIG_DIR.join(format!("{}.log", pkg_names[0].as_ref())))
+                .expect("Failed to create the log file");
         BoxMakeWriter::new(Mutex::new(log_file))
     };
-
-    let level = get_log_level();
 
     let builder = tracing_subscriber::fmt()
         .with_file(cfg!(debug_assertions))
