@@ -20,10 +20,9 @@
   },
   "license": "MIT",
   "dependencies": {
-    "@tauri-apps/api": "^2.4.1",
+    "@tauri-apps/api": "^2.5.0",
     "@tauri-apps/plugin-dialog": "^2.2.1",
-    "@tauri-apps/plugin-process": "~2.2.1",
-    "@tauri-apps/plugin-shell": "~2.2.1",
+    "@tauri-apps/plugin-shell": "^2.2.1",
     "@tauri-apps/plugin-updater": "^2.7.0",
     "fluent-solid": "^0.1.19",
     "solid-icons": "^1.1.0",
@@ -31,7 +30,7 @@
   },
   "devDependencies": {
     "@biomejs/biome": "^1.9.4",
-    "@tauri-apps/cli": "^2.4.1",
+    "@tauri-apps/cli": "^2.5.0",
     "@types/node": "^22.14.1",
     "cross-env": "^7.0.3",
     "jsdom": "^26.1.0",

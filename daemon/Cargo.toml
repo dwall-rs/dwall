@@ -39,6 +39,7 @@ thiserror = { workspace = true }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
 windows = { workspace = true, default-features = false, features = [
+  "std",
   "Devices_Geolocation",
   "Win32_System_Registry",
   "System_UserProfile",
@@ -52,8 +53,6 @@ windows = { workspace = true, default-features = false, features = [
   "Win32_Devices_Display",
   "Win32_Devices_DeviceAndDriverInstallation",
 ] }
-windows-strings = { version = '0.3.1', features = ['std'] }
-windows-result = { version = '0.3.1', features = ['std'] }
 
 [features]
 default = []

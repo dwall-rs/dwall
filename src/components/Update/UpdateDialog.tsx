@@ -1,4 +1,3 @@
-import { relaunch } from "@tauri-apps/plugin-process";
 import type { Update } from "@tauri-apps/plugin-updater";
 import { createSignal, onMount } from "solid-js";
 import { LazyProgress } from "~/lazy";
@@ -32,7 +31,6 @@ const UpdateDialog = (props: UpdateDialogProps) => {
             break;
         }
       });
-      await relaunch();
     } catch (error) {
       await message(translateErrorMessage("message-update-failed", error), {
         kind: "error",
