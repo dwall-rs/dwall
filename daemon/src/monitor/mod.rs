@@ -10,12 +10,14 @@ use std::{
 
 use serde::{Deserialize, Serialize};
 use tokio::sync::RwLock;
-use windows::Win32::{
-    Devices::Display::GUID_DEVINTERFACE_MONITOR,
-    System::Com::{CoCreateInstance, CLSCTX_ALL},
-    UI::Shell::{DesktopWallpaper, IDesktopWallpaper},
+use windows::{
+    core::HSTRING,
+    Win32::{
+        Devices::Display::GUID_DEVINTERFACE_MONITOR,
+        System::Com::{CoCreateInstance, CLSCTX_ALL},
+        UI::Shell::{DesktopWallpaper, IDesktopWallpaper},
+    },
 };
-use windows_strings::HSTRING;
 
 use crate::{error::DwallResult, utils::string::WideStringRead};
 
@@ -194,7 +196,7 @@ impl WallpaperManager {
         })?;
 
         // Convert wallpaper path to HSTRING
-        let wallpaper_path = windows::core::HSTRING::from(wallpaper_path);
+        let wallpaper_path = HSTRING::from(wallpaper_path);
         let device_path = HSTRING::from(&monitor.device_path);
 
         // Set wallpaper
