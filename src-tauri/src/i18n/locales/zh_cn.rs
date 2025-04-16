@@ -86,6 +86,13 @@ impl TranslationMap for ChineseSimplifiedTranslations {
             },
         );
         translations.insert(
+            MESSAGE_CHECK_INTERVAL_UPDATED,
+            TranslationValue::Template {
+                template: "检测时间间隔已更新为：{{newInterval}}秒",
+                params: &["newInterval"],
+            },
+        );
+        translations.insert(
             MESSAGE_DISABLE_STARTUP_FAILED,
             TranslationValue::Template {
                 template: "关闭开机自启失败：\n{{error}}",

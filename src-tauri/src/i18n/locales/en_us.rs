@@ -101,6 +101,13 @@ impl TranslationMap for EnglishUSTranslations {
             },
         );
         translations.insert(
+            MESSAGE_CHECK_INTERVAL_UPDATED,
+            TranslationValue::Template {
+                template: "Check interval has been updated to: {{newInterval}} seconds",
+                params: &["newInterval"],
+            },
+        );
+        translations.insert(
             MESSAGE_DISABLE_STARTUP_FAILED,
             TranslationValue::Template {
                 template: "Failed to disable startup: \n{{error}}",

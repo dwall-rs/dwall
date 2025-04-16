@@ -23,6 +23,7 @@ type TranslationKey =
   | "tooltip-settings"
   | "message-apply-theme-failed"
   | "message-change-themes-directory"
+  | "message-check-interval-updated"
   | "message-disable-startup-failed"
   | "message-download-cancelled"
   | "message-download-faild"
