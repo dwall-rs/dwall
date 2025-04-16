@@ -14,7 +14,7 @@ use windows::{
     core::HSTRING,
     Win32::{
         Devices::Display::GUID_DEVINTERFACE_MONITOR,
-        System::Com::{CoCreateInstance, CLSCTX_ALL},
+        System::Com::{CoCreateInstance, CoInitialize, CoUninitialize, CLSCTX_ALL},
         UI::Shell::{DesktopWallpaper, IDesktopWallpaper},
     },
 };
@@ -145,11 +145,22 @@ pub struct WallpaperManager {
     desktop_wallpaper: IDesktopWallpaper,
     /// Monitor information provider
     monitor_provider: MonitorInfoProvider,
+    /// 标记是否需要在析构时调用 CoUninitialize
+    com_initialized: bool,
 }
 
 impl WallpaperManager {
     /// Creates a new WallpaperManager instance
-    pub fn new() -> DwallResult<Self> {
+    fn new() -> DwallResult<Self> {
+        // Continue execution even if initialization fails, as it might have been initialized elsewhere
+        let com_initialized = unsafe {
+            // Attempt to initialize COM
+            let result = CoInitialize(None);
+            // If returns S_OK (0), means initialization succeeded and needs cleanup
+            // If returns S_FALSE, means already initialized and no cleanup needed
+            result.0 == 0
+        };
+
         let desktop_wallpaper: IDesktopWallpaper = unsafe {
             CoCreateInstance(&DesktopWallpaper as *const _, None, CLSCTX_ALL).map_err(|e| {
                 error!(
@@ -163,11 +174,12 @@ impl WallpaperManager {
         Ok(Self {
             desktop_wallpaper,
             monitor_provider: MonitorInfoProvider::new(),
+            com_initialized,
         })
     }
 
     /// Sets wallpaper for a specific monitor
-    pub(crate) async fn set_wallpaper(
+    async fn set_wallpaper(
         &self,
         monitor_id: &str,
         wallpaper_path: &std::path::Path,
@@ -251,18 +263,30 @@ impl WallpaperManager {
     }
 
     /// Gets all available monitors with caching
-    pub async fn get_monitors(&self) -> DwallResult<HashMap<String, Monitor>> {
+    async fn get_monitors(&self) -> DwallResult<HashMap<String, Monitor>> {
         self.monitor_provider.get_monitors().await
     }
 
     /// Forces a refresh of monitor information
-    pub async fn refresh_monitors(&self) -> DwallResult<HashMap<String, Monitor>> {
+    async fn refresh_monitors(&self) -> DwallResult<HashMap<String, Monitor>> {
         self.monitor_provider.refresh_monitors().await
     }
 
     /// Detects if monitor configuration has changed
-    pub async fn has_monitor_config_changed(&self) -> DwallResult<bool> {
+    async fn has_monitor_config_changed(&self) -> DwallResult<bool> {
         self.monitor_provider.has_monitor_config_changed().await
+    }
+}
+
+impl Drop for WallpaperManager {
+    fn drop(&mut self) {
+        // Only uninitialize COM if we successfully initialized it
+        if self.com_initialized {
+            unsafe {
+                CoUninitialize();
+            }
+            debug!("COM resources released");
+        }
     }
 }
 
