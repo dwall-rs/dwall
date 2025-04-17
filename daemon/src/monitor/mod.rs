@@ -178,6 +178,44 @@ impl WallpaperManager {
         })
     }
 
+    /// Checks if the wallpaper is already set for a specific monitor
+    fn is_wallpaper_already_set(
+        &self,
+        monitor_path: &HSTRING,
+        wallpaper_path: &HSTRING,
+    ) -> DwallResult<bool> {
+        trace!(
+            monitor_path = %monitor_path,
+            "Checking existing wallpaper for monitor"
+        );
+
+        let current_wallpaper_ptr =
+            match unsafe { self.desktop_wallpaper.GetWallpaper(monitor_path) } {
+                Ok(path) => path,
+                Err(e) => {
+                    error!(
+                        error = %e,
+                        monitor_path = %monitor_path,
+                        "Failed to retrieve current wallpaper for monitor"
+                    );
+                    return Err(e.into());
+                }
+            };
+
+        let current_wallpaper_path = unsafe { current_wallpaper_ptr.to_hstring() };
+
+        let is_same = *wallpaper_path == current_wallpaper_path;
+
+        trace!(
+            current_wallpaper_path = %current_wallpaper_path,
+            new_wallpaper_path = %wallpaper_path,
+            is_same = is_same,
+            "Wallpaper comparison result"
+        );
+
+        Ok(is_same)
+    }
+
     /// Sets wallpaper for a specific monitor
     async fn set_wallpaper(
         &self,
@@ -210,6 +248,15 @@ impl WallpaperManager {
         // Convert wallpaper path to HSTRING
         let wallpaper_path = HSTRING::from(wallpaper_path);
         let device_path = HSTRING::from(&monitor.device_path);
+
+        if self.is_wallpaper_already_set(&device_path, &wallpaper_path)? {
+            info!(
+                monitor_id = monitor_id,
+                wallpaper_path = %wallpaper_path,
+                "Wallpaper already set for monitor, skipping"
+            );
+            return Ok(());
+        };
 
         // Set wallpaper
         let result = unsafe {
