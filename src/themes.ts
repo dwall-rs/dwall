@@ -15,6 +15,7 @@ const thumbnails_count = {
   "The Beach": 8,
   "The Cliffs": 8,
   "The Desert": 8,
+  "The Lake": 8,
   "Ventura Graphic": 5,
 };
 
