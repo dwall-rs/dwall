@@ -39,7 +39,7 @@ windows = { workspace = true, features = [
   "Win32_Globalization",
   "Win32_System_Threading",
 ] }
-rand = { version = "0", default-features = false, features = ["thread_rng"] }
+rand = { version = "0.9", default-features = false, features = ["thread_rng"] }
 tauri-plugin-shell = "2"
 
 [target.'cfg(target_os = "windows")'.dependencies]
