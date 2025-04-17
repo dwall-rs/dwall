@@ -6,6 +6,7 @@ type TranslationKey =
   | "button-select-folder"
   | "button-stop"
   | "help-automatically-switch-to-dark-mode"
+  | "help-github-mirror-template"
   | "help-launch-at-startup"
   | "help-manually-set-coordinates"
   | "help-set-lock-screen-wallpaper-simultaneously"
