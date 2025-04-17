@@ -51,3 +51,4 @@ tauri-plugin-dialog = "2"
 default = []
 log-color = ["dwall/log-color"]
 devtools = ["tauri/devtools"]
+log-max-level-info = ["tracing/release_max_level_info"]

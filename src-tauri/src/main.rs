@@ -205,6 +205,10 @@ async fn get_monitors() -> DwallSettingsResult<HashMap<String, dwall::monitor::M
 }
 
 fn main() -> DwallSettingsResult<()> {
+    if cfg!(not(debug_assertions)) && cfg!(not(feature = "log-max-level-info")) {
+        std::env::set_var("DWALL_LOG", "debug");
+    }
+
     setup_logging(&["dwall_settings", "dwall"]);
     let builder = tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
