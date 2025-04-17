@@ -28,6 +28,10 @@ impl TranslationMap for EnglishUSTranslations {
             TranslationValue::Text("If you do not want to automatically switch between light and dark modes, please disable this option."),
         );
         translations.insert(
+            HELP_GITHUB_MIRROR_TEMPLATE,
+            TranslationValue::Text("Github mirror template is used to accelerate downloads. In some countries and regions, due to network restrictions, accessing Github may fail, resulting in download failures. You need to set up a Github mirror template to properly load thumbnails and download themes. Click this button to view available Github mirror templates."),
+        );
+        translations.insert(
             HELP_LAUNCH_AT_STARTUP,
             TranslationValue::Text(
                 "Autostart will only launch the background process, not the graphical program, and will not consume much memory.",
