@@ -6,11 +6,14 @@ import {
   Show,
   useContext,
 } from "solid-js";
-import type { ToastContentProps, ToastPosition } from "./types";
 import { createStore } from "solid-js/store";
+import type { ToastContentProps, ToastPosition } from "./types";
 import ToastContainer from "./ToastContainer";
 import ToastContent from "./ToastContent";
 import "./index.scss";
+
+type ToastOptions = Partial<Omit<ToastContentProps, "message" | "type">>;
+type ToastFunction = (message: JSX.Element, options?: ToastOptions) => string;
 
 interface ToastContext {
   addToast: (toast: ToastContentProps) => void;
@@ -20,22 +23,10 @@ interface ToastContext {
     id: string,
     toast: Partial<ToastContentProps>,
   ) => void;
-  success: (
-    message: JSX.Element,
-    options?: Partial<Omit<ToastContentProps, "message" | "type">>,
-  ) => string;
-  error: (
-    message: JSX.Element,
-    options?: Partial<Omit<ToastContentProps, "message" | "type">>,
-  ) => string;
-  warning: (
-    message: JSX.Element,
-    options?: Partial<Omit<ToastContentProps, "message" | "type">>,
-  ) => string;
-  info: (
-    message: JSX.Element,
-    options?: Partial<Omit<ToastContentProps, "message" | "type">>,
-  ) => string;
+  success: ToastFunction;
+  error: ToastFunction;
+  warning: ToastFunction;
+  info: ToastFunction;
 }
 
 const ToastContext = createContext<ToastContext>();
@@ -96,10 +87,7 @@ export const ToastProvider = (props: { children: JSX.Element }) => {
   };
 
   // Helper method: show success toast
-  const success = (
-    message: JSX.Element,
-    options?: Partial<Omit<ToastContentProps, "message" | "type">>,
-  ) => {
+  const success = (message: JSX.Element, options?: ToastOptions) => {
     return addToast({
       type: "success",
       message,
@@ -108,10 +96,7 @@ export const ToastProvider = (props: { children: JSX.Element }) => {
   };
 
   // Helper method: show error toast
-  const error = (
-    message: JSX.Element,
-    options?: Partial<Omit<ToastContentProps, "message" | "type">>,
-  ) => {
+  const error = (message: JSX.Element, options?: ToastOptions) => {
     return addToast({
       type: "error",
       message,
@@ -120,10 +105,7 @@ export const ToastProvider = (props: { children: JSX.Element }) => {
   };
 
   // Helper method: show warning toast
-  const warning = (
-    message: JSX.Element,
-    options?: Partial<Omit<ToastContentProps, "message" | "type">>,
-  ) => {
+  const warning = (message: JSX.Element, options?: ToastOptions) => {
     return addToast({
       type: "warning",
       message,
@@ -132,10 +114,7 @@ export const ToastProvider = (props: { children: JSX.Element }) => {
   };
 
   // Helper method: show info toast
-  const info = (
-    message: JSX.Element,
-    options?: Partial<Omit<ToastContentProps, "message" | "type">>,
-  ) => {
+  const info = (message: JSX.Element, options?: ToastOptions) => {
     return addToast({
       type: "info",
       message,
