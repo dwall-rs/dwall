@@ -58,3 +58,4 @@ windows = { workspace = true, default-features = false, features = [
 default = []
 log-color = ["tracing-subscriber/ansi"]
 build-script = ["winresource"]
+log-max-level-info = ["tracing/release_max_level_info"]
