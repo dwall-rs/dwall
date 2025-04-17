@@ -24,6 +24,10 @@ impl TranslationMap for EnglishUSTranslations {
 
         // helps
         translations.insert(
+            HELP_AUTOMATICALLY_SWITCH_TO_DARK_MODE,
+            TranslationValue::Text("If you do not want to automatically switch between light and dark modes, please disable this option."),
+        );
+        translations.insert(
             HELP_LAUNCH_AT_STARTUP,
             TranslationValue::Text(
                 "Autostart will only launch the background process, not the graphical program, and will not consume much memory.",
@@ -32,6 +36,10 @@ impl TranslationMap for EnglishUSTranslations {
         translations.insert(
             HELP_MANUALLY_SET_COORDINATES,
             TranslationValue::Text("When manually setting coordinates, you must use the WGS84 coordinate system (the international standard, users in China should take note). Otherwise, coordinate offset issues may occur, leading to inaccurate wallpaper alignment."), 
+        );
+        translations.insert(
+            HELP_SET_LOCK_SCREEN_WALLPAPER_SIMULTANEOUSLY,
+            TranslationValue::Text("If you do not want to set the lock screen wallpaper simultaneously, please disable this option."),
         );
 
         // labels
