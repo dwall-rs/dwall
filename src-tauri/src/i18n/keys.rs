@@ -7,8 +7,12 @@ pub(super) const BUTTON_SELECT_FOLDER: &str = "button-select-folder";
 pub(super) const BUTTON_STOP: &str = "button-stop";
 
 // ---------------- help ----------------
+pub(super) const HELP_AUTOMATICALLY_SWITCH_TO_DARK_MODE: &str =
+    "help-automatically-switch-to-dark-mode";
 pub(super) const HELP_LAUNCH_AT_STARTUP: &str = "help-launch-at-startup";
 pub(super) const HELP_MANUALLY_SET_COORDINATES: &str = "help-manually-set-coordinates";
+pub(super) const HELP_SET_LOCK_SCREEN_WALLPAPER_SIMULTANEOUSLY: &str =
+    "help-set-lock-screen-wallpaper-simultaneously";
 
 // ---------------- labels ----------------
 pub(super) const LABEL_AUTOMATICALLY_RETRIEVE_COORDINATES: &str =
