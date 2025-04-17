@@ -31,7 +31,7 @@ pub async fn apply_theme(config: Config) -> DwallResult<()> {
         return Err(ThemeError::NoMonitorSpecificWallpapers.into());
     }
 
-    let theme_processor = ThemeProcessor::new(&config);
+    let theme_processor = ThemeProcessor::new(&config)?;
 
     theme_processor.start_update_loop().await
 }

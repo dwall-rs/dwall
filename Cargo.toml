@@ -4,7 +4,7 @@ members = ["daemon", "src-tauri"]
 
 [workspace.package]
 authors = ["thep0y"]
-version = "0.1.20"
+version = "0.1.21"
 # homepage = ""
 repository = "https://github.com/dwall-rs/dwall"
 license = "AGPL-3.0"
@@ -15,10 +15,7 @@ dirs = { version = "6", default-features = false }
 thiserror = { version = "2", default-features = false }
 serde = { version = "1", default-features = false, features = ["derive"] }
 serde_json = { version = "1", default-features = false }
-tracing = { version = "0", default-features = false, features = [
-  "log",
-  "release_max_level_info",
-] }
+tracing = { version = "0", default-features = false, features = ["log"] }
 tracing-subscriber = { version = "0", default-features = false, features = [
   "fmt",
   'time',
@@ -27,7 +24,7 @@ tracing-subscriber = { version = "0", default-features = false, features = [
   'json',
 ] }
 tokio = { version = "1", default-features = false }
-windows = { version = "0.60", default-features = false }
+windows = { version = "0.61", default-features = false }
 
 [profile.release]
 panic = "abort"

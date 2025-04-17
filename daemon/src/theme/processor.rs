@@ -18,21 +18,25 @@ pub struct ThemeProcessor {
     config: Config,
     /// Manages geographic position tracking
     position_manager: PositionManager,
+    wallpaper_manager: WallpaperManager,
 }
 
 impl ThemeProcessor {
     /// Creates a new ThemeProcessor instance
-    pub fn new(config: &Config) -> Self {
+    pub fn new(config: &Config) -> DwallResult<Self> {
         debug!(
             auto_detect_color_mode = ?config.auto_detect_color_mode(),
             image_format = ?config.image_format(),
             "Initializing ThemeProcessor for theme with configuration"
         );
 
-        Self {
+        let wallpaper_manager = WallpaperManager::new()?;
+
+        Ok(Self {
             position_manager: PositionManager::new(config.coordinate_source().clone()),
             config: config.clone(),
-        }
+            wallpaper_manager,
+        })
     }
 
     /// Starts a continuous loop to update theme based on current position
@@ -94,7 +98,7 @@ impl ThemeProcessor {
 
     /// Process theme cycle for the current geographic position
     async fn process_theme_cycle(&self, position: &Position) -> DwallResult<()> {
-        process_theme_cycle(&self.config, position).await
+        process_theme_cycle(&self.config, position, &self.wallpaper_manager).await
     }
 }
 
@@ -195,6 +199,7 @@ async fn process_monitor_wallpaper(
     monitor_id: &str,
     theme_id: &str,
     sun_position: &SunPosition,
+    wallpaper_manager: &WallpaperManager,
 ) -> DwallResult<()> {
     let theme_directory = config.themes_directory().join(theme_id);
 
@@ -219,9 +224,6 @@ async fn process_monitor_wallpaper(
         );
         return Err(ThemeError::MissingWallpaperFile.into());
     }
-
-    // Create WallpaperManager instance
-    let wallpaper_manager = WallpaperManager::new()?;
 
     // Set wallpaper for the specific monitor
     wallpaper_manager
@@ -271,7 +273,11 @@ async fn set_lock_screen_wallpaper(
 }
 
 /// Core theme processing function
-async fn process_theme_cycle(config: &Config, geographic_position: &Position) -> DwallResult<()> {
+async fn process_theme_cycle(
+    config: &Config,
+    geographic_position: &Position,
+    wallpaper_manager: &WallpaperManager,
+) -> DwallResult<()> {
     debug!(
         auto_detect_color_mode = config.auto_detect_color_mode(),
         image_format = ?config.image_format(),
@@ -280,8 +286,6 @@ async fn process_theme_cycle(config: &Config, geographic_position: &Position) ->
         "Processing theme cycle with parameters"
     );
 
-    // Create WallpaperManager instance once for all operations
-    let wallpaper_manager = WallpaperManager::new()?;
     let monitors = wallpaper_manager.monitor_manager.get_monitors().await?;
 
     // Get monitor specific wallpapers
@@ -312,8 +316,14 @@ async fn process_theme_cycle(config: &Config, geographic_position: &Position) ->
             lock_screen_wallpaper = Some(monitor_theme_id.to_string());
         }
 
-        if let Err(e) =
-            process_monitor_wallpaper(config, monitor_id, monitor_theme_id, &sun_position).await
+        if let Err(e) = process_monitor_wallpaper(
+            config,
+            monitor_id,
+            monitor_theme_id,
+            &sun_position,
+            wallpaper_manager,
+        )
+        .await
         {
             error!(
                 error = ?e,

@@ -30,7 +30,10 @@ const AutoDetectColorMode = () => {
   };
 
   return (
-    <SettingsItem label={translate("label-automatically-switch-to-dark-mode")}>
+    <SettingsItem
+      label={translate("label-automatically-switch-to-dark-mode")}
+      help={translate("help-automatically-switch-to-dark-mode")}
+    >
       <LazySwitch
         checked={config()!.auto_detect_color_mode}
         onChange={onSwitchAutoDetectColorMode}

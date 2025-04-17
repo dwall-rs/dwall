@@ -1,6 +1,8 @@
 import { createSignal } from "solid-js";
 import { AiFillSave } from "solid-icons/ai";
 
+import { open } from "@tauri-apps/plugin-shell";
+
 import { LazyButton, LazyInput } from "~/lazy";
 import SettingsItem from "./item";
 
@@ -33,6 +35,13 @@ const GithubMirror = () => {
     <SettingsItem
       layout="vertical"
       label={translate("label-github-mirror-template")}
+      help={{
+        content: translate("help-github-mirror-template"),
+        onClick: () =>
+          open(
+            "https://gh-proxy.com/gist.githubusercontent.com/thep0y/682ebeb2b8d4f6eea3841fe3f42c0e30/raw/2f5b641e77abe3cb8f74ee8f65ead95beb663444/markdown",
+          ),
+      }}
       vertical
     >
       <LazyInput

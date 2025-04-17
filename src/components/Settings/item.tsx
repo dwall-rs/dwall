@@ -11,7 +11,7 @@ import { AiOutlineInfoCircle } from "solid-icons/ai";
 interface BaseProps {
   label: string;
   children: JSXElement;
-  help?: JSXElement;
+  help?: JSXElement | { content: JSXElement; onClick: () => void };
 }
 
 interface VerticalLayout {
@@ -42,11 +42,41 @@ const labelStyles = {
 } as const;
 
 const SettingsItem = (props: SettingsItemProps) => {
-  const renderLabel = children(() => (
-    <LazyLabel weight="semibold" style={labelStyles}>
-      {props.label}
-    </LazyLabel>
-  ));
+  const renderLabel = children(() =>
+    props.help ? (
+      <LazySpace class="settings-item-content-wrapper" gap="0">
+        <LazyLabel weight="semibold" style={labelStyles}>
+          {props.label}
+        </LazyLabel>
+
+        <LazyTooltip
+          content={
+            typeof props.help === "object" && "content" in props.help
+              ? props.help.content!
+              : props.help!
+          }
+          relationship="description"
+          withArrow
+        >
+          <LazyButton
+            icon={<AiOutlineInfoCircle />}
+            onClick={
+              typeof props.help === "object" && "content" in props.help
+                ? props.help.onClick
+                : undefined
+            }
+            shape="circular"
+            size="small"
+            appearance="transparent"
+          />
+        </LazyTooltip>
+      </LazySpace>
+    ) : (
+      <LazyLabel weight="semibold" style={labelStyles}>
+        {props.label}
+      </LazyLabel>
+    ),
+  );
 
   const renderContent = children(() => {
     if (props.layout === "vertical") {
@@ -60,24 +90,7 @@ const SettingsItem = (props: SettingsItemProps) => {
 
     const mainContent = (
       <LazyFlex justify="between" align="center">
-        <LazySpace class="settings-item-content-wrapper" gap="0">
-          {renderLabel()}
-          {props.help && (
-            <LazyTooltip
-              content={props.help}
-              relationship="description"
-              withArrow
-            >
-              <LazyButton
-                icon={<AiOutlineInfoCircle />}
-                shape="circular"
-                size="small"
-                appearance="transparent"
-              />
-            </LazyTooltip>
-          )}
-        </LazySpace>
-
+        {renderLabel()}
         {props.children}
       </LazyFlex>
     );

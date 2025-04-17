@@ -21,6 +21,14 @@ impl TranslationMap for ChineseSimplifiedTranslations {
 
         // helps
         translations.insert(
+            HELP_AUTOMATICALLY_SWITCH_TO_DARK_MODE,
+            TranslationValue::Text("如果你不希望自动切换明暗模式，请关闭此选项。"),
+        );
+        translations.insert(
+            HELP_GITHUB_MIRROR_TEMPLATE,
+            TranslationValue::Text("Github 镜像模板用于加速下载，部分国家和地区因为网络管制无法正常访问 Github，可能会下载失败，需要设置 Github 镜像模板以正常加载缩略图和下载主题。点击此按钮可以查看可用的 Github 镜像模板。"),
+        );
+        translations.insert(
             HELP_LAUNCH_AT_STARTUP,
             TranslationValue::Text(
                 "开机自启只会启动后台进程，不会启动本图形化程序，不会占用过多内存。",
@@ -29,6 +37,10 @@ impl TranslationMap for ChineseSimplifiedTranslations {
         translations.insert(
             HELP_MANUALLY_SET_COORDINATES,
             TranslationValue::Text("手动设置坐标时需要使用WGS84坐标系（国际通用坐标系，中国用户需要注意），否则会存在坐标偏移问题使得壁纸匹配不精确。"), 
+        );
+        translations.insert(
+            HELP_SET_LOCK_SCREEN_WALLPAPER_SIMULTANEOUSLY,
+            TranslationValue::Text("如果你不想同时设置锁屏壁纸，请关闭此选项。"),
         );
 
         // labels
@@ -83,6 +95,13 @@ impl TranslationMap for ChineseSimplifiedTranslations {
             TranslationValue::Template {
                 template: "修改主题文件夹为：{{newThemesDirectory}}？",
                 params: &["newThemesDirectory"],
+            },
+        );
+        translations.insert(
+            MESSAGE_CHECK_INTERVAL_UPDATED,
+            TranslationValue::Template {
+                template: "检测时间间隔已更新为：{{newInterval}}秒",
+                params: &["newInterval"],
             },
         );
         translations.insert(

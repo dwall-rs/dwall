@@ -24,6 +24,14 @@ impl TranslationMap for EnglishUSTranslations {
 
         // helps
         translations.insert(
+            HELP_AUTOMATICALLY_SWITCH_TO_DARK_MODE,
+            TranslationValue::Text("If you do not want to automatically switch between light and dark modes, please disable this option."),
+        );
+        translations.insert(
+            HELP_GITHUB_MIRROR_TEMPLATE,
+            TranslationValue::Text("Github mirror template is used to accelerate downloads. In some countries and regions, due to network restrictions, accessing Github may fail, resulting in download failures. You need to set up a Github mirror template to properly load thumbnails and download themes. Click this button to view available Github mirror templates."),
+        );
+        translations.insert(
             HELP_LAUNCH_AT_STARTUP,
             TranslationValue::Text(
                 "Autostart will only launch the background process, not the graphical program, and will not consume much memory.",
@@ -32,6 +40,10 @@ impl TranslationMap for EnglishUSTranslations {
         translations.insert(
             HELP_MANUALLY_SET_COORDINATES,
             TranslationValue::Text("When manually setting coordinates, you must use the WGS84 coordinate system (the international standard, users in China should take note). Otherwise, coordinate offset issues may occur, leading to inaccurate wallpaper alignment."), 
+        );
+        translations.insert(
+            HELP_SET_LOCK_SCREEN_WALLPAPER_SIMULTANEOUSLY,
+            TranslationValue::Text("If you do not want to set the lock screen wallpaper simultaneously, please disable this option."),
         );
 
         // labels
@@ -98,6 +110,13 @@ impl TranslationMap for EnglishUSTranslations {
             TranslationValue::Template {
                 template: "Change the themes directory to: {{newThemesDirectory}}?",
                 params: &["newThemesDirectory"],
+            },
+        );
+        translations.insert(
+            MESSAGE_CHECK_INTERVAL_UPDATED,
+            TranslationValue::Template {
+                template: "Check interval has been updated to: {{newInterval}} seconds",
+                params: &["newInterval"],
             },
         );
         translations.insert(

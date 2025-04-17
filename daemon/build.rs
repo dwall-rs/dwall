@@ -5,6 +5,10 @@ fn main() -> io::Result<()> {
     {
         use {std::env, winresource::WindowsResource};
 
+        if cfg!(not(feature = "log-max-level-info")) {
+            println!("cargo:rustc-env=DWALL_LOG=debug");
+        };
+
         if env::var_os("CARGO_CFG_WINDOWS").is_some() {
             WindowsResource::new()
                 .set_icon("../src-tauri/icons/icon.ico")

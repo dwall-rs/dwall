@@ -7,8 +7,13 @@ pub(super) const BUTTON_SELECT_FOLDER: &str = "button-select-folder";
 pub(super) const BUTTON_STOP: &str = "button-stop";
 
 // ---------------- help ----------------
+pub(super) const HELP_AUTOMATICALLY_SWITCH_TO_DARK_MODE: &str =
+    "help-automatically-switch-to-dark-mode";
+pub(super) const HELP_GITHUB_MIRROR_TEMPLATE: &str = "help-github-mirror-template";
 pub(super) const HELP_LAUNCH_AT_STARTUP: &str = "help-launch-at-startup";
 pub(super) const HELP_MANUALLY_SET_COORDINATES: &str = "help-manually-set-coordinates";
+pub(super) const HELP_SET_LOCK_SCREEN_WALLPAPER_SIMULTANEOUSLY: &str =
+    "help-set-lock-screen-wallpaper-simultaneously";
 
 // ---------------- labels ----------------
 pub(super) const LABEL_AUTOMATICALLY_RETRIEVE_COORDINATES: &str =
@@ -34,6 +39,7 @@ pub(super) const TOOLTIP_SETTINGS: &str = "tooltip-settings";
 // ---------------- messages ----------------
 pub(super) const MESSAGE_APPLY_THEME_FAILED: &str = "message-apply-theme-failed";
 pub(super) const MESSAGE_CHANGE_THEMES_DIRECTORY: &str = "message-change-themes-directory";
+pub(super) const MESSAGE_CHECK_INTERVAL_UPDATED: &str = "message-check-interval-updated";
 pub(super) const MESSAGE_DISABLE_STARTUP_FAILED: &str = "message-disable-startup-failed";
 pub(super) const MESSAGE_DOWNLOAD_CANCELLED: &str = "message-download-cancelled";
 pub(super) const MESSAGE_DOWNLOAD_FAILED: &str = "message-download-faild";

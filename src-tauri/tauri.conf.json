@@ -19,7 +19,6 @@
     }
   },
   "bundle": {
-    "resources": { "../target/release/dwall.exe": "dwall.exe" },
     "active": true,
     "copyright": "Copyright (C) 2025 thep0y. All rights reserved.",
     "createUpdaterArtifacts": true,

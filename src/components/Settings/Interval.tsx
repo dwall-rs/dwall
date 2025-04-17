@@ -7,9 +7,10 @@ import NumericInput from "~/components/NumericInput";
 
 import { writeConfigFile } from "~/commands";
 
-import { useConfig, useTranslations } from "~/contexts";
+import { useConfig, useToast, useTranslations } from "~/contexts";
 
 const Interval = () => {
+  const toast = useToast();
   const { data: config, refetch: refetchConfig } = useConfig();
   const { translate } = useTranslations();
 
@@ -18,6 +19,11 @@ const Interval = () => {
   const onSave = async () => {
     await writeConfigFile({ ...config()!, interval: value()! });
     refetchConfig();
+    toast.success(
+      translate("message-check-interval-updated", {
+        newInterval: value()!.toString(),
+      }),
+    );
   };
 
   const onChange = async (v?: number) => {
