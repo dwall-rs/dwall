@@ -281,8 +281,8 @@ async fn process_theme_cycle(
     debug!(
         auto_detect_color_mode = config.auto_detect_color_mode(),
         image_format = ?config.image_format(),
-        latitude = geographic_position.latitude,
-        longitude = geographic_position.longitude,
+        latitude = geographic_position.latitude(),
+        longitude = geographic_position.longitude(),
         "Processing theme cycle with parameters"
     );
 
@@ -293,8 +293,8 @@ async fn process_theme_cycle(
 
     let current_time = OffsetDateTime::now_utc();
     let sun_position = SunPosition::new(
-        geographic_position.latitude,
-        geographic_position.longitude,
+        geographic_position.latitude(),
+        geographic_position.longitude(),
         current_time,
     );
 
