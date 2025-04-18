@@ -5,8 +5,8 @@ use crate::{config::CoordinateSource, error::DwallResult};
 
 #[derive(Debug, Clone)]
 pub struct Position {
-    pub latitude: f64,
-    pub longitude: f64,
+    latitude: f64,
+    longitude: f64,
 }
 
 impl Position {
@@ -16,9 +16,17 @@ impl Position {
             longitude,
         }
     }
+
+    pub fn latitude(&self) -> f64 {
+        self.latitude
+    }
+
+    pub fn longitude(&self) -> f64 {
+        self.longitude
+    }
 }
 
-pub async fn get_geo_position() -> DwallResult<Position> {
+async fn get_geo_position() -> DwallResult<Position> {
     trace!("Initializing Geolocator...");
     let geolocator = Geolocator::new().map_err(|e| {
         error!(error = ?e, "Failed to initialize Geolocator");
