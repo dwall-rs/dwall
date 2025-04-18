@@ -45,6 +45,10 @@ impl TranslationMap for EnglishUSTranslations {
             HELP_SET_LOCK_SCREEN_WALLPAPER_SIMULTANEOUSLY,
             TranslationValue::Text("If you do not want to set the lock screen wallpaper simultaneously, please disable this option."),
         );
+        translations.insert(
+            HELP_UPDATE_FAILED,
+            TranslationValue::Text("Unable to complete the hot update. Please click the download button behind this message to manually download the new version: "),
+        );
 
         // labels
         translations.insert(

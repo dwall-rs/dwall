@@ -1,21 +1,27 @@
+import { createEffect, createSignal, onMount } from "solid-js";
+import { AiOutlineDownload } from "solid-icons/ai";
+
 import type { Update } from "@tauri-apps/plugin-updater";
-import { createSignal, onMount } from "solid-js";
-import { LazyProgress } from "~/lazy";
+import { message } from "@tauri-apps/plugin-dialog";
+import { open } from "@tauri-apps/plugin-shell";
+
+import { LazyButton, LazyProgress } from "~/lazy";
 import Dialog from "../Dialog";
 
-import { useTranslations, useUpdate } from "~/contexts";
-import { message } from "@tauri-apps/plugin-dialog";
+import { useToast, useTranslations, useUpdate } from "~/contexts";
 
 interface UpdateDialogProps {
   update: Update;
 }
 
 const UpdateDialog = (props: UpdateDialogProps) => {
+  const toast = useToast();
   const { translate, translateErrorMessage } = useTranslations();
   const { setShowUpdateDialog } = useUpdate();
 
   const [total, setTotal] = createSignal<number | undefined>();
   const [downloaded, setDownloaded] = createSignal<number | undefined>();
+  const [error, setError] = createSignal<string | undefined>();
 
   onMount(async () => {
     try {
@@ -32,11 +38,50 @@ const UpdateDialog = (props: UpdateDialogProps) => {
         }
       });
     } catch (error) {
-      await message(translateErrorMessage("message-update-failed", error), {
+      const errorMessage = translateErrorMessage(
+        "message-update-failed",
+        error,
+      );
+      await message(errorMessage, {
         kind: "error",
       });
+      setError(errorMessage);
       setShowUpdateDialog(false);
     }
+  });
+
+  const updateErrorHelpMessage = (message: string) => {
+    return (
+      <div>
+        <h4>{message}</h4>
+        <div>
+          {translate("help-update-failed")}
+          <LazyButton
+            onClick={() =>
+              open(
+                (
+                  props.update.rawJson.platforms as Record<
+                    string,
+                    Record<string, string>
+                  >
+                )["windows-x86_64"].url,
+              )
+            }
+            icon={<AiOutlineDownload />}
+            appearance="primary"
+            size="small"
+          />
+        </div>
+      </div>
+    );
+  };
+
+  createEffect(() => {
+    error() &&
+      toast.error(updateErrorHelpMessage(error()!), {
+        position: "bottom-right",
+        duration: 5000,
+      });
   });
 
   return (
