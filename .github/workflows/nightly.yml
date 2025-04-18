@@ -138,15 +138,14 @@ jobs:
             target/
           key: ${{ runner.os }}-target-${{ hashFiles('**/Cargo.lock') }}
 
-      - uses: dwall-rs/tauri-action@v0.5.21
+      - uses: tauri-apps/tauri-action@v0.5.16
         env:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           releaseId: ${{ needs.create-release.outputs.release_id }}
-          args: ${{ matrix.args }}
-          tauriScript: bun build:debug
+          args: ${{ matrix.args }} --config src-tauri/tauri.debug.conf.json
 
       - name: Save target
         id: cache-target-save
