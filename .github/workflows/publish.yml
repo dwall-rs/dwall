@@ -142,7 +142,7 @@ jobs:
           releaseId: ${{ needs.create-release.outputs.release_id }}
           releaseBody: ${{ needs.create-release.outputs.changelog }}
           updaterJsonPreferNsis: true
-          args: ${{ matrix.args }}
+          args: ${{ matrix.args }} --features log-max-level-info
 
       - name: Save target
         id: cache-target-save

@@ -6,7 +6,7 @@
   "build": {
     "beforeDevCommand": "bun run start",
     "devUrl": "http://localhost:1420",
-    "beforeBuildCommand": "bun run build:vite",
+    "beforeBuildCommand": "bun run build:vite && bun run build:daemon",
     "frontendDist": "../dist"
   },
   "app": {
@@ -19,6 +19,7 @@
     }
   },
   "bundle": {
+    "resources": { "../target/release/dwall.exe": "dwall.exe" },
     "active": true,
     "copyright": "Copyright (C) 2025 thep0y. All rights reserved.",
     "createUpdaterArtifacts": true,
