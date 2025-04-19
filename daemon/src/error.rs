@@ -46,9 +46,17 @@ pub enum DwallError {
     #[error("Monitor operation failed: {0}")]
     Monitor(#[from] crate::monitor::error::MonitorError),
 
+    /// Position related error
+    #[error("Position error: {0}")]
+    Position(#[from] crate::position::PositionError),
+
+    /// Geolocation access error
+    #[error("Geolocation access error: {0}")]
+    GeolocationAccess(#[from] crate::position::GeolocationAccessError),
+
     /// Timeout error
     #[error("Operation timed out: {0}")]
-    TimeoutError(String),
+    Timeout(String),
 }
 
 /// Registry operation related errors

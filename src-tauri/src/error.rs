@@ -26,8 +26,6 @@ pub enum DwallSettingsError {
     #[error(transparent)]
     NulError(#[from] std::ffi::NulError),
     #[error(transparent)]
-    GeolocationAccess(#[from] crate::postion::GeolocationAccessError),
-    #[error(transparent)]
     Download(#[from] DownloadError),
     #[error("Failed to spawn daemon: {0}")]
     Daemon(String),
