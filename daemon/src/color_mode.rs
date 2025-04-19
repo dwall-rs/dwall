@@ -1,35 +1,13 @@
 use std::fmt;
 
 use serde::Deserialize;
-use windows::{
-    core::PCWSTR,
-    Win32::{
-        Foundation::{ERROR_SUCCESS, LPARAM, WPARAM},
-        System::Registry::{
-            RegCloseKey, RegOpenKeyExW, RegQueryValueExW, RegSetValueExW, HKEY, HKEY_CURRENT_USER,
-            KEY_QUERY_VALUE, KEY_SET_VALUE, REG_DWORD, REG_SAM_FLAGS,
-        },
-        UI::WindowsAndMessaging::{SendNotifyMessageW, HWND_BROADCAST, WM_SETTINGCHANGE},
-    },
+use windows::Win32::{
+    Foundation::{LPARAM, WPARAM},
+    System::Registry::{KEY_QUERY_VALUE, KEY_SET_VALUE, REG_DWORD},
+    UI::WindowsAndMessaging::{SendNotifyMessageW, HWND_BROADCAST, WM_SETTINGCHANGE},
 };
 
-use crate::{error::DwallResult, utils::string::WideStringExt};
-
-/// Custom error types for registry operations
-#[derive(thiserror::Error, Debug)]
-pub enum ColorModeRegistryError {
-    #[error("Registry operation failed: Open key {0}")]
-    Open(u32),
-
-    #[error("Registry operation failed: Query value {0}")]
-    Query(u32),
-
-    #[error("Registry operation failed: Set value {0}")]
-    Set(u32),
-
-    #[error("Registry operation failed: Close key {0}")]
-    Close(u32),
-}
+use crate::{error::DwallResult, registry::RegistryKey, utils::string::WideStringExt};
 
 #[derive(Debug, PartialEq, Deserialize)]
 #[serde(rename_all = "UPPERCASE")]
@@ -38,78 +16,23 @@ pub enum ColorMode {
     Dark,
 }
 
+impl ColorMode {
+    fn as_u32(&self) -> u32 {
+        match self {
+            ColorMode::Light => 1,
+            ColorMode::Dark => 0,
+        }
+    }
+    fn to_le_bytes(&self) -> [u8; 4] {
+        self.as_u32().to_le_bytes()
+    }
+}
+
 impl fmt::Display for ColorMode {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             ColorMode::Light => write!(f, "Light"),
             ColorMode::Dark => write!(f, "Dark"),
-        }
-    }
-}
-
-/// RAII wrapper for Windows registry key handles
-/// Automatically closes the key handle when dropped
-struct RegistryKey {
-    hkey: HKEY,
-    path: String,
-}
-
-impl RegistryKey {
-    /// Open a registry key with specified access rights
-    fn open(path: &str, access: REG_SAM_FLAGS) -> DwallResult<Self> {
-        debug!(path = path, "Attempting to open registry key");
-        let wide_path = Vec::from_str(path);
-        let mut hkey = HKEY::default();
-
-        unsafe {
-            let result = RegOpenKeyExW(
-                HKEY_CURRENT_USER,
-                PCWSTR(wide_path.as_ptr()),
-                None,
-                access,
-                &mut hkey,
-            );
-
-            match result {
-                ERROR_SUCCESS => {
-                    info!(path = path, "Successfully opened registry key");
-                    Ok(Self {
-                        hkey,
-                        path: path.to_string(),
-                    })
-                }
-                err => {
-                    error!(
-                        path = path,
-                        error_code = err.0,
-                        "Failed to open registry key"
-                    );
-                    Err(ColorModeRegistryError::Open(err.0).into())
-                }
-            }
-        }
-    }
-
-    /// Get the raw HKEY handle
-    fn as_raw(&self) -> HKEY {
-        self.hkey
-    }
-}
-
-impl Drop for RegistryKey {
-    fn drop(&mut self) {
-        trace!(path = self.path, "Automatically closing registry key");
-        unsafe {
-            let err = RegCloseKey(self.hkey);
-            if err != ERROR_SUCCESS {
-                warn!(
-                    path = self.path,
-                    error_code = err.0,
-                    "Failed to close registry key on drop"
-                );
-            } else {
-                debug!(path = self.path, "Successfully closed registry key");
-            }
         }
     }
 }
@@ -132,41 +55,26 @@ impl ColorModeManager {
         info!("Retrieving current system color mode");
         let registry_key = RegistryKey::open(Self::PERSONALIZE_KEY_PATH, KEY_QUERY_VALUE)?;
 
-        let value_name = Vec::from_str(Self::APPS_THEME_VALUE);
-        let mut value: u32 = 0;
-        let mut size = std::mem::size_of::<u32>() as u32;
+        let mut data: u32 = 0;
+        let mut data_size = std::mem::size_of_val(&data) as u32;
+        let mut data_type = REG_DWORD;
 
-        unsafe {
-            let result = RegQueryValueExW(
-                registry_key.as_raw(),
-                PCWSTR(value_name.as_ptr()),
-                None,
-                None,
-                Some(&mut value as *mut u32 as *mut u8),
-                Some(&mut size),
-            );
+        registry_key.query(
+            Self::APPS_THEME_VALUE,
+            Some(std::ptr::addr_of_mut!(data_type)),
+            Some(std::ptr::addr_of_mut!(data) as *mut u8),
+            Some(&mut data_size),
+        )?;
+        debug!(value = data, "Retrieved app theme value from registry");
 
-            match result {
-                ERROR_SUCCESS => {
-                    let mode = if value == 1 {
-                        debug!("Current color mode is Light");
-                        ColorMode::Light
-                    } else {
-                        debug!("Current color mode is Dark");
-                        ColorMode::Dark
-                    };
-                    Ok(mode)
-                }
-                err => {
-                    error!(
-                        value_name = Self::APPS_THEME_VALUE,
-                        error_code = err.0,
-                        "Failed to query color mode value"
-                    );
-                    Err(ColorModeRegistryError::Query(err.0).into())
-                }
-            }
-        }
+        let mode = if data == 1 {
+            debug!("Current color mode is Light");
+            ColorMode::Light
+        } else {
+            debug!("Current color mode is Dark");
+            ColorMode::Dark
+        };
+        Ok(mode)
     }
 
     /// Set the system color mode in the registry
@@ -181,51 +89,25 @@ impl ColorModeManager {
         info!(mode = %mode, "Setting system color mode");
         let registry_key = RegistryKey::open(Self::PERSONALIZE_KEY_PATH, KEY_SET_VALUE)?;
 
-        let value = match mode {
-            ColorMode::Light => [1u8, 0, 0, 0],
-            ColorMode::Dark => [0u8, 0, 0, 0],
-        };
+        let value = mode.to_le_bytes();
 
-        let apps_value = Vec::from_str(Self::APPS_THEME_VALUE);
-        let system_value = Vec::from_str(Self::SYSTEM_THEME_VALUE);
+        registry_key
+            .set(Self::APPS_THEME_VALUE, REG_DWORD, &value)
+            .map_err(|e| {
+                error!(error =?e, "Failed to set apps theme value");
+                e
+            })?;
+        info!(mode = %mode, "Successfully set apps theme value");
 
-        unsafe {
-            let set_apps_result = RegSetValueExW(
-                registry_key.as_raw(),
-                PCWSTR(apps_value.as_ptr()),
-                None,
-                REG_DWORD,
-                Some(&value),
-            );
+        registry_key
+            .set(Self::SYSTEM_THEME_VALUE, REG_DWORD, &value)
+            .map_err(|e| {
+                error!(error =?e, "Failed to set system theme value");
+                e
+            })?;
+        info!(mode = %mode, "Successfully set system theme value");
 
-            let set_system_result = RegSetValueExW(
-                registry_key.as_raw(),
-                PCWSTR(system_value.as_ptr()),
-                None,
-                REG_DWORD,
-                Some(&value),
-            );
-
-            match (set_apps_result, set_system_result) {
-                (ERROR_SUCCESS, ERROR_SUCCESS) => {
-                    info!(mode = %mode, "Successfully set color mode");
-                }
-                _ => {
-                    error!(
-                        mode = %mode,
-                        apps_result = set_apps_result.0,
-                        system_result = set_system_result.0,
-                        "Failed to set color mode"
-                    );
-                    return Err(ColorModeRegistryError::Set(
-                        set_apps_result.0 | set_system_result.0,
-                    )
-                    .into());
-                }
-            };
-
-            notify_theme_change()?;
-        }
+        notify_theme_change()?;
 
         Ok(())
     }
