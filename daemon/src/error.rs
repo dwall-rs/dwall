@@ -1,6 +1,4 @@
-use windows::Win32::Foundation::WIN32_ERROR;
-
-use crate::color_mode::ColorModeRegistryError;
+use crate::registry::RegistryError;
 
 /// Application result type, used for unified error handling
 pub type DwallResult<T> = std::result::Result<T, DwallError>;
@@ -30,9 +28,9 @@ pub enum DwallError {
     #[error("Configuration error: {0}")]
     Config(#[from] crate::config::ConfigError),
 
-    /// Color mode related error
-    #[error("Color mode setting failed: {0}")]
-    ColorMode(#[from] ColorModeRegistryError),
+    /// Registry related error
+    #[error("Registry error: {0}")]
+    Registry(#[from] RegistryError),
 
     /// Null character error
     #[error("String contains null character: {0}")]
@@ -57,30 +55,4 @@ pub enum DwallError {
     /// Timeout error
     #[error("Operation timed out: {0}")]
     Timeout(String),
-}
-
-/// Registry operation related errors
-///
-/// Contains all possible errors that may occur during interaction with the Windows registry
-#[derive(Debug, thiserror::Error)]
-pub enum RegistryError {
-    /// Failed to open registry key
-    #[error("Failed to open registry key: {0:?}")]
-    Open(WIN32_ERROR),
-
-    /// Failed to query registry value
-    #[error("Failed to query registry value: {0:?}")]
-    Query(WIN32_ERROR),
-
-    /// Failed to set registry value
-    #[error("Failed to set registry value: {0:?}")]
-    Set(WIN32_ERROR),
-
-    /// Failed to close registry handle
-    #[error("Failed to close registry handle: {0:?}")]
-    Close(WIN32_ERROR),
-
-    /// Failed to delete registry key
-    #[error("Failed to delete registry key: {0:?}")]
-    Delete(WIN32_ERROR),
 }

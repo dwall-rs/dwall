@@ -5,9 +5,10 @@ mod lazy;
 mod log;
 pub mod monitor;
 pub mod position;
+pub mod registry;
 mod solar;
 mod theme;
-mod utils;
+pub mod utils;
 
 #[macro_use]
 extern crate tracing;

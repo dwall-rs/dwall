@@ -1,4 +1,4 @@
-use dwall::error::RegistryError;
+use dwall::registry::RegistryError;
 use serde::{Serialize, Serializer};
 
 use crate::download::DownloadError;
