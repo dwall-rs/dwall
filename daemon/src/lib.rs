@@ -4,7 +4,7 @@ pub mod error;
 mod lazy;
 mod log;
 pub mod monitor;
-mod position;
+pub mod position;
 mod solar;
 mod theme;
 mod utils;
