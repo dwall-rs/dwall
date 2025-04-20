@@ -193,12 +193,6 @@ impl ThumbnailCache {
             );
             let file_size = HttpService::download_image(&cache_key.url, &image_path).await?;
 
-            info!(
-                image_path = %image_path.display(),
-                size = file_size,
-                "Image successfully cached"
-            );
-
             Ok((image_path, file_size))
         }
         .await;
@@ -238,7 +232,7 @@ pub async fn get_or_save_cached_thumbnails(
 ) -> DwallSettingsResult<PathBuf> {
     ThumbnailCache::get_or_save_thumbnail(theme_id, serial_number, url)
         .await
-        .map_err(|e| e.into())
+        .map_err(Into::into)
 }
 
 /// Clear the thumbnail cache (Tauri command)
