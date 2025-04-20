@@ -89,7 +89,17 @@ impl AutoStartManager {
         let mut data_size = 0;
 
         // First query to get required buffer size
-        registry_key.query(Self::APP_NAME, None, None, Some(&mut data_size))?;
+        if let Err(RegistryError::Query(windows_error)) =
+            registry_key.query(Self::APP_NAME, None, None, Some(&mut data_size))
+        {
+            if windows_error == ERROR_FILE_NOT_FOUND {
+                debug!(app_name = Self::APP_NAME, "No auto-start entry found");
+                return Ok(false);
+            }
+
+            return Err(RegistryError::Query(windows_error).into());
+        }
+
         debug!(
             app_name = Self::APP_NAME,
             data_size = data_size,
