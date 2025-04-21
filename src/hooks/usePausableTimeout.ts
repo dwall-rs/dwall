@@ -3,7 +3,7 @@ import { createSignal } from "solid-js";
 type TimeoutID = ReturnType<typeof setTimeout>;
 
 /**
- * A custom hook that provides a pausable timeout functionality
+ * A custom hook that provides pausable timeout functionality
  * @param callback The function to be executed after the timeout
  * @param delay The delay in milliseconds
  * @returns An array containing the start, pause, resume, and clear functions
@@ -57,6 +57,7 @@ export function usePausableTimeout(callback: () => void, delay: number) {
       callback();
       return clear();
     }
+
     const id = setTimeout(() => {
       callback();
       clear();

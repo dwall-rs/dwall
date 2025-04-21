@@ -266,7 +266,7 @@ const Flex: Component<FlexProps> = (props) => {
       customStyles["--flex-shrink"] = local.shrink;
     }
 
-    // 预设尺寸映射表
+    // Size preset mapping table
     const paddingSizes = {
       "0": "0",
       xs: "4px",

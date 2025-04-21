@@ -23,7 +23,7 @@ export const ConfigProvider = (props: ParentProps) => {
 export const useConfig = () => {
   const context = useContext(ConfigContext);
   if (!context) {
-    throw new Error("useConfig: 必须在ConfigProvider内部使用");
+    throw new Error("useConfig: must be used within a ConfigProvider");
   }
   return context;
 };

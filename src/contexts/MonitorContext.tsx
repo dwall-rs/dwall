@@ -43,7 +43,7 @@ export const MonitorProvider = (props: ParentProps) => {
 export const useMonitor = () => {
   const context = useContext(MonitorContext);
   if (!context) {
-    throw new Error("useMonitor: 必须在MonitorProvider内部使用");
+    throw new Error("useMonitor: must be used within a MonitorProvider");
   }
   return context;
 };

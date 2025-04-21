@@ -100,7 +100,7 @@ export const ThemeProvider = (props: ParentProps) => {
 export const useTheme = () => {
   const context = useContext(ThemeContext);
   if (!context) {
-    throw new Error("useTheme: 必须在ThemeProvider内部使用");
+    throw new Error("useTheme: must be used within a ThemeProvider");
   }
   return context;
 };

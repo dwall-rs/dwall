@@ -21,7 +21,7 @@ export const SettingsProvider = (props: ParentProps) => {
 export const useSettings = () => {
   const context = useContext(SettingsContext);
   if (!context) {
-    throw new Error("useSettings: 必须在SettingsProvider内部使用");
+    throw new Error("useSettings: must be used within a SettingsProvider");
   }
   return context;
 };
