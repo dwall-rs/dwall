@@ -1,7 +1,7 @@
 use std::mem;
 
 use windows::{
-    core::{Error as WindowsError, Free, GUID, PCWSTR},
+    core::{Free, GUID, PCWSTR},
     Win32::Devices::DeviceAndDriverInstallation::{
         SetupDiEnumDeviceInfo, SetupDiEnumDeviceInterfaces, SetupDiGetClassDevsW,
         SetupDiGetDeviceInterfaceDetailW, SetupDiGetDeviceRegistryPropertyW, DIGCF_DEVICEINTERFACE,
@@ -10,7 +10,7 @@ use windows::{
     },
 };
 
-use crate::{monitor::error::MonitorError, DwallResult};
+use crate::{monitor::error::MonitorError, utils::string::WideStringRead, DwallResult};
 
 /// RAII wrapper for HDEVINFO to ensure proper resource cleanup
 struct DeviceInfoSet(HDEVINFO);
@@ -201,28 +201,11 @@ fn get_device_friendly_name(
     device_info_set: &DeviceInfoSet,
     device_info_data: &SP_DEVINFO_DATA,
 ) -> DwallResult<String> {
+    let mut required_size = 0;
+    let mut buffer = vec![0u8; 512];
+
     unsafe {
-        // First call to determine required buffer size
-        let mut required_size = 0;
-        let _ = SetupDiGetDeviceRegistryPropertyW(
-            device_info_set.as_raw(),
-            device_info_data,
-            SPDRP_FRIENDLYNAME,
-            None,
-            None,
-            Some(&mut required_size),
-        );
-
-        // Allocate buffer with appropriate size (or use default if size is 0)
-        let buffer_size = if required_size > 0 {
-            required_size
-        } else {
-            256
-        };
-        let mut buffer = vec![0u8; buffer_size as usize];
-
-        // Second call to get actual data
-        if SetupDiGetDeviceRegistryPropertyW(
+        SetupDiGetDeviceRegistryPropertyW(
             device_info_set.as_raw(),
             device_info_data,
             SPDRP_FRIENDLYNAME,
@@ -230,30 +213,22 @@ fn get_device_friendly_name(
             Some(buffer.as_mut()),
             Some(&mut required_size),
         )
-        .is_ok()
-        {
-            if required_size <= 2 {
-                // Empty string (just null terminator)
-                return Ok(String::new());
-            }
-
-            // Convert buffer to u16 array and then to string
-            let u16_data: Vec<u16> = buffer
-                .chunks_exact(2)
-                .take((required_size / 2) as usize)
-                .map(|chunk| u16::from_le_bytes([chunk[0], chunk[1]]))
-                .collect();
-
-            // Convert to string, excluding null terminator
-            let friendly_name =
-                String::from_utf16_lossy(&u16_data[..u16_data.len().saturating_sub(1)]);
-
-            debug!(friendly_name, "Got device friendly name");
-            return Ok(friendly_name);
-        }
-
-        let err = WindowsError::from_win32();
-        error!(error = ?err, "Failed to get device friendly name property");
-        Err(MonitorError::GetFriendlyName(err).into())
+        .map_err(|e| {
+            error!(error = ?e, "Failed to get device registry property");
+            MonitorError::GetDeviceRegistryProperty(e)
+        })?;
     }
+
+    // Convert buffer to u16 array and then to string
+    let u16_data: Vec<u16> = buffer
+        .chunks_exact(2)
+        .take((required_size / 2) as usize)
+        .map(|chunk| u16::from_le_bytes([chunk[0], chunk[1]]))
+        .collect();
+
+    // Convert to string, excluding null terminator
+    let friendly_name = u16_data.to_string();
+
+    debug!(friendly_name, "Got device friendly name");
+    return Ok(friendly_name);
 }
