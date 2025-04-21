@@ -32,4 +32,8 @@ pub enum MonitorError {
     /// Failed to query display configuration
     #[error("Failed to query display configuration: {0:?}")]
     QueryDisplayConfig(WIN32_ERROR),
+
+    /// Failed to get device registry property
+    #[error("Failed to get device registry property: {0:?}")]
+    GetDeviceRegistryProperty(#[source] WindowsError),
 }
