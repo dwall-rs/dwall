@@ -64,8 +64,8 @@ mod tests {
         let empty_array: [u16; 5] = [0, 0, 0, 0, 0];
         assert_eq!(empty_array.to_string(), "");
 
-        // Test special characters
-        let special_array: [u16; 5] = [0x4F60, 0x597D, 0x4E16, 0x754C, 0]; // "你好世界"
+        // Test Chinese characters
+        let special_array: [u16; 5] = [0x4F60, 0x597D, 0x4E16, 0x754C, 0]; // "Hello World" in Chinese
         assert_eq!(special_array.to_string(), "你好世界");
     }
 
@@ -117,8 +117,8 @@ mod tests {
         let empty_vec: Vec<u16> = vec![0];
         assert_eq!(empty_vec.to_string(), "");
 
-        // Test special characters
-        let special_vec: Vec<u16> = vec![0x4F60, 0x597D, 0x4E16, 0x754C, 0]; // "你好世界"
+        // Test Chinese characters
+        let special_vec: Vec<u16> = vec![0x4F60, 0x597D, 0x4E16, 0x754C, 0]; // "Hello World" in Chinese
         assert_eq!(special_vec.to_string(), "你好世界");
     }
 

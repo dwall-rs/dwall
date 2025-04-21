@@ -145,7 +145,7 @@ pub struct WallpaperManager {
     desktop_wallpaper: IDesktopWallpaper,
     /// Monitor information provider
     monitor_provider: MonitorInfoProvider,
-    /// 标记是否需要在析构时调用 CoUninitialize
+    /// Flag indicating whether CoUninitialize should be called on drop
     com_initialized: bool,
 }
 

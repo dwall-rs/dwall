@@ -22,7 +22,7 @@ const ThemeMenu = (props: ThemeMenuProps) => {
     props.themes.map((item, idx) => (
       <div
         onClick={() => {
-          if (disabled()) return; // 下载主题时不允许切换主题
+          if (disabled()) return; // Prevent theme switching while downloading
 
           theme.handleThemeSelection(idx);
           settings.setShowSettings(false);

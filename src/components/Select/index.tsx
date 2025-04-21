@@ -19,28 +19,28 @@ const Select: Component<SelectProps> = (props) => {
     props.value,
   );
 
-  // 创建唯一ID用于ARIA属性
+  // Create unique ID for ARIA attributes
   const selectId = createUniqueId();
   const listboxId = `${selectId}-listbox`;
 
-  // 引用下拉菜单和选择器容器
+  // References to dropdown menu and selector container
   let dropdownRef: HTMLDivElement | undefined;
   let selectRef: HTMLDivElement | undefined;
   const optionsRef: HTMLOptionElement[] = [];
 
-  // 当props.value变化时更新内部状态
+  // Update internal state when props.value changes
   createEffect(() => {
     setSelectedValue(props.value);
   });
 
-  // 处理点击外部关闭下拉菜单
+  // Handle clicking outside to close dropdown menu
   const handleClickOutside = (event: MouseEvent) => {
     if (selectRef && !selectRef.contains(event.target as Node) && isOpen()) {
       setIsOpen(false);
     }
   };
 
-  // 添加和清理点击事件监听器
+  // Add and clean up click event listener
   createEffect(() => {
     if (isOpen()) {
       document.addEventListener("mousedown", handleClickOutside);
@@ -53,18 +53,18 @@ const Select: Component<SelectProps> = (props) => {
     });
   });
 
-  // 切换下拉菜单的开关状态
+  // Toggle dropdown menu open/close state
   const toggleDropdown = () => {
     if (!props.disabled) {
       const newIsOpen = !isOpen();
       setIsOpen(newIsOpen);
 
       if (newIsOpen) {
-        // 当打开下拉菜单时，高亮当前选中项
+        // When opening dropdown menu, highlight current selected item
         const selectedIndex = props.options.findIndex(
           (opt) => opt.value === selectedValue(),
         );
-        // 下一帧滚动到选中项
+        // Scroll to selected item on next frame
         setTimeout(() => {
           if (optionsRef[selectedIndex]) {
             optionsRef[selectedIndex].scrollIntoView({ block: "nearest" });
@@ -74,7 +74,7 @@ const Select: Component<SelectProps> = (props) => {
     }
   };
 
-  // 处理选项选择
+  // Handle option selection
   const handleOptionSelect = (option: SelectOption) => {
     if (option.disabled) return;
 
@@ -83,52 +83,7 @@ const Select: Component<SelectProps> = (props) => {
     props.onChange?.(option.value);
   };
 
-  // // 处理键盘导航
-  // const handleKeyDown = (event: KeyboardEvent) => {
-  //   if (props.disabled) return;
-
-  //   switch (event.key) {
-  //     case "ArrowDown":
-  //       event.preventDefault();
-  //       break;
-
-  //     case "ArrowUp":
-  //       event.preventDefault();
-  //       break;
-
-  //     case "Enter":
-  //     case " ":
-  //       event.preventDefault();
-  //       break;
-
-  //     case "Escape":
-  //       event.preventDefault();
-  //       if (isOpen()) {
-  //         setIsOpen(false);
-  //       }
-  //       break;
-
-  //     case "Tab":
-  //       if (isOpen()) {
-  //         setIsOpen(false);
-  //       }
-  //       break;
-
-  //     case "Home":
-  //       if (isOpen()) {
-  //         event.preventDefault();
-  //       }
-  //       break;
-
-  //     case "End":
-  //       if (isOpen()) {
-  //         event.preventDefault();
-  //       }
-  //       break;
-  //   }
-  // };
-
-  // 获取当前选中选项的标签
+  // Get label of current selected option
   const getSelectedLabel = () => {
     const value = selectedValue();
     if (value === undefined) return undefined;
@@ -137,7 +92,7 @@ const Select: Component<SelectProps> = (props) => {
     return option?.label;
   };
 
-  // 计算选择器容器的类名
+  // Calculate selector container class name
   const selectWrapperClass = () => {
     const classes = [styles.selectWrapper];
     if (focused()) classes.push(styles.focused);
@@ -145,21 +100,21 @@ const Select: Component<SelectProps> = (props) => {
     return classes.join(" ");
   };
 
-  // 计算下拉菜单的类名
+  // Calculate dropdown menu class name
   const dropdownClass = () => {
     const classes = [styles.dropdown];
     if (isOpen()) classes.push(styles.open);
     return classes.join(" ");
   };
 
-  // 计算箭头图标的类名
+  // Calculate arrow icon class name
   const arrowClass = () => {
     const classes = [styles.arrow];
     if (isOpen()) classes.push(styles.open);
     return classes.join(" ");
   };
 
-  // 计算选项的类名
+  // Calculate option class name
   const optionClass = (option: SelectOption) => {
     const classes = [styles.option];
     if (option.disabled) classes.push(styles.disabled);
@@ -179,7 +134,6 @@ const Select: Component<SelectProps> = (props) => {
         onClick={toggleDropdown}
         onFocus={() => setFocused(true)}
         onBlur={() => setFocused(false)}
-        // onKeyDown={handleKeyDown}
         style={props.style}
         tabIndex={props.disabled ? undefined : 0}
         // biome-ignore lint/a11y/useSemanticElements: <explanation>
@@ -195,7 +149,7 @@ const Select: Component<SelectProps> = (props) => {
           when={getSelectedLabel()}
           fallback={
             <div class={styles.placeholder}>
-              {props.placeholder || "请选择"}
+              {props.placeholder || "Select..."}
             </div>
           }
         >

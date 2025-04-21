@@ -38,7 +38,7 @@ const SettingsFooter = () => {
     const { currentVersion, version, body } = update;
 
     const result = await ask(
-      `当前版本 ${currentVersion}，有新版本 ${version}。\n\n更新日志：\n\n${body}\n\n是否更新？`,
+      `Current version ${currentVersion}, new version ${version} available.\n\nChangelog:\n\n${body}\n\nUpdate now?`,
       "Dwall",
     );
     if (!result) return;

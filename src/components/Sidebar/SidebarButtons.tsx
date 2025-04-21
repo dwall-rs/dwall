@@ -34,7 +34,7 @@ const SidebarButtons = () => {
             shape="circular"
             icon={<TbArrowBigUpLinesFilled />}
             onClick={onUpdate}
-            disabled={!!downloadThemeID()} // 下载主题时禁用更新按钮
+            disabled={!!downloadThemeID()} // Disable update button when downloading theme
           />
         </LazyTooltip>
       </Show>
@@ -53,7 +53,7 @@ const SidebarButtons = () => {
             setShowSettings(true);
             setMenuItemIndex();
           }}
-          disabled={!!downloadThemeID()} // 下载主题时禁用设置按钮
+          disabled={!!downloadThemeID()} // Disable settings button when downloading theme
         />
       </LazyTooltip>
     </LazySpace>
