@@ -1,5 +1,6 @@
 import { defineConfig } from "vite";
 import solid from "vite-plugin-solid";
+import { vanillaExtractPlugin } from "@vanilla-extract/vite-plugin";
 import path from "node:path";
 
 const host = process.env.TAURI_DEV_HOST;
@@ -8,7 +9,7 @@ const pathSrc = path.resolve(__dirname, "src");
 
 // https://vitejs.dev/config/
 export default defineConfig(async ({ mode }) => ({
-  plugins: [solid()],
+  plugins: [solid(), vanillaExtractPlugin()],
 
   resolve: {
     alias: {
