@@ -1,5 +1,8 @@
 import { createSignal, Show } from "solid-js";
+
 import { LazyButton } from "~/lazy";
+import DangerButton from "./DangerButton";
+
 import { useMonitor, useTask, useTheme, useTranslations } from "~/contexts";
 
 export interface ThemeActionsProps {
@@ -50,9 +53,9 @@ export const ThemeActions = () => {
       <Show
         when={theme.appliedThemeID() !== theme.currentTheme()!.id}
         fallback={
-          <LazyButton onClick={onClose} appearance="danger">
+          <DangerButton onClick={onClose}>
             {translate("button-stop")}
-          </LazyButton>
+          </DangerButton>
         }
       >
         <LazyButton
