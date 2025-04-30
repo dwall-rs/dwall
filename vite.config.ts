@@ -9,7 +9,12 @@ const pathSrc = path.resolve(__dirname, "src");
 
 // https://vitejs.dev/config/
 export default defineConfig(async ({ mode }) => ({
-  plugins: [solid(), vanillaExtractPlugin()],
+  plugins: [
+    solid(),
+    vanillaExtractPlugin({
+      identifiers: mode === "production" ? "short" : "debug",
+    }),
+  ],
 
   resolve: {
     alias: {
