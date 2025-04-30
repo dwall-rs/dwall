@@ -6,7 +6,7 @@ use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
 use dwall::config::write_config_file as dwall_write_config;
-use dwall::{config::Config, setup_logging, ThemeValidator};
+use dwall::{config::Config, setup_logging};
 use dwall::{ColorMode, DWALL_CONFIG_DIR};
 use tauri::{AppHandle, Manager, RunEvent, WebviewWindow};
 use tokio::sync::OnceCell;
@@ -14,13 +14,13 @@ use tokio::sync::OnceCell;
 use crate::auto_start::{check_auto_start, disable_auto_start, enable_auto_start};
 use crate::cache::{clear_thumbnail_cache, get_or_save_cached_thumbnails};
 use crate::download::{cancel_theme_download, download_theme_and_extract};
-use crate::error::{DwallSettingsError, DwallSettingsResult};
+use crate::error::DwallSettingsResult;
 use crate::fs::move_themes_directory;
 use crate::i18n::get_translations;
 use crate::postion::request_location_permission;
-use crate::process_manager::{find_daemon_process, kill_daemon};
+use crate::process_manager::kill_daemon;
 use crate::setup::setup_app;
-use crate::theme::{read_daemon_error_log, spawn_apply_daemon};
+use crate::theme::{apply_theme, check_theme_exists, get_applied_theme_id};
 use crate::window::create_main_window;
 
 mod auto_start;
@@ -63,65 +63,6 @@ fn show_window(app: AppHandle, label: &str) -> DwallSettingsResult<()> {
 }
 
 #[tauri::command]
-async fn check_theme_exists(themes_direcotry: &Path, theme_id: &str) -> DwallSettingsResult<()> {
-    trace!(id = theme_id, "Checking theme existence for theme");
-    match ThemeValidator::validate_theme(themes_direcotry, theme_id).await {
-        Ok(_) => {
-            info!(id = theme_id, "Theme exists and is valid");
-            Ok(())
-        }
-        Err(e) => {
-            error!(theme_id = %theme_id, error = ?e, "Theme validation failed");
-            Err(e.into())
-        }
-    }
-}
-
-#[tauri::command]
-async fn get_applied_theme_id(monitor_id: &str) -> DwallSettingsResult<Option<String>> {
-    debug!(monitor_id, "Attempting to get currently applied theme ID");
-
-    let daemon_process = find_daemon_process()?;
-    if daemon_process.is_none() {
-        debug!("No daemon process found");
-        return Ok(None);
-    }
-
-    match dwall::config::read_config_file().await {
-        Ok(config) => {
-            let monitor_themes = config.monitor_specific_wallpapers();
-            let theme_id = if monitor_id == "all" {
-                let theme_id = match monitor_themes {
-                    dwall::config::MonitorSpecificWallpapers::All(theme_id) => Some(theme_id),
-                    dwall::config::MonitorSpecificWallpapers::Specific(themes_map) => {
-                        let mut iter = themes_map.values();
-                        let first_value = iter.next();
-                        if iter.all(|value| Some(value) == first_value) {
-                            first_value
-                        } else {
-                            None
-                        }
-                    }
-                };
-
-                info!(theme_id = ?theme_id, "Retrieved all theme ID");
-                theme_id
-            } else {
-                let theme_id = monitor_themes.get(monitor_id);
-                info!(monitor_id, theme_id =?theme_id, "Retrieved current theme ID");
-                theme_id
-            };
-
-            Ok(theme_id.map(|s| s.to_string()))
-        }
-        Err(e) => {
-            error!(error = ?e, "Failed to read config file while getting theme ID");
-            Err(e.into())
-        }
-    }
-}
-
-#[tauri::command]
 async fn read_config_file() -> DwallSettingsResult<Config> {
     trace!("Reading configuration file");
     match dwall::config::read_config_file().await {
@@ -149,31 +90,6 @@ async fn write_config_file(config: Config) -> DwallSettingsResult<()> {
             Err(e.into())
         }
     }
-}
-
-#[tauri::command]
-async fn apply_theme(config: Config) -> DwallSettingsResult<()> {
-    trace!("Starting theme application process");
-
-    match kill_daemon() {
-        Ok(()) => debug!("Successfully killed existing daemon process"),
-        Err(e) => warn!(error = ?e, "Failed to kill existing daemon process"),
-    }
-
-    dwall_write_config(&config).await?;
-
-    if let Err(e) = spawn_apply_daemon() {
-        error!(error =?e, "Failed to spawn or monitor theme daemon");
-
-        if let Some(e) = read_daemon_error_log() {
-            return Err(DwallSettingsError::Daemon(e));
-        }
-
-        return Err(e);
-    }
-    info!("Successfully spawned and monitored theme daemon");
-
-    Ok(())
 }
 
 #[tauri::command]
@@ -210,12 +126,14 @@ async fn get_monitors() -> DwallSettingsResult<HashMap<String, dwall::monitor::M
     Ok(monitors)
 }
 
-fn main() -> DwallSettingsResult<()> {
+#[tokio::main]
+async fn main() -> DwallSettingsResult<()> {
     if cfg!(not(debug_assertions)) && cfg!(not(feature = "log-max-level-info")) {
         std::env::set_var("DWALL_LOG", "debug");
     }
 
     setup_logging(&["dwall_settings", "dwall"]);
+
     let builder = tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_dialog::init())
