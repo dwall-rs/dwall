@@ -1,11 +1,16 @@
 import { createEffect, createSignal, onMount, Show } from "solid-js";
+
 import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
 import { message } from "@tauri-apps/plugin-dialog";
-import { LazyButton, LazyProgress } from "~/lazy";
-import { useToast } from "~/components//Toast";
+
+import { LazyProgress } from "~/lazy";
+import DangerButton from "~/components/DangerButton";
+
 import { downloadThemeAndExtract, cancelThemeDownload } from "~/commands";
-import { useConfig, useTheme, useTranslations } from "~/contexts";
-import "./index.scss";
+
+import { useConfig, useTheme, useToast, useTranslations } from "~/contexts";
+
+import styles from "./Download.css";
 
 interface DownloadProgress {
   theme_id: string;
@@ -89,12 +94,12 @@ const Download = () => {
   );
 
   return (
-    <div class="download-container">
-      <LazyProgress class="download-progress" value={percent()} />
+    <div class={styles.downloadContainer}>
+      <LazyProgress class={styles.downloadProgress} value={percent()} />
       <Show when={!isCancelling()}>
-        <LazyButton onClick={handleCancelDownload} appearance="danger">
+        <DangerButton onClick={handleCancelDownload}>
           {translate("button-cancel") || "Cancel"}
-        </LazyButton>
+        </DangerButton>
       </Show>
     </div>
   );
