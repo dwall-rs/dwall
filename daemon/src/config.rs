@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 use serde_valid::Validate;
 use thiserror::Error;
 
-use crate::{error::DwallResult, lazy::DWALL_CONFIG_DIR, theme::ThemeError};
+use crate::{error::DwallResult, lazy::DWALL_CONFIG_DIR};
 
 #[derive(Error, Debug)]
 pub enum ConfigError {
@@ -77,13 +77,39 @@ impl CoordinateSource {
     }
 }
 
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
+#[serde(untagged)]
+pub enum MonitorSpecificWallpapers {
+    All(String),
+    Specific(HashMap<String, String>),
+}
+
+impl MonitorSpecificWallpapers {
+    pub fn is_all(&self) -> bool {
+        matches!(self, MonitorSpecificWallpapers::All(_))
+    }
+
+    pub fn is_empty(&self) -> bool {
+        match self {
+            MonitorSpecificWallpapers::All(_) => false,
+            MonitorSpecificWallpapers::Specific(wallpapers) => wallpapers.is_empty(),
+        }
+    }
+
+    pub fn get(&self, monitor_id: &str) -> Option<&String> {
+        match self {
+            MonitorSpecificWallpapers::All(theme_id) => Some(theme_id),
+            MonitorSpecificWallpapers::Specific(wallpapers) => wallpapers.get(monitor_id),
+        }
+    }
+}
+
 #[derive(Debug, Serialize, Deserialize, Validate, Clone, PartialEq)]
 pub struct Config {
     #[serde(skip_serializing_if = "Option::is_none")]
     github_mirror_template: Option<String>,
 
-    /// When `monitor_specific_wallpapers` is not set, `selected_theme_id` will be applied to all monitors.
-    /// Otherwise, `selected_theme_id` will not take effect, and wallpapers will be set according to `monitor_specific_wallpapers`.
+    #[deprecated(since = "0.1.21", note = "Use `monitor_specific_wallpapers` instead")]
     #[serde(skip_serializing_if = "Option::is_none")]
     selected_theme_id: Option<String>,
 
@@ -104,7 +130,7 @@ pub struct Config {
 
     /// Wallpapers specific to each monitor, using monitor ID as key
     #[serde(default = "default_monitor_specific_wallpapers")]
-    monitor_specific_wallpapers: HashMap<String, String>,
+    monitor_specific_wallpapers: MonitorSpecificWallpapers,
 
     /// Time interval for detecting solar altitude angle and azimuth angle
     /// Measured in seconds, range: [1, 600]
@@ -138,8 +164,8 @@ fn default_themes_directory() -> PathBuf {
     DWALL_CONFIG_DIR.join("themes")
 }
 
-fn default_monitor_specific_wallpapers() -> HashMap<String, String> {
-    HashMap::new()
+fn default_monitor_specific_wallpapers() -> MonitorSpecificWallpapers {
+    MonitorSpecificWallpapers::Specific(HashMap::new())
 }
 
 impl Config {
@@ -158,13 +184,6 @@ impl Config {
         }
 
         Ok(())
-    }
-
-    /// Returns the default theme ID or an error if not set
-    pub fn default_theme_id(&self) -> DwallResult<&str> {
-        self.selected_theme_id
-            .as_deref()
-            .ok_or(ThemeError::MissingDefaultTheme.into())
     }
 
     /// Returns the themes directory path
@@ -205,7 +224,7 @@ impl Config {
     }
 
     /// Returns the monitor-specific wallpapers map
-    pub fn monitor_specific_wallpapers(&self) -> &HashMap<String, String> {
+    pub fn monitor_specific_wallpapers(&self) -> &MonitorSpecificWallpapers {
         &self.monitor_specific_wallpapers
     }
 
@@ -243,7 +262,7 @@ impl Default for Config {
             auto_detect_color_mode: default_auto_detect_color_mode(),
             themes_directory: default_themes_directory(),
             lock_screen_wallpaper_enabled: default_lock_screen_wallpaper_enabled(),
-            monitor_specific_wallpapers: Default::default(),
+            monitor_specific_wallpapers: default_monitor_specific_wallpapers(),
             // On the equator, an azimuth change of 0.1 degrees takes
             // approximately 12 seconds, and an altitude change of 0.1
             // degrees takes about 24 seconds.

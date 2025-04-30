@@ -17,7 +17,7 @@ export interface ThemeActionsProps {
 
 export const ThemeActions = () => {
   const theme = useTheme();
-  const { id: monitorID, list: monitors } = useMonitor();
+  const { id: monitorID } = useMonitor();
 
   const { translate } = useTranslations();
   const { handleTaskClosure } = useTask();
@@ -26,7 +26,7 @@ export const ThemeActions = () => {
 
   const onApply = async () => {
     setSpinning(true);
-    await theme.handleThemeApplication(monitorID, monitors);
+    await theme.handleThemeApplication(monitorID);
     setSpinning(false);
   };
 

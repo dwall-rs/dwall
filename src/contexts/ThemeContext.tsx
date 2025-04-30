@@ -21,10 +21,7 @@ interface ThemeContext {
   setMenuItemIndex: Setter<number | undefined>;
   themeExists: Accessor<boolean>;
   handleThemeSelection: (index: number) => void;
-  handleThemeApplication: (
-    monitorID: Accessor<string>,
-    monitors: Accessor<MonitorItem[]>,
-  ) => Promise<void>;
+  handleThemeApplication: (monitorID: Accessor<string>) => Promise<void>;
 }
 
 const ThemeContext = createContext<ThemeContext>();
@@ -58,7 +55,7 @@ export const ThemeProvider = (props: ParentProps) => {
       setThemeExists(true);
     } catch (e) {
       setThemeExists(false);
-      console.error("Failed to check theme existence:", e);
+      console.error(`Failed to check theme existence: index=${idx} error=${e}`);
     }
   };
 
