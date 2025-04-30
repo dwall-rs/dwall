@@ -5,8 +5,10 @@ import {
   type Component,
   type JSX,
 } from "solid-js";
-import "./index.scss";
+
 import { LazyButton, LazyDivider } from "~/lazy";
+
+import styles from "./Dialog.css";
 
 interface DialogProps {
   open?: boolean;
@@ -61,18 +63,18 @@ const Dialog: Component<DialogProps> = (props) => {
 
   return (
     <Show when={isOpen()}>
-      <div class="fluent-dialog-container">
+      <div class={styles.container}>
         <Show when={local.showMask !== false}>
-          <div class="fluent-dialog-mask" onClick={handleMaskClick} />
+          <div class={styles.mask} onClick={handleMaskClick} />
         </Show>
 
-        <div class="fluent-dialog" {...others}>
+        <div class={styles.base} {...others}>
           <Show when={local.title}>
-            <div class="fluent-dialog-header">
-              <h3 class="fluent-dialog-title">{local.title}</h3>
+            <div class={styles.header}>
+              <h3 class={styles.title}>{local.title}</h3>
               <Show when={local.showCloseButton}>
                 <LazyButton
-                  class="fluent-dialog-close"
+                  class={styles.close}
                   onClick={handleClose}
                   appearance="transparent"
                   shape="circular"
@@ -85,10 +87,10 @@ const Dialog: Component<DialogProps> = (props) => {
             <LazyDivider />
           </Show>
 
-          <div class="fluent-dialog-content">{local.children}</div>
+          <div class={styles.content}>{local.children}</div>
 
           <Show when={local.footer}>
-            <div class="fluent-dialog-footer">{local.footer}</div>
+            <div class={styles.footer}>{local.footer}</div>
           </Show>
         </div>
       </div>
