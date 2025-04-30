@@ -45,6 +45,7 @@ const AutoStart = () => {
     <SettingsItem
       label={translate("label-launch-at-startup")}
       help={translate("help-launch-at-startup")}
+      helpPosition="below"
     >
       <LazySwitch checked={autoStartState()} onChange={onSwitchAutoStart} />
     </SettingsItem>
