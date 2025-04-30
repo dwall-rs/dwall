@@ -15,7 +15,7 @@ import Image from "~/components/Image";
 
 import { generateGitHubThumbnailMirrorUrl } from "~/utils/proxy";
 
-import "./index.scss";
+import * as styles from "./ImageCarousel.css";
 
 interface ImageCarouselProps {
   interval?: number;
@@ -84,9 +84,9 @@ export default function ImageCarousel(props: ImageCarouselProps) {
   };
 
   return (
-    <div class="fluent-carousel">
+    <div class={styles.carousel}>
       <div
-        class="fluent-carousel-wrapper"
+        class={styles.wrapper}
         style={{ height: wrapperHeight() }}
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
@@ -94,13 +94,11 @@ export default function ImageCarousel(props: ImageCarouselProps) {
         <For each={images()}>
           {(image, index) => (
             <div
-              class={`fluent-carousel-slide ${
-                index() === currentIndex() ? "active" : ""
-              }`}
+              class={`${styles.slide} ${index() === currentIndex() ? styles.activeSlide : ""}`}
             >
               <Image
                 src={image.src}
-                class="fluent-carousel-image"
+                class={styles.image}
                 themeID={theme.currentTheme()!.id}
                 serialNumber={index() + 1}
                 onLoad={({ width, height }) => {
@@ -113,16 +111,18 @@ export default function ImageCarousel(props: ImageCarouselProps) {
           )}
         </For>
 
-        <div class={`fluent-carousel-controls ${isHovered() ? "visible" : ""}`}>
+        <div
+          class={`${styles.controls} ${isHovered() ? styles.visibleControls : ""}`}
+        >
           <LazyButton
-            class="fluent-carousel-button prev"
+            class={`${styles.button} ${styles.prevButton}`}
             icon={<BiSolidChevronLeft />}
             shape="circular"
             onClick={prevImage}
           />
 
           <LazyButton
-            class="fluent-carousel-button next"
+            class={`${styles.button} ${styles.nextButton}`}
             icon={<BiSolidChevronRight />}
             shape="circular"
             onClick={nextImage}
@@ -130,14 +130,14 @@ export default function ImageCarousel(props: ImageCarouselProps) {
         </div>
 
         <div
-          class="fluent-carousel-indicators"
+          class={styles.indicators}
           style={{ bottom: `${indicatorsBottom()}px` }}
         >
           <For each={images()}>
             {(_, index) => (
               <button
                 type="button"
-                class={`fluent-indicator ${index() === currentIndex() ? "active" : ""}`}
+                class={`${styles.indicator} ${index() === currentIndex() ? styles.activeIndicator : ""}`}
                 onClick={() => goToImage(index())}
                 aria-label={`Go to slide ${index() + 1}`}
               />
