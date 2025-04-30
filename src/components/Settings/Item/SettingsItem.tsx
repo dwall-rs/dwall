@@ -13,6 +13,7 @@ interface BaseProps {
   label: string;
   children: JSXElement;
   help?: JSXElement | { content: JSXElement; onClick: () => void };
+  helpPosition?: "above" | "below";
 }
 
 interface VerticalLayout {
@@ -57,6 +58,7 @@ const SettingsItem = (props: SettingsItemProps) => {
               : props.help!
           }
           relationship="description"
+          positioning={props.helpPosition}
           withArrow
         >
           <LazyButton
