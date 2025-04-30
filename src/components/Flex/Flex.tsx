@@ -1,6 +1,6 @@
 import { mergeProps, splitProps } from "solid-js";
 import type { JSX, Component } from "solid-js";
-import styles from "./index.module.scss";
+import * as styles from "./Flex.css";
 
 export interface FlexProps {
   /** Whether to display inline */
