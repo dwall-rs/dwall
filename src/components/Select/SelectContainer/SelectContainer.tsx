@@ -1,15 +1,9 @@
 import { Show, type Component } from "solid-js";
-import type { JSX } from "solid-js";
-import styles from "./index.module.scss";
 import { LazyLabel } from "~/lazy";
+import type { SelectContainerProps } from "./SelectContainer.types";
+import * as styles from "./SelectContainer.css";
 
-const InputContainer: Component<{
-  children: JSX.Element;
-  label?: string;
-  required?: boolean;
-  warning?: string;
-  labelId?: string;
-}> = (props) => (
+const SelectContainer: Component<SelectContainerProps> = (props) => (
   <div class={styles.container}>
     <Show when={props.label}>
       <LazyLabel id={props.labelId} required={props.required}>
@@ -23,4 +17,4 @@ const InputContainer: Component<{
   </div>
 );
 
-export default InputContainer;
+export default SelectContainer;

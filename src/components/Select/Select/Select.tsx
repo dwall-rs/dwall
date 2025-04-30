@@ -8,9 +8,9 @@ import {
   type Component,
 } from "solid-js";
 import { VsChevronDown } from "solid-icons/vs";
-import type { SelectProps, SelectOption } from "./types";
-import InputContainer from "./InputContainer";
-import styles from "./index.module.scss";
+import type { SelectProps, SelectOption } from "./Select.types";
+import SelectContainer from "../SelectContainer";
+import styles from "./Select.css";
 
 const Select: Component<SelectProps> = (props) => {
   const [isOpen, setIsOpen] = createSignal(false);
@@ -95,35 +95,35 @@ const Select: Component<SelectProps> = (props) => {
   // Calculate selector container class name
   const selectWrapperClass = () => {
     const classes = [styles.selectWrapper];
-    if (focused()) classes.push(styles.focused);
-    if (props.disabled) classes.push(styles.disabled);
+    if (focused()) classes.push(styles.selectWrapperFocused);
+    if (props.disabled) classes.push(styles.selectWrapperDisabled);
     return classes.join(" ");
   };
 
   // Calculate dropdown menu class name
   const dropdownClass = () => {
     const classes = [styles.dropdown];
-    if (isOpen()) classes.push(styles.open);
+    if (isOpen()) classes.push(styles.dropdownOpen);
     return classes.join(" ");
   };
 
   // Calculate arrow icon class name
   const arrowClass = () => {
     const classes = [styles.arrow];
-    if (isOpen()) classes.push(styles.open);
+    if (isOpen()) classes.push(styles.arrowOpen);
     return classes.join(" ");
   };
 
   // Calculate option class name
   const optionClass = (option: SelectOption) => {
     const classes = [styles.option];
-    if (option.disabled) classes.push(styles.disabled);
-    if (option.value === selectedValue()) classes.push(styles.selected);
+    if (option.disabled) classes.push(styles.optionDisabled);
+    if (option.value === selectedValue()) classes.push(styles.optionSelected);
     return classes.join(" ");
   };
 
   return (
-    <InputContainer
+    <SelectContainer
       label={props.label}
       required={props.required}
       labelId={`${selectId}-label`}
@@ -189,7 +189,7 @@ const Select: Component<SelectProps> = (props) => {
           </For>
         </div>
       </div>
-    </InputContainer>
+    </SelectContainer>
   );
 };
 
