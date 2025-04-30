@@ -7,6 +7,7 @@ import {
   LazyTooltip,
 } from "~/lazy";
 import { AiOutlineInfoCircle } from "solid-icons/ai";
+import * as styles from "./SettingsItem.css";
 
 interface BaseProps {
   label: string;
@@ -44,7 +45,7 @@ const labelStyles = {
 const SettingsItem = (props: SettingsItemProps) => {
   const renderLabel = children(() =>
     props.help ? (
-      <LazySpace class="settings-item-content-wrapper" gap="0">
+      <LazySpace class={styles.settingsItemContentWrapper} gap="0">
         <LazyLabel weight="semibold" style={labelStyles}>
           {props.label}
         </LazyLabel>
@@ -68,6 +69,7 @@ const SettingsItem = (props: SettingsItemProps) => {
             shape="circular"
             size="small"
             appearance="transparent"
+            class={styles.settingsItemContentHelpButton}
           />
         </LazyTooltip>
       </LazySpace>

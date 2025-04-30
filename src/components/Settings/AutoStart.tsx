@@ -2,7 +2,7 @@ import { createSignal, onMount } from "solid-js";
 
 import { message } from "@tauri-apps/plugin-dialog";
 
-import SettingsItem from "./item";
+import SettingsItem from "./Item";
 import { LazySwitch } from "~/lazy";
 
 import { checkAutoStart, disableAutoStart, enableAutoStart } from "~/commands";
