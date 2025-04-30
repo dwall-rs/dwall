@@ -12,41 +12,41 @@ export const LazySpace = (props: Omit<FlexProps, "inline" | "align">) => {
 };
 
 export const LazyButton = lazy(
-  () => import("fluent-solid/lib/components/button"),
+  () => import("fluent-solid/lib/components/button/Button"),
 );
 
 export const LazyProgress = lazy(
-  () => import("fluent-solid/lib/components/progress"),
+  () => import("fluent-solid/lib/components/progress/Progress"),
 );
 
 export const LazyLabel = lazy(
-  () => import("fluent-solid/lib/components/label"),
+  () => import("fluent-solid/lib/components/label/Label"),
 );
 
 export const LazySwitch = lazy(
-  () => import("fluent-solid/lib/components/switch"),
+  () => import("fluent-solid/lib/components/switch/Switch"),
 );
 
 export const LazyInput = lazy(
-  () => import("fluent-solid/lib/components/input"),
+  () => import("fluent-solid/lib/components/input/Input"),
 );
 
 export const LazySlider = lazy(
-  () => import("fluent-solid/lib/components/slider"),
+  () => import("fluent-solid/lib/components/slider/Slider"),
 );
 
 export const LazyBadge = lazy(
-  () => import("fluent-solid/lib/components/badge/badge"),
+  () => import("fluent-solid/lib/components/badge/Badge"),
 );
 
 export const LazySpinner = lazy(
-  () => import("fluent-solid/lib/components/spinner"),
+  () => import("fluent-solid/lib/components/spinner/Spinner"),
 );
 
 export const LazyTooltip = lazy(
-  () => import("fluent-solid/lib/components/tooltip"),
+  () => import("fluent-solid/lib/components/tooltip/Tooltip"),
 );
 
 export const LazyDivider = lazy(
-  () => import("fluent-solid/lib/components/divider"),
+  () => import("fluent-solid/lib/components/divider/Divider"),
 );
