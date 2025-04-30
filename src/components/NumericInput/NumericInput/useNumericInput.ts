@@ -1,5 +1,5 @@
 import { createSignal } from "solid-js";
-import type { NumericInputProps } from "./types";
+import type { NumericInputProps } from "./NumericInput.types";
 
 import { useTranslations } from "~/contexts";
 

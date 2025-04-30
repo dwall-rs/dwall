@@ -1,9 +1,9 @@
 import { createEffect, type Component } from "solid-js";
-import styles from "./index.module.scss";
+import * as styles from "./NumericInput.css";
 import { LazyInput } from "~/lazy";
-import type { NumericInputProps } from "./types";
+import type { NumericInputProps } from "./NumericInput.types";
 import useNumericInputHandling, { numberValidation } from "./useNumericInput";
-import InputContainer from "./InputContainer";
+import InputContainer from "../NumericInputContainer";
 
 const NumericInput: Component<NumericInputProps> = (props) => {
   const {

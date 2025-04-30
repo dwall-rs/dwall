@@ -1,9 +1,9 @@
 import { Show, type Component } from "solid-js";
 import type { JSX } from "solid-js";
-import styles from "./index.module.scss";
+import * as styles from "./NumericInputContainer.css";
 import { LazyLabel } from "~/lazy";
 
-const InputContainer: Component<{
+const NumericInputContainer: Component<{
   children: JSX.Element;
   label?: string;
   required?: boolean;
@@ -20,4 +20,4 @@ const InputContainer: Component<{
   </div>
 );
 
-export default InputContainer;
+export default NumericInputContainer;
