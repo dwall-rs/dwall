@@ -4,7 +4,7 @@ import { AiFillSave } from "solid-icons/ai";
 import { open } from "@tauri-apps/plugin-shell";
 
 import { LazyButton, LazyInput } from "~/lazy";
-import SettingsItem from "./item";
+import SettingsItem from "./Item";
 
 import { writeConfigFile } from "~/commands";
 

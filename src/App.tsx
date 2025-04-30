@@ -14,7 +14,7 @@ import { useAppInitialization } from "./hooks/useAppInitialization";
 
 import { useMonitor, useTheme, useTranslations, useSettings } from "~/contexts";
 
-import "./App.scss";
+import * as styles from "./App.css";
 
 const App = () => {
   const { translate } = useTranslations();
@@ -37,7 +37,7 @@ const App = () => {
 
   return (
     <>
-      <LazyFlex class="app" align="center" gap="l" justify="stretch">
+      <LazyFlex class={styles.app} align="center" gap="l" justify="stretch">
         <Sidebar />
 
         <Show when={!showSettings() && currentTheme()} fallback={<Settings />}>

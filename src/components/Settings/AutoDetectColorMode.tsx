@@ -1,6 +1,6 @@
 import { message } from "@tauri-apps/plugin-dialog";
 
-import SettingsItem from "./item";
+import SettingsItem from "./Item";
 import { LazySwitch } from "~/lazy";
 
 import { writeConfigFile } from "~/commands";
