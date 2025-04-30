@@ -91,13 +91,19 @@ async fn get_applied_theme_id(monitor_id: &str) -> DwallSettingsResult<Option<St
         Ok(config) => {
             let monitor_themes = config.monitor_specific_wallpapers();
             let theme_id = if monitor_id == "all" {
-                let mut iter = monitor_themes.values();
-                let first_value = iter.next();
-                let theme_id = if iter.all(|value| Some(value) == first_value) {
-                    first_value
-                } else {
-                    None
+                let theme_id = match monitor_themes {
+                    dwall::config::MonitorSpecificWallpapers::All(theme_id) => Some(theme_id),
+                    dwall::config::MonitorSpecificWallpapers::Specific(themes_map) => {
+                        let mut iter = themes_map.values();
+                        let first_value = iter.next();
+                        if iter.all(|value| Some(value) == first_value) {
+                            first_value
+                        } else {
+                            None
+                        }
+                    }
                 };
+
                 info!(theme_id = ?theme_id, "Retrieved all theme ID");
                 theme_id
             } else {
