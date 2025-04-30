@@ -4,7 +4,7 @@ import Image from "../Image";
 import { BsCheckLg } from "solid-icons/bs";
 import { generateGitHubThumbnailMirrorUrl } from "~/utils/proxy";
 import { useConfig, useSettings, useTheme } from "~/contexts";
-import styles from "./index.module.scss";
+import * as styles from "./ThemeMenu.css";
 
 interface ThemeMenuProps {
   themes: ThemeItem[];
