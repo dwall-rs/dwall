@@ -109,10 +109,6 @@ pub struct Config {
     #[serde(skip_serializing_if = "Option::is_none")]
     github_mirror_template: Option<String>,
 
-    #[deprecated(since = "0.1.21", note = "Use `monitor_specific_wallpapers` instead")]
-    #[serde(skip_serializing_if = "Option::is_none")]
-    selected_theme_id: Option<String>,
-
     #[serde(default = "default_image_format")]
     image_format: ImageFormat,
 
@@ -258,7 +254,6 @@ impl Default for Config {
             image_format: Default::default(),
             coordinate_source: Default::default(),
             github_mirror_template: Default::default(),
-            selected_theme_id: Default::default(),
             auto_detect_color_mode: default_auto_detect_color_mode(),
             themes_directory: default_themes_directory(),
             lock_screen_wallpaper_enabled: default_lock_screen_wallpaper_enabled(),
