@@ -55,4 +55,8 @@ pub enum DwallError {
     /// Timeout error
     #[error("Operation timed out: {0}")]
     Timeout(String),
+
+    /// Timeout error
+    #[error("Operation timed out: {0}")]
+    MonitorWallpaperManagerError(#[from] crate::monitor::MonitorWallpaperManagerError),
 }
