@@ -12,11 +12,12 @@ export const toastMessageLinkLikeButton = style({
   color: themeContract.colorBrandForegroundLink,
   cursor: "pointer",
 
-  ":hover": {
-    color: themeContract.colorBrandForegroundLinkHover,
-  },
-
-  ":active": {
-    color: themeContract.colorBrandForegroundLinkPressed,
+  selectors: {
+    "&:hover": {
+      color: themeContract.colorBrandForegroundLinkHover,
+    },
+    "&:active": {
+      color: themeContract.colorBrandForegroundLinkPressed,
+    },
   },
 });
