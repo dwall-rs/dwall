@@ -172,7 +172,7 @@ pub fn find_daemon_process() -> DwallSettingsResult<Option<u32>> {
         ..Default::default()
     };
 
-    let result = unsafe {
+    unsafe {
         // Start iterating through processes
         if Process32First(snapshot.as_raw(), &mut process_entry).is_ok() {
             find_matching_process(
@@ -185,9 +185,7 @@ pub fn find_daemon_process() -> DwallSettingsResult<Option<u32>> {
             error!("Failed to get first process in snapshot");
             Ok(None)
         }
-    };
-
-    result
+    }
 }
 
 /// Helper function to find matching process by iterating through processes

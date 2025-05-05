@@ -7,7 +7,7 @@ import { MonitorProvider } from "./MonitorContext";
 import { UpdateProvider } from "./UpdateContext";
 import { SettingsProvider } from "./SettingsContext";
 import { TaskProvider } from "./TaskContext";
-import { ToastProvider } from "~/components/Toast";
+import { ToastProvider } from "fluent-solid/lib/index";
 
 export const AppProvider = (props: ParentProps) => {
   return (
@@ -36,4 +36,4 @@ export { useMonitor } from "./MonitorContext";
 export { useSettings } from "./SettingsContext";
 export { useUpdate } from "./UpdateContext";
 export { useTask } from "./TaskContext";
-export { useToast } from "~/components/Toast";
+export { useToast } from "fluent-solid";

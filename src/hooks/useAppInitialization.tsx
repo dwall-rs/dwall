@@ -1,12 +1,12 @@
 import { open } from "@tauri-apps/plugin-shell";
 import { createEffect, onMount } from "solid-js";
+import { toastMessageLinkLikeButton } from "~/App.css";
 import {
   getAppliedThemeID,
   setTitlebarColorMode,
   showWindow,
 } from "~/commands";
-import { useToast } from "~/components/Toast";
-import { useMonitor, useTheme, useUpdate } from "~/contexts";
+import { useMonitor, useTheme, useToast, useUpdate } from "~/contexts";
 import { themes } from "~/themes";
 import { detectColorMode } from "~/utils/color";
 
@@ -34,7 +34,7 @@ export const useAppInitialization = (
       {translate("message-github-star")}
       <button
         type="button"
-        class="toast-message-link-like-button"
+        class={toastMessageLinkLikeButton}
         onClick={openGithubRepository}
       >
         dwall

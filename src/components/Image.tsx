@@ -52,7 +52,7 @@ const Image = (props: ImageProps) => {
     const currentAttempts = retryAttempts();
     if (currentAttempts < merged.retryCount) {
       setRetryAttempts(currentAttempts + 1);
-      // 重试加载
+      // Retry loading
       loadImage();
     } else {
       const err = new Error(

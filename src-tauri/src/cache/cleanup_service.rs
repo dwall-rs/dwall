@@ -66,7 +66,7 @@ impl CleanupService {
                             if let Ok(modified) = metadata.modified() {
                                 if now
                                     .duration_since(modified)
-                                    .map_or(false, |age| age > expiry_duration)
+                                    .is_ok_and(|age| age > expiry_duration)
                                 {
                                     // File expired, delete it
                                     let file_size = metadata.len();

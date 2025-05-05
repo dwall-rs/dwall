@@ -21,10 +21,7 @@ export const useThemeApplication = (
   const { translateErrorMessage } = useTranslations();
 
   // Handle theme application
-  const handleThemeApplication = async (
-    monitorID: Accessor<string>,
-    monitors: Accessor<MonitorItem[]>,
-  ) => {
+  const handleThemeApplication = async (monitorID: Accessor<string>) => {
     const theme = currentTheme();
     if (!theme || !config()) return;
 
@@ -42,19 +39,22 @@ export const useThemeApplication = (
     }
 
     // Update monitor-specific wallpaper configuration
-    const monitorSpecificWallpapers: Record<string, string> = {
-      ...currentConfig.monitor_specific_wallpapers,
-    };
+    let monitorSpecificWallpapers: Record<string, string> | string;
+    // const monitorSpecificWallpapers: Record<string, string> = {
+    //   ...currentConfig.monitor_specific_wallpapers,
+    // };
 
-    if (monitorID() !== "all") {
-      // Set theme for specific monitor
-      monitorSpecificWallpapers[monitorID()!] = theme.id;
-    } else {
+    if (monitorID() === "all") {
       // Set the same theme for all monitors
-      for (const { value } of monitors()) {
-        if (value === "all") continue;
-        monitorSpecificWallpapers[value] = theme.id;
-      }
+      monitorSpecificWallpapers = theme.id;
+    } else {
+      // Set theme for specific monitor
+      monitorSpecificWallpapers =
+        typeof currentConfig.monitor_specific_wallpapers === "string"
+          ? {}
+          : { ...currentConfig.monitor_specific_wallpapers };
+
+      monitorSpecificWallpapers[monitorID()!] = theme.id;
     }
 
     currentConfig.monitor_specific_wallpapers = monitorSpecificWallpapers;

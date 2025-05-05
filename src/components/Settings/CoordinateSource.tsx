@@ -4,7 +4,8 @@ import { AiOutlineCheck } from "solid-icons/ai";
 import { message } from "@tauri-apps/plugin-dialog";
 
 import { LazyButton, LazySpace, LazySwitch } from "~/lazy";
-import SettingsItem from "./item";
+import SettingsItem from "./Item";
+
 import NumericInput from "~/components/NumericInput";
 
 import { writeConfigFile } from "~/commands";

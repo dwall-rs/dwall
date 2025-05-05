@@ -21,10 +21,7 @@ export const useMonitorThemeSync = (
 
   // Monitor display selection changes, update theme state
   createEffect(async () => {
-    const id =
-      monitorID() === "all"
-        ? Object.values(config()?.monitor_specific_wallpapers ?? {})[0]
-        : config()?.monitor_specific_wallpapers[monitorID()!];
+    const id = getThemeID(monitorID(), config()?.monitor_specific_wallpapers);
 
     if (!id || (!monitorSpecificThemesIsSame() && monitorID() === "all")) {
       setAppliedThemeID(undefined);
@@ -35,4 +32,14 @@ export const useMonitorThemeSync = (
       setMenuItemIndex(index);
     }
   });
+};
+
+const getThemeID = (
+  monitorID: string,
+  monitor_specific_wallpapers?: Config["monitor_specific_wallpapers"],
+) => {
+  if (typeof monitor_specific_wallpapers === "string")
+    return monitor_specific_wallpapers;
+
+  return monitor_specific_wallpapers?.[monitorID];
 };

@@ -21,8 +21,8 @@ fn get_log_level() -> Level {
     env::var("DWALL_LOG")
         .ok()
         .as_deref()
-        .or_else(|| option_env!("DWALL_LOG"))
-        .and_then(|level| Level::from_str(&level).ok())
+        .or(option_env!("DWALL_LOG"))
+        .and_then(|level| Level::from_str(level).ok())
         .unwrap_or_else(default_log_level)
 }
 

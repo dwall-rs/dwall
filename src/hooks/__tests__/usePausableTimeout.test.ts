@@ -6,7 +6,7 @@ describe("usePausableTimeout", () => {
     vi.useFakeTimers();
   });
 
-  it("应该正常执行超时回调", () => {
+  it("should execute timeout callback normally", () => {
     const callback = vi.fn();
     const { start } = usePausableTimeout(callback, 1000);
 
@@ -15,7 +15,7 @@ describe("usePausableTimeout", () => {
     expect(callback).toHaveBeenCalled();
   });
 
-  it("应该正确暂停和恢复", () => {
+  it("should pause and resume correctly", () => {
     const callback = vi.fn();
     const { start, pause, resume } = usePausableTimeout(callback, 1000);
 
@@ -30,7 +30,7 @@ describe("usePausableTimeout", () => {
     expect(callback).toHaveBeenCalled();
   });
 
-  it("剩余时间不应小于0", () => {
+  it("remaining time should not be less than 0", () => {
     const callback = vi.fn();
     const { start, pause, resume } = usePausableTimeout(callback, 500);
 
@@ -44,7 +44,7 @@ describe("usePausableTimeout", () => {
     expect(callback).toHaveBeenCalled();
   });
 
-  it("恢复时剩余时间为0应立即执行回调", () => {
+  it("should execute callback immediately when resuming with remaining time of 0", () => {
     const callback = vi.fn();
     const { start, pause, resume } = usePausableTimeout(callback, 500);
 

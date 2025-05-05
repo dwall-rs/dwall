@@ -3,7 +3,7 @@ import { createSignal } from "solid-js";
 import { confirm, message, open } from "@tauri-apps/plugin-dialog";
 
 import { LazyButton, LazySpace, LazyTooltip } from "~/lazy";
-import SettingsItem from "./item";
+import SettingsItem from "./Item";
 
 import { moveThemesDirectory, openDir } from "~/commands";
 

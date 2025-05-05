@@ -3,7 +3,7 @@ import { AiFillSetting } from "solid-icons/ai";
 import { TbArrowBigUpLinesFilled } from "solid-icons/tb";
 import { LazyButton, LazySpace, LazyTooltip } from "~/lazy";
 import { useSettings, useTheme, useTranslations, useUpdate } from "~/contexts";
-import styles from "./index.module.scss";
+import { sidebarButtons } from "./SidebarButtons.css";
 
 const SidebarButtons = () => {
   const { translate } = useTranslations();
@@ -16,12 +16,7 @@ const SidebarButtons = () => {
   };
 
   return (
-    <LazySpace
-      direction="column"
-      gap="s"
-      justify="end"
-      class={styles.sidebarButtons}
-    >
+    <LazySpace direction="column" gap="s" justify="end" class={sidebarButtons}>
       <Show when={updateIsAvailable()}>
         <LazyTooltip
           positioning="after"
@@ -34,7 +29,7 @@ const SidebarButtons = () => {
             shape="circular"
             icon={<TbArrowBigUpLinesFilled />}
             onClick={onUpdate}
-            disabled={!!downloadThemeID()} // 下载主题时禁用更新按钮
+            disabled={!!downloadThemeID()} // Disable update button when downloading theme
           />
         </LazyTooltip>
       </Show>
@@ -53,7 +48,7 @@ const SidebarButtons = () => {
             setShowSettings(true);
             setMenuItemIndex();
           }}
-          disabled={!!downloadThemeID()} // 下载主题时禁用设置按钮
+          disabled={!!downloadThemeID()} // Disable settings button when downloading theme
         />
       </LazyTooltip>
     </LazySpace>

@@ -1,4 +1,4 @@
-use dwall::error::RegistryError;
+use dwall::registry::RegistryError;
 use serde::{Serialize, Serializer};
 
 use crate::download::DownloadError;
@@ -25,8 +25,6 @@ pub enum DwallSettingsError {
     Registry(#[from] RegistryError),
     #[error(transparent)]
     NulError(#[from] std::ffi::NulError),
-    #[error(transparent)]
-    GeolocationAccess(#[from] crate::postion::GeolocationAccessError),
     #[error(transparent)]
     Download(#[from] DownloadError),
     #[error("Failed to spawn daemon: {0}")]

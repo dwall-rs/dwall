@@ -21,10 +21,7 @@ interface ThemeContext {
   setMenuItemIndex: Setter<number | undefined>;
   themeExists: Accessor<boolean>;
   handleThemeSelection: (index: number) => void;
-  handleThemeApplication: (
-    monitorID: Accessor<string>,
-    monitors: Accessor<MonitorItem[]>,
-  ) => Promise<void>;
+  handleThemeApplication: (monitorID: Accessor<string>) => Promise<void>;
 }
 
 const ThemeContext = createContext<ThemeContext>();
@@ -58,7 +55,7 @@ export const ThemeProvider = (props: ParentProps) => {
       setThemeExists(true);
     } catch (e) {
       setThemeExists(false);
-      console.error("Failed to check theme existence:", e);
+      console.error(`Failed to check theme existence: index=${idx} error=${e}`);
     }
   };
 
@@ -100,7 +97,7 @@ export const ThemeProvider = (props: ParentProps) => {
 export const useTheme = () => {
   const context = useContext(ThemeContext);
   if (!context) {
-    throw new Error("useTheme: 必须在ThemeProvider内部使用");
+    throw new Error("useTheme: must be used within a ThemeProvider");
   }
   return context;
 };

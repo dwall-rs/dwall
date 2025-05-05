@@ -14,6 +14,7 @@ pub(super) const HELP_LAUNCH_AT_STARTUP: &str = "help-launch-at-startup";
 pub(super) const HELP_MANUALLY_SET_COORDINATES: &str = "help-manually-set-coordinates";
 pub(super) const HELP_SET_LOCK_SCREEN_WALLPAPER_SIMULTANEOUSLY: &str =
     "help-set-lock-screen-wallpaper-simultaneously";
+pub(super) const HELP_UPDATE_FAILED: &str = "help-update-failed";
 
 // ---------------- labels ----------------
 pub(super) const LABEL_AUTOMATICALLY_RETRIEVE_COORDINATES: &str =

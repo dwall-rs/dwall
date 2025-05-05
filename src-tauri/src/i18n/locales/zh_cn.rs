@@ -42,6 +42,10 @@ impl TranslationMap for ChineseSimplifiedTranslations {
             HELP_SET_LOCK_SCREEN_WALLPAPER_SIMULTANEOUSLY,
             TranslationValue::Text("如果你不想同时设置锁屏壁纸，请关闭此选项。"),
         );
+        translations.insert(
+            HELP_UPDATE_FAILED,
+            TranslationValue::Text("无法完成热更新，请点击本消息后面的下载按钮手动下载新版本："),
+        );
 
         // labels
         translations.insert(

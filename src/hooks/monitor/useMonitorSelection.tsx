@@ -31,13 +31,30 @@ export const useMonitorSelection = () => {
 
   // Get monitor-specific theme configuration
   const monitorSpecificThemes = createMemo(() => {
-    return Object.entries(config()?.monitor_specific_wallpapers ?? {}).sort(
-      (a, b) => a[0].toLocaleLowerCase().localeCompare(b[0]),
+    const monitor_specific_wallpapers = config()?.monitor_specific_wallpapers;
+    if (!monitor_specific_wallpapers) return [];
+
+    if (typeof monitor_specific_wallpapers === "string") {
+      const monitorIDs = Object.keys(monitorInfoObject() ?? {}).sort();
+      return monitorIDs.map(
+        (id) => [id, monitor_specific_wallpapers] as [string, string],
+      );
+    }
+
+    return Object.entries(monitor_specific_wallpapers).sort((a, b) =>
+      a[0].toLocaleLowerCase().localeCompare(b[0]),
     );
   });
 
   // Check if all monitors are using the same theme
   const monitorSpecificThemesIsSame = createMemo(() => {
+    const monitor_specific_wallpapers = config()?.monitor_specific_wallpapers;
+    if (
+      !monitor_specific_wallpapers ||
+      typeof monitor_specific_wallpapers === "string"
+    )
+      return true;
+
     const themes = monitorSpecificThemes();
     const monitorIDs = Object.keys(monitorInfoObject() ?? {}).sort();
 

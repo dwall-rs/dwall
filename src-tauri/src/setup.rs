@@ -3,9 +3,8 @@ use std::{env, path::PathBuf, str::FromStr};
 use tauri::Manager;
 
 use crate::{
-    auto_start::AutoStartManager, download::ThemeDownloader, error::DwallSettingsError,
-    process_manager::find_daemon_process, read_config_file, theme::spawn_apply_daemon,
-    window::create_main_window, DAEMON_EXE_PATH,
+    download::ThemeDownloader, error::DwallSettingsError, process_manager::find_daemon_process,
+    read_config_file, theme::spawn_apply_daemon, window::create_main_window, DAEMON_EXE_PATH,
 };
 
 pub fn setup_app(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
@@ -38,8 +37,6 @@ pub fn setup_app(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>>
     info!(path = %daemon_exe_path.display(), "Found daemon exe");
     DAEMON_EXE_PATH.set(daemon_exe_path)?;
 
-    let auto_start_manager = AutoStartManager::new();
-    app.manage(auto_start_manager);
     let theme_downloader = ThemeDownloader::new();
     app.manage(theme_downloader);
 

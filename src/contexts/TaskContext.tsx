@@ -18,7 +18,7 @@ export const TaskProvider = (props: ParentProps) => {
 export const useTask = () => {
   const context = useContext(TaskContext);
   if (!context) {
-    throw new Error("useTask: 必须在TaskProvider内部使用");
+    throw new Error("useTask: must be used within a TaskProvider");
   }
   return context;
 };

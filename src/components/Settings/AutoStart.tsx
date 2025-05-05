@@ -2,7 +2,7 @@ import { createSignal, onMount } from "solid-js";
 
 import { message } from "@tauri-apps/plugin-dialog";
 
-import SettingsItem from "./item";
+import SettingsItem from "./Item";
 import { LazySwitch } from "~/lazy";
 
 import { checkAutoStart, disableAutoStart, enableAutoStart } from "~/commands";
@@ -45,6 +45,7 @@ const AutoStart = () => {
     <SettingsItem
       label={translate("label-launch-at-startup")}
       help={translate("help-launch-at-startup")}
+      helpPosition="below"
     >
       <LazySwitch checked={autoStartState()} onChange={onSwitchAutoStart} />
     </SettingsItem>

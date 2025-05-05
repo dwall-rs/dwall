@@ -4,10 +4,11 @@ pub mod error;
 mod lazy;
 mod log;
 pub mod monitor;
-mod position;
+pub mod position;
+pub mod registry;
 mod solar;
 mod theme;
-mod utils;
+pub mod utils;
 
 #[macro_use]
 extern crate tracing;

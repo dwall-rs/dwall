@@ -1,5 +1,4 @@
 {
-  "$schema": "https://schema.tauri.app/config/2",
   "productName": "Dwall Settings",
   "version": "../package.json",
   "identifier": "com.thep0y.dwall",

@@ -1,7 +1,8 @@
 import { requestLocationPermission } from "~/commands";
+
 import { ask } from "@tauri-apps/plugin-dialog";
 import { exit } from "@tauri-apps/plugin-process";
-import { translate } from "~/utils/i18n";
+
 import { useTranslations } from "~/contexts";
 
 /**
@@ -14,7 +15,7 @@ export const useLocationPermission = (
   mutate: (fn: (prev: Config) => Config) => void,
   setShowSettings: (show: boolean) => void,
 ) => {
-  const { translations } = useTranslations();
+  const { translate } = useTranslations();
   // Check location permission
   const checkLocationPermission = async (): Promise<boolean> => {
     try {
@@ -22,7 +23,7 @@ export const useLocationPermission = (
       return true;
     } catch (e) {
       const shouldContinue = await ask(
-        translate(translations()!, "message-location-permission"),
+        translate("message-location-permission"),
         { kind: "warning" },
       );
 

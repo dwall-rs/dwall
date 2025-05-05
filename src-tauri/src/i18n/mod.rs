@@ -19,7 +19,7 @@ static TRANSLATIONS: LazyLock<RwLock<HashMap<&'static str, LocaleTranslations>>>
         RwLock::new({
             let mut m = HashMap::new();
 
-            // 英文必须实现所有的翻译键
+            // English must implement all translation keys
             m.insert("en-US", EnglishUSTranslations::get_translations());
 
             m.insert("zh-CN", ChineseSimplifiedTranslations::get_translations());

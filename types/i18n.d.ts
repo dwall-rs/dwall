@@ -10,6 +10,7 @@ type TranslationKey =
   | "help-launch-at-startup"
   | "help-manually-set-coordinates"
   | "help-set-lock-screen-wallpaper-simultaneously"
+  | "help-update-failed"
   | "label-automatically-retrieve-coordinates"
   | "label-automatically-switch-to-dark-mode"
   | "label-check-interval"

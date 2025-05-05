@@ -23,7 +23,7 @@ export const UpdateProvider = (props: ParentProps) => {
 export const useUpdate = () => {
   const context = useContext(UpdateContext);
   if (!context) {
-    throw new Error("useUpdate: 必须在UpdateProvider内部使用");
+    throw new Error("useUpdate: must be used within an UpdateProvider");
   }
   return context;
 };

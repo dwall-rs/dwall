@@ -1,8 +1,10 @@
 import { Show } from "solid-js";
+
 import { LazyFlex } from "~/lazy";
+import Download from "./Download";
 import ImageCarousel from "./ImageCarousel";
 import { ThemeActions } from "./ThemeActions";
-import Download from "./Download";
+
 import { useTheme } from "~/contexts";
 
 const ThemeShowcase = () => {

@@ -17,6 +17,18 @@ use super::error::DownloadError;
 use super::task_manager::{DownloadProgress, DownloadTaskManager, ProgressEmitter};
 use crate::error::DwallSettingsResult;
 
+/// Context for download stream processing
+struct DownloadContext<'a, R: Runtime> {
+    response: reqwest::Response,
+    file: &'a mut fs::File,
+    downloaded_bytes: &'a mut u64,
+    total_size: u64,
+    theme_id: &'a str,
+    cancel_flag: Arc<AtomicBool>,
+    progress_emitter: Option<&'a ProgressEmitter<'a, R>>,
+    task_manager: &'a DownloadTaskManager,
+}
+
 /// Service for downloading files over HTTP
 pub(super) struct HttpDownloadService {
     client: reqwest::Client,
@@ -72,16 +84,16 @@ impl HttpDownloadService {
             .await?;
 
         // Download and process the file stream
-        self.process_download_stream(
+        self.process_download_stream(DownloadContext {
             response,
-            &mut file,
-            &mut downloaded_bytes,
+            file: &mut file,
+            downloaded_bytes: &mut downloaded_bytes,
             total_size,
             theme_id,
             cancel_flag,
             progress_emitter,
             task_manager,
-        )
+        })
         .await?;
 
         info!(
@@ -227,21 +239,14 @@ impl HttpDownloadService {
     /// Process download stream, handle cancellation, write chunks and report progress
     async fn process_download_stream<R: Runtime>(
         &self,
-        response: reqwest::Response,
-        file: &mut fs::File,
-        downloaded_bytes: &mut u64,
-        total_size: u64,
-        theme_id: &str,
-        cancel_flag: Arc<AtomicBool>,
-        progress_emitter: Option<&ProgressEmitter<'_, R>>,
-        task_manager: &DownloadTaskManager,
+        context: DownloadContext<'_, R>,
     ) -> DwallSettingsResult<()> {
-        let mut stream = response.bytes_stream();
+        let mut stream = context.response.bytes_stream();
 
         while let Some(chunk_result) = stream.next().await {
             // Check if download has been cancelled
-            if task_manager.is_cancelled(&cancel_flag) {
-                info!(theme_id = theme_id, "Download cancelled by user");
+            if context.task_manager.is_cancelled(&context.cancel_flag) {
+                info!(theme_id = context.theme_id, "Download cancelled by user");
                 return Err(DownloadError::Cancelled.into());
             }
 
@@ -249,7 +254,7 @@ impl HttpDownloadService {
                 Ok(chunk) => chunk,
                 Err(e) => {
                     error!(
-                        theme_id = theme_id,
+                        theme_id = context.theme_id,
                         error = ?e,
                         "Failed to download chunk"
                     );
@@ -257,23 +262,28 @@ impl HttpDownloadService {
                 }
             };
 
-            if let Err(e) = file.write_all(&chunk).await {
+            if let Err(e) = context.file.write_all(&chunk).await {
                 error!(
-                    theme_id = theme_id,
-                    downloaded_bytes = *downloaded_bytes,
-                    total_bytes = total_size,
+                    theme_id = context.theme_id,
+                    downloaded_bytes = *context.downloaded_bytes,
+                    total_bytes = context.total_size,
                     error = ?e,
                     "Failed to write chunk to file"
                 );
                 return Err(e.into());
             };
 
-            *downloaded_bytes += chunk.len() as u64;
+            *context.downloaded_bytes += chunk.len() as u64;
 
             // Emit progress if emitter is provided
-            if let Some(emitter) = progress_emitter {
-                self.emit_progress(emitter, theme_id, *downloaded_bytes, total_size)
-                    .await?;
+            if let Some(emitter) = context.progress_emitter {
+                self.emit_progress(
+                    emitter,
+                    context.theme_id,
+                    *context.downloaded_bytes,
+                    context.total_size,
+                )
+                .await?;
             }
         }
 

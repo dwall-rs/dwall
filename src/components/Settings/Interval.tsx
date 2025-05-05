@@ -2,7 +2,8 @@ import { createSignal } from "solid-js";
 import { AiFillSave } from "solid-icons/ai";
 
 import { LazyButton, LazySpace } from "~/lazy";
-import SettingsItem from "./item";
+import SettingsItem from "./Item";
+
 import NumericInput from "~/components/NumericInput";
 
 import { writeConfigFile } from "~/commands";
