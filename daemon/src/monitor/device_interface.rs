@@ -230,5 +230,5 @@ fn get_device_friendly_name(
     let friendly_name = u16_data.to_string();
 
     debug!(friendly_name, "Got device friendly name");
-    return Ok(friendly_name);
+    Ok(friendly_name)
 }

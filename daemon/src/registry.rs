@@ -77,7 +77,7 @@ impl RegistryKey {
                     error_code = err.0,
                     "Failed to open registry key"
                 );
-                Err(RegistryError::Open(err).into())
+                Err(RegistryError::Open(err))
             }
         }
     }
@@ -127,7 +127,7 @@ impl RegistryKey {
                     error_code = result.0,
                     "Failed to query registry value",
                 );
-                Err(RegistryError::Query(result).into())
+                Err(RegistryError::Query(result))
             }
         }
     }
@@ -159,7 +159,7 @@ impl RegistryKey {
                         error_code = err.0,
                         "Failed to set registry value"
                     );
-                    Err(RegistryError::Set(err).into())
+                    Err(RegistryError::Set(err))
                 }
             }
         }
@@ -195,7 +195,7 @@ impl RegistryKey {
                         error_code = err.0,
                         "Failed to delete registry value"
                     );
-                    Err(RegistryError::Delete(err).into())
+                    Err(RegistryError::Delete(err))
                 }
             }
         }

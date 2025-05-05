@@ -100,7 +100,7 @@ impl MonitorManager {
         })?;
 
         self.wallpaper_manager
-            .set_wallpaper(monitor, &wallpaper_path)
+            .set_wallpaper(monitor, wallpaper_path)
             .await
             .map_err(|e| {
                 error!(
