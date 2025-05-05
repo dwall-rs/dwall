@@ -24,7 +24,7 @@ async fn get_geo_position() -> DwallResult<Position> {
     check_location_permission().await?;
 
     // Initialize geolocator
-    let geolocator = handle_windows_error("Initializing Geolocator", || Geolocator::new()).await?;
+    let geolocator = handle_windows_error("Initializing Geolocator", Geolocator::new).await?;
 
     // Set accuracy to high
     handle_windows_error("Setting desired accuracy to High", || {
