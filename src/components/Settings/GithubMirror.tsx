@@ -17,7 +17,7 @@ const GithubMirror = () => {
 
   const [value, setValue] = createSignal(config()?.github_mirror_template);
 
-  const onChange = (v: string) => {
+  const handleInput = (v: string) => {
     setValue(v);
   };
 
@@ -48,7 +48,7 @@ const GithubMirror = () => {
         style={{ flex: 15 }}
         appearance="filled-lighter"
         value={value()}
-        onChange={onChange}
+        onInput={handleInput}
         contentAfter={
           <LazyButton
             appearance="subtle"
