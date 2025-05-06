@@ -1,6 +1,6 @@
 {
   "name": "dwall-settings",
-  "version": "0.1.22",
+  "version": "0.1.23",
   "description": "",
   "type": "module",
   "scripts": {
@@ -35,14 +35,14 @@
   "devDependencies": {
     "@biomejs/biome": "^1.9.4",
     "@tauri-apps/cli": "^2.5.0",
-    "@types/node": "^22.15.3",
+    "@types/node": "^22.15.9",
     "@vanilla-extract/vite-plugin": "^5.0.1",
     "cross-env": "^7.0.3",
     "jsdom": "^26.1.0",
     "sass": "^1.87.0",
     "typescript": "^5.8.3",
-    "vite": "^6.3.4",
+    "vite": "^6.3.5",
     "vite-plugin-solid": "^2.11.6",
-    "vitest": "^3.1.2"
+    "vitest": "^3.1.3"
   }
 }
