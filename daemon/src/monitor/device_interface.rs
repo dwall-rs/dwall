@@ -18,6 +18,7 @@ struct DeviceInfoSet(HDEVINFO);
 impl DeviceInfoSet {
     /// Creates a new DeviceInfoSet for the specified device GUID
     fn new(device_guid: &GUID) -> DwallResult<Self> {
+        debug!(guid = ?device_guid, "Creating new DeviceInfoSet");
         let device_info_set = unsafe {
             SetupDiGetClassDevsW(
                 Some(device_guid),
@@ -27,15 +28,16 @@ impl DeviceInfoSet {
             )
         }
         .map_err(|e| {
-            error!(error = ?e, "Failed to get device info set");
+            error!(error = %e, "Failed to get device info set");
             MonitorError::GetDeviceInfoSet(Some(e))
         })?;
 
         if device_info_set.is_invalid() {
-            error!("Device info set handle is invalid");
+            error!("Device info set is invalid");
             return Err(MonitorError::GetDeviceInfoSet(None).into());
         }
 
+        debug!("DeviceInfoSet created successfully");
         Ok(Self(device_info_set))
     }
 
@@ -47,39 +49,51 @@ impl DeviceInfoSet {
 
 impl Drop for DeviceInfoSet {
     fn drop(&mut self) {
+        debug!("Freeing DeviceInfoSet");
         unsafe { self.0.free() };
-        debug!("DeviceInfoSet released");
     }
 }
 
 /// Query the friendly name of a device by its device path and GUID
 pub fn query_device_friendly_name(device_path: &str, device_guid: &GUID) -> DwallResult<String> {
     debug!(
-        "Querying device friendly name, device path: {}",
-        device_path
+        device_path,
+        guid = ?device_guid,
+        "Querying device friendly name"
     );
 
     // Use RAII pattern to ensure device_info_set is properly freed
     let device_info_set = DeviceInfoSet::new(device_guid)?;
 
     // Find the device interface matching the provided path
-    let device_index = find_device_interface(&device_info_set, device_guid, device_path)?;
+    let device_index = find_device_by_path(&device_info_set, device_guid, device_path)?;
+    debug!(device_index, "Found device at index");
 
     // Get device info data for the found device
-    let device_info_data = get_device_info(&device_info_set, device_index)?;
+    let device_info_data = get_device_info_data(&device_info_set, device_index)?;
 
     // Get the friendly name of the device
     let friendly_name = get_device_friendly_name(&device_info_set, &device_info_data)?;
+    debug!(
+        device_path,
+        friendly_name, "Successfully retrieved device friendly name"
+    );
 
     Ok(friendly_name)
 }
 
 /// Find a device interface by its path
-fn find_device_interface(
+fn find_device_by_path(
     device_info_set: &DeviceInfoSet,
     device_guid: &GUID,
     target_path: &str,
 ) -> DwallResult<u32> {
+    debug!(
+        target_path,
+        guid = ?device_guid,
+        "Finding device by path"
+    );
+
     let mut device_interface_data = SP_DEVICE_INTERFACE_DATA {
         cbSize: mem::size_of::<SP_DEVICE_INTERFACE_DATA>() as u32,
         InterfaceClassGuid: GUID::zeroed(),
@@ -100,13 +114,11 @@ fn find_device_interface(
         )
         .is_ok()
     } {
-        debug!(index, "Checking device interface");
-
         if let Some(current_path) = get_device_path(device_info_set, &device_interface_data)? {
-            debug!(current_path, target_path, "Comparing device paths");
+            debug!(index, current_path, "Checking device path");
 
             if current_path.eq_ignore_ascii_case(target_path) {
-                debug!("Found matching device at index {}", index);
+                debug!(index = index, "Found matching device");
                 return Ok(index);
             }
         }
@@ -114,7 +126,7 @@ fn find_device_interface(
         index += 1;
     }
 
-    error!("Failed to find matching device for path: {}", target_path);
+    error!(target_path, "Failed to find device matching path");
     Err(MonitorError::MatchDevice.into())
 }
 
@@ -145,7 +157,7 @@ fn get_device_path(
         (*detail_data).cbSize = detail_data_size;
 
         // Second call to get actual data
-        if let Err(e) = SetupDiGetDeviceInterfaceDetailW(
+        if let Err(_) = SetupDiGetDeviceInterfaceDetailW(
             device_info_set.as_raw(),
             device_interface_data,
             Some(detail_data),
@@ -153,7 +165,7 @@ fn get_device_path(
             None,
             None,
         ) {
-            warn!(error = ?e, "Failed to get device interface detail");
+            error!("Failed to get device interface detail");
             return Ok(None);
         }
 
@@ -162,7 +174,7 @@ fn get_device_path(
         match device_path.to_string() {
             Ok(path) => Ok(Some(path)),
             Err(e) => {
-                warn!(error = ?e, "Failed to convert device path to string");
+                error!(error = %e, "Failed to convert device path to string");
                 Ok(None)
             }
         }
@@ -170,10 +182,12 @@ fn get_device_path(
 }
 
 /// Get device info data for a device at the specified index
-fn get_device_info(
+fn get_device_info_data(
     device_info_set: &DeviceInfoSet,
     device_index: u32,
 ) -> DwallResult<SP_DEVINFO_DATA> {
+    debug!(device_index, "Getting device info data");
+
     let mut device_info_data = SP_DEVINFO_DATA {
         cbSize: mem::size_of::<SP_DEVINFO_DATA>() as u32,
         ClassGuid: GUID::zeroed(),
@@ -189,7 +203,11 @@ fn get_device_info(
         )
     }
     .map_err(|e| {
-        error!("Failed to get device info for index {}", device_index);
+        error!(
+            device_index,
+            error = %e,
+            "Failed to get device info"
+        );
         MonitorError::GetDeviceInfo(e)
     })?;
 
@@ -201,6 +219,8 @@ fn get_device_friendly_name(
     device_info_set: &DeviceInfoSet,
     device_info_data: &SP_DEVINFO_DATA,
 ) -> DwallResult<String> {
+    debug!("Getting device friendly name");
+
     let mut required_size = 0;
     let mut buffer = vec![0u8; 512];
 
@@ -214,7 +234,10 @@ fn get_device_friendly_name(
             Some(&mut required_size),
         )
         .map_err(|e| {
-            error!(error = ?e, "Failed to get device registry property");
+            error!(
+                error = %e,
+                "Failed to get device registry property"
+            );
             MonitorError::GetDeviceRegistryProperty(e)
         })?;
     }
@@ -227,8 +250,5 @@ fn get_device_friendly_name(
         .collect();
 
     // Convert to string, excluding null terminator
-    let friendly_name = u16_data.to_string();
-
-    debug!(friendly_name, "Got device friendly name");
-    Ok(friendly_name)
+    Ok(u16_data.to_string())
 }
