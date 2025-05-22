@@ -157,7 +157,7 @@ fn get_device_path(
         (*detail_data).cbSize = detail_data_size;
 
         // Second call to get actual data
-        if let Err(_) = SetupDiGetDeviceInterfaceDetailW(
+        if let Err(e) = SetupDiGetDeviceInterfaceDetailW(
             device_info_set.as_raw(),
             device_interface_data,
             Some(detail_data),
@@ -165,7 +165,7 @@ fn get_device_path(
             None,
             None,
         ) {
-            error!("Failed to get device interface detail");
+            error!(error = %e, "Failed to get device interface detail");
             return Ok(None);
         }
 
