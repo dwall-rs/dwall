@@ -1,10 +1,10 @@
 use std::collections::HashMap;
 
 use dwall::{
-    monitor::{Monitor, MonitorInfoProvider},
+    monitor::{DisplayMonitor, DisplayMonitorProvider},
     DwallResult,
 };
 
-pub async fn get_monitors() -> DwallResult<HashMap<String, Monitor>> {
-    MonitorInfoProvider::new().get_monitors().await
+pub async fn get_monitors() -> DwallResult<HashMap<String, DisplayMonitor>> {
+    DisplayMonitorProvider::new().get_monitors().await
 }

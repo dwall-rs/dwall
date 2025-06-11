@@ -8,7 +8,7 @@ use windows::{
     },
 };
 
-use super::monitor_info::Monitor;
+use super::monitor_info::DisplayMonitor;
 
 #[derive(Debug, thiserror::Error)]
 pub enum MonitorWallpaperManagerError {
@@ -101,16 +101,16 @@ impl MonitorWallpaperManager {
     /// Sets wallpaper for a specific monitor
     pub async fn set_wallpaper(
         &self,
-        monitor: &Monitor,
+        monitor: &DisplayMonitor,
         wallpaper_path: &Path,
     ) -> MonitorWallpaperManagerResult<()> {
         // Convert wallpaper path to HSTRING
         let wallpaper_path = HSTRING::from(wallpaper_path);
-        let device_path = HSTRING::from(&monitor.device_path);
+        let device_path = HSTRING::from(monitor.device_path());
 
         if self.is_wallpaper_already_set(&device_path, &wallpaper_path)? {
             info!(
-                monitor_id = monitor.id,
+                monitor_id = monitor.device_path(),
                 wallpaper_path = %wallpaper_path,
                 "Wallpaper already set for monitor, skipping"
             );
@@ -124,7 +124,7 @@ impl MonitorWallpaperManager {
                 .map_err(|e| {
                     error!(
                         error = ?e,
-                        monitor_id = monitor.id,
+                        monitor_id = monitor.device_path(),
                         wallpaper_path = %wallpaper_path,
                         "Failed to set wallpaper for monitor"
                     );

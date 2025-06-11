@@ -10,7 +10,7 @@ use std::path::Path;
 use crate::error::DwallResult;
 
 // Re-export Monitor struct for public use
-pub use monitor_info::{Monitor, MonitorInfoProvider};
+pub use monitor_info::{DisplayMonitor, DisplayMonitorProvider};
 pub(crate) use wallpaper_manager::{MonitorWallpaperManager, MonitorWallpaperManagerError};
 
 /// For backward compatibility with existing code
@@ -19,7 +19,7 @@ pub struct MonitorManager {
     /// Wallpaper manager instance
     wallpaper_manager: MonitorWallpaperManager,
     /// Monitor information provider
-    monitor_provider: MonitorInfoProvider,
+    monitor_provider: DisplayMonitorProvider,
 }
 
 impl MonitorManager {
@@ -27,7 +27,7 @@ impl MonitorManager {
     pub fn new() -> DwallResult<Self> {
         Ok(Self {
             wallpaper_manager: MonitorWallpaperManager::new()?,
-            monitor_provider: MonitorInfoProvider::new(),
+            monitor_provider: DisplayMonitorProvider::new(),
         })
     }
 
@@ -116,17 +116,17 @@ impl MonitorManager {
     }
 
     /// Gets all available monitors with caching
-    pub async fn get_monitors(&self) -> DwallResult<HashMap<String, Monitor>> {
+    pub async fn get_monitors(&self) -> DwallResult<HashMap<String, DisplayMonitor>> {
         self.monitor_provider.get_monitors().await
     }
 
     /// Forces a refresh of monitor information
-    pub async fn refresh_monitors(&self) -> DwallResult<HashMap<String, Monitor>> {
+    pub async fn refresh_monitors(&self) -> DwallResult<HashMap<String, DisplayMonitor>> {
         self.monitor_provider.refresh_monitors().await
     }
 
     /// Detects if monitor configuration has changed
     pub async fn has_monitor_config_changed(&self) -> DwallResult<bool> {
-        self.monitor_provider.has_monitor_config_changed().await
+        self.monitor_provider.has_configuration_changed().await
     }
 }
