@@ -120,7 +120,7 @@ async fn set_titlebar_color_mode(
 }
 
 #[tauri::command]
-async fn get_monitors() -> DwallSettingsResult<HashMap<String, dwall::monitor::Monitor>> {
+async fn get_monitors() -> DwallSettingsResult<HashMap<String, dwall::monitor::DisplayMonitor>> {
     let monitors = monitor::get_monitors().await?;
 
     Ok(monitors)
