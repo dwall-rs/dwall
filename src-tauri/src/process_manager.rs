@@ -138,8 +138,7 @@ fn get_module_filename(process_handle: HANDLE) -> Result<OsString, ProcessManage
         filename_buffer.truncate(filename_length as usize);
         Ok(OsString::from_wide(&filename_buffer))
     } else {
-        Err(ProcessManagerError::Io(std::io::Error::new(
-            std::io::ErrorKind::Other,
+        Err(ProcessManagerError::Io(std::io::Error::other(
             "Failed to get module filename",
         )))
     }
