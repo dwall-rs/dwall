@@ -11,7 +11,7 @@ use windows::{
 use super::monitor_info::DisplayMonitor;
 
 #[derive(Debug, thiserror::Error)]
-pub enum MonitorWallpaperManagerError {
+pub enum WallpaperError {
     #[error("Failed to create desktop wallpaper COM instance: {0}")]
     Instance(windows::core::Error),
     #[error("Failed to retrieve current wallpaper for monitor: {0}")]
@@ -22,19 +22,19 @@ pub enum MonitorWallpaperManagerError {
     MonitorNotFound(String),
 }
 
-pub type MonitorWallpaperManagerResult<T> = Result<T, MonitorWallpaperManagerError>;
+type WallpaperResult<T> = Result<T, WallpaperError>;
 
-/// Manager for wallpaper operations
-pub struct MonitorWallpaperManager {
+/// Manager for wallpaper operations on Windows
+pub struct WallpaperManager {
     /// Windows Desktop Wallpaper COM interface
     desktop_wallpaper: IDesktopWallpaper,
-    /// Flag indicating whether CoUninitialize should be called on drop
+    /// Flag indicating whether COM was initialized by this instance
     com_initialized: bool,
 }
 
-impl MonitorWallpaperManager {
+impl WallpaperManager {
     /// Creates a new WallpaperManager instance
-    pub fn new() -> MonitorWallpaperManagerResult<Self> {
+    pub fn new() -> WallpaperResult<Self> {
         // Continue execution even if initialization fails, as it might have been initialized elsewhere
         let com_initialized = unsafe {
             // Attempt to initialize COM
@@ -50,7 +50,7 @@ impl MonitorWallpaperManager {
                     error = ?e,
                     "Failed to create desktop wallpaper COM instance"
                 );
-                MonitorWallpaperManagerError::Instance(e)
+                WallpaperError::Instance(e)
             })?
         };
 
@@ -65,8 +65,8 @@ impl MonitorWallpaperManager {
         &self,
         monitor_path: &HSTRING,
         wallpaper_path: &HSTRING,
-    ) -> MonitorWallpaperManagerResult<bool> {
-        trace!(
+    ) -> WallpaperResult<bool> {
+        debug!(
             monitor_path = %monitor_path,
             "Checking existing wallpaper for monitor"
         );
@@ -78,9 +78,9 @@ impl MonitorWallpaperManager {
                     error!(
                         error = %e,
                         monitor_path = %monitor_path,
-                        "Failed to retrieve current wallpaper for monitor"
+                        "Failed to retrieve wallpaper for monitor"
                     );
-                    return Err(MonitorWallpaperManagerError::GetWallpaper(e));
+                    return Err(WallpaperError::GetWallpaper(e));
                 }
             };
 
@@ -88,11 +88,11 @@ impl MonitorWallpaperManager {
 
         let is_same = *wallpaper_path == current_wallpaper_path;
 
-        trace!(
-            current_wallpaper_path = %current_wallpaper_path,
-            new_wallpaper_path = %wallpaper_path,
+        debug!(
+            current = %current_wallpaper_path,
+            new = %wallpaper_path,
             is_same = is_same,
-            "Wallpaper comparison result"
+            "Wallpaper comparison"
         );
 
         Ok(is_same)
@@ -103,13 +103,14 @@ impl MonitorWallpaperManager {
         &self,
         monitor: &DisplayMonitor,
         wallpaper_path: &Path,
-    ) -> MonitorWallpaperManagerResult<()> {
+    ) -> WallpaperResult<()> {
         // Convert wallpaper path to HSTRING
         let wallpaper_path = HSTRING::from(wallpaper_path);
         let device_path = HSTRING::from(monitor.device_path());
 
+        // Check if wallpaper is already set to avoid unnecessary operations
         if self.is_wallpaper_already_set(&device_path, &wallpaper_path)? {
-            info!(
+            debug!(
                 monitor_id = monitor.device_path(),
                 wallpaper_path = %wallpaper_path,
                 "Wallpaper already set for monitor, skipping"
@@ -128,13 +129,13 @@ impl MonitorWallpaperManager {
                         wallpaper_path = %wallpaper_path,
                         "Failed to set wallpaper for monitor"
                     );
-                    MonitorWallpaperManagerError::SetWallpaper(e)
+                    WallpaperError::SetWallpaper(e)
                 })
         }
     }
 }
 
-impl Drop for MonitorWallpaperManager {
+impl Drop for WallpaperManager {
     fn drop(&mut self) {
         // Only uninitialize COM if we successfully initialized it
         if self.com_initialized {
