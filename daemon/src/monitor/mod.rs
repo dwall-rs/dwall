@@ -11,13 +11,13 @@ use crate::error::DwallResult;
 
 // Re-export Monitor struct for public use
 pub use monitor_info::{DisplayMonitor, DisplayMonitorProvider};
-pub(crate) use wallpaper_manager::{MonitorWallpaperManager, MonitorWallpaperManagerError};
+pub(crate) use wallpaper_manager::{WallpaperError, WallpaperManager};
 
 /// For backward compatibility with existing code
 /// This will be deprecated in future versions
 pub struct MonitorManager {
     /// Wallpaper manager instance
-    wallpaper_manager: MonitorWallpaperManager,
+    wallpaper_manager: WallpaperManager,
     /// Monitor information provider
     monitor_provider: DisplayMonitorProvider,
 }
@@ -26,7 +26,7 @@ impl MonitorManager {
     /// Creates a new MonitorManager instance
     pub fn new() -> DwallResult<Self> {
         Ok(Self {
-            wallpaper_manager: MonitorWallpaperManager::new()?,
+            wallpaper_manager: WallpaperManager::new()?,
             monitor_provider: DisplayMonitorProvider::new(),
         })
     }
@@ -55,7 +55,7 @@ impl MonitorManager {
                 monitor_id = monitor_id,
                 "Monitor with specified ID not found"
             );
-            MonitorWallpaperManagerError::MonitorNotFound(monitor_id.to_string())
+            WallpaperError::MonitorNotFound(monitor_id.to_string())
         })?;
 
         if let Err(error) = self
@@ -64,7 +64,7 @@ impl MonitorManager {
             .await
         {
             match error {
-                MonitorWallpaperManagerError::SetWallpaper(_) => {
+                WallpaperError::SetWallpaper(_) => {
                     self.retry_set_wallpaper(monitor_id, wallpaper_path).await?
                 }
                 _ => {
@@ -96,7 +96,7 @@ impl MonitorManager {
                 monitor_id = monitor_id,
                 "Monitor with specified ID not found"
             );
-            MonitorWallpaperManagerError::MonitorNotFound(monitor_id.to_string())
+            WallpaperError::MonitorNotFound(monitor_id.to_string())
         })?;
 
         self.wallpaper_manager
