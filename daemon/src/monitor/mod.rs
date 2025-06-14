@@ -10,24 +10,24 @@ use std::path::Path;
 use crate::error::DwallResult;
 
 // Re-export Monitor struct for public use
-pub use monitor_info::{Monitor, MonitorInfoProvider};
-pub(crate) use wallpaper_manager::{MonitorWallpaperManager, MonitorWallpaperManagerError};
+pub use monitor_info::{DisplayMonitor, DisplayMonitorProvider};
+pub(crate) use wallpaper_manager::{WallpaperError, WallpaperManager};
 
 /// For backward compatibility with existing code
 /// This will be deprecated in future versions
 pub struct MonitorManager {
     /// Wallpaper manager instance
-    wallpaper_manager: MonitorWallpaperManager,
+    wallpaper_manager: WallpaperManager,
     /// Monitor information provider
-    monitor_provider: MonitorInfoProvider,
+    monitor_provider: DisplayMonitorProvider,
 }
 
 impl MonitorManager {
     /// Creates a new MonitorManager instance
     pub fn new() -> DwallResult<Self> {
         Ok(Self {
-            wallpaper_manager: MonitorWallpaperManager::new()?,
-            monitor_provider: MonitorInfoProvider::new(),
+            wallpaper_manager: WallpaperManager::new()?,
+            monitor_provider: DisplayMonitorProvider::new(),
         })
     }
 
@@ -55,7 +55,7 @@ impl MonitorManager {
                 monitor_id = monitor_id,
                 "Monitor with specified ID not found"
             );
-            MonitorWallpaperManagerError::MonitorNotFound(monitor_id.to_string())
+            WallpaperError::MonitorNotFound(monitor_id.to_string())
         })?;
 
         if let Err(error) = self
@@ -64,7 +64,7 @@ impl MonitorManager {
             .await
         {
             match error {
-                MonitorWallpaperManagerError::SetWallpaper(_) => {
+                WallpaperError::SetWallpaper(_) => {
                     self.retry_set_wallpaper(monitor_id, wallpaper_path).await?
                 }
                 _ => {
@@ -96,7 +96,7 @@ impl MonitorManager {
                 monitor_id = monitor_id,
                 "Monitor with specified ID not found"
             );
-            MonitorWallpaperManagerError::MonitorNotFound(monitor_id.to_string())
+            WallpaperError::MonitorNotFound(monitor_id.to_string())
         })?;
 
         self.wallpaper_manager
@@ -116,17 +116,17 @@ impl MonitorManager {
     }
 
     /// Gets all available monitors with caching
-    pub async fn get_monitors(&self) -> DwallResult<HashMap<String, Monitor>> {
+    pub async fn get_monitors(&self) -> DwallResult<HashMap<String, DisplayMonitor>> {
         self.monitor_provider.get_monitors().await
     }
 
     /// Forces a refresh of monitor information
-    pub async fn refresh_monitors(&self) -> DwallResult<HashMap<String, Monitor>> {
+    pub async fn refresh_monitors(&self) -> DwallResult<HashMap<String, DisplayMonitor>> {
         self.monitor_provider.refresh_monitors().await
     }
 
     /// Detects if monitor configuration has changed
     pub async fn has_monitor_config_changed(&self) -> DwallResult<bool> {
-        self.monitor_provider.has_monitor_config_changed().await
+        self.monitor_provider.has_configuration_changed().await
     }
 }

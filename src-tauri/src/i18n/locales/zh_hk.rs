@@ -84,7 +84,9 @@ impl TranslationMap for ChineseTraditionalHKTranslations {
         );
         translations.insert(
             MESSAGE_LOCATION_PERMISSION,
-            TranslationValue::Text("定位權限未開啟，請手動開啟定位或手動配置坐標。\n\n是否手動配置坐標？\n點擊「是」手動配置坐標，點擊「否」關閉程式"),
+            TranslationValue::Text(
+                "未啟用定位權限，請手動啟用定位或手動設定坐標。\n\n是否手動設定坐標？\n按「是」手動設定坐標，按「否」手動啟用定位。",
+            ),
         );
         translations.insert(
             MESSAGE_NUMBER_TOO_LARGE,

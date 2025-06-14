@@ -4,7 +4,7 @@ use tauri::Manager;
 
 use crate::{
     download::ThemeDownloader, error::DwallSettingsError, process_manager::find_daemon_process,
-    read_config_file, theme::spawn_apply_daemon, window::create_main_window, DAEMON_EXE_PATH,
+    read_config_file, theme::launch_daemon, window::create_main_window, DAEMON_EXE_PATH,
 };
 
 pub fn setup_app(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
@@ -48,7 +48,7 @@ pub fn setup_app(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>>
         let _ = read_config_file()
             .await
             .and_then(|_| find_daemon_process())
-            .and_then(|pid| pid.map_or_else(|| spawn_apply_daemon().map(|_| ()), |_| Ok(())));
+            .and_then(|pid| pid.map_or_else(|| launch_daemon().map(|_| ()), |_| Ok(())));
     });
 
     info!("Application setup completed successfully");

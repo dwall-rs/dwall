@@ -1,5 +1,5 @@
 import { createMemo } from "solid-js";
-import { checkThemeExists } from "~/commands";
+import { validateTheme } from "~/commands";
 
 /**
  * Theme selection management Hook, used to handle theme selection related functions
@@ -28,7 +28,7 @@ export const useThemeSelection = (
   const handleThemeSelection = async (idx: number) => {
     setMenuItemIndex(idx);
     try {
-      await checkThemeExists(config()?.themes_directory ?? "", themes[idx].id);
+      await validateTheme(config()?.themes_directory ?? "", themes[idx].id);
       setThemeExists(true);
     } catch (e) {
       setThemeExists(false);

@@ -84,7 +84,9 @@ impl TranslationMap for ChineseTraditionalTWTranslations {
         );
         translations.insert(
             MESSAGE_LOCATION_PERMISSION,
-            TranslationValue::Text("定位權限未開啟，請手動開啟定位或手動設定座標。\n\n是否手動設定座標？\n點擊「是」手動設定座標，點擊「否」結束程式"),
+            TranslationValue::Text(
+                "定位權限未開啟，請手動開啟定位或手動設定座標。\n\n是否手動設定座標？\n點選「是」手動設定座標，點選「否」手動開啟定位。",
+            ),
         );
         translations.insert(
             MESSAGE_NUMBER_TOO_LARGE,

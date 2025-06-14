@@ -1,12 +1,10 @@
 import { invoke } from "@tauri-apps/api/core";
 
-export const checkThemeExists = async (
-  themesDirecotry: string,
-  themeId: string,
-) => invoke<void>("check_theme_exists", { themesDirecotry, themeId });
+export const validateTheme = async (themesDirecotry: string, themeId: string) =>
+  invoke<void>("validate_theme", { themesDirecotry, themeId });
 
 export const applyTheme = async (config: Config) =>
-  invoke("apply_theme", { config });
+  invoke<void>("apply_theme", { config });
 
 export const getAppliedThemeID = async (monitorId: string) =>
   invoke<string | null>("get_applied_theme_id", { monitorId });

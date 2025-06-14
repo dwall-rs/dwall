@@ -9,16 +9,12 @@ export const useTaskManager = () => {
   const handleTaskClosure = async () => {
     if (!config()) return;
 
-    const monitor_specific_wallpapers = {
-      ...config()?.monitor_specific_wallpapers,
-    };
+    let monitor_specific_wallpapers = config()?.monitor_specific_wallpapers;
 
-    if (monitorID() === "all") {
-      for (const monitorID in monitor_specific_wallpapers) {
-        delete monitor_specific_wallpapers[monitorID];
-      }
-    } else {
+    if (typeof monitor_specific_wallpapers === "object") {
       delete monitor_specific_wallpapers[monitorID()!];
+    } else {
+      monitor_specific_wallpapers = {};
     }
 
     const updatedConfig: Config = {

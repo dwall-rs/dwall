@@ -4,6 +4,7 @@ use std::{
     os::windows::process::CommandExt,
     path::Path,
     process::Command,
+    time::Duration,
 };
 
 use dwall::{
@@ -12,6 +13,7 @@ use dwall::{
 };
 use serde::Deserialize;
 use serde_json::Value;
+use tokio::time::sleep;
 use windows::Win32::System::Threading::CREATE_NO_WINDOW;
 
 use crate::{
@@ -21,14 +23,17 @@ use crate::{
 };
 
 #[derive(Deserialize)]
-struct DaemonErrorLog {
+struct DaemonLogEntry {
     fields: Value,
 }
 
-pub fn read_daemon_error_log() -> Option<String> {
+/// Attempts to read the most recent error from the daemon log file
+///
+/// Returns the error message if found, or None if no error was found or the log file couldn't be read
+pub fn get_last_daemon_error() -> Option<String> {
     let log_file_path = DWALL_CONFIG_DIR.join("dwall.log");
     if !log_file_path.exists() {
-        debug!("Daemon log file does not exist yet");
+        debug!("Daemon log file not found");
         return None;
     }
 
@@ -47,11 +52,9 @@ pub fn read_daemon_error_log() -> Option<String> {
         return None;
     }
 
-    // Split by lines and collect into a vector
+    // Get lines and search from newest to oldest
     let lines: Vec<&str> = content.lines().collect();
 
-    // Search backwards for the first line containing error message
-    // Usually the last line is empty, so start from the second last line
     for line in lines.iter().rev() {
         let line = line.trim();
         if line.is_empty() {
@@ -59,35 +62,38 @@ pub fn read_daemon_error_log() -> Option<String> {
         }
 
         if line.to_lowercase().contains("error") {
-            match serde_json::from_str::<DaemonErrorLog>(line) {
+            match serde_json::from_str::<DaemonLogEntry>(line) {
                 Ok(log_line) => {
-                    debug!("Found last error log entry");
                     return Some(log_line.fields.to_string());
                 }
-                Err(e) => {
-                    warn!(error = ?e, "Failed to parse log line as JSON");
+                Err(_) => {
+                    // Just continue searching if this line couldn't be parsed
+                    continue;
                 }
             }
         }
     }
 
-    debug!("No error logs found in daemon log file");
     None
 }
 
-pub fn spawn_apply_daemon() -> DwallSettingsResult<()> {
+/// Launches the daemon process to apply wallpaper settings
+///
+/// Returns an error if the daemon couldn't be started
+pub fn launch_daemon() -> DwallSettingsResult<()> {
     let daemon_path = match DAEMON_EXE_PATH.get() {
         Some(path) => path.as_os_str(),
         None => {
-            error!("DAEMON_EXE_PATH is not set");
+            error!("DAEMON_EXE_PATH not configured");
             return Err(DwallSettingsError::Daemon(
-                "DAEMON_EXE_PATH is not set".into(),
+                "Daemon executable path not configured".into(),
             ));
         }
     };
 
     let mut cmd = Command::new(daemon_path);
 
+    // In debug mode, inherit stdio for easier debugging
     if cfg!(debug_assertions) {
         use std::process::Stdio;
 
@@ -99,30 +105,27 @@ pub fn spawn_apply_daemon() -> DwallSettingsResult<()> {
     }
 
     match cmd.spawn() {
-        Ok(handle) => {
-            info!(pid = handle.id(), "Spawned daemon using subprocess");
+        Ok(process) => {
+            info!(pid = process.id(), "Daemon process started");
             Ok(())
         }
         Err(e) => {
-            error!(error = ?e, path = ?daemon_path, "Failed to spawn daemon");
+            error!(error = ?e, path = ?daemon_path, "Failed to start daemon process");
             Err(e.into())
         }
     }
 }
 
 #[tauri::command]
-pub async fn check_theme_exists(
-    themes_direcotry: &Path,
-    theme_id: &str,
-) -> DwallSettingsResult<()> {
-    trace!(id = theme_id, "Checking theme existence for theme");
+pub async fn validate_theme(themes_direcotry: &Path, theme_id: &str) -> DwallSettingsResult<()> {
+    trace!(id = theme_id, "Validating theme");
     match ThemeValidator::validate_theme(themes_direcotry, theme_id).await {
         Ok(_) => {
-            info!(id = theme_id, "Theme exists and is valid");
+            debug!(id = theme_id, "Theme validation successful");
             Ok(())
         }
         Err(e) => {
-            error!(theme_id = %theme_id, error = ?e, "Theme validation failed");
+            error!(theme_id, error = %e, "Theme validation failed");
             Err(e.into())
         }
     }
@@ -130,17 +133,22 @@ pub async fn check_theme_exists(
 
 #[tauri::command]
 pub async fn get_applied_theme_id(monitor_id: &str) -> DwallSettingsResult<Option<String>> {
-    debug!(monitor_id, "Attempting to get currently applied theme ID");
+    debug!(monitor_id, "Getting current theme for monitor");
 
+    // Check if daemon is running
     let daemon_process = find_daemon_process()?;
     if daemon_process.is_none() {
-        debug!("No daemon process found");
+        debug!("No active daemon process found");
         return Ok(None);
     }
 
+    // Read current configuration
     match dwall::config::read_config_file().await {
         Ok(config) => {
             let monitor_themes = config.monitor_specific_wallpapers();
+
+            // Handle special case for "all" monitors
+            // TODO: `monitor_id == "all"` is deprecated, remove in the future
             let theme_id = if monitor_id == "all" {
                 let theme_id = match monitor_themes {
                     dwall::config::MonitorSpecificWallpapers::All(theme_id) => Some(theme_id),
@@ -155,18 +163,16 @@ pub async fn get_applied_theme_id(monitor_id: &str) -> DwallSettingsResult<Optio
                     }
                 };
 
-                info!(theme_id = ?theme_id, "Retrieved all theme ID");
                 theme_id
             } else {
-                let theme_id = monitor_themes.get(monitor_id);
-                info!(monitor_id, theme_id =?theme_id, "Retrieved current theme ID");
-                theme_id
+                monitor_themes.get(monitor_id)
             };
 
+            debug!(monitor_id, theme_id = ?theme_id, "Retrieved theme ID");
             Ok(theme_id.map(|s| s.to_string()))
         }
         Err(e) => {
-            error!(error = ?e, "Failed to read config file while getting theme ID");
+            error!(error = %e, "Failed to read configuration");
             Err(e.into())
         }
     }
@@ -174,25 +180,44 @@ pub async fn get_applied_theme_id(monitor_id: &str) -> DwallSettingsResult<Optio
 
 #[tauri::command]
 pub async fn apply_theme(config: Config) -> DwallSettingsResult<()> {
-    trace!("Starting theme application process");
+    trace!("Starting theme application");
 
     match kill_daemon() {
         Ok(()) => debug!("Successfully killed existing daemon process"),
-        Err(e) => warn!(error = ?e, "Failed to kill existing daemon process"),
+        Err(e) => warn!(error = %e, "Failed to kill existing daemon process"),
     }
 
     dwall_write_config(&config).await?;
 
-    if let Err(e) = spawn_apply_daemon() {
-        error!(error =?e, "Failed to spawn or monitor theme daemon");
+    // If no themes are configured, we're done
+    if config.monitor_specific_wallpapers().is_empty() {
+        debug!("No themes configured, skipping daemon launch");
+        return Ok(());
+    }
 
-        if let Some(e) = read_daemon_error_log() {
+    // Launch daemon to apply the theme
+    if let Err(e) = launch_daemon() {
+        error!(error =%e, "Failed to launch daemon");
+
+        // Wait briefly for daemon to log any errors
+        sleep(Duration::from_millis(100)).await;
+
+        // Check for error logs
+        if let Some(e) = get_last_daemon_error() {
             return Err(DwallSettingsError::Daemon(e));
         }
 
         return Err(e);
     }
-    info!("Successfully spawned and monitored theme daemon");
 
+    // Wait for daemon to start
+    sleep(Duration::from_millis(100)).await;
+
+    // Verify daemon is running
+    find_daemon_process()?.ok_or(DwallSettingsError::Daemon(
+        "Daemon process failed to start".to_string(),
+    ))?;
+
+    info!("Successfully spawned and monitored theme daemon");
     Ok(())
 }

@@ -20,7 +20,7 @@ use crate::i18n::get_translations;
 use crate::postion::request_location_permission;
 use crate::process_manager::kill_daemon;
 use crate::setup::setup_app;
-use crate::theme::{apply_theme, check_theme_exists, get_applied_theme_id};
+use crate::theme::{apply_theme, get_applied_theme_id, validate_theme};
 use crate::window::create_main_window;
 
 mod auto_start;
@@ -120,10 +120,15 @@ async fn set_titlebar_color_mode(
 }
 
 #[tauri::command]
-async fn get_monitors() -> DwallSettingsResult<HashMap<String, dwall::monitor::Monitor>> {
+async fn get_monitors() -> DwallSettingsResult<HashMap<String, dwall::monitor::DisplayMonitor>> {
     let monitors = monitor::get_monitors().await?;
 
     Ok(monitors)
+}
+
+#[tauri::command]
+async fn open_privacy_location_settings() -> DwallSettingsResult<()> {
+    open::that("ms-settings:privacy-location").map_err(|e| e.into())
 }
 
 #[tokio::main]
@@ -137,7 +142,6 @@ async fn main() -> DwallSettingsResult<()> {
     let builder = tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_dialog::init())
-        .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_single_instance::init(|app, _argv, _cwd| {
             trace!("Handling single instance application launch");
             if let Some(w) = app.get_webview_window("main") {
@@ -157,7 +161,7 @@ async fn main() -> DwallSettingsResult<()> {
             show_window,
             read_config_file,
             write_config_file,
-            check_theme_exists,
+            validate_theme,
             apply_theme,
             get_applied_theme_id,
             check_auto_start,
@@ -175,6 +179,7 @@ async fn main() -> DwallSettingsResult<()> {
             clear_thumbnail_cache,
             get_translations,
             get_monitors,
+            open_privacy_location_settings
         ]);
 
     if cfg!(debug_assertions) {

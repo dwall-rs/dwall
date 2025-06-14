@@ -1,7 +1,9 @@
-import { requestLocationPermission } from "~/commands";
+import {
+  openPrivacyLocationSettings,
+  requestLocationPermission,
+} from "~/commands";
 
 import { ask } from "@tauri-apps/plugin-dialog";
-import { exit } from "@tauri-apps/plugin-process";
 
 import { useTranslations } from "~/contexts";
 
@@ -14,6 +16,7 @@ import { useTranslations } from "~/contexts";
 export const useLocationPermission = (
   mutate: (fn: (prev: Config) => Config) => void,
   setShowSettings: (show: boolean) => void,
+  setMenuItemIndex: Setter<number | undefined>,
 ) => {
   const { translate } = useTranslations();
   // Check location permission
@@ -28,7 +31,7 @@ export const useLocationPermission = (
       );
 
       if (!shouldContinue) {
-        exit(0);
+        await openPrivacyLocationSettings();
         return false;
       }
 
@@ -36,6 +39,7 @@ export const useLocationPermission = (
         ...prev!,
         coordinate_source: { type: "MANUAL" },
       }));
+      setMenuItemIndex();
       setShowSettings(true);
       return false;
     }

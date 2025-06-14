@@ -95,7 +95,9 @@ impl TranslationMap for JapaneseTranslations {
         );
         translations.insert(
             MESSAGE_LOCATION_PERMISSION,
-            TranslationValue::Text("位置情報の権限が有効になっていません。手動で位置情報を有効にするか、座標を手動で設定してください。\n\n座標を手動で設定しますか？\n「はい」をクリックして座標を手動設定するか、「いいえ」をクリックしてプログラムを終了します。"),
+            TranslationValue::Text(
+                "位置情報の権限が有効になっていません。位置情報を手動で有効にするか、座標を手動で設定してください。\n\n座標を手動で設定しますか？\n「はい」をクリックして座標を手動で設定する、「いいえ」をクリックして位置情報を有効にする。",
+            ),
         );
         translations.insert(
             MESSAGE_NUMBER_TOO_LARGE,
