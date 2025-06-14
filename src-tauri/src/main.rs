@@ -20,7 +20,7 @@ use crate::i18n::get_translations;
 use crate::postion::request_location_permission;
 use crate::process_manager::kill_daemon;
 use crate::setup::setup_app;
-use crate::theme::{apply_theme, check_theme_exists, get_applied_theme_id};
+use crate::theme::{apply_theme, get_applied_theme_id, validate_theme};
 use crate::window::create_main_window;
 
 mod auto_start;
@@ -157,7 +157,7 @@ async fn main() -> DwallSettingsResult<()> {
             show_window,
             read_config_file,
             write_config_file,
-            check_theme_exists,
+            validate_theme,
             apply_theme,
             get_applied_theme_id,
             check_auto_start,
