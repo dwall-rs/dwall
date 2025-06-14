@@ -167,7 +167,9 @@ impl TranslationMap for EnglishUSTranslations {
         );
         translations.insert(
             MESSAGE_LOCATION_PERMISSION,
-            TranslationValue::Text("The location permission is not turned on. Please manually enable location or manually configure coordinates.\n\nDo you want to manually configure coordinates?\nClick \"Yes\" to manually configure coordinates, or click \"No\" to close the program."),
+            TranslationValue::Text(
+                "Location permission is not enabled. Please manually enable location or set coordinates manually.\n\nDo you want to set coordinates manually?\nClick 'Yes' to set coordinates manually, click 'No' to enable location.",
+            ),
         );
         translations.insert(
             MESSAGE_MANUAL_COORDINATES_SAVED,

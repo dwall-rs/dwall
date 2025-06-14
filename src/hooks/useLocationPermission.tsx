@@ -1,4 +1,7 @@
-import { requestLocationPermission } from "~/commands";
+import {
+  openPrivacyLocationSettings,
+  requestLocationPermission,
+} from "~/commands";
 
 import { ask } from "@tauri-apps/plugin-dialog";
 import { exit } from "@tauri-apps/plugin-process";
@@ -29,7 +32,8 @@ export const useLocationPermission = (
       );
 
       if (!shouldContinue) {
-        exit(0);
+        // exit(0);
+        await openPrivacyLocationSettings();
         return false;
       }
 

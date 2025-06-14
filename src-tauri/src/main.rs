@@ -126,6 +126,11 @@ async fn get_monitors() -> DwallSettingsResult<HashMap<String, dwall::monitor::D
     Ok(monitors)
 }
 
+#[tauri::command]
+async fn open_privacy_location_settings() -> DwallSettingsResult<()> {
+    open::that("ms-settings:privacy-location").map_err(|e| e.into())
+}
+
 #[tokio::main]
 async fn main() -> DwallSettingsResult<()> {
     if cfg!(not(debug_assertions)) && cfg!(not(feature = "log-max-level-info")) {
@@ -175,6 +180,7 @@ async fn main() -> DwallSettingsResult<()> {
             clear_thumbnail_cache,
             get_translations,
             get_monitors,
+            open_privacy_location_settings
         ]);
 
     if cfg!(debug_assertions) {
