@@ -63,6 +63,7 @@ export const ThemeProvider = (props: ParentProps) => {
   const { checkLocationPermission } = useLocationPermission(
     mutate,
     setShowSettings,
+    setMenuItemIndex,
   );
 
   // Use theme application Hook

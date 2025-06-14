@@ -14,6 +14,7 @@ import { useTranslations } from "~/contexts";
 export const useLocationPermission = (
   mutate: (fn: (prev: Config) => Config) => void,
   setShowSettings: (show: boolean) => void,
+  setMenuItemIndex: Setter<number | undefined>,
 ) => {
   const { translate } = useTranslations();
   // Check location permission
@@ -36,6 +37,7 @@ export const useLocationPermission = (
         ...prev!,
         coordinate_source: { type: "MANUAL" },
       }));
+      setMenuItemIndex();
       setShowSettings(true);
       return false;
     }
