@@ -4,7 +4,6 @@ import {
 } from "~/commands";
 
 import { ask } from "@tauri-apps/plugin-dialog";
-import { exit } from "@tauri-apps/plugin-process";
 
 import { useTranslations } from "~/contexts";
 
@@ -32,7 +31,6 @@ export const useLocationPermission = (
       );
 
       if (!shouldContinue) {
-        // exit(0);
         await openPrivacyLocationSettings();
         return false;
       }
