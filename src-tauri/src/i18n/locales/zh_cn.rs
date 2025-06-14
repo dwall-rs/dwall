@@ -151,7 +151,9 @@ impl TranslationMap for ChineseSimplifiedTranslations {
         );
         translations.insert(
             MESSAGE_LOCATION_PERMISSION,
-            TranslationValue::Text("定位权限未打开，请手动开启定位或手动配置坐标。\n\n是否手动配置坐标？\n点击“是”手动配置坐标，点击“否”关闭程序"),
+            TranslationValue::Text(
+                "定位权限未打开，请手动开启定位或手动配置坐标。\n\n是否手动配置坐标？\n点击“是”手动配置坐标，点击“否”手动开启定位。",
+            ),
         );
         translations.insert(
             MESSAGE_MANUAL_COORDINATES_SAVED,

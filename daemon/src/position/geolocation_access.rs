@@ -16,9 +16,10 @@ pub enum GeolocationAccessError {
 ///
 /// Returns Ok(()) if permission is granted, or an error if denied or unspecified
 pub async fn check_location_permission() -> DwallResult<()> {
-    let access_status = handle_windows_error("Requesting geolocation access permission", || {
-        Geolocator::RequestAccessAsync()
-    })
+    let access_status = handle_windows_error(
+        "Requesting geolocation access permission",
+        Geolocator::RequestAccessAsync,
+    )
     .await?
     .get()
     .map_err(|e| {
