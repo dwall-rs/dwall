@@ -4,7 +4,7 @@ import {
   type ParentProps,
   useContext,
 } from "solid-js";
-import { checkThemeExists } from "~/commands";
+import { validateTheme } from "~/commands";
 import { useThemeApplication } from "~/hooks/theme/useThemeApplication";
 import { useThemeState } from "~/hooks/theme/useThemeState";
 import { useLocationPermission } from "~/hooks/useLocationPermission";
@@ -51,7 +51,7 @@ export const ThemeProvider = (props: ParentProps) => {
   const handleThemeSelection = async (idx: number) => {
     setMenuItemIndex(idx);
     try {
-      await checkThemeExists(config()?.themes_directory ?? "", themes[idx].id);
+      await validateTheme(config()?.themes_directory ?? "", themes[idx].id);
       setThemeExists(true);
     } catch (e) {
       setThemeExists(false);
