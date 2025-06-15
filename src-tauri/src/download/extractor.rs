@@ -25,7 +25,7 @@ impl ThemeExtractor {
             error!(
                 theme_id = theme_id,
                 zip_path = %zip_path.display(),
-                error = ?e,
+                error = %e,
                 "Failed to read theme archive"
             );
             e
@@ -37,7 +37,7 @@ impl ThemeExtractor {
                 theme_id = theme_id,
                 target_dir = %target_dir.display(),
                 zip_path = %zip_path.display(),
-                error = ?e,
+                error = %e,
                 "Failed to extract theme archive"
             );
             e
@@ -54,7 +54,7 @@ impl ThemeExtractor {
             error!(
                 theme_id = theme_id,
                 zip_path = %zip_path.display(),
-                error = ?e,
+                error = %e,
                 "Failed to delete theme archive"
             );
             e

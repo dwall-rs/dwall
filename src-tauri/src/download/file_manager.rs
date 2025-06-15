@@ -34,7 +34,7 @@ impl ThemeFileManager {
             fs::remove_dir_all(target_dir).await.map_err(|e| {
                 error!(
                     dir_path = %target_dir.display(),
-                    error = ?e,
+                    error = %e,
                     "Failed to remove existing theme directory"
                 );
                 e
@@ -46,7 +46,7 @@ impl ThemeFileManager {
         fs::create_dir_all(target_dir).await.map_err(|e| {
             error!(
                 dir_path = %target_dir.display(),
-                error = ?e,
+                error = %e,
                 "Failed to create theme directory"
             );
             e
@@ -75,7 +75,7 @@ impl ThemeFileManager {
             if let Err(e) = fs::remove_file(temp_file_path).await {
                 error!(
                     file_path = %temp_file_path.display(),
-                    error = ?e,
+                    error = %e,
                     "Failed to remove temporary file"
                 );
             } else {
@@ -95,7 +95,7 @@ impl ThemeFileManager {
                 error!(
                     from = %temp_file_path.display(),
                     to = %final_file_path.display(),
-                    error = ?e,
+                    error = %e,
                     "Failed to rename temporary file to final file"
                 );
                 e.into()

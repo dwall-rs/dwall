@@ -40,7 +40,7 @@ pub fn get_last_daemon_error() -> Option<String> {
     let file = match File::open(&log_file_path) {
         Ok(file) => file,
         Err(e) => {
-            warn!(error = ?e, "Failed to open daemon log file");
+            warn!(error = %e, "Failed to open daemon log file");
             return None;
         }
     };
@@ -110,7 +110,7 @@ pub fn launch_daemon() -> DwallSettingsResult<()> {
             Ok(())
         }
         Err(e) => {
-            error!(error = ?e, path = ?daemon_path, "Failed to start daemon process");
+            error!(error = %e, path = ?daemon_path, "Failed to start daemon process");
             Err(e.into())
         }
     }

@@ -34,7 +34,7 @@ impl WallpaperManager {
 
     fn get_current_lock_screen_image() -> DwallResult<Uri> {
         let result = LockScreen::OriginalImageFile().map_err(|e| {
-            error!(error = ?e, "Failed to retrieve lock screen image");
+            error!(error = %e, "Failed to retrieve lock screen image");
             e
         })?;
 
@@ -47,7 +47,7 @@ impl WallpaperManager {
         let uri = Uri::CreateUri(&image_path_hstring).map_err(|e| {
             error!(
                 path = %image_path.display(),
-                error = ?e,
+                error = %e,
                 "Failed to create URI for lock screen image",
             );
             e
@@ -64,7 +64,7 @@ impl WallpaperManager {
         let file = StorageFile::GetFileFromPathAsync(&image_path_hstring).map_err(|e| {
             error!(
                 path = %image_path.display(),
-                error = ?e,
+                error = %e,
                 "Failed to get storage file for lock screen",
             );
             e
@@ -72,7 +72,7 @@ impl WallpaperManager {
         let file = file.get().map_err(|e| {
             error!(
                 path = %image_path.display(),
-                error = ?e,
+                error = %e,
                 "Failed to retrieve async storage file",
             );
             e
@@ -81,7 +81,7 @@ impl WallpaperManager {
         let i_storage_file: IStorageFile = file.cast().map_err(|e| {
             error!(
                 path = %image_path.display(),
-                error = ?e,
+                error = %e,
                 "Failed to cast storage file",
             );
             e
@@ -89,7 +89,7 @@ impl WallpaperManager {
         let result = LockScreen::SetImageFileAsync(&i_storage_file).map_err(|e| {
             error!(
                 path = %image_path.display(),
-                error = ?e,
+                error = %e,
                 "Failed to set lock screen image async",
             );
             e
@@ -97,7 +97,7 @@ impl WallpaperManager {
         result.get().map_err(|e| {
             error!(
                 path = %image_path.display(),
-                error = ?e,
+                error = %e,
                 "Failed to complete lock screen image setting",
             );
             e
