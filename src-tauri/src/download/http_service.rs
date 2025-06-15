@@ -41,7 +41,7 @@ impl HttpDownloadService {
             .connect_timeout(Duration::from_secs(120))
             .build()
             .map_err(|e| {
-                error!(error = ?e, "Failed to create HTTP client");
+                error!(error = %e, "Failed to create HTTP client");
                 e
             })
             .unwrap();
@@ -119,7 +119,7 @@ impl HttpDownloadService {
                 error!(
                     theme_id = theme_id,
                     file_path = %file_path.display(),
-                    error = ?e,
+                    error = %e,
                     "Failed to get metadata of existing temp file"
                 );
                 e
@@ -141,7 +141,7 @@ impl HttpDownloadService {
                     error!(
                         theme_id = theme_id,
                         file_path = %file_path.display(),
-                        error = ?e,
+                        error = %e,
                         "Failed to open existing temp file"
                     );
                     e
@@ -152,7 +152,7 @@ impl HttpDownloadService {
                 error!(
                     theme_id = theme_id,
                     file_path = %file_path.display(),
-                    error = ?e,
+                    error = %e,
                     "Failed to create temp file"
                 );
                 e
@@ -190,7 +190,7 @@ impl HttpDownloadService {
             error!(
                 theme_id = theme_id,
                 url = %url,
-                error = ?err,
+                error = %err,
                 "Failed to establish connection for download"
             );
             err
@@ -219,7 +219,7 @@ impl HttpDownloadService {
                 return Err(DownloadError::NotFound(theme_id.to_string()).into());
             }
 
-            error!(theme_id = theme_id, error = ?e, "Got an error response");
+            error!(theme_id = theme_id, error = %e, "Got an error response");
             return Err(e.into());
         }
 
@@ -255,7 +255,7 @@ impl HttpDownloadService {
                 Err(e) => {
                     error!(
                         theme_id = context.theme_id,
-                        error = ?e,
+                        error = %e,
                         "Failed to download chunk"
                     );
                     return Err(e.into());
@@ -267,7 +267,7 @@ impl HttpDownloadService {
                     theme_id = context.theme_id,
                     downloaded_bytes = *context.downloaded_bytes,
                     total_bytes = context.total_size,
-                    error = ?e,
+                    error = %e,
                     "Failed to write chunk to file"
                 );
                 return Err(e.into());
@@ -309,7 +309,7 @@ impl HttpDownloadService {
                     theme_id = theme_id,
                     downloaded_bytes,
                     total_bytes,
-                    error = ?e,
+                    error = %e,
                     "Failed to emit download progress"
                 );
                 e

@@ -177,7 +177,7 @@ fn notify_theme_change() -> DwallResult<()> {
                 WPARAM(0),
                 LPARAM(theme_name.as_ptr() as isize),
             ) {
-                warn!(notification = notification, error = ?e, "Failed to broadcast notification");
+                warn!(notification = notification, error = %e, "Failed to broadcast notification");
             } else {
                 debug!(
                     notification = notification,

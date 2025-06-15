@@ -47,7 +47,7 @@ impl WallpaperManager {
         let desktop_wallpaper: IDesktopWallpaper = unsafe {
             CoCreateInstance(&DesktopWallpaper as *const _, None, CLSCTX_ALL).map_err(|e| {
                 error!(
-                    error = ?e,
+                    error = %e,
                     "Failed to create desktop wallpaper COM instance"
                 );
                 WallpaperError::Instance(e)
@@ -124,7 +124,7 @@ impl WallpaperManager {
                 .SetWallpaper(&device_path, &wallpaper_path)
                 .map_err(|e| {
                     error!(
-                        error = ?e,
+                        error = %e,
                         monitor_id = monitor.device_path(),
                         wallpaper_path = %wallpaper_path,
                         "Failed to set wallpaper for monitor"

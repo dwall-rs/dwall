@@ -16,7 +16,7 @@ where
             Ok(result)
         }
         Err(e) => {
-            error!(error = ?e, "{} failed", operation);
+            error!(error = %e, "{} failed", operation);
             Err(DwallError::Windows(e))
         }
     }

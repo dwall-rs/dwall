@@ -160,7 +160,7 @@ pub fn find_daemon_process() -> DwallSettingsResult<Option<u32>> {
 
     // Create process snapshot
     let snapshot = unsafe { CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0) }.map_err(|e| {
-        error!(error = ?e, "Failed to create process snapshot");
+        error!(error = %e, "Failed to create process snapshot");
         ProcessManagerError::SnapshotCreationFailed(e)
     })?;
 
@@ -224,7 +224,7 @@ fn check_process_path(pid: u32, expected_path: &str) -> DwallSettingsResult<Opti
     // Try to get the full path of the executable
     let process_handle = unsafe {
         OpenProcess(PROCESS_QUERY_INFORMATION, false, pid).map_err(|e| {
-            trace!(pid = pid, error = ?e, "Could not open process");
+            trace!(pid = pid, error = %e, "Could not open process");
             ProcessManagerError::ProcessOpenFailed(e)
         })
     };
@@ -310,7 +310,7 @@ pub fn kill_daemon() -> DwallSettingsResult<()> {
             // Open process with termination rights
             let process_handle = unsafe {
                 OpenProcess(PROCESS_TERMINATE, false, pid).map_err(|e| {
-                    error!(error = ?e, pid = pid, "Failed to open process for termination");
+                    error!(error = %e, pid, "Failed to open process for termination");
                     ProcessManagerError::ProcessTerminationFailed { pid, error: e }
                 })
             }?;
@@ -320,12 +320,12 @@ pub fn kill_daemon() -> DwallSettingsResult<()> {
             // Terminate the process
             unsafe {
                 TerminateProcess(process_handle.as_raw(), 0).map_err(|e| {
-                    error!(error = ?e, pid = pid, "Failed to terminate daemon process");
+                    error!(error = %e, pid, "Failed to terminate daemon process");
                     ProcessManagerError::ProcessTerminationFailed { pid, error: e }
                 })
             }?;
 
-            info!(pid = pid, "Successfully terminated daemon process with PID");
+            info!(pid, "Successfully terminated daemon process with PID");
             Ok(())
         }
         None => {

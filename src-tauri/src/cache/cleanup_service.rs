@@ -34,7 +34,7 @@ impl CleanupService {
         let mut entries = fs::read_dir(&thumbnails_dir).await.map_err(|e| {
             error!(
                 dir = %thumbnails_dir.display(),
-                error = ?e,
+                error = %e,
                 "Failed to read thumbnails directory"
             );
             e
@@ -50,7 +50,7 @@ impl CleanupService {
                     Err(e) => {
                         error!(
                             dir = %path.display(),
-                            error = ?e,
+                            error = %e,
                             "Failed to read theme directory"
                         );
                         continue;
@@ -73,7 +73,7 @@ impl CleanupService {
                                     if let Err(e) = fs::remove_file(&file_path).await {
                                         error!(
                                             file = %file_path.display(),
-                                            error = ?e,
+                                            error = %e,
                                             "Failed to remove expired cache file"
                                         );
                                     } else {
@@ -95,7 +95,7 @@ impl CleanupService {
                     if let Err(e) = fs::remove_dir(&path).await {
                         error!(
                             dir = %path.display(),
-                            error = ?e,
+                            error = %e,
                             "Failed to remove empty theme directory"
                         );
                     } else {
@@ -131,7 +131,7 @@ impl CleanupService {
         let mut entries = fs::read_dir(&thumbnails_dir).await.map_err(|e| {
             error!(
                 dir = %thumbnails_dir.display(),
-                error = ?e,
+                error = %e,
                 "Failed to read thumbnails directory"
             );
             e
@@ -146,7 +146,7 @@ impl CleanupService {
                     Err(e) => {
                         error!(
                             dir = %path.display(),
-                            error = ?e,
+                            error = %e,
                             "Failed to read theme directory"
                         );
                         continue;
@@ -183,7 +183,7 @@ impl CleanupService {
             if let Err(e) = fs::remove_file(&file_path).await {
                 error!(
                     file = %file_path.display(),
-                    error = ?e,
+                    error = %e,
                     "Failed to remove cache file during size enforcement"
                 );
             } else {
@@ -207,7 +207,7 @@ impl CleanupService {
         let mut entries = fs::read_dir(dir).await.map_err(|e| {
             error!(
                 dir = %dir.display(),
-                error = ?e,
+                error = %e,
                 "Failed to read directory"
             );
             e
@@ -223,7 +223,7 @@ impl CleanupService {
                     if let Err(e) = fs::remove_dir(&path).await {
                         error!(
                             dir = %path.display(),
-                            error = ?e,
+                            error = %e,
                             "Failed to remove empty directory"
                         );
                     } else {
