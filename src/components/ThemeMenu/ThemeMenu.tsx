@@ -1,6 +1,6 @@
 import { children, createMemo } from "solid-js";
 import { LazyBadge, LazyFlex, LazyTooltip } from "~/lazy";
-import Image from "../Image";
+import ThemeImage from "../Image";
 import { BsCheckLg } from "solid-icons/bs";
 import { generateGitHubThumbnailMirrorUrl } from "~/utils/proxy";
 import { useConfig, useSettings, useTheme } from "~/contexts";
@@ -35,7 +35,7 @@ const ThemeMenu = (props: ThemeMenuProps) => {
         }}
       >
         <LazyTooltip positioning="after" content={item.id} relationship="label">
-          <Image
+          <ThemeImage
             src={generateGitHubThumbnailMirrorUrl(
               item.thumbnail[0],
               config()?.github_mirror_template,
