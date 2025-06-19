@@ -1,4 +1,3 @@
-import { convertFileSrc } from "@tauri-apps/api/core";
 import {
   children,
   createEffect,
@@ -6,36 +5,27 @@ import {
   mergeProps,
   onCleanup,
 } from "solid-js";
+import type { JSX } from "solid-js";
+
+import { convertFileSrc } from "@tauri-apps/api/core";
+
 import { getOrSaveCachedThumbnails } from "~/commands";
+
 import { LazySpinner } from "~/lazy";
 
-interface ImageData {
-  width: number;
-  height: number;
-}
+import type { ImageProps as ThemeImageProps } from "./Image.types";
 
-interface ImageProps {
-  themeID: string;
-  serialNumber: number;
-  src: string;
-  alt?: string;
-  width?: number;
-  height?: number;
-  class?: string;
-  onLoad?: (data: ImageData) => void;
-  onError?: (error: Error) => void;
-  fallbackSrc?: string;
-  retryCount?: number;
-}
+import * as style from "./Image.css";
 
-const Image = (props: ImageProps) => {
+const ThemeImage = (props: ThemeImageProps) => {
   let imageRef: HTMLImageElement | undefined;
+
   const [loaded, setLoaded] = createSignal(false);
   const [error, setError] = createSignal<Error | null>(null);
   const [retryAttempts, setRetryAttempts] = createSignal(0);
   const merged = mergeProps({ retryCount: 3 }, props);
 
-  const [currentSrc, setCurrentSrc] = createSignal<string | null>(null);
+  const [resolvedSrc, setResolvedSrc] = createSignal<string | null>(null);
 
   const handleLoad = () => {
     if (imageRef?.src) {
@@ -53,7 +43,7 @@ const Image = (props: ImageProps) => {
     if (currentAttempts < merged.retryCount) {
       setRetryAttempts(currentAttempts + 1);
       // Retry loading
-      loadImage();
+      loadCachedImage();
     } else {
       const err = new Error(
         `Failed to load image after ${merged.retryCount} attempts`,
@@ -62,12 +52,12 @@ const Image = (props: ImageProps) => {
       props.onError?.(err);
 
       if (props.fallbackSrc) {
-        setCurrentSrc(props.fallbackSrc);
+        setResolvedSrc(props.fallbackSrc);
       }
     }
   };
 
-  const loadImage = async () => {
+  const loadCachedImage = async () => {
     try {
       const path = await getOrSaveCachedThumbnails(
         props.themeID,
@@ -75,19 +65,19 @@ const Image = (props: ImageProps) => {
         props.src,
       );
       const src = convertFileSrc(path);
-      setCurrentSrc(src);
+      setResolvedSrc(src);
     } catch (err) {
       handleError();
     }
   };
 
-  createEffect(() => {
+  const setupLazyLoading = () => {
     if (!imageRef) return;
 
     const observer = new IntersectionObserver((entries) => {
       for (const entry of entries) {
-        if (entry.isIntersecting && !currentSrc()) {
-          loadImage();
+        if (entry.isIntersecting && !resolvedSrc()) {
+          loadCachedImage();
           observer.unobserve(entry.target);
         }
       }
@@ -95,53 +85,49 @@ const Image = (props: ImageProps) => {
 
     observer.observe(imageRef);
 
-    onCleanup(() => {
-      observer.disconnect();
-    });
+    return () => observer.disconnect();
+  };
+
+  createEffect(() => {
+    const cleanup = setupLazyLoading();
+    if (cleanup) onCleanup(cleanup);
   });
 
-  const resolved = children(() => (
+  const renderImageContent = children(() => (
     <>
       {!loaded() && !error() && (
-        <div
-          style={{
-            position: "absolute",
-            top: "50%",
-            left: "50%",
-            transform: "translate(-50%, -50%)",
-          }}
-        >
+        <div class={style.spinnerContainer}>
           <LazySpinner />
         </div>
       )}
       <img
         ref={imageRef}
         alt={props.alt}
-        src={currentSrc() || undefined}
+        src={resolvedSrc() || undefined}
         onLoad={handleLoad}
         onError={handleError}
         width={props.width}
-        style={{ visibility: loaded() ? "visible" : "hidden" }}
+        class={loaded() ? style.imageStyle.visible : style.imageStyle.hidden}
       />
-      {error() && !props.fallbackSrc && <div>Failed to load image</div>}
+      {error() && !props.fallbackSrc && (
+        <div class={style.errorMessage}>Failed to load image</div>
+      )}
     </>
   ));
 
+  const createContainerStyle = (): JSX.CSSProperties => ({
+    width: props.width ? `${props.width}px` : undefined,
+    height: props.height ? `${props.height}px` : undefined,
+  });
+
   return (
     <div
-      class={props.class}
-      style={{
-        width: props.width && `${props.width}px`,
-        height: props.height && `${props.height}px`,
-        position: "relative",
-        display: "inline-flex",
-        "align-items": "center",
-        "justify-content": "center",
-      }}
+      class={`${style.imageContainer} ${props.class || ""}`}
+      style={createContainerStyle()}
     >
-      {resolved()}
+      {renderImageContent()}
     </div>
   );
 };
 
-export default Image;
+export default ThemeImage;
