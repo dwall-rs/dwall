@@ -85,7 +85,7 @@ pub fn set_window_color_mode(
             Ok(())
         }
         Err(error) => {
-            error!(mode = ?color_mode, error = ?error, "Failed to set window color mode");
+            error!(mode = ?color_mode, error = %error, "Failed to set window color mode");
             Err(error)
         }
     }
@@ -149,7 +149,7 @@ fn set_legacy_dark_mode(window_handle: HWND, color_mode: &ColorMode) -> DwallSet
             std::mem::size_of::<u32>() as u32,
         )
         .map_err(|e| {
-            error!(error = ?e, "Failed to set legacy dark mode");
+            error!(error = %e, "Failed to set legacy dark mode");
             e.into()
         })
     }

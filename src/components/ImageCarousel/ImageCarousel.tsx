@@ -11,7 +11,7 @@ import { useConfig, useTheme } from "~/contexts";
 
 import { LazyButton } from "~/lazy";
 
-import Image from "~/components/Image";
+import ThemeImage from "~/components/Image";
 
 import { generateGitHubThumbnailMirrorUrl } from "~/utils/proxy";
 
@@ -96,7 +96,7 @@ export default function ImageCarousel(props: ImageCarouselProps) {
             <div
               class={`${styles.slide} ${index() === currentIndex() ? styles.activeSlide : ""}`}
             >
-              <Image
+              <ThemeImage
                 src={image.src}
                 class={styles.image}
                 themeID={theme.currentTheme()!.id}

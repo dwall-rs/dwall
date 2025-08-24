@@ -40,13 +40,13 @@ impl ThemeValidator {
         }
 
         let solar_config_content = fs::read_to_string(&solar_config_path).await.map_err(|e| {
-            error!(error = ?e, "Failed to read solar configuration");
+            error!(error = %e, "Failed to read solar configuration");
             e
         })?;
 
         let solar_angles: Vec<SolarAngle> =
             serde_json::from_str(&solar_config_content).map_err(|e| {
-                error!(error = ?e, "Failed to parse solar configuration JSON");
+                error!(error = %e, "Failed to parse solar configuration JSON");
                 e
             })?;
 

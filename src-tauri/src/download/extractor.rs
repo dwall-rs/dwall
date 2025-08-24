@@ -25,19 +25,21 @@ impl ThemeExtractor {
             error!(
                 theme_id = theme_id,
                 zip_path = %zip_path.display(),
-                error = ?e,
+                error = %e,
                 "Failed to read theme archive"
             );
             e
         })?;
 
+        let mut zip = zip::ZipArchive::new(std::io::Cursor::new(archive))?;
+
         // Extract theme
-        zip_extract::extract(std::io::Cursor::new(archive), &target_dir, true).map_err(|e| {
+        zip.extract(&target_dir).map_err(|e| {
             error!(
                 theme_id = theme_id,
                 target_dir = %target_dir.display(),
                 zip_path = %zip_path.display(),
-                error = ?e,
+                error = %e,
                 "Failed to extract theme archive"
             );
             e
@@ -54,7 +56,7 @@ impl ThemeExtractor {
             error!(
                 theme_id = theme_id,
                 zip_path = %zip_path.display(),
-                error = ?e,
+                error = %e,
                 "Failed to delete theme archive"
             );
             e

@@ -61,13 +61,13 @@ impl HttpService {
 
             let result = async {
                 let client = Self::create_http_client().await.map_err(|e| {
-                    error!(error = ?e, "Failed to create HTTP client");
+                    error!(error = %e, "Failed to create HTTP client");
                     CacheError::from(e)
                 })?;
 
                 trace!(url = url, "Sending HTTP GET request");
                 let response = client.get(url).send().await.map_err(|e| {
-                    error!(url = url, error = ?e, "Failed to get online image");
+                    error!(url = url, error = %e, "Failed to get online image");
                     CacheError::from(e)
                 })?;
 
@@ -89,7 +89,7 @@ impl HttpService {
                 trace!(url = url, length = ?content_length, "Received response. Reading bytes");
 
                 let buffer = response.bytes().await.map_err(|e| {
-                    error!(error = ?e, "Failed to read image bytes from response");
+                    error!(error = %e, "Failed to read image bytes from response");
                     CacheError::from(e)
                 })?;
 
@@ -102,7 +102,7 @@ impl HttpService {
                 fs::write(&temp_path, &buffer).map_err(|e| {
                     error!(
                         temp_path = %temp_path.display(),
-                        error = ?e,
+                        error = %e,
                         "Failed to write temporary image"
                     );
                     CacheError::from(e)
@@ -117,7 +117,7 @@ impl HttpService {
                     error!(
                         from = %temp_path.display(),
                         to = %image_path.display(),
-                        error = ?e,
+                        error = %e,
                         "Failed to rename temporary file"
                     );
                     CacheError::from(e)
@@ -141,7 +141,7 @@ impl HttpService {
             if let Err(e) = fs::remove_file(&temp_path) {
                 error!(
                     temp_path = %temp_path.display(),
-                    error = ?e,
+                    error = %e,
                     "Failed to remove temporary file after error"
                 );
             }

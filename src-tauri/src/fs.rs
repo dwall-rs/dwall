@@ -9,17 +9,17 @@ async fn copy_dir(src: &Path, dest: &Path) -> std::io::Result<()> {
     create_dir_if_missing(&dest).await?;
 
     let mut dir = fs::read_dir(src).await.map_err(|e| {
-        error!(path = %src.display(), error = ?e, "Failed to read source directory");
+        error!(path = %src.display(), error = %e, "Failed to read source directory");
         e
     })?;
 
     while let Some(entry) = dir.next_entry().await.map_err(|e| {
-        error!(path = %src.display(), error = ?e, "Failed to get next entry in source directory");
+        error!(path = %src.display(), error = %e, "Failed to get next entry in source directory");
         e
     })? {
         let src_path = entry.path();
         let file_type = entry.file_type().await.map_err(|e| {
-            error!(path = %src_path.display(), error = ?e, "Failed to get file type of entry");
+            error!(path = %src_path.display(), error = %e, "Failed to get file type of entry");
             e
         })?;
         let dest_path = dest.join(src_path.strip_prefix(src).unwrap());
@@ -30,7 +30,7 @@ async fn copy_dir(src: &Path, dest: &Path) -> std::io::Result<()> {
         } else {
             info!(src = %src_path.display(), dest = %dest_path.display(), "Copying file");
             fs::copy(&src_path, &dest_path).await.map_err(|e| {
-                error!(src = %src_path.display(), dest = %dest_path.display(), error = ?e, "Failed to copy file");
+                error!(src = %src_path.display(), dest = %dest_path.display(), error = %e, "Failed to copy file");
                 e
             })?;
         }
@@ -75,7 +75,7 @@ pub async fn move_themes_directory(config: Config, dir_path: PathBuf) -> DwallSe
     match prepare_new_config(&config, &dir_path).await {
         Ok(_) => {}
         Err(e) => {
-            error!(error = ?e, "Failed to prepare new configuration");
+            error!(error = %e, "Failed to prepare new configuration");
             return Err(e);
         }
     };
@@ -162,7 +162,7 @@ async fn perform_themes_directory_move(
         .map_err(ThemeDirectoryMoveError::CopyFailed)?;
 
     fs::remove_dir_all(&source).await.map_err(|e| {
-        error!(source = %source.display(), error = ?e, "Failed to remove old themes directory");
+        error!(source = %source.display(), error = %e, "Failed to remove old themes directory");
         ThemeDirectoryMoveError::RemoveFailed(e)
     })?;
 
@@ -182,7 +182,7 @@ pub async fn create_dir_if_missing<P: AsRef<Path>>(path: P) -> std::io::Result<(
                 info!(path = %path.display(), "Successfully created directory");
             })
             .map_err(|e| {
-                error!(path = %path.display(), error = ?e, "Failed to create directory");
+                error!(path = %path.display(), error = %e, "Failed to create directory");
                 e
             })
     } else {

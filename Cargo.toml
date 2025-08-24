@@ -4,7 +4,7 @@ members = ["daemon", "src-tauri"]
 
 [workspace.package]
 authors = ["thep0y"]
-version = "0.1.25"
+version = "0.1.26"
 # homepage = ""
 repository = "https://github.com/dwall-rs/dwall"
 license = "AGPL-3.0"

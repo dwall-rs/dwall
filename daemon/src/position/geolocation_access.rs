@@ -23,7 +23,7 @@ pub async fn check_location_permission() -> DwallResult<()> {
     .await?
     .get()
     .map_err(|e| {
-        error!(error = ?e, "Failed to get access status");
+        error!(error = %e, "Failed to get access status");
         DwallError::Windows(e)
     })?;
 

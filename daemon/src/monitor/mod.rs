@@ -69,7 +69,7 @@ impl MonitorManager {
                 }
                 _ => {
                     error!(
-                        error = ?error,
+                        error = %error,
                         "Failed to set wallpaper for monitor"
                     );
                     return Err(error.into());
@@ -104,7 +104,7 @@ impl MonitorManager {
             .await
             .map_err(|e| {
                 error!(
-                    error = ?e,
+                    error = %e,
                     monitor_id = monitor_id,
                     wallpaper_path = %wallpaper_path.display(),
                     "Failed to set wallpaper for monitor after refresh"

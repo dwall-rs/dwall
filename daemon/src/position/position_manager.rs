@@ -39,7 +39,7 @@ async fn get_geo_position() -> DwallResult<Position> {
     .await?
     .get()
     .map_err(|e| {
-        error!(error = ?e, "Failed to retrieve geoposition");
+        error!(error = %e, "Failed to retrieve geoposition");
         DwallError::Windows(e)
     })?;
 

@@ -65,7 +65,7 @@ impl ThumbnailCache {
                     }
                     Err(e) => {
                         error!(
-                            error = ?e,
+                            error = %e,
                             "Failed to clean up expired cache during initialization"
                         );
                     }
@@ -123,7 +123,7 @@ impl ThumbnailCache {
                 if let Err(e) = FsService::update_file_access_time(&metadata.path) {
                     warn!(
                         path = %metadata.path.display(),
-                        error = ?e,
+                        error = %e,
                         "Failed to update file access time"
                     );
                 }
@@ -144,11 +144,11 @@ impl ThumbnailCache {
                 // 5% chance to trigger cleanup
                 tokio::spawn(async {
                     if let Err(e) = CleanupService::cleanup_expired_cache().await {
-                        error!(error = ?e, "Failed to clean up expired cache");
+                        error!(error = %e, "Failed to clean up expired cache");
                     }
 
                     if let Err(e) = CleanupService::enforce_cache_size_limit().await {
-                        error!(error = ?e, "Failed to enforce cache size limit");
+                        error!(error = %e, "Failed to enforce cache size limit");
                     }
                 });
             }
@@ -177,7 +177,7 @@ impl ThumbnailCache {
                 let metadata = tokio::fs::metadata(&image_path).await.map_err(|e| {
                     error!(
                         path = %image_path.display(),
-                        error = ?e,
+                        error = %e,
                         "Failed to get file metadata"
                     );
                     CacheError::from(e)

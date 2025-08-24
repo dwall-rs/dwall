@@ -41,7 +41,7 @@ impl FsService {
         let mut entries = fs::read_dir(dir).await.map_err(|e| {
             error!(
                 dir = %dir.display(),
-                error = ?e,
+                error = %e,
                 "Failed to read directory"
             );
             e

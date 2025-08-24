@@ -22,6 +22,7 @@ time = { version = "0", default-features = false, features = [
 toml = { version = "0", default-features = false, features = [
   "display",
   "parse",
+  "serde",
 ] }
 tokio = { workspace = true, features = [
   "sync",

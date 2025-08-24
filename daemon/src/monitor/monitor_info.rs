@@ -164,7 +164,7 @@ pub(crate) fn fetch_system_monitors() -> DwallResult<HashMap<String, DisplayMoni
         ) {
             Ok(name) => name,
             Err(e) => {
-                warn!(error = ?e, "Failed to get friendly name, using fallback");
+                warn!(error = %e, "Failed to get friendly name, using fallback");
                 format!("Display {}", index + 1) // Fallback name
             }
         };

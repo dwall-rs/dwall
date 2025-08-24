@@ -64,7 +64,7 @@ fn setup_updater(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>>
     app.handle()
         .plugin(tauri_plugin_updater::Builder::new().build())
         .map_err(|e| {
-            error!(error = ?e, "Failed to initialize update plugin");
+            error!(error = %e, "Failed to initialize update plugin");
             e
         })?;
 

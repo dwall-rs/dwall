@@ -299,7 +299,7 @@ impl ConfigManager {
         let content = tokio::fs::read_to_string(&self.config_path).await?;
 
         let config: Config = toml::from_str(&content).map_err(|e| {
-            error!(error = ?e, "Failed to parse configuration");
+            error!(error = %e, "Failed to parse configuration");
             ConfigError::Deserialization(e)
         })?;
 
@@ -337,7 +337,7 @@ impl ConfigManager {
     /// Writes the configuration to the file
     async fn write_config_to_file(&self, config: &Config) -> DwallResult<()> {
         let toml_string = toml::to_string(config).map_err(|e| {
-            error!(error = ?e, "Failed to serialize configuration");
+            error!(error = %e, "Failed to serialize configuration");
             ConfigError::Serialization(e)
         })?;
 

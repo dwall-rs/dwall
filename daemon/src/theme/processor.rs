@@ -67,7 +67,7 @@ impl ThemeProcessor {
                 Err(e) => {
                     consecutive_failures += 1;
                     error!(
-                        error = ?e,
+                        error = %e,
                         consecutive_failures,
                         max_failures = MAX_CONSECUTIVE_FAILURES,
                         "Failed to process theme cycle"
@@ -263,7 +263,7 @@ async fn set_lock_screen_wallpaper(
         }
         Err(e) => {
             warn!(
-                error = ?e,
+                error = %e,
                 theme_id = theme_id,
                 "Failed to find matching wallpaper for lock screen"
             );
@@ -326,7 +326,7 @@ async fn process_theme_cycle(
         .await
         {
             error!(
-                error = ?e,
+                error = %e,
                 monitor_id = monitor_id,
                 theme_id = monitor_theme_id,
                 "Failed to process wallpaper for monitor"
@@ -342,7 +342,7 @@ async fn process_theme_cycle(
         if let Some(theme_id) = lock_screen_wallpaper {
             if let Err(e) = set_lock_screen_wallpaper(config, &theme_id, &sun_position).await {
                 warn!(
-                    error = ?e,
+                    error = %e,
                     "Failed to set lock screen wallpaper, continuing with other operations"
                 );
                 // Continue execution even if lock screen wallpaper setting fails
@@ -359,7 +359,7 @@ async fn process_theme_cycle(
         );
         if let Err(e) = set_color_mode(color_mode) {
             warn!(
-                error = ?e,
+                error = %e,
                 "Failed to set system color mode, continuing with other operations"
             );
             // Continue execution even if color mode setting fails

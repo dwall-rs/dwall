@@ -139,6 +139,6 @@ mod tests {
     #[test]
     async fn test_position_display() {
         let pos = Position::new_unchecked(45.0, 90.0);
-        assert_eq!(format!("{}", pos), "Position(lat: 45, lng: 90)");
+        assert_eq!(format!("{pos}"), "Position(lat: 45, lng: 90)");
     }
 }
