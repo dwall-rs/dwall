@@ -18,9 +18,7 @@ dwall = { version = "0", path = "../daemon" }
 
 reqwest = { version = "0", default-features = false }
 futures-util = { version = "0", default-features = false }
-zip-extract = { version = "0", default-features = false, features = [
-  "deflate",
-] }
+zip = { version = "4", default-features = false, features = ["deflate"] }
 open = { version = "5", default-features = false }
 tokio = { workspace = true, features = ["macros", "process"] }
 dirs = { workspace = true }
@@ -44,7 +42,7 @@ rand = { version = "0.9", default-features = false, features = ["thread_rng"] }
 tauri-plugin-shell = "2"
 
 [target.'cfg(target_os = "windows")'.dependencies]
-tauri-plugin-single-instance = "2"
+tauri-plugin-single-instance = "2.3"
 tauri-plugin-updater = "2"
 tauri-plugin-dialog = "2"
 
