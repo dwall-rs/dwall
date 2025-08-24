@@ -232,10 +232,7 @@ mod tests {
     fn assert_approx_eq(a: f64, b: f64, epsilon: f64) {
         assert!(
             (a - b).abs() < epsilon,
-            "assertion failed: `(left ≈ right)`\n    left: `{}`\n   right: `{}`\n epsilon: `{}`",
-            a,
-            b,
-            epsilon
+            "assertion failed: `(left ≈ right)`\n    left: `{a}`\n   right: `{b}`\n epsilon: `{epsilon}`"
         );
     }
 

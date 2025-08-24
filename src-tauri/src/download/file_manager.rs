@@ -19,10 +19,9 @@ impl ThemeFileManager {
         theme_id: &str,
     ) -> (PathBuf, PathBuf, PathBuf) {
         let target_dir = config.themes_directory().join(theme_id);
-        let temp_theme_zip_file = config
-            .themes_directory()
-            .join(format!("{}.zip.temp", theme_id));
-        let theme_zip_file = config.themes_directory().join(format!("{}.zip", theme_id));
+        let zip_file_name = format!("{theme_id}.zip");
+        let temp_theme_zip_file = config.themes_directory().join(&zip_file_name);
+        let theme_zip_file = config.themes_directory().join(&zip_file_name);
 
         (target_dir, temp_theme_zip_file, theme_zip_file)
     }
