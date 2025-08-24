@@ -31,8 +31,10 @@ impl ThemeExtractor {
             e
         })?;
 
+        let mut zip = zip::ZipArchive::new(std::io::Cursor::new(archive))?;
+
         // Extract theme
-        zip_extract::extract(std::io::Cursor::new(archive), &target_dir, true).map_err(|e| {
+        zip.extract(&target_dir).map_err(|e| {
             error!(
                 theme_id = theme_id,
                 target_dir = %target_dir.display(),

@@ -14,7 +14,7 @@ pub enum DwallSettingsError {
     #[error(transparent)]
     Request(#[from] reqwest::Error),
     #[error(transparent)]
-    ZipExtract(#[from] zip_extract::ZipExtractError),
+    Zip(#[from] zip::result::ZipError),
     #[error(transparent)]
     Dwall(#[from] dwall::DwallError),
     #[error(transparent)]
