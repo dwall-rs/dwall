@@ -58,7 +58,7 @@ impl FromStr for Language {
             "zh-HK" => Ok(Language::ChineseTraditionalHK),
             "zh-TW" => Ok(Language::ChineseTraditionalTW),
             "ja-JP" => Ok(Language::Japanese),
-            _ => Err(format!("Unsupported language identifier: {}", s)),
+            _ => Err(format!("Unsupported language identifier: {s}")),
         }
     }
 }

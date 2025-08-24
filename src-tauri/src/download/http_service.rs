@@ -171,7 +171,7 @@ impl HttpDownloadService {
     ) -> reqwest::RequestBuilder {
         let mut request = self.client.get(url);
         if downloaded_bytes > 0 {
-            let range = format!("bytes={}-", downloaded_bytes);
+            let range = format!("bytes={downloaded_bytes}-");
             request = request.header("Range", &range);
             debug!(theme_id = theme_id, range = range, "Setting Range header");
         }

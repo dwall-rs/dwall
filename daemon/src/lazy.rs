@@ -8,7 +8,7 @@ pub static DWALL_CONFIG_DIR: LazyLock<PathBuf> = LazyLock::new(|| {
     if !app_config_dir.exists() {
         if let Err(e) = fs::create_dir(&app_config_dir) {
             error!(error = %e, "Failed to create config directory");
-            panic!("Failed to create config directory: {}", e);
+            panic!("Failed to create config directory: {e}");
         } else {
             info!(path = %app_config_dir.display(), "Config directory created successfully");
         }
@@ -28,7 +28,7 @@ pub static DWALL_CACHE_DIR: LazyLock<PathBuf> = LazyLock::new(|| {
     if !dir.exists() {
         if let Err(e) = fs::create_dir(&dir) {
             error!(error = %e, "Failed to create cache directory");
-            panic!("Failed to create cache directory: {}", e);
+            panic!("Failed to create cache directory: {e}");
         } else {
             info!("Cache directory created successfully at: {}", dir.display());
         }

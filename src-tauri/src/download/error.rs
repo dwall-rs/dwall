@@ -18,7 +18,7 @@ impl From<reqwest::Error> for DownloadError {
     fn from(value: reqwest::Error) -> Self {
         let source = value
             .source()
-            .map(|e| format!("{:?}", e))
+            .map(|e| e.to_string())
             .unwrap_or("".to_string());
 
         if value.is_connect() {
