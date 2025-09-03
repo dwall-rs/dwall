@@ -140,13 +140,14 @@ jobs:
         run: |
           npm version ${{ github.event.inputs.bump_type }} --no-git-tag-version
           VERSION=$(node -p "require('./package.json').version")
+          sed -i "s/^version = \".*\"/version = \"$VERSION\"/" Cargo.toml
           echo "VERSION=$VERSION" >> $GITHUB_ENV
           echo "Bumping version to: $VERSION"
 
       - name: Create and push release branch
         run: |
           git checkout -b release
-          git add package.json
+          git add package.json Cargo.toml
           git commit -m "Bump version to ${{ env.VERSION }}"
           git push origin release --force
 
