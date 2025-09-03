@@ -11,44 +11,42 @@ import { appVars } from "~/themes/vars.css";
 
 const Settings = () => {
   return (
-    <>
+    <LazyFlex
+      direction="column"
+      style={{
+        width: appVars.contentWidth,
+        "box-sizing": "border-box",
+        height: "100%",
+      }}
+      align="stretch"
+      justify="stretch"
+      paddingBottom="xs"
+      paddingTop="xs"
+    >
       <LazyFlex
         direction="column"
-        style={{
-          width: appVars.contentWidth,
-          "box-sizing": "border-box",
-          height: "100%",
-        }}
+        gap="xl"
+        style={{ flex: 15 }}
         align="stretch"
         justify="stretch"
-        paddingBottom="xs"
-        paddingTop="xs"
       >
-        <LazyFlex
-          direction="column"
-          gap="xl"
-          style={{ flex: 15 }}
-          align="stretch"
-          justify="stretch"
-        >
-          <AutoStart />
+        <AutoStart />
 
-          <AutoDetectColorMode />
+        <AutoDetectColorMode />
 
-          <LockScreenWallpaperSwitch />
+        <LockScreenWallpaperSwitch />
 
-          <CoordinateSource />
+        <CoordinateSource />
 
-          <Interval />
+        <Interval />
 
-          <ThemesDirectory />
+        <ThemesDirectory />
 
-          <GithubMirror />
-        </LazyFlex>
-
-        <SettingsFooter />
+        <GithubMirror />
       </LazyFlex>
-    </>
+
+      <SettingsFooter />
+    </LazyFlex>
   );
 };
 

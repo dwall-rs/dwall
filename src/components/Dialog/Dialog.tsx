@@ -65,7 +65,7 @@ const Dialog: Component<DialogProps> = (props) => {
     <Show when={isOpen()}>
       <div class={styles.container}>
         <Show when={local.showMask !== false}>
-          <div class={styles.mask} onClick={handleMaskClick} />
+          <div class={styles.mask} onClick={handleMaskClick} role="dialog" />
         </Show>
 
         <div class={styles.base} {...others}>

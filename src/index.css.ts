@@ -23,7 +23,7 @@ globalStyle(":root", {
 
 globalStyle("*", {
   userSelect: "none",
-  // @ts-ignore
+  // @ts-expect-error
   WebkitUserDrag: "none",
   MozUserSelect: "none",
   WebkitUserSelect: "none",

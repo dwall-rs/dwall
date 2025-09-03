@@ -25,6 +25,7 @@ export const useLocationPermission = (
       await requestLocationPermission();
       return true;
     } catch (e) {
+      console.error(e);
       const shouldContinue = await ask(
         translate("message-location-permission"),
         { kind: "warning" },
