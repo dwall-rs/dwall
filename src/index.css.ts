@@ -1,9 +1,23 @@
-import { globalStyle, createGlobalTheme } from "@vanilla-extract/css";
+import { globalStyle } from "@vanilla-extract/css";
+import {
+  themeContract,
+  vars,
+  darkTheme,
+  lightTheme,
+} from "fluent-solid/lib/themes";
 
-export const vars = createGlobalTheme(":root", {
-  colors: {
-    scrollbar: "rgba(0, 0, 0, 0.1)",
-    scrollbarHover: "rgba(0, 0, 0, 0.4)",
+globalStyle(":root", {
+  fontFamily: vars.fontFamilyBase,
+  color: themeContract.colorNeutralForeground1,
+  backgroundColor: themeContract.colorNeutralBackground1,
+
+  "@media": {
+    "(prefers-color-scheme: dark)": {
+      vars: darkTheme,
+    },
+    "(prefers-color-scheme: light)": {
+      vars: lightTheme,
+    },
   },
 });
 
@@ -17,21 +31,21 @@ globalStyle("*", {
 });
 
 globalStyle("::-webkit-scrollbar", {
-  width: "6px",
+  width: "8px",
   height: "8px",
 });
 
+globalStyle("::-webkit-scrollbar-track", {
+  backgroundColor: themeContract.colorTransparentBackground,
+});
+
 globalStyle("::-webkit-scrollbar-thumb", {
-  borderRadius: "10px",
-  background: vars.colors.scrollbar,
+  borderRadius: "4px",
+  backgroundColor: themeContract.colorNeutralStencil2Alpha,
 });
 
 globalStyle("::-webkit-scrollbar-thumb:hover", {
-  background: vars.colors.scrollbarHover,
-});
-
-globalStyle("::-webkit-scrollbar-track", {
-  backgroundColor: "#fff0",
+  backgroundColor: themeContract.colorNeutralStencil1Alpha,
 });
 
 globalStyle("body", {
