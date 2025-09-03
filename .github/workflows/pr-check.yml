@@ -132,9 +132,9 @@ jobs:
       - name: Cargo fmt check
         run: cargo fmt --all -- --check
 
-      # clippy need to build daemon first
-      - name: Build daemon
-        run: cargo build --release --package daemon
+      # clippy need to build dwall first
+      - name: Build dwall
+        run: cargo build --release --package dwall
 
       - name: Cargo clippy
         run: cargo clippy -- -D warnings
