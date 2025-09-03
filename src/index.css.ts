@@ -9,7 +9,7 @@ import {
 globalStyle(":root", {
   fontFamily: vars.fontFamilyBase,
   color: themeContract.colorNeutralForeground1,
-  backgroundColor: themeContract.colorNeutralBackground1,
+  backgroundColor: themeContract.colorNeutralBackground2,
 
   "@media": {
     "(prefers-color-scheme: dark)": {
