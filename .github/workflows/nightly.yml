@@ -84,7 +84,11 @@ jobs:
       - name: Update package version
         run: |
           npm version patch --no-git-tag-version --no-git-tag-version
-          node -e "console.log('Updated package.json to version:', require('./package.json').version)"
+          $version = node -e "console.log(require('./package.json').version)"
+          $cargoContent = Get-Content 'Cargo.toml' -Raw
+          $updatedContent = $cargoContent -replace '(?m)^version = "[^"]+"', "version = `"$version`""
+          Set-Content 'Cargo.toml' -Value $updatedContent -NoNewline
+          echo "Updated both files to version: $version"
 
       - uses: oven-sh/setup-bun@v1
 
