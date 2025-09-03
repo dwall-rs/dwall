@@ -395,7 +395,7 @@ jobs:
           server: thepoy.cc
           password: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
           local_path: ./.scripts/mirrors/*
-          remote_path: /home/thepoy/app/lsar
+          remote_path: /home/thepoy/app/dwall
           sftpArgs: "-o ConnectTimeout=10 -o ServerAliveInterval=60"
         continue-on-error: true
 
