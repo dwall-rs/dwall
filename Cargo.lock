@@ -878,6 +878,7 @@ dependencies = [
  "serde",
  "serde_json",
  "serde_valid",
+ "tauri-winres",
  "thiserror 2.0.16",
  "time",
  "tokio",
@@ -885,7 +886,6 @@ dependencies = [
  "tracing",
  "tracing-subscriber",
  "windows",
- "winresource",
 ]
 
 [[package]]
@@ -4746,7 +4746,6 @@ dependencies = [
  "serde",
  "serde_spanned 0.6.9",
  "toml_datetime 0.6.11",
- "toml_write",
  "winnow 0.7.13",
 ]
 
@@ -4758,12 +4757,6 @@ checksum = "b551886f449aa90d4fe2bdaa9f4a2577ad2dde302c61ecf262d80b116db95c10"
 dependencies = [
  "winnow 0.7.13",
 ]
-
-[[package]]
-name = "toml_write"
-version = "0.1.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5d99f8c9a7727884afe522e9bd5edbfc91a3312b36a77b5fb8926e4c31a41801"
 
 [[package]]
 name = "toml_writer"
@@ -5782,16 +5775,6 @@ checksum = "cb5a765337c50e9ec252c2069be9bf91c7df47afb103b642ba3a53bf8101be97"
 dependencies = [
  "cfg-if",
  "windows-sys 0.59.0",
-]
-
-[[package]]
-name = "winresource"
-version = "0.1.23"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "edcacf11b6f48dd21b9ba002f991bdd5de29b2da8cc2800412f4b80f677e4957"
-dependencies = [
- "toml 0.8.23",
- "version_check",
 ]
 
 [[package]]

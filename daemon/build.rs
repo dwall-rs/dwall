@@ -3,7 +3,7 @@ use std::io;
 fn main() -> io::Result<()> {
     #[cfg(feature = "build-script")]
     {
-        use {std::env, winresource::WindowsResource};
+        use {std::env, tauri_winres::WindowsResource};
 
         if cfg!(not(feature = "log-max-level-info")) {
             println!("cargo:rustc-env=DWALL_LOG=debug");
