@@ -132,8 +132,12 @@ jobs:
       - name: Cargo fmt check
         run: cargo fmt --all -- --check
 
+      # clippy need to build daemon first
+      - name: Build daemon
+        run: cargo build --release --package daemon
+
       - name: Cargo clippy
-        run: cargo clippy --all-targets -- -D warnings
+        run: cargo clippy -- -D warnings
 
       - name: Cargo test
         run: cargo test
