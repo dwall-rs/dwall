@@ -1,0 +1,146 @@
+name: "PR Check"
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/pr-check.yml"
+      - "Cargo.toml"
+      - "Cargo.lock"
+      - "daemon/src/**"
+      - "daemon/build.rs"
+      - "daemon/Cargo.toml"
+      - "src-tauri/src/**"
+      - "src-tauri/Cargo.toml"
+      - "src-tauri/build.rs"
+      - "src-tauri/tauri.conf.json"
+      - "src-tauri/tauri.*.conf.json"
+      - "src/**"
+      - "package.json"
+      - "bun.lockb"
+      - "bunfig.toml"
+      - "tsconfig.json"
+      - "vite.config.ts"
+      - "biome.json"
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+
+jobs:
+  # 检测文件变化类型
+  detect-changes:
+    name: "Detect Changes"
+    runs-on: ubuntu-latest
+    outputs:
+      frontend: ${{ steps.changes.outputs.frontend }}
+      backend: ${{ steps.changes.outputs.backend }}
+      workflow: ${{ steps.changes.outputs.workflow }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: changes
+        with:
+          filters: |
+            frontend:
+              - 'src/**'
+              - 'package.json'
+              - 'bun.lockb'
+              - 'bunfig.toml'
+              - 'tsconfig.json'
+              - 'vite.config.ts'
+              - 'biome.json'
+            backend:
+              - "Cargo.toml"
+              - "Cargo.lock"
+              - "daemon/src/**"
+              - "daemon/build.rs"
+              - "daemon/Cargo.toml"
+              - "src-tauri/src/**"
+              - "src-tauri/Cargo.toml"
+              - "src-tauri/build.rs"
+              - "src-tauri/tauri.conf.json"
+              - "src-tauri/tauri.*.conf.json"
+            workflow:
+              - '.github/workflows/**'
+
+  frontend-check:
+    name: "Frontend Code Check"
+    runs-on: windows-latest
+    needs: detect-changes
+    if: needs.detect-changes.outputs.frontend == 'true' || needs.detect-changes.outputs.workflow == 'true'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Cache frontend dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.bun
+            node_modules/
+          key: ${{ runner.os }}-frontend-${{ hashFiles('**/bun.lockb', '**/package.json') }}
+          restore-keys: |
+            ${{ runner.os }}-frontend-
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Run Biome check
+        run: bun run check
+
+      - name: TypeScript check
+        run: bunx tsc --noEmit
+
+      - name: Build frontend
+        run: bun run build:vite
+
+  rust-check:
+    name: "Rust Code Check"
+    runs-on: windows-latest
+    needs: detect-changes
+    if: needs.detect-changes.outputs.backend == 'true' || needs.detect-changes.outputs.workflow == 'true'
+
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-pc-windows-msvc
+
+      - name: Cache Rust dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/release/deps
+            target/release/build
+          key: ${{ runner.os }}-rust-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-rust-
+
+      - name: Cargo fmt check
+        run: cargo fmt --all -- --check
+
+      # clippy need to build dwall first
+      - name: Build dwall
+        run: cargo build --release --package dwall
+
+      - name: Cargo clippy
+        run: cargo clippy -- -D warnings
+
+      - name: Cargo test
+        run: cargo test
+
+      - name: Cargo build
+        run: cargo build
