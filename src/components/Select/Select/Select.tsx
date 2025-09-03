@@ -136,7 +136,6 @@ const Select: Component<SelectProps> = (props) => {
         onBlur={() => setFocused(false)}
         style={props.style}
         tabIndex={props.disabled ? undefined : 0}
-        // biome-ignore lint/a11y/useSemanticElements: <explanation>
         role="combobox"
         aria-haspopup="listbox"
         aria-expanded={isOpen()}
@@ -163,7 +162,6 @@ const Select: Component<SelectProps> = (props) => {
           tabIndex={0}
           ref={dropdownRef}
           class={dropdownClass()}
-          // biome-ignore lint/a11y/useSemanticElements: <explanation>
           role="listbox"
           id={listboxId}
           aria-labelledby={props.label ? `${selectId}-label` : undefined}

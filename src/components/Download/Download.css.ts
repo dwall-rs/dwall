@@ -13,7 +13,7 @@ const downloadContainer = style({
 const downloadProgress = style({
   position: "absolute",
   bottom: "36px",
-  left: 0
+  left: 0,
 });
 
 export default { downloadContainer, downloadProgress };

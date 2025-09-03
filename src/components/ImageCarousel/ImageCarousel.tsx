@@ -86,6 +86,9 @@ export default function ImageCarousel(props: ImageCarouselProps) {
   return (
     <div class={styles.carousel}>
       <div
+        role="tab"
+        tabIndex={0}
+        aria-label="Image carousel"
         class={styles.wrapper}
         style={{ height: wrapperHeight() }}
         onMouseEnter={handleMouseEnter}

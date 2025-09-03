@@ -67,6 +67,7 @@ const ThemeImage = (props: ThemeImageProps) => {
       const src = convertFileSrc(path);
       setResolvedSrc(src);
     } catch (err) {
+      console.error(err);
       handleError();
     }
   };

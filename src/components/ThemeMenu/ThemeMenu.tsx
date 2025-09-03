@@ -21,6 +21,8 @@ const ThemeMenu = (props: ThemeMenuProps) => {
   const menu = children(() =>
     props.themes.map((item, idx) => (
       <div
+        role="tab"
+        tabIndex={0}
         onClick={() => {
           if (disabled()) return; // Prevent theme switching while downloading
 
