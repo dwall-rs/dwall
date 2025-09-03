@@ -24,7 +24,6 @@ on:
 
 jobs:
   create-release:
-    needs: check-changed-paths
     permissions:
       contents: write
     runs-on: ubuntu-latest
