@@ -7,24 +7,26 @@ import { MonitorProvider } from "./MonitorContext";
 import { UpdateProvider } from "./UpdateContext";
 import { SettingsProvider } from "./SettingsContext";
 import { TaskProvider } from "./TaskContext";
-import { ToastProvider } from "fluent-solid/lib/index";
+import { ToastProvider, TooltipProvider } from "fluent-solid/lib/index";
 
 export const AppProvider = (props: ParentProps) => {
   return (
     <ToastProvider>
-      <TranslationsProvider>
-        <ConfigProvider>
-          <ThemeProvider>
-            <MonitorProvider>
-              <SettingsProvider>
-                <UpdateProvider>
-                  <TaskProvider>{props.children}</TaskProvider>
-                </UpdateProvider>
-              </SettingsProvider>
-            </MonitorProvider>
-          </ThemeProvider>
-        </ConfigProvider>
-      </TranslationsProvider>
+      <TooltipProvider>
+        <TranslationsProvider>
+          <ConfigProvider>
+            <ThemeProvider>
+              <MonitorProvider>
+                <SettingsProvider>
+                  <UpdateProvider>
+                    <TaskProvider>{props.children}</TaskProvider>
+                  </UpdateProvider>
+                </SettingsProvider>
+              </MonitorProvider>
+            </ThemeProvider>
+          </ConfigProvider>
+        </TranslationsProvider>
+      </TooltipProvider>
     </ToastProvider>
   );
 };
