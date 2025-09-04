@@ -109,6 +109,10 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-rust-
 
+      # clippy need to build dwall first
+      - name: Build dwall
+        run: cargo build --release --package dwall
+
       - name: Run Rust checks
         run: |
           cargo fmt --check
