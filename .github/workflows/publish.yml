@@ -47,7 +47,7 @@ jobs:
     permissions:
       contents: write
     runs-on: ubuntu-latest
-    needs: [pre-checks, frontend-test, rust-test]
+    needs: pre-checks
     if: always() && needs.pre-checks.outputs.should_continue == 'true'
     outputs:
       release_id: ${{ steps.create-release.outputs.result }}
