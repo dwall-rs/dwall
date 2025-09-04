@@ -45,6 +45,7 @@
       "endpoints": [
         "https://app.thepoy.cc/dwall/latest-mirror-1.json",
         "https://app.thepoy.cc/dwall/latest-mirror-2.json",
+        "https://app.thepoy.cc/dwall/latest-mirror-3.json",
         "https://gh-proxy.com/https://github.com/dwall-rs/dwall/releases/latest/download/latest.json",
         "https://github.com/dwall-rs/dwall/releases/latest/download/latest.json"
       ]
