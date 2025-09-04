@@ -3,7 +3,7 @@ import { AiFillSetting } from "solid-icons/ai";
 import { TbArrowBigUpLinesFilled } from "solid-icons/tb";
 import { LazyButton, LazySpace, LazyTooltip } from "~/lazy";
 import { useSettings, useTheme, useTranslations, useUpdate } from "~/contexts";
-import { sidebarButtons } from "./SidebarButtons.css";
+import { sidebarButtons, upgradeButton } from "./SidebarButtons.css";
 
 const SidebarButtons = () => {
   const { translate } = useTranslations();
@@ -25,7 +25,8 @@ const SidebarButtons = () => {
           withArrow
         >
           <LazyButton
-            appearance="transparent"
+            class={upgradeButton}
+            appearance="outline"
             shape="circular"
             icon={<TbArrowBigUpLinesFilled />}
             onClick={onUpdate}
