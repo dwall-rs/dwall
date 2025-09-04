@@ -13,7 +13,10 @@ license.workspace = true
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
-tauri = { version = "2", features = ["protocol-asset"] }
+tauri = { version = "2", default-features = false, features = [
+  "protocol-asset",
+  "wry",
+] }
 dwall = { version = "0", path = "../daemon" }
 
 reqwest = { version = "0", default-features = false }
