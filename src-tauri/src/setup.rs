@@ -18,7 +18,6 @@ pub fn setup_app(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>>
         "Starting application"
     );
 
-    //#[cfg(all(desktop, not(debug_assertions)))]
     setup_updater(app)?;
 
     // Process launch arguments
@@ -56,7 +55,6 @@ pub fn setup_app(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>>
     Ok(())
 }
 
-//#[cfg(all(desktop, not(debug_assertions)))]
 fn setup_updater(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
     debug!("Initializing update plugin");
 
