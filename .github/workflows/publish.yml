@@ -34,10 +34,16 @@ jobs:
       - name: Check if release is needed
         id: check
         run: |
-          # 检查是否有未发布的更改
+          # 检查是否有未发布的更改，但排除 nightly 标签
           if git describe --tags --exact-match HEAD 2>/dev/null; then
-            echo "Current commit is already tagged, skipping release"
-            echo "should_continue=false" >> $GITHUB_OUTPUT
+            current_tag=$(git describe --tags --exact-match HEAD 2>/dev/null)
+            if [[ "$current_tag" == "nightly" ]]; then
+              echo "Current commit has nightly tag, proceeding with release"
+              echo "should_continue=true" >> $GITHUB_OUTPUT
+            else
+              echo "Current commit is already tagged with $current_tag, skipping release"
+              echo "should_continue=false" >> $GITHUB_OUTPUT
+            fi
           else
             echo "should_continue=true" >> $GITHUB_OUTPUT
           fi
