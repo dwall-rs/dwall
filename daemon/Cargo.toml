@@ -19,7 +19,7 @@ time = { version = "0", default-features = false, features = [
   'macros',
   'serde',
 ] }
-toml = { version = "0", default-features = false, features = [
+toml = { version = "0.9", default-features = false, features = [
   "display",
   "parse",
   "serde",
