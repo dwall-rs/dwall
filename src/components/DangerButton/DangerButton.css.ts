@@ -7,13 +7,13 @@ export const dangerButtonStyles = style({
   borderColor: themeContract.colorTransparentStroke,
 
   selectors: {
-    "&:hover": {
+    "&:not(:disabled):hover": {
       backgroundColor: themeContract.colorStatusDangerBackground3Hover,
       color: themeContract.colorNeutralForegroundOnBrand,
       borderColor: themeContract.colorTransparentStroke,
     },
 
-    "&:hover:active": {
+    "&:not(:disabled):hover:active": {
       background: themeContract.colorStatusDangerBackground3Pressed,
       color: themeContract.colorNeutralForegroundOnBrand,
       borderColor: themeContract.colorTransparentStroke,
