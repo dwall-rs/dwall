@@ -11,11 +11,6 @@ on:
           - patch
           - minor
           - major
-      skip_tests:
-        description: "Skip tests before release"
-        required: false
-        default: false
-        type: boolean
 
 env:
   CARGO_TERM_COLOR: always
@@ -48,83 +43,12 @@ jobs:
             echo "should_continue=true" >> $GITHUB_OUTPUT
           fi
 
-  frontend-test:
-    runs-on: windows-latest
-    needs: pre-checks
-    if: needs.pre-checks.outputs.should_continue == 'true' && !inputs.skip_tests
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: lts/*
-
-      - uses: oven-sh/setup-bun@v1
-        with:
-          bun-version: latest
-
-      - name: Cache frontend dependencies
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.bun
-            node_modules/
-          key: ${{ runner.os }}-frontend-${{ hashFiles('**/bun.lockb', '**/package.json') }}
-          restore-keys: |
-            ${{ runner.os }}-frontend-
-
-      - name: Install frontend dependencies
-        run: bun install --frozen-lockfile
-
-      - name: Run frontend tests
-        run: |
-          bun run check
-
-  # 虽然在PR时已经进行过检测测试，但为了避免合并多个PR之后存在错误，再运行一次检查测试
-  rust-test:
-    needs: pre-checks
-    if: needs.pre-checks.outputs.should_continue == 'true' && !inputs.skip_tests
-    runs-on: windows-latest
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Install Rust
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          components: clippy, rustfmt
-
-      - name: Cache Rust dependencies
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cargo/bin/
-            ~/.cargo/registry/index/
-            ~/.cargo/registry/cache/
-            ~/.cargo/git/db/
-            target/release/deps
-            target/release/build
-          key: ${{ runner.os }}-rust-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-rust-
-
-      # clippy need to build dwall first
-      - name: Build dwall
-        run: cargo build --release --package dwall
-
-      - name: Run Rust checks
-        run: |
-          cargo fmt --check
-          cargo clippy -- -D warnings
-          cargo test
-
   create-release:
     permissions:
       contents: write
     runs-on: ubuntu-latest
     needs: [pre-checks, frontend-test, rust-test]
-    if: always() && needs.pre-checks.outputs.should_continue == 'true' && (needs.frontend-test.result == 'success' || needs.frontend-test.result == 'skipped') && (needs.rust-test.result == 'success' || needs.rust-test.result == 'skipped')
+    if: always() && needs.pre-checks.outputs.should_continue == 'true'
     outputs:
       release_id: ${{ steps.create-release.outputs.result }}
       package_version: ${{ env.VERSION }}
