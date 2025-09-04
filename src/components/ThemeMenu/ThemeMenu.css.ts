@@ -84,8 +84,9 @@ export const menuItemApplied = style({
 export const menuItemAppliedBadge = style({
   position: "absolute",
   right: "4px",
-  bottom: "8px",
+  bottom: "4px",
   width: "16px",
+  minWidth: "16px",
   height: "16px",
 });
 

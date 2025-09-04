@@ -52,14 +52,13 @@ const ThemeMenu = (props: ThemeMenuProps) => {
           />
         </LazyTooltip>
         {item.id === theme.appliedThemeID() && (
-          <div class={styles.menuItemAppliedBadge}>
-            <LazyBadge
-              shape="rounded"
-              icon={<BsCheckLg />}
-              color="success"
-              size="small"
-            />
-          </div>
+          <LazyBadge
+            class={styles.menuItemAppliedBadge}
+            shape="rounded"
+            icon={<BsCheckLg />}
+            color="success"
+            size="small"
+          />
         )}
       </div>
     )),
