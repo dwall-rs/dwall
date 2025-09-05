@@ -1,73 +1,187 @@
-name: "nightly"
+name: "Nightly Build"
+
 on:
-  push:
-    branches:
-      - main
-    paths:
-      - "Cargo.toml"
-      - "Cargo.lock"
-      - "daemon/src/**"
-      - "daemon/build.rs"
-      - "daemon/Cargo.toml"
-      - "src-tauri/src/**"
-      - "src-tauri/Cargo.toml"
-      - "src-tauri/build.rs"
-      - "src-tauri/tauri.conf.json"
-      - "src-tauri/tauri.*.conf.json"
-      - "src/**"
-      - "package.json"
-      - "bun.lockb"
-      - "bunfig.toml"
-      - "tsconfig.json"
-      - "vite.config.ts"
-      - "biome.json"
+  schedule:
+    # 每天0点执行
+    - cron: '0 0 * * *'
+  workflow_dispatch: # 允许手动触发
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
 
 jobs:
-  create-release:
+  check-nightly-conditions:
+    runs-on: ubuntu-latest
+    outputs:
+      should_build: ${{ steps.check.outputs.should_build }}
+      has_nightly: ${{ steps.check.outputs.has_nightly }}
+      latest_commit: ${{ steps.check.outputs.latest_commit }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check nightly build conditions
+        id: check
+        run: |
+          echo "Checking nightly build conditions..."
+
+          # 检查commit是否有labels
+          has_labels() {
+            local commit_sha=$1
+            # 获取commit的PR信息，检查是否有labels
+            local pr_number=$(gh pr list --state merged --search "$commit_sha" --json number --jq '.[0].number' 2>/dev/null || echo "")
+            if [ -n "$pr_number" ]; then
+              local labels=$(gh pr view "$pr_number" --json labels --jq '.labels | length' 2>/dev/null || echo "0")
+              [ "$labels" -gt 0 ]
+            else
+              # 如果不是PR commit，检查commit message是否包含标签格式
+              git log --format=%B -n 1 "$commit_sha" | grep -E '\[(feat|fix|style|refactor|perf|test)\]' >/dev/null 2>&1
+            fi
+          }
+
+          # 获取有labels的commits
+          get_labeled_commits_since() {
+            local since_commit=$1
+            local commits=$(git rev-list --reverse "$since_commit"..HEAD 2>/dev/null || git rev-list --reverse HEAD)
+            local labeled_commits=""
+            
+            for commit in $commits; do
+              if has_labels "$commit"; then
+                if [ -z "$labeled_commits" ]; then
+                  labeled_commits="$commit"
+                else
+                  labeled_commits="$labeled_commits $commit"
+                fi
+              fi
+            done
+            
+            echo "$labeled_commits"
+          }
+
+          # 检查是否存在nightly prerelease
+          if gh release view nightly >/dev/null 2>&1; then
+            echo "has_nightly=true" >> $GITHUB_OUTPUT
+            echo "Found existing nightly release"
+
+            # 获取nightly标签的commit
+            nightly_commit=$(git rev-list -n 1 nightly 2>/dev/null || echo "")
+            if [ -n "$nightly_commit" ]; then
+              # 检查nightly标签之后是否有带labels的新commit
+              labeled_commits=$(get_labeled_commits_since "$nightly_commit")
+              latest_commit=$(git rev-parse HEAD)
+              echo "latest_commit=$latest_commit" >> $GITHUB_OUTPUT
+
+              if [ -n "$labeled_commits" ]; then
+                echo "New labeled commits found after nightly tag: $labeled_commits"
+                echo "should_build=true" >> $GITHUB_OUTPUT
+              else
+                echo "No new labeled commits after nightly tag"
+                echo "should_build=false" >> $GITHUB_OUTPUT
+              fi
+            else
+              echo "Nightly tag not found, will build"
+              echo "should_build=true" >> $GITHUB_OUTPUT
+            fi
+          else
+            echo "has_nightly=false" >> $GITHUB_OUTPUT
+            echo "No nightly release found"
+
+            # 获取最新的正式release
+            latest_release=$(gh release list --exclude-pre-releases --limit 1 --json tagName --jq '.[0].tagName' 2>/dev/null || echo "")
+
+            if [ -n "$latest_release" ]; then
+              # 检查最新release之后是否有带labels的新commit
+              release_commit=$(git rev-list -n 1 "$latest_release" 2>/dev/null || echo "")
+              labeled_commits=$(get_labeled_commits_since "$release_commit")
+              latest_commit=$(git rev-parse HEAD)
+              echo "latest_commit=$latest_commit" >> $GITHUB_OUTPUT
+
+              if [ -n "$labeled_commits" ]; then
+                echo "New labeled commits found after latest release $latest_release: $labeled_commits"
+                echo "should_build=true" >> $GITHUB_OUTPUT
+              else
+                echo "No new labeled commits after latest release"
+                echo "should_build=false" >> $GITHUB_OUTPUT
+              fi
+            else
+              echo "No previous releases found, checking for any labeled commits"
+              labeled_commits=$(get_labeled_commits_since "")
+              latest_commit=$(git rev-parse HEAD)
+              echo "latest_commit=$latest_commit" >> $GITHUB_OUTPUT
+              
+              if [ -n "$labeled_commits" ]; then
+                echo "Found labeled commits, will build nightly: $labeled_commits"
+                echo "should_build=true" >> $GITHUB_OUTPUT
+              else
+                echo "No labeled commits found, skipping nightly build"
+                echo "should_build=false" >> $GITHUB_OUTPUT
+              fi
+            fi
+          fi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  delete-existing-nightly:
+    runs-on: ubuntu-latest
+    needs: check-nightly-conditions
+    if: needs.check-nightly-conditions.outputs.should_build == 'true' && needs.check-nightly-conditions.outputs.has_nightly == 'true'
+    steps:
+      - name: Delete existing nightly release and tag
+        run: |
+          echo "Deleting existing nightly release and tag..."
+          gh release delete nightly --cleanup-tag --yes
+          echo "Nightly release and tag deleted successfully"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  create-nightly-release:
     permissions:
       contents: write
     runs-on: ubuntu-latest
+    needs: [check-nightly-conditions, delete-existing-nightly]
+    if: always() && needs.check-nightly-conditions.outputs.should_build == 'true'
     outputs:
       release_id: ${{ steps.create-release.outputs.result }}
+      build_date: ${{ steps.date.outputs.date }}
 
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: setup node
-        uses: actions/setup-node@v4
-        with:
-          node-version: lts/*
+      - name: Get current date
+        id: date
+        run: echo "date=$(date +'%Y%m%d')" >> $GITHUB_OUTPUT
 
-      - name: get old nightly release id
-        run: |
-          release_id=$(curl -s 'https://api.github.com/repos/dwall-rs/dwall/releases/tags/nightly' | awk -F'[{},:]+' '/^  "id"/ {print $2}' | xargs)
-          echo "RELEASE_ID=$release_id"  >> $GITHUB_ENV
-
-      - name: delete old nightly release
-        if: env.RELEASE_ID != ''
-        run: gh release delete nightly --cleanup-tag
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: create release
+      - name: Create nightly release
         id: create-release
         uses: actions/github-script@v7
         with:
+          retries: 3
           script: |
+            const buildDate = '${{ steps.date.outputs.date }}';
+            const commitSha = '${{ needs.check-nightly-conditions.outputs.latest_commit }}'.substring(0, 7);
+
             const { data } = await github.rest.repos.createRelease({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              tag_name: "nightly",
-              name: "Nightly build",
+              tag_name: 'nightly',
+              name: `Nightly Build ${buildDate}`,
+              body: `🌙 **Nightly Build**\n\n` +
+                    `**Build Date:** ${buildDate}\n` +
+                    `**Commit:** ${commitSha}\n\n` +
+                    `⚠️ This is a nightly build and may contain unstable features. Use at your own risk.\n\n` +
+                    `For stable releases, please check the [releases page](https://github.com/${context.repo.owner}/${context.repo.repo}/releases).`,
               draft: true,
-              prerelease: true,
-            })
-            return data.id
+              prerelease: true
+            });
+            return data.id;
 
-  build-tauri:
-    needs: create-release
+  build-nightly:
+    needs: create-nightly-release
+    if: always() && needs.create-nightly-release.result == 'success'
     permissions:
       contents: write
     runs-on: windows-latest
@@ -80,15 +194,6 @@ jobs:
         with:
           node-version: lts/*
 
-      - name: Update package version
-        run: |
-          npm version patch --no-git-tag-version --no-git-tag-version
-          $version = node -e "console.log(require('./package.json').version)"
-          $cargoContent = Get-Content 'Cargo.toml' -Raw
-          $updatedContent = $cargoContent -replace '(?m)^version = "[^"]+"', "version = `"$version`""
-          Set-Content 'Cargo.toml' -Value $updatedContent -NoNewline
-          echo "Updated both files to version: $version"
-
       - uses: oven-sh/setup-bun@v1
 
       - name: Cache frontend dependencies
@@ -97,11 +202,12 @@ jobs:
           path: |
             ~/.bun
             node_modules/
-          key: ${{ runner.os }}-frontend-${{ hashFiles('**/bun.lockb', '**/package.json') }}
+          key: ${{ runner.os }}-frontend-nightly-${{ hashFiles('**/bun.lockb', '**/package.json') }}
           restore-keys: |
+            ${{ runner.os }}-frontend-nightly-
             ${{ runner.os }}-frontend-
 
-      - name: Setup Rust
+      - name: Install Rust stable
         uses: dtolnay/rust-toolchain@stable
         with:
           targets: x86_64-pc-windows-msvc
@@ -116,41 +222,68 @@ jobs:
             ~/.cargo/git/db/
             target/release/deps
             target/release/build
-          key: ${{ runner.os }}-rust-${{ hashFiles('**/Cargo.lock') }}
+          key: ${{ runner.os }}-rust-nightly-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: |
+            ${{ runner.os }}-rust-nightly-
             ${{ runner.os }}-rust-
 
       - name: install frontend dependencies
-        run: bun i
+        run: bun install --frozen-lockfile
 
-      - uses: tauri-apps/tauri-action@v0
+      - name: Build nightly application
+        uses: tauri-apps/tauri-action@v0
         env:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          releaseId: ${{ needs.create-release.outputs.release_id }}
-          args: ${{ matrix.args }} --config src-tauri/tauri.debug.conf.json
+          releaseId: ${{ needs.create-nightly-release.outputs.release_id }}
+          releaseBody: |
+            🌙 **Nightly Build ${{ needs.create-nightly-release.outputs.build_date }}**
 
-  publish-release:
+            ⚠️ This is a nightly build and may contain unstable features.
+
+  publish-nightly:
     permissions:
       contents: write
     runs-on: ubuntu-latest
-    needs: [create-release, build-tauri]
+    needs: [check-nightly-conditions, create-nightly-release, build-nightly]
+    if: always() && needs.create-nightly-release.result == 'success'
 
     steps:
-      - name: publish release
-        id: publish-release
+      - name: Publish nightly release
         uses: actions/github-script@v7
         env:
           release_id: ${{ needs.create-release.outputs.release_id }}
-          LAST_COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
         with:
+          retries: 3
           script: |
-            github.rest.repos.updateRelease({
+            await github.rest.repos.updateRelease({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              release_id: parseInt(process.env.release_id),
-              body: `> [!WARNING]\n> 每夜版可能无法自动升级。/The nightly version may not auto-update.\n\n## Last Commit\n\n${process.env.LAST_COMMIT_MESSAGE}`,
-              draft: false
-            })
+              release_id: process.env.release_id,
+              draft: false,
+            });
+
+      - name: Create nightly summary
+        run: |
+          echo "## 🌙 Nightly Build Published Successfully!" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Build Date:** ${{ needs.create-nightly-release.outputs.build_date }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Release ID:** ${{ needs.create-nightly-release.outputs.release_id }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Commit:** ${{ needs.check-nightly-conditions.outputs.latest_commit }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "[View Nightly Release](https://github.com/${{ github.repository }}/releases/tag/nightly)" >> $GITHUB_STEP_SUMMARY
+
+
+  skip-build:
+    runs-on: ubuntu-latest
+    needs: check-nightly-conditions
+    if: needs.check-nightly-conditions.outputs.should_build == 'false'
+    steps:
+      - name: Skip nightly build
+        run: |
+          echo "## ⏭️ Nightly Build Skipped" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "No new commits found since the last nightly build or release." >> $GITHUB_STEP_SUMMARY
+          echo "Nightly build is not needed at this time." >> $GITHUB_STEP_SUMMARY
