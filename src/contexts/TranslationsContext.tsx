@@ -1,14 +1,14 @@
 import type { JSX } from "solid-js";
 import { createContext, useContext, createResource } from "solid-js";
 import { getTranslations } from "~/commands";
-import {
-  translate as translateFn,
-  translateErrorMessage as translateErrorMessageFn,
-} from "~/utils/i18n";
+import { translateErrorMessage as translateErrorMessageFn } from "~/utils/i18n";
 
 type TranslationsContextType = {
   translations: () => Translations | undefined;
-  translate: (key: TranslationKey, params?: Record<string, string>) => string;
+  translate: (
+    key: TranslationKey,
+    params?: Record<string, string | JSX.Element>,
+  ) => string | JSX.Element[];
   translateErrorMessage: (
     key: TranslationKey,
     error: unknown,
@@ -23,10 +23,58 @@ export const TranslationsProvider = (props: { children: JSX.Element }) => {
 
   const translate = (
     key: TranslationKey,
-    params: Record<string, string> = {},
+    params: Record<string, string | JSX.Element> = {},
   ) => {
-    if (!translations()) return key;
-    return translateFn(translations()!, key, params);
+    const translationData = translations();
+
+    if (!translationData) return key;
+
+    const translation = translationData[key];
+    if (!translation) return key;
+
+    if (typeof translation === "string") {
+      return translation;
+    }
+
+    const hasComponentParams = Object.values(params).some(
+      (value) => typeof value !== "string",
+    );
+
+    if (hasComponentParams) {
+      const elements: JSX.Element[] = [];
+      let template = translation.template;
+
+      for (const param of translation.params) {
+        const value = params[param];
+        const placeholder = `{{${param}}}`;
+        const parts = template.split(placeholder);
+
+        if (parts.length > 1) {
+          if (parts[0]) elements.push(parts[0]);
+
+          if (typeof value === "string") {
+            elements.push(value);
+          } else if (value) {
+            elements.push(value);
+          }
+
+          template = parts.slice(1).join(placeholder);
+        }
+      }
+
+      if (template) elements.push(template);
+
+      return elements;
+    } else {
+      let result = translation.template;
+      for (const param of translation.params) {
+        const value = params[param];
+        if (typeof value === "string") {
+          result = result.replace(`{{${param}}}`, value);
+        }
+      }
+      return result;
+    }
   };
 
   const translateErrorMessage = (
