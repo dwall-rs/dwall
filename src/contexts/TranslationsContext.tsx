@@ -3,12 +3,23 @@ import { createContext, useContext, createResource } from "solid-js";
 import { getTranslations } from "~/commands";
 import { translateErrorMessage as translateErrorMessageFn } from "~/utils/i18n";
 
+type Translate = <K extends TranslationKey>(
+  key: K,
+  ...args: Translations[K] extends string
+    ? []
+    : Translations[K] extends TranslationTemplate<infer P>
+      ? [params: Record<P, string | JSX.Element>]
+      : never
+) => Translations[K] extends string
+  ? string
+  : // biome-ignore lint/suspicious/noExplicitAny: `any` is a placeholder for a generic type
+    Translations[K] extends TranslationTemplate<any>
+    ? string | JSX.Element[]
+    : never;
+
 type TranslationsContextType = {
   translations: () => Translations | undefined;
-  translate: (
-    key: TranslationKey,
-    params?: Record<string, string | JSX.Element>,
-  ) => string | JSX.Element[];
+  translate: Translate;
   translateErrorMessage: (
     key: TranslationKey,
     error: unknown,
@@ -21,16 +32,15 @@ const TranslationsContext = createContext<TranslationsContextType>();
 export const TranslationsProvider = (props: { children: JSX.Element }) => {
   const [translations] = createResource(getTranslations);
 
-  const translate = (
-    key: TranslationKey,
+  const translate = <K extends TranslationKey>(
+    key: K,
     params: Record<string, string | JSX.Element> = {},
-  ) => {
+  ): string | JSX.Element[] => {
     const translationData = translations();
 
     if (!translationData) return key;
 
     const translation = translationData[key];
-    if (!translation) return key;
 
     if (typeof translation === "string") {
       return translation;
@@ -88,7 +98,7 @@ export const TranslationsProvider = (props: { children: JSX.Element }) => {
 
   const value = {
     translations,
-    translate,
+    translate: translate as Translate,
     translateErrorMessage,
   };
 
