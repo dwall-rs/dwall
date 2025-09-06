@@ -2,8 +2,8 @@ name: "Nightly Build"
 
 on:
   schedule:
-    # 每天0点执行
-    - cron: '0 0 * * *'
+    # 每天 UTC 4 点执行，即北京时间 12 点
+    - cron: "0 4 * * *"
   workflow_dispatch: # 允许手动触发
 
 env:
@@ -274,7 +274,6 @@ jobs:
           echo "**Commit:** ${{ needs.check-nightly-conditions.outputs.latest_commit }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "[View Nightly Release](https://github.com/${{ github.repository }}/releases/tag/nightly)" >> $GITHUB_STEP_SUMMARY
-
 
   skip-build:
     runs-on: ubuntu-latest
