@@ -7,6 +7,7 @@ import {
   showWindow,
 } from "~/commands";
 import { useMonitor, useTheme, useToast, useUpdate } from "~/contexts";
+import type { Translate } from "~/contexts/TranslationsContext";
 import { themes } from "~/themes";
 import { detectColorMode } from "~/utils/color";
 
@@ -16,7 +17,7 @@ import { detectColorMode } from "~/utils/color";
  * @param handleThemeSelection Function to handle theme selection
  */
 export const useAppInitialization = (
-  translate: (key: TranslationKey, params?: Record<string, string>) => string,
+  translate: Translate,
   menuItemIndex: Accessor<number | undefined>,
   handleThemeSelection: (index: number) => void,
 ) => {

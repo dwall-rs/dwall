@@ -1,4 +1,4 @@
-import { createSignal } from "solid-js";
+import { createSignal, type JSX } from "solid-js";
 import type { NumericInputProps } from "./NumericInput.types";
 
 import { useTranslations } from "~/contexts";
@@ -13,11 +13,11 @@ export const numberValidation = {
 
   validateRange: (
     value: number,
-    min?: { value?: number; warning: string },
-    max?: { value?: number; warning: string },
+    min?: { value?: number; warning: string | JSX.Element[] },
+    max?: { value?: number; warning: string | JSX.Element[] },
   ): {
     isValid: boolean;
-    message: string;
+    message: string | JSX.Element[];
     value: number;
   } => {
     if (min?.value !== undefined && value < min.value) {
@@ -35,7 +35,7 @@ const useNumericInputHandling = (props: NumericInputProps) => {
   const [inputValue, setInputValue] = createSignal(
     props.value?.toString() || "",
   );
-  const [warning, setWarning] = createSignal<string>("");
+  const [warning, setWarning] = createSignal<string | JSX.Element[]>("");
 
   const invalidNumberMessage = translate("message-invalid-number-input");
   const tooSmallMessage = props.min

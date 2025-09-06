@@ -3,7 +3,7 @@ import { createContext, useContext, createResource } from "solid-js";
 import { getTranslations } from "~/commands";
 import { translateErrorMessage as translateErrorMessageFn } from "~/utils/i18n";
 
-type Translate = <K extends TranslationKey>(
+export type Translate = <K extends TranslationKey>(
   key: K,
   ...args: Translations[K] extends string
     ? []
@@ -14,7 +14,7 @@ type Translate = <K extends TranslationKey>(
   ? string
   : // biome-ignore lint/suspicious/noExplicitAny: `any` is a placeholder for a generic type
     Translations[K] extends TranslationTemplate<any>
-    ? string | JSX.Element[]
+    ? string | JSX.ArrayElement
     : never;
 
 type TranslationsContextType = {
