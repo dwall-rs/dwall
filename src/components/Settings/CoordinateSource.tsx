@@ -71,11 +71,6 @@ const CoordinateSource = () => {
     longitude?: number;
   }>(initialPosition);
 
-  const getTranslation = (
-    key: TranslationKey,
-    params: Record<string, string> = {},
-  ) => translate(key, params);
-
   const isPositionValid = createMemo(() => {
     const { latitude, longitude } = position();
     return (
@@ -100,9 +95,9 @@ const CoordinateSource = () => {
         refetchConfig();
       } catch (e) {
         message(
-          getTranslation("message-switching-to-manual-coordinate-config", {
+          translate("message-switching-to-manual-coordinate-config", {
             error: String(e),
-          }),
+          }) as string,
           { kind: "error" },
         );
         return;
@@ -128,12 +123,12 @@ const CoordinateSource = () => {
         coordinate_source: newConfig,
       });
       refetchConfig();
-      message(getTranslation("message-coordinates-saved"));
+      message(translate("message-coordinates-saved") as string);
     } catch (e) {
       message(
-        getTranslation("message-saving-manual-coordinates", {
+        translate("message-saving-manual-coordinates", {
           error: String(e),
-        }),
+        }) as string,
         {
           kind: "error",
         },
@@ -150,8 +145,8 @@ const CoordinateSource = () => {
       }));
     };
 
-  const latitudePlaceholder = getTranslation("placeholder-latitude");
-  const longitudePlaceholder = getTranslation("placeholder-longitude");
+  const latitudePlaceholder = translate("placeholder-latitude");
+  const longitudePlaceholder = translate("placeholder-longitude");
 
   const renderCoordinateInputs = children(() => (
     <Show when={!auto()}>
@@ -184,7 +179,7 @@ const CoordinateSource = () => {
   return (
     <SettingsItem
       layout="horizontal"
-      label={getTranslation("label-automatically-retrieve-coordinates")}
+      label={translate("label-automatically-retrieve-coordinates")}
       help={auto() ? undefined : translate("help-manually-set-coordinates")}
       extra={renderCoordinateInputs()}
     >

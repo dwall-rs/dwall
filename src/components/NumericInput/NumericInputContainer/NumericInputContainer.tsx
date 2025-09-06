@@ -7,7 +7,7 @@ const NumericInputContainer: Component<{
   children: JSX.Element;
   label?: string;
   required?: boolean;
-  warning?: string;
+  warning?: string | JSX.Element[];
 }> = (props) => (
   <div class={styles.container}>
     <Show when={props.label}>
