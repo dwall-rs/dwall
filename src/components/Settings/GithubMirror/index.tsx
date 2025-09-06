@@ -4,11 +4,13 @@ import { AiFillSave } from "solid-icons/ai";
 import { open } from "@tauri-apps/plugin-shell";
 
 import { LazyButton, LazyInput } from "~/lazy";
-import SettingsItem from "./Item";
+import SettingsItem from "../Item";
 
 import { writeConfigFile } from "~/commands";
 
 import { useToast, useConfig, useTranslations } from "~/contexts";
+
+import * as styles from "./index.css";
 
 const GithubMirror = () => {
   const { translate } = useTranslations();
@@ -22,11 +24,19 @@ const GithubMirror = () => {
   };
 
   const onConfirm = async () => {
-    await writeConfigFile({ ...config()!, github_mirror_template: value() });
+    const mirrorTemplate = value();
+    await writeConfigFile({
+      ...config()!,
+      github_mirror_template: mirrorTemplate,
+    });
     refetchConfig();
     toast.success(
       translate("message-github-mirror-template-updated", {
-        newTemplate: value() ?? "",
+        newTemplate: mirrorTemplate ? (
+          <code class={styles.code}>{mirrorTemplate}</code>
+        ) : (
+          ""
+        ),
       }),
     );
   };
