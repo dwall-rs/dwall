@@ -6,7 +6,7 @@ import {
   LazySpace,
   LazyTooltip,
 } from "~/lazy";
-import { AiOutlineInfoCircle } from "solid-icons/ai";
+import { FaSolidCircleInfo } from "solid-icons/fa";
 import * as styles from "./SettingsItem.css";
 
 interface BaseProps {
@@ -62,7 +62,7 @@ const SettingsItem = (props: SettingsItemProps) => {
           withArrow
         >
           <LazyButton
-            icon={<AiOutlineInfoCircle />}
+            icon={<FaSolidCircleInfo />}
             onClick={
               typeof props.help === "object" && "content" in props.help
                 ? props.help.onClick
