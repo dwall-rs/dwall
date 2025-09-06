@@ -26,7 +26,7 @@ const SidebarButtons = () => {
         >
           <LazyButton
             class={upgradeButton}
-            appearance="outline"
+            appearance="transparent"
             shape="circular"
             icon={<TbArrowBigUpLinesFilled />}
             onClick={onUpdate}
