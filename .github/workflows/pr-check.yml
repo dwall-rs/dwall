@@ -137,9 +137,6 @@ jobs:
       - name: Cargo test
         run: cargo test
 
-      - name: Cargo build
-        run: cargo build
-
   auto-merge:
     name: Auto Merge PR
     runs-on: ubuntu-latest
