@@ -11,6 +11,7 @@ impl TranslationMap for JapaneseTranslations {
         // buttons
         translations.insert(BUTTON_APPLY, TranslationValue::Text("適用"));
         translations.insert(BUTTON_DOWNLOAD, TranslationValue::Text("ダウンロード"));
+        translations.insert(BUTTON_INSTALL, TranslationValue::Text("インストール"));
         translations.insert(
             BUTTON_OPEN_LOG_DIRECTORY,
             TranslationValue::Text("ログディレクトリを開く"),
@@ -139,7 +140,10 @@ impl TranslationMap for JapaneseTranslations {
         );
         translations.insert(
             TITLE_DOWNLOADING_NEW_VERSION,
-            TranslationValue::Text("新しいバージョンをダウンロード中..."),
+            TranslationValue::Template {
+                template: "新しいバージョン {{newVersion}} をダウンロード中...",
+                params: &["newVersion"],
+            },
         );
 
         // placeholders

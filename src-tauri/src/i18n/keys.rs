@@ -2,6 +2,7 @@
 pub(super) const BUTTON_APPLY: &str = "button-apply";
 pub(super) const BUTTON_CANCEL: &str = "button-cancel";
 pub(super) const BUTTON_DOWNLOAD: &str = "button-download";
+pub(super) const BUTTON_INSTALL: &str = "button-install";
 pub(super) const BUTTON_OPEN_LOG_DIRECTORY: &str = "button-open-log-directory";
 pub(super) const BUTTON_SELECT_FOLDER: &str = "button-select-folder";
 pub(super) const BUTTON_STOP: &str = "button-stop";

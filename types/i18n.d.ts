@@ -7,6 +7,7 @@ interface Translations {
   "button-apply": string;
   "button-cancel": string;
   "button-download": string;
+  "button-install": string;
   "button-open-log-directory": string;
   "button-select-folder": string;
   "button-stop": string;
@@ -64,7 +65,7 @@ interface Translations {
   "unit-second": string;
 
   "title-download-faild": string;
-  "title-downloading-new-version": string;
+  "title-downloading-new-version": TranslationTemplate<"newVersion">;
 }
 
 type TranslationKey = keyof Translations;

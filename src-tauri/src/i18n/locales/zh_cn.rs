@@ -12,6 +12,7 @@ impl TranslationMap for ChineseSimplifiedTranslations {
         translations.insert(BUTTON_APPLY, TranslationValue::Text("应用"));
         translations.insert(BUTTON_CANCEL, TranslationValue::Text("取消"));
         translations.insert(BUTTON_DOWNLOAD, TranslationValue::Text("下载"));
+        translations.insert(BUTTON_INSTALL, TranslationValue::Text("安装"));
         translations.insert(
             BUTTON_OPEN_LOG_DIRECTORY,
             TranslationValue::Text("打开日志文件夹"),
@@ -232,7 +233,10 @@ impl TranslationMap for ChineseSimplifiedTranslations {
         translations.insert(TITLE_DOWNLOAD_FAILD, TranslationValue::Text("下载失败"));
         translations.insert(
             TITLE_DOWNLOADING_NEW_VERSION,
-            TranslationValue::Text("正在下载新版本..."),
+            TranslationValue::Template {
+                template: "正在下载新版本 {{newVersion}}...",
+                params: &["newVersion"],
+            },
         );
 
         // placeholders
