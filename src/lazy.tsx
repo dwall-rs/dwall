@@ -1,6 +1,8 @@
 import type { FlexProps } from "~/components/Flex";
 import { lazy } from "solid-js";
 
+export const LazyMarkdown = lazy(() => import("~/components/Markdown"));
+
 export const LazyFlex = lazy(() => import("~/components/Flex"));
 
 export const LazySpace = (props: Omit<FlexProps, "inline" | "align">) => {
