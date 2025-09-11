@@ -12,6 +12,7 @@ impl TranslationMap for EnglishUSTranslations {
         translations.insert(BUTTON_APPLY, TranslationValue::Text("Apply"));
         translations.insert(BUTTON_CANCEL, TranslationValue::Text("Cancel"));
         translations.insert(BUTTON_DOWNLOAD, TranslationValue::Text("Download"));
+        translations.insert(BUTTON_INSTALL, TranslationValue::Text("Install"));
         translations.insert(
             BUTTON_OPEN_LOG_DIRECTORY,
             TranslationValue::Text("Open Log Directory"),
@@ -256,7 +257,10 @@ impl TranslationMap for EnglishUSTranslations {
         );
         translations.insert(
             TITLE_DOWNLOADING_NEW_VERSION,
-            TranslationValue::Text("Downloading new version..."),
+            TranslationValue::Template {
+                template: "Downloading new version {{newVersion}}...",
+                params: &["newVersion"],
+            },
         );
 
         // placeholders

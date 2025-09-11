@@ -11,6 +11,7 @@ impl TranslationMap for ChineseTraditionalTWTranslations {
         // buttons
         translations.insert(BUTTON_APPLY, TranslationValue::Text("應用"));
         translations.insert(BUTTON_DOWNLOAD, TranslationValue::Text("下載"));
+        translations.insert(BUTTON_INSTALL, TranslationValue::Text("安裝"));
         translations.insert(
             BUTTON_OPEN_LOG_DIRECTORY,
             TranslationValue::Text("開啟日誌資料夾"),
@@ -125,7 +126,10 @@ impl TranslationMap for ChineseTraditionalTWTranslations {
         translations.insert(TITLE_DOWNLOAD_FAILD, TranslationValue::Text("下載失敗"));
         translations.insert(
             TITLE_DOWNLOADING_NEW_VERSION,
-            TranslationValue::Text("正在下載新版本..."),
+            TranslationValue::Template {
+                template: "正在下載新版本 {{newVersion}}...",
+                params: &["newVersion"],
+            },
         );
 
         // placeholders

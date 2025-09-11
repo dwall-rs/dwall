@@ -12,7 +12,13 @@ import useDark from "~/hooks/useDark";
 import { useColorMode } from "./hooks/useColorMode";
 import { useAppInitialization } from "./hooks/useAppInitialization";
 
-import { useMonitor, useTheme, useTranslations, useSettings } from "~/contexts";
+import {
+  useMonitor,
+  useTheme,
+  useTranslations,
+  useSettings,
+  useUpdate,
+} from "~/contexts";
 
 import * as styles from "./App.css";
 
@@ -29,6 +35,7 @@ const App = () => {
     id: monitorID,
   } = useMonitor();
   const { showSettings } = useSettings();
+  const { update } = useUpdate();
 
   useDark();
   useColorMode();
@@ -56,7 +63,10 @@ const App = () => {
         </Show>
       </LazyFlex>
 
-      <Updater />
+      <Show when={update()}>
+        {/* Updater will auto download in background */}
+        <Updater />
+      </Show>
     </>
   );
 };
