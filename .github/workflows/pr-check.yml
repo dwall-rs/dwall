@@ -131,18 +131,11 @@ jobs:
       - name: Cargo fmt check
         run: cargo fmt --all -- --check
 
-      # clippy need to build dwall first
-      - name: Build dwall
-        run: cargo build --release --package dwall
-
       - name: Cargo clippy
         run: cargo clippy -- -D warnings
 
       - name: Cargo test
         run: cargo test
-
-      - name: Cargo build
-        run: cargo build
 
   auto-merge:
     name: Auto Merge PR
