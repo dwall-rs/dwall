@@ -1,11 +1,13 @@
 import { style, globalStyle, createVar } from "@vanilla-extract/css";
 import { themeContract, vars } from "fluent-solid/lib/themes";
+import { badge as fluentBadge } from "fluent-solid/lib/components/badge/Badge.css";
 
 export const menuItemColorShadow = createVar();
 
 export const thumbnailsContainer = style({
   flex: "7",
   overflowY: "auto",
+  overflowX: "hidden",
   padding: `${vars.spacingVerticalMNudge} ${vars.spacingHorizontalMNudge} ${vars.spacingVerticalMNudge} ${vars.spacingHorizontalXL}`,
 });
 
@@ -82,12 +84,16 @@ export const menuItemApplied = style({
 });
 
 export const menuItemAppliedBadge = style({
-  position: "absolute",
-  right: "4px",
-  bottom: "4px",
-  width: "16px",
-  minWidth: "16px",
-  height: "16px",
+  selectors: {
+    [`.${fluentBadge}&`]: {
+      position: "absolute",
+      right: "4px",
+      bottom: "4px",
+      width: "16px",
+      minWidth: "16px",
+      height: "16px",
+    },
+  },
 });
 
 globalStyle(`${menuItem} img`, {
