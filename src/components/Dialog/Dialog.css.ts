@@ -65,16 +65,6 @@ const title = style({
   fontWeight: vars.fontWeightSemibold,
 });
 
-const close = style({
-  padding: 0,
-  background: "transparent",
-  border: "none",
-  fontSize: vars.fontSizeBase400,
-  lineHeight: 1,
-  cursor: "pointer",
-  transition: "color 0.2s",
-});
-
 const content = style({
   padding: "24px",
   fontSize: vars.fontSizeBase300,
@@ -93,7 +83,6 @@ export default {
   mask,
   header,
   title,
-  close,
   content,
   footer,
 };

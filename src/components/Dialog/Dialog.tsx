@@ -6,6 +6,8 @@ import {
   type JSX,
 } from "solid-js";
 
+import { AiOutlineClose } from "solid-icons/ai";
+
 import { LazyButton, LazyDivider } from "~/lazy";
 
 import styles from "./Dialog.css";
@@ -74,14 +76,10 @@ const Dialog: Component<DialogProps> = (props) => {
               <h3 class={styles.title}>{local.title}</h3>
               <Show when={local.showCloseButton}>
                 <LazyButton
-                  class={styles.close}
                   onClick={handleClose}
-                  appearance="transparent"
-                  shape="circular"
-                  size="small"
-                >
-                  ×
-                </LazyButton>
+                  appearance="subtle"
+                  icon={<AiOutlineClose />}
+                />
               </Show>
             </div>
             <LazyDivider />
