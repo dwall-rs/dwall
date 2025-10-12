@@ -1,4 +1,3 @@
-use std::sync::Arc;
 use std::{
     collections::HashMap,
     time::{Duration, Instant},
@@ -12,8 +11,8 @@ use crate::{error::DwallResult, utils::string::WideStringRead};
 
 use super::{device_interface, display_config};
 
-/// Cache expiration time in seconds
-const CACHE_EXPIRY_SECONDS: u64 = 30;
+/// Cache expiration time in seconds - increased to reduce system API calls
+const CACHE_EXPIRY_SECONDS: u64 = 300; // 5 minutes instead of 30 seconds
 
 /// Unified monitor information structure
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -40,6 +39,14 @@ impl DisplayMonitor {
     pub(super) fn device_path(&self) -> &str {
         &self.device_path
     }
+
+    pub fn friendly_name(&self) -> &str {
+        &self.friendly_name
+    }
+
+    pub fn position_index(&self) -> Option<u32> {
+        self.position_index
+    }
 }
 
 /// Cache structure for monitor information
@@ -48,6 +55,8 @@ struct MonitorInfoCache {
     data: HashMap<String, DisplayMonitor>,
     /// Last cache update timestamp
     updated_at: Instant,
+    /// Cached expiration duration
+    expiry_duration: Duration,
 }
 
 impl MonitorInfoCache {
@@ -56,13 +65,13 @@ impl MonitorInfoCache {
         Self {
             data: HashMap::new(),
             updated_at: Instant::now(),
+            expiry_duration: Duration::from_secs(CACHE_EXPIRY_SECONDS),
         }
     }
 
     /// Checks if the cache is expired or empty
     fn is_valid(&self) -> bool {
-        !self.data.is_empty()
-            && self.updated_at.elapsed() <= Duration::from_secs(CACHE_EXPIRY_SECONDS)
+        !self.data.is_empty() && self.updated_at.elapsed() <= self.expiry_duration
     }
 
     /// Updates the cache with new monitor information
@@ -74,14 +83,14 @@ impl MonitorInfoCache {
 
 /// Provider for display monitor information with caching
 pub struct DisplayMonitorProvider {
-    /// Thread-safe cached monitor information
-    cache: Arc<RwLock<MonitorInfoCache>>,
+    /// Cached monitor information
+    cache: RwLock<MonitorInfoCache>,
 }
 
 impl Default for DisplayMonitorProvider {
     fn default() -> Self {
         Self {
-            cache: Arc::new(RwLock::new(MonitorInfoCache::new())),
+            cache: RwLock::new(MonitorInfoCache::new()),
         }
     }
 }
@@ -112,7 +121,6 @@ impl DisplayMonitorProvider {
         debug!("Refreshing monitor information");
         let monitors = fetch_system_monitors()?;
 
-        // Update cache
         {
             let mut cache = self.cache.write().await;
             cache.update(monitors.clone());
@@ -171,12 +179,7 @@ pub(crate) fn fetch_system_monitors() -> DwallResult<HashMap<String, DisplayMoni
 
         monitors.insert(
             device_path.clone(),
-            DisplayMonitor::new(
-                // id: device_path.clone(),
-                device_path,
-                friendly_name,
-                Some(index as u32),
-            ),
+            DisplayMonitor::new(device_path, friendly_name, Some(index as u32)),
         );
     }
 
