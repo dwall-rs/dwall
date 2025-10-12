@@ -118,14 +118,14 @@ impl ColorModeManager {
 }
 
 /// Determine color mode based on solar altitude angle
-/// 
+///
 /// # Arguments
 /// * `altitude` - Solar altitude angle in degrees
-/// 
+///
 /// # Returns
 /// - `ColorMode::Light` if the sun is above the horizon or in twilight
 /// - `ColorMode::Dark` if the sun is below the twilight threshold
-/// 
+///
 /// # Thresholds
 /// - Day: altitude > 0° (sun above horizon)
 /// - Twilight: -6° < altitude ≤ 0° (civil twilight)

@@ -25,7 +25,7 @@ pub enum WallpaperError {
 type WallpaperResult<T> = Result<T, WallpaperError>;
 
 /// Manager for wallpaper operations on Windows
-/// 
+///
 /// This struct handles COM initialization and provides methods for
 /// querying and setting desktop wallpapers per monitor.
 pub struct WallpaperManager {
@@ -38,9 +38,9 @@ pub struct WallpaperManager {
 
 impl WallpaperManager {
     /// Creates a new WallpaperManager instance
-    /// 
+    ///
     /// Initializes COM if necessary and creates the Desktop Wallpaper COM instance.
-    /// 
+    ///
     /// # Returns
     /// - `Ok(WallpaperManager)` - Successfully created wallpaper manager
     /// - `Err(WallpaperError::Instance)` - Failed to create COM instance
@@ -71,14 +71,14 @@ impl WallpaperManager {
     }
 
     /// Checks if the wallpaper is already set for a specific monitor
-    /// 
+    ///
     /// This optimization avoids unnecessary wallpaper changes when the
     /// desired wallpaper is already active.
-    /// 
+    ///
     /// # Arguments
     /// * `monitor_path` - The device path of the monitor
     /// * `wallpaper_path` - The desired wallpaper file path
-    /// 
+    ///
     /// # Returns
     /// - `Ok(true)` if wallpaper is already set
     /// - `Ok(false)` if wallpaper is different

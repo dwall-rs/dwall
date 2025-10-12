@@ -7,26 +7,26 @@ mod constants {
     /// Julian date for January 1, 2000 at 12:00 (TT)
     /// From: IAU 2000 Resolution B1.6 (Terrestrial Time system)
     pub const EPOCH_J2000: f64 = 2451545.0;
-    
+
     /// Number of days in a Julian century
     pub const JULIAN_CENTURY_DAYS: f64 = 36525.0;
-    
+
     /// Earth's rotation rate in degrees per hour
     pub const EARTH_ROTATION_RATE: f64 = 15.0;
-    
+
     /// Hours per day
     pub const HOURS_PER_DAY: f64 = 24.0;
-    
+
     /// Minutes per hour
     pub const MINUTES_PER_HOUR: f64 = 60.0;
-    
+
     /// Seconds per hour
     pub const SECONDS_PER_HOUR: f64 = 3600.0;
-    
+
     /// Maximum atmospheric refraction correction at horizon (degrees)
     /// Based on Saemundsson's refraction formula (1986)
     pub const ATMOSPHERIC_REFRACTION_MAX: f64 = 0.55;
-    
+
     /// Polar region latitude threshold (degrees)
     /// Above this latitude, special handling is needed for azimuth calculation
     pub const POLAR_REGION_THRESHOLD: f64 = 89.9;
@@ -69,10 +69,10 @@ impl SunPosition {
     }
 
     /// Calculate Julian day using Fliegel-Van Flandern algorithm
-    /// 
+    ///
     /// # Algorithm Reference
     /// Verified against: Meeus AA Ch. 7, Eq. 7.1
-    /// 
+    ///
     /// # Accuracy
     /// ±0.5 seconds for dates between 1900-2100
     fn julian_day(&self) -> f64 {
@@ -92,7 +92,7 @@ impl SunPosition {
     }
 
     /// Calculate the Julian century offset from J2000 epoch
-    /// 
+    ///
     /// This is the time factor used in various astronomical calculations,
     /// representing the number of Julian centuries since J2000.0
     fn julian_century_offset(&self) -> f64 {
@@ -101,10 +101,10 @@ impl SunPosition {
     }
 
     /// Calculate the mean obliquity of the ecliptic (Earth's axial tilt)
-    /// 
+    ///
     /// # Arguments
     /// * `t` - Julian century offset from J2000 epoch
-    /// 
+    ///
     /// # Algorithm Reference
     /// Formula from: IAU 2006 precession model
     /// Reference: Meeus AA Ch. 22, Eq. 22.3
@@ -113,10 +113,10 @@ impl SunPosition {
     }
 
     /// Calculate solar ecliptic longitude using simplified VSOP87 model
-    /// 
+    ///
     /// # Arguments
     /// * `t` - Julian century offset from J2000 epoch
-    /// 
+    ///
     /// # Algorithm Reference
     /// Simplified VSOP87 model parameters (accuracy ±0.01°)
     /// Reference: Meeus Astronomical Algorithms 2nd Ed. Chapter 25
@@ -132,7 +132,7 @@ impl SunPosition {
     }
 
     /// Calculate the solar declination angle
-    /// 
+    ///
     /// Solar declination is the angle between the sun's rays and the Earth's equatorial plane.
     /// It varies between approximately -23.45° and +23.45° throughout the year.
     fn solar_declination(&self) -> f64 {
@@ -147,10 +147,10 @@ impl SunPosition {
     }
 
     /// Calculate the equation of time correction
-    /// 
+    ///
     /// The equation of time is the difference between apparent solar time and mean solar time.
     /// It accounts for the Earth's elliptical orbit and axial tilt.
-    /// 
+    ///
     /// # Returns
     /// Time correction in hours (can be added to mean solar time)
     fn solar_time_correction(&self) -> f64 {
@@ -183,30 +183,31 @@ impl SunPosition {
     }
 
     /// Calculate the hour angle
-    /// 
+    ///
     /// The hour angle indicates how far the sun has moved across the sky from solar noon.
     /// It is 0° at solar noon, negative before noon, and positive after noon.
     fn hour_angle(&self) -> f64 {
         let hours = self.decimal_hours();
 
         let equation_of_time = self.solar_time_correction();
-        let local_mean_time = hours + (self.longitude / constants::EARTH_ROTATION_RATE) + equation_of_time;
+        let local_mean_time =
+            hours + (self.longitude / constants::EARTH_ROTATION_RATE) + equation_of_time;
 
         let raw_angle = constants::EARTH_ROTATION_RATE * (local_mean_time - 12.0);
         (raw_angle % 360.0 + 360.0) % 360.0
     }
 
     /// Calculate atmospheric refraction correction
-    /// 
+    ///
     /// Atmospheric refraction makes celestial objects appear higher in the sky than they actually are.
     /// This effect is strongest near the horizon.
-    /// 
+    ///
     /// # Arguments
     /// * `apparent_altitude` - The observed altitude angle in degrees
-    /// 
+    ///
     /// # Returns
     /// Refraction correction in degrees to be added to true altitude
-    /// 
+    ///
     /// # Algorithm Reference
     /// Saemundsson's refraction formula (1986)
     /// Reference: Meeus AA Ch. 16, Bulletin of the Astronomical Institutes of Czechoslovakia
@@ -222,7 +223,7 @@ impl SunPosition {
     }
 
     /// Calculate the sun's altitude angle above the horizon
-    /// 
+    ///
     /// # Returns
     /// Altitude angle in degrees, accounting for atmospheric refraction:
     /// - 0° = sun at horizon
@@ -242,7 +243,7 @@ impl SunPosition {
     }
 
     /// Calculate the sun's azimuth angle
-    /// 
+    ///
     /// # Returns
     /// Azimuth angle in degrees measured clockwise from true north:
     /// - 0° = North
