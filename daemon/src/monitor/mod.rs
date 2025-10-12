@@ -13,8 +13,11 @@ use crate::error::DwallResult;
 pub use monitor_info::{DisplayMonitor, DisplayMonitorProvider};
 pub(crate) use wallpaper_manager::{WallpaperError, WallpaperManager};
 
-/// For backward compatibility with existing code
-/// This will be deprecated in future versions
+/// Monitor management service
+///
+/// Provides a unified interface for monitor detection and wallpaper operations.
+/// This is a compatibility layer that will be deprecated in future versions
+/// in favor of using WallpaperManager and DisplayMonitorProvider directly.
 pub struct MonitorManager {
     /// Wallpaper manager instance
     wallpaper_manager: WallpaperManager,
@@ -48,7 +51,7 @@ impl MonitorManager {
             );
         }
 
-        let monitors = self.get_monitors().await?;
+        let monitors = self.list_available_monitors().await?;
         // Find monitor with specified ID
         let monitor = monitors.get(monitor_id).ok_or_else(|| {
             error!(
@@ -87,9 +90,9 @@ impl MonitorManager {
         wallpaper_path: &Path,
     ) -> DwallResult<()> {
         warn!("Refreshing monitor information and retrying...");
-        self.refresh_monitors().await?;
+        self.reload_monitor_configuration().await?;
 
-        let monitors = self.get_monitors().await?;
+        let monitors = self.list_available_monitors().await?;
         // Find monitor with specified ID
         let monitor = monitors.get(monitor_id).ok_or_else(|| {
             error!(
@@ -116,17 +119,25 @@ impl MonitorManager {
     }
 
     /// Gets all available monitors with caching
-    pub async fn get_monitors(&self) -> DwallResult<HashMap<String, DisplayMonitor>> {
+    ///
+    /// Returns a cached list of monitors if available, otherwise refreshes the list.
+    pub async fn list_available_monitors(&self) -> DwallResult<HashMap<String, DisplayMonitor>> {
         self.monitor_provider.get_monitors().await
     }
 
     /// Forces a refresh of monitor information
-    pub async fn refresh_monitors(&self) -> DwallResult<HashMap<String, DisplayMonitor>> {
+    ///
+    /// Bypasses the cache and queries the system for current monitor configuration.
+    pub async fn reload_monitor_configuration(
+        &self,
+    ) -> DwallResult<HashMap<String, DisplayMonitor>> {
         self.monitor_provider.refresh_monitors().await
     }
 
-    /// Detects if monitor configuration has changed
-    pub async fn has_monitor_config_changed(&self) -> DwallResult<bool> {
+    /// Detects if monitor configuration has changed since last check
+    ///
+    /// This is useful for detecting when monitors are plugged/unplugged.
+    pub async fn is_monitor_configuration_stale(&self) -> DwallResult<bool> {
         self.monitor_provider.has_configuration_changed().await
     }
 }
