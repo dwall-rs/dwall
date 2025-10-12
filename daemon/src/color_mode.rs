@@ -9,6 +9,10 @@ use windows::Win32::{
 
 use crate::{error::DwallResult, registry::RegistryKey, utils::string::WideStringExt};
 
+// Color mode threshold constants
+const DAY_ALTITUDE_THRESHOLD: f64 = 0.0;
+const TWILIGHT_ALTITUDE_THRESHOLD: f64 = -6.0;
+
 #[derive(Debug, PartialEq, Deserialize)]
 #[serde(rename_all = "UPPERCASE")]
 pub enum ColorMode {
@@ -113,12 +117,20 @@ impl ColorModeManager {
     }
 }
 
+/// Determine color mode based on solar altitude angle
+/// 
+/// # Arguments
+/// * `altitude` - Solar altitude angle in degrees
+/// 
+/// # Returns
+/// - `ColorMode::Light` if the sun is above the horizon or in twilight
+/// - `ColorMode::Dark` if the sun is below the twilight threshold
+/// 
+/// # Thresholds
+/// - Day: altitude > 0° (sun above horizon)
+/// - Twilight: -6° < altitude ≤ 0° (civil twilight)
+/// - Night: altitude ≤ -6° (civil twilight threshold)
 pub fn determine_color_mode(altitude: f64) -> ColorMode {
-    // Define day and night determination criteria
-    // Thresholds can be adjusted based on specific requirements
-    const DAY_ALTITUDE_THRESHOLD: f64 = 0.0; // Sun above horizon considered daytime
-    const TWILIGHT_ALTITUDE_THRESHOLD: f64 = -6.0; // Sun below horizon considered nighttime
-
     trace!(altitude = altitude, "Determining color mode");
 
     if altitude > DAY_ALTITUDE_THRESHOLD {
