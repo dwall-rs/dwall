@@ -2,7 +2,7 @@
 
 use dwall::{apply_theme, config::read_config_file, setup_logging};
 
-#[tokio::main]
+#[tokio::main(flavor = "current_thread")]
 async fn main() -> dwall::DwallResult<()> {
     setup_logging(&[env!("CARGO_PKG_NAME").replace("-", "_")]);
 
