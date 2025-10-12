@@ -9,8 +9,8 @@
       "labels": ["refactor"]
     },
     {
-      "title": "## 🚀 Enhancements",
-      "labels": ["enhancement"]
+      "title": "## 🚀 Performances",
+      "labels": ["performance"]
     },
     {
       "title": "## 🐛 Fixes",
