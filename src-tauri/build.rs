@@ -1,7 +1,5 @@
 use std::env;
 
-use tauri_build::is_dev;
-
 fn main() {
     let args: Vec<String> = env::args().collect();
 
@@ -11,7 +9,7 @@ fn main() {
         || env::var("CLIPPY_ARGS").is_ok()
         || env::var("CARGO_TARGET_TMPDIR").is_ok();
 
-    if !is_dev() && !is_special_mode {
+    if !is_special_mode {
         tauri_build::build();
     }
 }
