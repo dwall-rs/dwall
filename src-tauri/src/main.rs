@@ -34,6 +34,7 @@ mod postion;
 mod process_manager;
 mod setup;
 mod theme;
+mod tracker;
 mod window;
 
 #[macro_use]
