@@ -25,18 +25,28 @@ pub enum WallpaperError {
 type WallpaperResult<T> = Result<T, WallpaperError>;
 
 /// Manager for wallpaper operations on Windows
+///
+/// This struct handles COM initialization and provides methods for
+/// querying and setting desktop wallpapers per monitor.
 pub struct WallpaperManager {
     /// Windows Desktop Wallpaper COM interface
     desktop_wallpaper: IDesktopWallpaper,
     /// Flag indicating whether COM was initialized by this instance
-    com_initialized: bool,
+    /// If true, COM will be uninitialized when this instance is dropped
+    should_cleanup_com: bool,
 }
 
 impl WallpaperManager {
     /// Creates a new WallpaperManager instance
+    ///
+    /// Initializes COM if necessary and creates the Desktop Wallpaper COM instance.
+    ///
+    /// # Returns
+    /// - `Ok(WallpaperManager)` - Successfully created wallpaper manager
+    /// - `Err(WallpaperError::Instance)` - Failed to create COM instance
     pub fn new() -> WallpaperResult<Self> {
         // Continue execution even if initialization fails, as it might have been initialized elsewhere
-        let com_initialized = unsafe {
+        let should_cleanup_com = unsafe {
             // Attempt to initialize COM
             let result = CoInitialize(None);
             // If returns S_OK (0), means initialization succeeded and needs cleanup
@@ -56,12 +66,24 @@ impl WallpaperManager {
 
         Ok(Self {
             desktop_wallpaper,
-            com_initialized,
+            should_cleanup_com,
         })
     }
 
     /// Checks if the wallpaper is already set for a specific monitor
-    fn is_wallpaper_already_set(
+    ///
+    /// This optimization avoids unnecessary wallpaper changes when the
+    /// desired wallpaper is already active.
+    ///
+    /// # Arguments
+    /// * `monitor_path` - The device path of the monitor
+    /// * `wallpaper_path` - The desired wallpaper file path
+    ///
+    /// # Returns
+    /// - `Ok(true)` if wallpaper is already set
+    /// - `Ok(false)` if wallpaper is different
+    /// - `Err(WallpaperError)` if unable to query current wallpaper
+    fn has_wallpaper(
         &self,
         monitor_path: &HSTRING,
         wallpaper_path: &HSTRING,
@@ -109,7 +131,7 @@ impl WallpaperManager {
         let device_path = HSTRING::from(monitor.device_path());
 
         // Check if wallpaper is already set to avoid unnecessary operations
-        if self.is_wallpaper_already_set(&device_path, &wallpaper_path)? {
+        if self.has_wallpaper(&device_path, &wallpaper_path)? {
             debug!(
                 monitor_id = monitor.device_path(),
                 wallpaper_path = %wallpaper_path,
@@ -138,7 +160,7 @@ impl WallpaperManager {
 impl Drop for WallpaperManager {
     fn drop(&mut self) {
         // Only uninitialize COM if we successfully initialized it
-        if self.com_initialized {
+        if self.should_cleanup_com {
             unsafe {
                 CoUninitialize();
             }

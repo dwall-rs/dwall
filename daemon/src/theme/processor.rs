@@ -13,17 +13,17 @@ use crate::{
 };
 
 /// Manages the lifecycle and processing of a specific theme
-pub struct ThemeProcessor {
+pub struct ThemeProcessor<'a> {
     /// Configuration settings for theme processing
-    config: Config,
+    config: &'a Config,
     /// Manages geographic position tracking
-    position_manager: PositionManager,
+    position_manager: PositionManager<'a>,
     wallpaper_manager: WallpaperManager,
 }
 
-impl ThemeProcessor {
+impl<'a> ThemeProcessor<'a> {
     /// Creates a new ThemeProcessor instance
-    pub fn new(config: &Config) -> DwallResult<Self> {
+    pub fn new(config: &'a Config) -> DwallResult<Self> {
         debug!(
             auto_detect_color_mode = ?config.auto_detect_color_mode(),
             image_format = ?config.image_format(),
@@ -33,8 +33,8 @@ impl ThemeProcessor {
         let wallpaper_manager = WallpaperManager::new()?;
 
         Ok(Self {
-            position_manager: PositionManager::new(config.coordinate_source().clone()),
-            config: config.clone(),
+            position_manager: PositionManager::new(config.coordinate_source()),
+            config,
             wallpaper_manager,
         })
     }
@@ -46,6 +46,8 @@ impl ThemeProcessor {
         let mut last_update_time = OffsetDateTime::now_local().unwrap_or(OffsetDateTime::now_utc());
         let mut consecutive_failures = 0;
         const MAX_CONSECUTIVE_FAILURES: u8 = 3;
+
+        let sleep_duration = Duration::from_secs(self.config.interval().into());
 
         loop {
             let current_time = OffsetDateTime::now_local().unwrap_or(OffsetDateTime::now_utc());
@@ -82,7 +84,6 @@ impl ThemeProcessor {
             }
 
             // Sleep for configured interval before next update
-            let sleep_duration = Duration::from_secs(self.config.interval().into());
             debug!(
                 sleep_seconds = sleep_duration.as_secs(),
                 "Waiting before next theme update"
@@ -98,12 +99,32 @@ impl ThemeProcessor {
 
     /// Process theme cycle for the current geographic position
     async fn process_theme_cycle(&self, position: &Position) -> DwallResult<()> {
-        process_theme_cycle(&self.config, position, &self.wallpaper_manager).await
+        process_theme_cycle(self.config, position, &self.wallpaper_manager).await
     }
 }
 
 /// Load solar configuration for a specific theme directory
 async fn load_solar_angles(theme_directory: &Path) -> DwallResult<Vec<SolarAngle>> {
+    use std::collections::HashMap;
+    use tokio::sync::OnceCell;
+
+    // Cache solar configuration to avoid repeated reads
+    static SOLAR_CACHE: OnceCell<std::sync::Mutex<HashMap<std::path::PathBuf, Vec<SolarAngle>>>> =
+        OnceCell::const_new();
+
+    let cache = SOLAR_CACHE
+        .get_or_init(|| async { std::sync::Mutex::new(HashMap::new()) })
+        .await;
+
+    // Check cache
+    {
+        let cache_lock = cache.lock().unwrap();
+        if let Some(cached_angles) = cache_lock.get(theme_directory) {
+            debug!("Using cached solar configuration");
+            return Ok(cached_angles.clone());
+        }
+    }
+
     let solar_config_path = theme_directory.join("solar.json");
 
     // Validate solar configuration file exists
@@ -146,6 +167,12 @@ async fn load_solar_angles(theme_directory: &Path) -> DwallResult<Vec<SolarAngle
         "Successfully loaded solar configuration"
     );
 
+    // Cache solar configuration
+    {
+        let mut cache_lock = cache.lock().unwrap();
+        cache_lock.insert(theme_directory.to_path_buf(), solar_angles.clone());
+    }
+
     Ok(solar_angles)
 }
 
@@ -155,9 +182,10 @@ fn build_wallpaper_path<'a>(
     image_format: impl Into<&'a str>,
     image_index: u8,
 ) -> std::path::PathBuf {
-    theme_directory
-        .join(image_format.into())
-        .join(format!("{}.jpg", image_index + 1))
+    let mut path = theme_directory.to_path_buf();
+    path.push(image_format.into());
+    path.push(format!("{}.jpg", image_index + 1));
+    path
 }
 
 /// Find the closest matching image based on solar angles and sun position
@@ -286,7 +314,10 @@ async fn process_theme_cycle(
         "Processing theme cycle with parameters"
     );
 
-    let monitors = wallpaper_manager.monitor_manager.get_monitors().await?;
+    let monitors = wallpaper_manager
+        .monitor_manager
+        .list_available_monitors()
+        .await?;
 
     // Get monitor specific wallpapers
     let monitor_specific_wallpapers = config.monitor_specific_wallpapers();
@@ -339,8 +370,8 @@ async fn process_theme_cycle(
 
     // Update lock screen wallpaper if enabled and at least one monitor succeeded
     if config.lock_screen_wallpaper_enabled() && any_monitor_succeeded {
-        if let Some(theme_id) = lock_screen_wallpaper {
-            if let Err(e) = set_lock_screen_wallpaper(config, &theme_id, &sun_position).await {
+        if let Some(ref theme_id) = lock_screen_wallpaper {
+            if let Err(e) = set_lock_screen_wallpaper(config, theme_id, &sun_position).await {
                 warn!(
                     error = %e,
                     "Failed to set lock screen wallpaper, continuing with other operations"

@@ -9,6 +9,13 @@ use thiserror::Error;
 
 use crate::{error::DwallResult, lazy::DWALL_CONFIG_DIR};
 
+// Configuration constants
+const DEFAULT_INTERVAL_SECONDS: u16 = 15;
+const MIN_INTERVAL_SECONDS: u16 = 1;
+const MAX_INTERVAL_SECONDS: u16 = 600;
+const DEFAULT_AUTO_DETECT_COLOR_MODE: bool = true;
+const DEFAULT_LOCK_SCREEN_WALLPAPER_ENABLED: bool = true;
+
 #[derive(Error, Debug)]
 pub enum ConfigError {
     #[error("IO error occurred: {0}")]
@@ -129,7 +136,7 @@ pub struct Config {
     monitor_specific_wallpapers: MonitorSpecificWallpapers,
 
     /// Time interval for detecting solar altitude angle and azimuth angle
-    /// Measured in seconds, range: [1, 600]
+    /// Measured in seconds, range: [MIN_INTERVAL_SECONDS, MAX_INTERVAL_SECONDS]
     #[serde(default = "default_interval")]
     #[validate(minimum = 1)]
     #[validate(maximum = 600)]
@@ -145,15 +152,15 @@ fn default_coordinate_source() -> CoordinateSource {
 }
 
 fn default_auto_detect_color_mode() -> bool {
-    true
+    DEFAULT_AUTO_DETECT_COLOR_MODE
 }
 
 fn default_lock_screen_wallpaper_enabled() -> bool {
-    true
+    DEFAULT_LOCK_SCREEN_WALLPAPER_ENABLED
 }
 
 fn default_interval() -> u16 {
-    15
+    DEFAULT_INTERVAL_SECONDS
 }
 
 fn default_themes_directory() -> PathBuf {
@@ -169,8 +176,13 @@ impl Config {
     ///
     /// Checks if the interval is within the valid range and if the coordinate source is valid
     pub fn validate(&self) -> DwallResult<()> {
-        if self.interval < 1 || self.interval > 600 {
-            error!(interval = self.interval, "Interval validation failed");
+        if self.interval < MIN_INTERVAL_SECONDS || self.interval > MAX_INTERVAL_SECONDS {
+            error!(
+                interval = self.interval,
+                min = MIN_INTERVAL_SECONDS,
+                max = MAX_INTERVAL_SECONDS,
+                "Interval validation failed"
+            );
             return Err(ConfigError::Validation.into());
         }
 
@@ -224,27 +236,44 @@ impl Config {
         &self.monitor_specific_wallpapers
     }
 
-    /// Converts a GitHub URL to a mirrored URL if a mirror template is configured
-    pub fn github_asset_url(&self, github_url: &str) -> String {
+    /// Resolves a GitHub asset URL to a mirrored URL if a mirror template is configured
+    ///
+    /// This method transforms GitHub release URLs using the configured mirror template,
+    /// replacing placeholders like `<owner>`, `<repo>`, `<version>`, and `<asset>`.
+    pub fn resolve_github_mirror_url(&self, github_url: &str) -> String {
         self.github_mirror_template
             .as_ref()
-            .and_then(|v| if v.is_empty() { None } else { Some(v) })
+            .and_then(|v| if v.is_empty() { None } else { Some(v.as_str()) })
             .and_then(|template| {
-                use regex::Regex;
+                // Parse GitHub URL: https://github.com/{owner}/{repo}/releases/download/{version}/{asset}
+                let prefix = "https://github.com/";
+                if !github_url.starts_with(prefix) {
+                    return None;
+                }
 
-                let re = Regex::new(
-                    r"https://github.com/([^/]+)/([^/]+)/releases/download/([^/]+)/(.*)",
-                )
-                .unwrap();
-                re.captures(github_url).map(|caps| {
-                    template
-                        .replace("<owner>", &caps[1])
-                        .replace("<repo>", &caps[2])
-                        .replace("<version>", &caps[3])
-                        .replace("<asset>", &caps[4])
-                })
+                let remaining = &github_url[prefix.len()..];
+                let parts: Vec<&str> = remaining.split('/').collect();
+
+                // Expected format: {owner}/{repo}/releases/download/{version}/{asset}
+                if parts.len() >= 5 && parts[2] == "releases" && parts[3] == "download" {
+                    let owner = parts[0];
+                    let repo = parts[1];
+                    let version = parts[4];
+                    // Asset might contain slashes, so join the remaining parts
+                    let asset = parts[5..].join("/");
+
+                    Some(
+                        template
+                            .replace("<owner>", owner)
+                            .replace("<repo>", repo)
+                            .replace("<version>", version)
+                            .replace("<asset>", &asset),
+                    )
+                } else {
+                    None
+                }
             })
-            .unwrap_or(github_url.to_owned())
+            .unwrap_or_else(|| github_url.to_owned())
     }
 }
 
@@ -261,12 +290,12 @@ impl Default for Config {
             // On the equator, an azimuth change of 0.1 degrees takes
             // approximately 12 seconds, and an altitude change of 0.1
             // degrees takes about 24 seconds.
-            // Set the default time interval to 15 seconds based on the
-            // rate of change of the azimuth.
-            // FIXME: This default value is a rough estimate; a more
-            // precise algorithm should be used to calculate the time
-            // interval required for each 0.1 degree change.
-            interval: 15,
+            // Set the default time interval based on the rate of change of the azimuth.
+            // On the equator, an azimuth change of 0.1 degrees takes approximately 12 seconds,
+            // and an altitude change of 0.1 degrees takes about 24 seconds.
+            // FIXME: This default value is a rough estimate; a more precise algorithm should
+            // be used to calculate the time interval required for each 0.1 degree change.
+            interval: DEFAULT_INTERVAL_SECONDS,
         }
     }
 }

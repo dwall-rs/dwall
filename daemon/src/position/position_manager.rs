@@ -59,7 +59,7 @@ async fn get_geo_position() -> DwallResult<Position> {
 
     // Create Position struct
     trace!("Creating Position struct with latitude and longitude...");
-    let result = Position::new_unchecked(position.Latitude, position.Longitude);
+    let result = Position::from_raw_coordinates(position.Latitude, position.Longitude);
     debug!("Position struct created successfully: {}", result);
 
     info!(
@@ -70,19 +70,30 @@ async fn get_geo_position() -> DwallResult<Position> {
     Ok(result)
 }
 
-pub(crate) struct PositionManager {
-    coordinate_source: CoordinateSource,
+pub(crate) struct PositionManager<'a> {
+    coordinate_source: &'a CoordinateSource,
     fixed_position: Mutex<Option<(Position, Instant)>>,
+
+    /// Cache duration for position data
+    ///
+    /// The change in the sun's position is relatively slow compared
+    /// to the wallpaper update frequency:
+    ///
+    /// - At the equator: 0.1° change in azimuth ≈ 12 seconds
+    /// - Position cache accuracy: ±0.5° is acceptable for wallpaper selection
+    /// - 30-minute cache: maximum position drift of about 0.0083° (negligible effect)
+    ///
+    /// Therefore, we use a 30-minute cache time.
     cache_duration: Duration,
     timeout: Duration,
 }
 
-impl PositionManager {
-    pub(crate) fn new(coordinate_source: CoordinateSource) -> Self {
+impl<'a> PositionManager<'a> {
+    pub(crate) fn new(coordinate_source: &'a CoordinateSource) -> Self {
         Self {
             coordinate_source,
             fixed_position: Mutex::new(None),
-            cache_duration: Duration::from_secs(60 * 10),
+            cache_duration: Duration::from_secs(60 * 30),
             timeout: Duration::from_secs(10),
         }
     }
@@ -105,7 +116,7 @@ impl PositionManager {
                     age_secs = timestamp.elapsed().as_secs(),
                     "Using cached position data"
                 );
-                Ok(pos.clone())
+                Ok(*pos)
             }
             _ => {
                 debug!("Cache expired or empty, fetching new position data");
@@ -116,7 +127,7 @@ impl PositionManager {
                         DwallError::Timeout("Get position".to_string())
                     })??;
 
-                *position = Some((new_pos.clone(), Instant::now()));
+                *position = Some((new_pos, Instant::now()));
                 debug!(position = ?new_pos, "Updated position cache");
                 Ok(new_pos)
             }
@@ -165,10 +176,11 @@ mod tests {
 
     #[test]
     async fn test_position_manager_manual_coordinates() {
-        let manager = PositionManager::new(CoordinateSource::Manual {
+        let coord_source = CoordinateSource::Manual {
             latitude: 45.0,
             longitude: 90.0,
-        });
+        };
+        let manager = PositionManager::new(&coord_source);
 
         let pos = manager.get_current_position().await.unwrap();
         assert_eq!(pos.latitude(), 45.0);

@@ -2,7 +2,12 @@ use std::fmt;
 
 use crate::error::DwallResult;
 
-#[derive(Debug, Clone)]
+/// Geographic position with latitude and longitude coordinates
+///
+/// This struct is optimized for performance with Copy trait and
+/// uses repr(C) for predictable memory layout.
+#[repr(C)]
+#[derive(Debug, Clone, Copy)]
 pub struct Position {
     latitude: f64,
     longitude: f64,
@@ -33,9 +38,14 @@ impl Position {
 
     /// Creates a new Position without validation
     ///
-    /// # Warning
-    /// This method should only be used when the coordinates are already validated
-    pub(crate) fn new_unchecked(latitude: f64, longitude: f64) -> Self {
+    /// # Safety
+    /// This method bypasses coordinate validation. Only use when coordinates
+    /// are guaranteed to be valid (e.g., from trusted sources).
+    ///
+    /// # Arguments
+    /// * `latitude` - Latitude in degrees (should be between -90 and 90)
+    /// * `longitude` - Longitude in degrees (should be between -180 and 180)
+    pub(crate) fn from_raw_coordinates(latitude: f64, longitude: f64) -> Self {
         Position {
             latitude,
             longitude,
@@ -138,7 +148,7 @@ mod tests {
 
     #[test]
     async fn test_position_display() {
-        let pos = Position::new_unchecked(45.0, 90.0);
+        let pos = Position::from_raw_coordinates(45.0, 90.0);
         assert_eq!(format!("{pos}"), "Position(lat: 45, lng: 90)");
     }
 }
