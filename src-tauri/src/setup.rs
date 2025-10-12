@@ -4,7 +4,7 @@ use tauri::Manager;
 
 use crate::{
     download::ThemeDownloader, error::DwallSettingsError, process_manager::find_daemon_process,
-    read_config_file, theme::launch_daemon, window::create_main_window, DAEMON_EXE_PATH,
+    read_config_file, theme::launch_daemon, tracker, window::create_main_window, DAEMON_EXE_PATH,
 };
 
 pub fn setup_app(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
@@ -40,6 +40,8 @@ pub fn setup_app(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>>
     app.manage(theme_downloader);
 
     create_main_window(app.app_handle())?;
+
+    tauri::async_runtime::spawn(async move { tracker::track().await });
 
     // If a theme is configured in the configuration file but the background process is not detected,
     // then run the background process when this program starts.
