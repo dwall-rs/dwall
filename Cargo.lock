@@ -831,7 +831,6 @@ name = "dwall"
 version = "0.1.26"
 dependencies = [
  "dirs",
- "regex",
  "serde",
  "serde_json",
  "serde_valid",

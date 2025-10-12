@@ -239,30 +239,39 @@ impl Config {
     /// Resolves a GitHub asset URL to a mirrored URL if a mirror template is configured
     ///
     /// This method transforms GitHub release URLs using the configured mirror template,
-    /// replacing placeholders like <owner>, <repo>, <version>, and <asset>.
+    /// replacing placeholders like `<owner>`, `<repo>`, `<version>`, and `<asset>`.
     pub fn resolve_github_mirror_url(&self, github_url: &str) -> String {
         self.github_mirror_template
             .as_ref()
             .and_then(|v| if v.is_empty() { None } else { Some(v.as_str()) })
             .and_then(|template| {
-                use regex::Regex;
+                // Parse GitHub URL: https://github.com/{owner}/{repo}/releases/download/{version}/{asset}
+                let prefix = "https://github.com/";
+                if !github_url.starts_with(prefix) {
+                    return None;
+                }
 
-                // 优化：使用静态 Regex 以避免重复编译
-                static GITHUB_URL_REGEX: std::sync::LazyLock<Regex> =
-                    std::sync::LazyLock::new(|| {
-                        Regex::new(
-                            r"https://github.com/([^/]+)/([^/]+)/releases/download/([^/]+)/(.*)",
-                        )
-                        .expect("Invalid regex")
-                    });
+                let remaining = &github_url[prefix.len()..];
+                let parts: Vec<&str> = remaining.split('/').collect();
 
-                GITHUB_URL_REGEX.captures(github_url).map(|caps| {
-                    template
-                        .replace("<owner>", &caps[1])
-                        .replace("<repo>", &caps[2])
-                        .replace("<version>", &caps[3])
-                        .replace("<asset>", &caps[4])
-                })
+                // Expected format: {owner}/{repo}/releases/download/{version}/{asset}
+                if parts.len() >= 5 && parts[2] == "releases" && parts[3] == "download" {
+                    let owner = parts[0];
+                    let repo = parts[1];
+                    let version = parts[4];
+                    // Asset might contain slashes, so join the remaining parts
+                    let asset = parts[5..].join("/");
+
+                    Some(
+                        template
+                            .replace("<owner>", owner)
+                            .replace("<repo>", repo)
+                            .replace("<version>", version)
+                            .replace("<asset>", &asset),
+                    )
+                } else {
+                    None
+                }
             })
             .unwrap_or_else(|| github_url.to_owned())
     }

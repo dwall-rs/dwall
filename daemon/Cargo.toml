@@ -25,7 +25,6 @@ toml = { version = "0.9", default-features = false, features = [
   "serde",
 ] }
 tokio = { workspace = true, features = ["sync", "macros", "time", "fs", "rt"] }
-regex = { version = "1", default-features = false, features = ["std"] }
 dirs = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
