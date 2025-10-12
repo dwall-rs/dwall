@@ -132,9 +132,13 @@ jobs:
         run: cargo fmt --all -- --check
 
       - name: Cargo clippy
+        env:
+          DWALL_SKIP_BUILD: 1
         run: cargo clippy -- -D warnings
 
       - name: Cargo test
+        env:
+          DWALL_SKIP_BUILD: 1
         run: cargo test
 
   auto-merge:
