@@ -1,4 +1,4 @@
-use crate::domain::geography::{GeolocationAccessError, CoordinateError};
+use crate::domain::geography::{CoordinateError, GeolocationAccessError};
 use crate::domain::visual::ThemeError;
 use crate::infrastructure::display::DisplayError;
 use crate::infrastructure::display::WallpaperError;
