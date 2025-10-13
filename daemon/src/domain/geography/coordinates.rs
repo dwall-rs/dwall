@@ -8,35 +8,35 @@ use crate::error::DwallResult;
 /// uses repr(C) for predictable memory layout.
 #[repr(C)]
 #[derive(Debug, Clone, Copy)]
-pub struct Position {
+pub struct Coordinate {
     latitude: f64,
     longitude: f64,
 }
 
-impl Position {
-    /// Creates a new Position with the given latitude and longitude
+impl Coordinate {
+    /// Creates a new Coordinate with the given latitude and longitude
     ///
     /// # Arguments
     /// * `latitude` - The latitude in degrees, must be between -90 and 90
     /// * `longitude` - The longitude in degrees, must be between -180 and 180
     ///
     /// # Returns
-    /// A new Position instance if the coordinates are valid, or PositionError if they are out of range
+    /// A new Coordinate instance if the coordinates are valid, or PositionError if they are out of range
     pub fn new(latitude: f64, longitude: f64) -> DwallResult<Self> {
         if !Self::is_valid_latitude(latitude) {
-            return Err(PositionError::InvalidLatitude(latitude).into());
+            return Err(CoordinateError::InvalidLatitude(latitude).into());
         }
         if !Self::is_valid_longitude(longitude) {
-            return Err(PositionError::InvalidLongitude(longitude).into());
+            return Err(CoordinateError::InvalidLongitude(longitude).into());
         }
 
-        Ok(Position {
+        Ok(Coordinate {
             latitude,
             longitude,
         })
     }
 
-    /// Creates a new Position without validation
+    /// Creates a new Coordinate without validation
     ///
     /// # Safety
     /// This method bypasses coordinate validation. Only use when coordinates
@@ -46,7 +46,7 @@ impl Position {
     /// * `latitude` - Latitude in degrees (should be between -90 and 90)
     /// * `longitude` - Longitude in degrees (should be between -180 and 180)
     pub(crate) fn from_raw_coordinates(latitude: f64, longitude: f64) -> Self {
-        Position {
+        Coordinate {
             latitude,
             longitude,
         }
@@ -71,7 +71,7 @@ impl Position {
     }
 }
 
-impl Default for Position {
+impl Default for Coordinate {
     fn default() -> Self {
         // Default to coordinates (0, 0) - null island
         Self {
@@ -81,11 +81,11 @@ impl Default for Position {
     }
 }
 
-impl fmt::Display for Position {
+impl fmt::Display for Coordinate {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "Position(lat: {}, lng: {})",
+            "Coordinate(lat: {}, lng: {})",
             self.latitude, self.longitude
         )
     }
@@ -93,7 +93,7 @@ impl fmt::Display for Position {
 
 /// Error type for position-related operations
 #[derive(Debug, thiserror::Error)]
-pub enum PositionError {
+pub enum CoordinateError {
     #[error("Invalid latitude: {0}. Must be between -90 and 90 degrees")]
     InvalidLatitude(f64),
 
@@ -104,51 +104,59 @@ pub enum PositionError {
     InvalidCoordinates(f64, f64),
 }
 
+/// Error type for geolocation access operations
+#[derive(Debug, thiserror::Error)]
+pub enum GeolocationAccessError {
+    #[error("Geolocation permission was denied by the user")]
+    Denied,
+    #[error("Geolocation permission status is unspecified")]
+    Unspecified,
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
-    use tokio::test;
 
-    #[test]
+    #[tokio::test]
     async fn test_position_new() {
-        let pos = Position::new(45.0, 90.0).unwrap();
+        let pos = Coordinate::new(45.0, 90.0).unwrap();
         assert_eq!(pos.latitude(), 45.0);
         assert_eq!(pos.longitude(), 90.0);
     }
 
-    #[test]
+    #[tokio::test]
     async fn test_position_new_invalid() {
-        assert!(Position::new(91.0, 90.0).is_err());
-        assert!(Position::new(45.0, 181.0).is_err());
-        assert!(Position::new(-91.0, 0.0).is_err());
-        assert!(Position::new(0.0, -181.0).is_err());
+        assert!(Coordinate::new(91.0, 90.0).is_err());
+        assert!(Coordinate::new(45.0, 181.0).is_err());
+        assert!(Coordinate::new(-91.0, 0.0).is_err());
+        assert!(Coordinate::new(0.0, -181.0).is_err());
     }
 
-    #[test]
+    #[tokio::test]
     async fn test_position_validation() {
-        assert!(Position::is_valid_latitude(90.0));
-        assert!(Position::is_valid_latitude(-90.0));
-        assert!(Position::is_valid_latitude(0.0));
-        assert!(!Position::is_valid_latitude(90.1));
-        assert!(!Position::is_valid_latitude(-90.1));
+        assert!(Coordinate::is_valid_latitude(90.0));
+        assert!(Coordinate::is_valid_latitude(-90.0));
+        assert!(Coordinate::is_valid_latitude(0.0));
+        assert!(!Coordinate::is_valid_latitude(90.1));
+        assert!(!Coordinate::is_valid_latitude(-90.1));
 
-        assert!(Position::is_valid_longitude(180.0));
-        assert!(Position::is_valid_longitude(-180.0));
-        assert!(Position::is_valid_longitude(0.0));
-        assert!(!Position::is_valid_longitude(180.1));
-        assert!(!Position::is_valid_longitude(-180.1));
+        assert!(Coordinate::is_valid_longitude(180.0));
+        assert!(Coordinate::is_valid_longitude(-180.0));
+        assert!(Coordinate::is_valid_longitude(0.0));
+        assert!(!Coordinate::is_valid_longitude(180.1));
+        assert!(!Coordinate::is_valid_longitude(-180.1));
     }
 
-    #[test]
+    #[tokio::test]
     async fn test_position_default() {
-        let pos = Position::default();
+        let pos = Coordinate::default();
         assert_eq!(pos.latitude(), 0.0);
         assert_eq!(pos.longitude(), 0.0);
     }
 
-    #[test]
+    #[tokio::test]
     async fn test_position_display() {
-        let pos = Position::from_raw_coordinates(45.0, 90.0);
-        assert_eq!(format!("{pos}"), "Position(lat: 45, lng: 90)");
+        let pos = Coordinate::from_raw_coordinates(45.0, 90.0);
+        assert_eq!(format!("{pos}"), "Coordinate(lat: 45, lng: 90)");
     }
 }

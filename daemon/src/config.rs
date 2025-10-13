@@ -5,9 +5,11 @@ use std::{
 
 use serde::{Deserialize, Serialize};
 use serde_valid::Validate;
-use thiserror::Error;
 
-use crate::{error::DwallResult, lazy::DWALL_CONFIG_DIR};
+use crate::{
+    error::{ConfigError, DwallResult},
+    lazy::DWALL_CONFIG_DIR,
+};
 
 // Configuration constants
 const DEFAULT_INTERVAL_SECONDS: u16 = 15;
@@ -15,21 +17,6 @@ const MIN_INTERVAL_SECONDS: u16 = 1;
 const MAX_INTERVAL_SECONDS: u16 = 600;
 const DEFAULT_AUTO_DETECT_COLOR_MODE: bool = true;
 const DEFAULT_LOCK_SCREEN_WALLPAPER_ENABLED: bool = true;
-
-#[derive(Error, Debug)]
-pub enum ConfigError {
-    #[error("IO error occurred: {0}")]
-    Io(#[from] std::io::Error),
-
-    #[error("Deserialization error: {0}")]
-    Deserialization(#[from] toml::de::Error),
-
-    #[error("Serialization error: {0}")]
-    Serialization(#[from] toml::ser::Error),
-
-    #[error("Configuration validation failed")]
-    Validation,
-}
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Default, Clone)]
 #[serde(rename_all = "lowercase")]
@@ -183,12 +170,18 @@ impl Config {
                 max = MAX_INTERVAL_SECONDS,
                 "Interval validation failed"
             );
-            return Err(ConfigError::Validation.into());
+            return Err(ConfigError::Validation {
+                reason: "Interval is out of range".to_string(),
+            }
+            .into());
         }
 
         if !self.coordinate_source.validate() {
             error!("Latitude or longitude is invalid");
-            return Err(ConfigError::Validation.into());
+            return Err(ConfigError::Validation {
+                reason: "Latitude or longitude is invalid".to_string(),
+            }
+            .into());
         }
 
         Ok(())
@@ -298,93 +291,4 @@ impl Default for Config {
             interval: DEFAULT_INTERVAL_SECONDS,
         }
     }
-}
-
-/// Manages configuration file operations
-pub struct ConfigManager {
-    config_path: PathBuf,
-}
-
-impl ConfigManager {
-    /// Creates a new ConfigManager with the given config directory
-    pub fn new(config_dir: &Path) -> Self {
-        Self {
-            config_path: config_dir.join("config.toml"),
-        }
-    }
-
-    /// Reads the configuration from the file system
-    ///
-    /// Returns the default configuration if the file doesn't exist
-    pub async fn read_config(&self) -> DwallResult<Config> {
-        // Return default configuration if config file does not exist
-        if !self.config_path.exists() {
-            warn!("Config file not found, using default configuration");
-            return Ok(Config::default());
-        }
-
-        debug!(path = %self.config_path.display(), "Reading configuration file");
-
-        let content = tokio::fs::read_to_string(&self.config_path).await?;
-
-        let config: Config = toml::from_str(&content).map_err(|e| {
-            error!(error = %e, "Failed to parse configuration");
-            ConfigError::Deserialization(e)
-        })?;
-
-        // Validate configuration
-        config.validate()?;
-
-        info!("Local configuration: {:?}", config);
-
-        Ok(config)
-    }
-
-    /// Writes the configuration to the file system
-    ///
-    /// Skips writing if the configuration is unchanged
-    pub async fn write_config(&self, config: &Config) -> DwallResult<()> {
-        // Validate configuration before writing
-        config.validate()?;
-
-        // If file doesn't exist, write directly
-        if !self.config_path.exists() {
-            return self.write_config_to_file(config).await;
-        }
-
-        // Check if config has changed
-        if let Ok(existing_config) = self.read_config().await {
-            if existing_config == *config {
-                debug!("Configuration unchanged, skipping write");
-                return Ok(());
-            }
-        }
-
-        self.write_config_to_file(config).await
-    }
-
-    /// Writes the configuration to the file
-    async fn write_config_to_file(&self, config: &Config) -> DwallResult<()> {
-        let toml_string = toml::to_string(config).map_err(|e| {
-            error!(error = %e, "Failed to serialize configuration");
-            ConfigError::Serialization(e)
-        })?;
-
-        info!(path = %self.config_path.display(), "Writing configuration file");
-
-        tokio::fs::write(&self.config_path, toml_string.as_bytes()).await?;
-        Ok(())
-    }
-}
-
-/// Reads the configuration file from the default location
-pub async fn read_config_file() -> DwallResult<Config> {
-    let config_manager = ConfigManager::new(&DWALL_CONFIG_DIR);
-    config_manager.read_config().await
-}
-
-/// Writes the configuration to the default location
-pub async fn write_config_file(config: &Config) -> DwallResult<()> {
-    let config_manager = ConfigManager::new(&DWALL_CONFIG_DIR);
-    config_manager.write_config(config).await
 }

@@ -1,3 +1,5 @@
+//! Windows Registry client for system configuration access
+
 use windows::{
     core::{PCSTR, PCWSTR},
     Win32::{
@@ -11,9 +13,7 @@ use windows::{
 
 use crate::utils::string::WideStringExt;
 
-/// Registry operation related errors
-///
-/// Contains all possible errors that may occur during interaction with the Windows registry
+/// Registry operation errors
 #[derive(Debug, thiserror::Error)]
 pub enum RegistryError {
     /// Failed to open registry key
@@ -40,7 +40,6 @@ pub enum RegistryError {
 type RegistryResult<T> = Result<T, RegistryError>;
 
 /// RAII wrapper for Windows registry key handles
-/// Automatically closes the key handle when dropped
 pub struct RegistryKey {
     hkey: HKEY,
     path: String,
@@ -83,20 +82,6 @@ impl RegistryKey {
     }
 
     /// Query registry value
-    ///
-    /// # Arguments
-    /// * `name` - Name of the value to query
-    /// * `data_type` - Optional parameter to receive the value type
-    /// * `data` - Optional parameter to receive the data
-    /// * `data_size` - Optional parameter to receive data size
-    ///
-    /// # Returns
-    /// - `Ok(())` - Query succeeded
-    /// - `Err(RegistryError)` - Query failed
-    ///
-    /// # Note
-    /// For string values, `data` should be a pointer to `Vec<u16>` instead of `Vec<u8>`,
-    /// as Windows will automatically convert strings to Unicode.
     pub fn query(
         &self,
         name: &str,
@@ -133,15 +118,6 @@ impl RegistryKey {
     }
 
     /// Set a registry value
-    ///
-    /// # Arguments
-    /// * `name` - The value name to set
-    /// * `value_type` - The registry value type (REG_DWORD, REG_SZ, etc)
-    /// * `data` - The data to set
-    ///
-    /// # Returns
-    /// - `Ok(())` - If the value was set successfully
-    /// - `Err(DwallError)` - If registry operations fail
     pub fn set(&self, name: &str, value_type: REG_VALUE_TYPE, data: &[u8]) -> RegistryResult<()> {
         let value_name = PCSTR(name.as_ptr());
 
@@ -166,13 +142,6 @@ impl RegistryKey {
     }
 
     /// Delete a registry value
-    ///
-    /// # Arguments
-    /// * `name` - The value name to delete
-    ///
-    /// # Returns
-    /// - `Ok(())` - If the value was deleted successfully
-    /// - `Err(DwallError)` - If registry operations fail
     pub fn delete(&self, name: &str) -> RegistryResult<()> {
         let value_name_wide = Vec::from_str(name);
         let value_name = PCWSTR(value_name_wide.as_ptr());

@@ -1,7 +1,4 @@
-use dwall::{
-    registry::{RegistryError, RegistryKey},
-    utils::string::WideStringRead,
-};
+use dwall::{utils::string::WideStringRead, RegistryError, RegistryKey};
 use windows::Win32::{
     Foundation::ERROR_FILE_NOT_FOUND,
     System::Registry::{KEY_QUERY_VALUE, KEY_WRITE, REG_SZ},

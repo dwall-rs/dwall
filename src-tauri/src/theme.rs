@@ -8,8 +8,8 @@ use std::{
 };
 
 use dwall::{
-    config::{write_config_file as dwall_write_config, Config},
-    ThemeValidator,
+    read_config_file as dwall_read_config, write_config_file as dwall_write_config, Config,
+    SolarThemeValidator,
 };
 use serde::Deserialize;
 use serde_json::Value;
@@ -119,7 +119,7 @@ pub fn launch_daemon() -> DwallSettingsResult<()> {
 #[tauri::command]
 pub async fn validate_theme(themes_direcotry: &Path, theme_id: &str) -> DwallSettingsResult<()> {
     trace!(id = theme_id, "Validating theme");
-    match ThemeValidator::validate_theme(themes_direcotry, theme_id).await {
+    match SolarThemeValidator::validate_solar_theme(themes_direcotry, theme_id).await {
         Ok(_) => {
             debug!(id = theme_id, "Theme validation successful");
             Ok(())
@@ -143,7 +143,7 @@ pub async fn get_applied_theme_id(monitor_id: &str) -> DwallSettingsResult<Optio
     }
 
     // Read current configuration
-    match dwall::config::read_config_file().await {
+    match dwall_read_config().await {
         Ok(config) => {
             let monitor_themes = config.monitor_specific_wallpapers();
 

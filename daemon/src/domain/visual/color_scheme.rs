@@ -7,7 +7,10 @@ use windows::Win32::{
     UI::WindowsAndMessaging::{SendNotifyMessageW, HWND_BROADCAST, WM_SETTINGCHANGE},
 };
 
-use crate::{error::DwallResult, registry::RegistryKey, utils::string::WideStringExt};
+use crate::{
+    error::DwallResult, infrastructure::platform::windows::registry_client::RegistryKey,
+    utils::string::WideStringExt,
+};
 
 // Color mode threshold constants
 const DAY_ALTITUDE_THRESHOLD: f64 = 0.0;
@@ -27,6 +30,7 @@ impl ColorMode {
             ColorMode::Dark => 0,
         }
     }
+
     fn to_le_bytes(&self) -> [u8; 4] {
         self.as_u32().to_le_bytes()
     }
@@ -41,20 +45,16 @@ impl fmt::Display for ColorMode {
     }
 }
 
-/// Color mode management utility for Windows
-pub struct ColorModeManager;
+/// Color scheme manager for Windows system theme management
+pub struct ColorSchemeManager;
 
-impl ColorModeManager {
+impl ColorSchemeManager {
     const PERSONALIZE_KEY_PATH: &str =
         r"Software\Microsoft\Windows\CurrentVersion\Themes\Personalize";
     const APPS_THEME_VALUE: &str = "AppsUseLightTheme";
     const SYSTEM_THEME_VALUE: &str = "SystemUsesLightTheme";
 
     /// Retrieve the current system color mode from registry
-    ///
-    /// # Returns
-    /// - `Ok(ColorMode)` - The current system color mode
-    /// - `Err(DwallError)` - If registry operations fail
     pub fn get_current_mode() -> DwallResult<ColorMode> {
         info!("Retrieving current system color mode");
         let registry_key = RegistryKey::open(Self::PERSONALIZE_KEY_PATH, KEY_QUERY_VALUE)?;
@@ -69,6 +69,7 @@ impl ColorModeManager {
             Some(std::ptr::addr_of_mut!(data) as *mut u8),
             Some(&mut data_size),
         )?;
+
         debug!(value = data, "Retrieved app theme value from registry");
 
         let mode = if data == 1 {
@@ -82,13 +83,6 @@ impl ColorModeManager {
     }
 
     /// Set the system color mode in the registry
-    ///
-    /// # Arguments
-    /// * `mode` - The color mode to set (Light or Dark)
-    ///
-    /// # Returns
-    /// - `Ok(())` - If the color mode was set successfully
-    /// - `Err(DwallError)` - If registry operations fail
     pub fn set_color_mode(mode: ColorMode) -> DwallResult<()> {
         info!(mode = %mode, "Setting system color mode");
         let registry_key = RegistryKey::open(Self::PERSONALIZE_KEY_PATH, KEY_SET_VALUE)?;
@@ -98,7 +92,7 @@ impl ColorModeManager {
         registry_key
             .set(Self::APPS_THEME_VALUE, REG_DWORD, &value)
             .map_err(|e| {
-                error!(error =?e, "Failed to set apps theme value");
+                error!(error = ?e, "Failed to set apps theme value");
                 e
             })?;
         info!(mode = %mode, "Successfully set apps theme value");
@@ -106,13 +100,12 @@ impl ColorModeManager {
         registry_key
             .set(Self::SYSTEM_THEME_VALUE, REG_DWORD, &value)
             .map_err(|e| {
-                error!(error =?e, "Failed to set system theme value");
+                error!(error = ?e, "Failed to set system theme value");
                 e
             })?;
         info!(mode = %mode, "Successfully set system theme value");
 
         notify_theme_change()?;
-
         Ok(())
     }
 }
@@ -125,11 +118,6 @@ impl ColorModeManager {
 /// # Returns
 /// - `ColorMode::Light` if the sun is above the horizon or in twilight
 /// - `ColorMode::Dark` if the sun is below the twilight threshold
-///
-/// # Thresholds
-/// - Day: altitude > 0° (sun above horizon)
-/// - Twilight: -6° < altitude ≤ 0° (civil twilight)
-/// - Night: altitude ≤ -6° (civil twilight threshold)
 pub fn determine_color_mode(altitude: f64) -> ColorMode {
     trace!(altitude = altitude, "Determining color mode");
 
@@ -143,34 +131,24 @@ pub fn determine_color_mode(altitude: f64) -> ColorMode {
         ColorMode::Dark
     } else {
         // Twilight/dawn phase: can choose mode based on specific requirements
-        // More complex logic can be added
         trace!("Twilight/dawn phase, defaulting to Light mode");
         ColorMode::Light
     }
 }
 
 /// Set the system color mode, checking first if it needs to be changed
-///
-/// # Arguments
-/// * `color_mode` - The color mode to set (Light or Dark)
-///
-/// # Returns
-/// - `Ok(())` - If the color mode was set successfully or was already set
-/// - `Err(DwallError)` - If registry operations fail
 pub fn set_color_mode(color_mode: ColorMode) -> DwallResult<()> {
-    let current_color_mode = ColorModeManager::get_current_mode()?;
+    let current_color_mode = ColorSchemeManager::get_current_mode()?;
     if current_color_mode == color_mode {
         info!(mode = %color_mode, "Color mode is already set");
         return Ok(());
     }
 
     info!(from = %current_color_mode, to = %color_mode, "Changing color mode");
-    ColorModeManager::set_color_mode(color_mode)
+    ColorSchemeManager::set_color_mode(color_mode)
 }
 
 /// Notify the system about theme changes
-///
-/// This function broadcasts Windows messages to notify applications about theme changes
 fn notify_theme_change() -> DwallResult<()> {
     debug!("Broadcasting theme change notifications");
     let notifications = [
