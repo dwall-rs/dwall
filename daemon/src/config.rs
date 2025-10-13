@@ -125,8 +125,8 @@ pub struct Config {
     /// Time interval for detecting solar altitude angle and azimuth angle
     /// Measured in seconds, range: [MIN_INTERVAL_SECONDS, MAX_INTERVAL_SECONDS]
     #[serde(default = "default_interval")]
-    #[validate(minimum = 1)]
-    #[validate(maximum = 600)]
+    #[validate(minimum = MIN_INTERVAL_SECONDS)]
+    #[validate(maximum = MAX_INTERVAL_SECONDS)]
     interval: u16,
 }
 
