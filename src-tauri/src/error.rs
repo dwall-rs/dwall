@@ -1,4 +1,4 @@
-use dwall::registry::RegistryError;
+use dwall::RegistryError;
 use serde::{Serialize, Serializer};
 
 use crate::download::DownloadError;
@@ -16,7 +16,7 @@ pub enum DwallSettingsError {
     #[error(transparent)]
     Zip(#[from] zip::result::ZipError),
     #[error(transparent)]
-    Dwall(#[from] dwall::DwallError),
+    Dwall(#[from] dwall::error::DwallError),
     #[error(transparent)]
     Io(#[from] std::io::Error),
     #[error(transparent)]

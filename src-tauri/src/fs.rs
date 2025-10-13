@@ -1,6 +1,6 @@
 use std::path::{Path, PathBuf};
 
-use dwall::config::{write_config_file, Config};
+use dwall::{config::Config, write_config_file};
 use tokio::fs;
 
 use crate::error::DwallSettingsResult;

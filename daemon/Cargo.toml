@@ -10,11 +10,15 @@ edition.workspace = true
 repository.workspace = true
 license.workspace = true
 
+[[bin]]
+name = "dwall"
+path = "src/bin/daemon.rs"
+
 [build-dependencies]
 tauri-winres = { version = "0", optional = true }
 
 [dependencies]
-serde_valid = "1"
+serde_valid = "2"
 time = { version = "0", default-features = false, features = [
   'macros',
   'serde',

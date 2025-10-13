@@ -1,10 +1,10 @@
+//! Display-related error types
+
 use windows::{core::Error as WindowsError, Win32::Foundation::WIN32_ERROR};
 
-/// Monitor operation related errors
-///
-/// Contains all possible errors that may occur during interaction with monitor devices
+/// Display operation related errors
 #[derive(Debug, thiserror::Error)]
-pub enum MonitorError {
+pub enum DisplayError {
     /// Unable to get monitor device collection
     #[error("Unable to get monitor device collection: {0:?}")]
     GetDeviceInfoSet(#[source] Option<WindowsError>),

@@ -1,3 +1,5 @@
+//! Logging utilities - moved from log.rs
+
 use std::{env, str::FromStr, sync::Mutex};
 
 use time::{format_description::BorrowedFormatItem, macros::format_description};

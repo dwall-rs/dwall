@@ -5,9 +5,11 @@ use std::borrow::Cow;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
-use dwall::config::write_config_file as dwall_write_config;
-use dwall::{config::Config, setup_logging};
-use dwall::{ColorMode, DWALL_CONFIG_DIR};
+use dwall::DisplayMonitor;
+use dwall::{
+    config::Config, read_config_file as dwall_read_config, setup_logging,
+    write_config_file as dwall_write_config, ColorMode, DWALL_CONFIG_DIR,
+};
 use tauri::{AppHandle, Manager, RunEvent, WebviewWindow};
 use tokio::sync::OnceCell;
 
@@ -66,7 +68,7 @@ fn show_window(app: AppHandle, label: &str) -> DwallSettingsResult<()> {
 #[tauri::command]
 async fn read_config_file() -> DwallSettingsResult<Config> {
     trace!("Reading configuration file");
-    match dwall::config::read_config_file().await {
+    match dwall_read_config().await {
         Ok(config) => {
             debug!("Configuration file read successfully");
             Ok(config)
@@ -121,7 +123,7 @@ async fn set_titlebar_color_mode(
 }
 
 #[tauri::command]
-async fn get_monitors() -> DwallSettingsResult<HashMap<String, dwall::monitor::DisplayMonitor>> {
+async fn get_monitors() -> DwallSettingsResult<HashMap<String, DisplayMonitor>> {
     let monitors = monitor::get_monitors().await?;
 
     Ok(monitors)

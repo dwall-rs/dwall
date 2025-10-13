@@ -8,7 +8,7 @@ use std::{
 };
 
 use dwall::{
-    config::{write_config_file as dwall_write_config, Config},
+    read_config_file as dwall_read_config, write_config_file as dwall_write_config, Config,
     ThemeValidator,
 };
 use serde::Deserialize;
@@ -143,7 +143,7 @@ pub async fn get_applied_theme_id(monitor_id: &str) -> DwallSettingsResult<Optio
     }
 
     // Read current configuration
-    match dwall::config::read_config_file().await {
+    match dwall_read_config().await {
         Ok(config) => {
             let monitor_themes = config.monitor_specific_wallpapers();
 
