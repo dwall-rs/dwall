@@ -1,5 +1,5 @@
 use crate::domain::geography::{CoordinateError, GeolocationAccessError};
-use crate::domain::visual::ThemeError;
+use crate::domain::visual::ThemeProcessingError;
 use crate::infrastructure::display::DisplayError;
 use crate::infrastructure::display::WallpaperError;
 use crate::infrastructure::platform::windows::RegistryError;
@@ -22,7 +22,7 @@ pub enum DwallError {
 
     /// Theme-related error
     #[error("Theme processing error: {0}")]
-    Theme(#[from] ThemeError),
+    ThemeProcessing(#[from] ThemeProcessingError),
 
     /// JSON serialization/deserialization error
     #[error("JSON processing failed: {0}")]

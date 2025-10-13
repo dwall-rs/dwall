@@ -18,7 +18,7 @@ pub use utils::logging::setup_logging;
 
 // Re-export domain types
 pub use domain::geography::Coordinate;
-pub use domain::visual::{apply_theme, ThemeValidator};
+pub use domain::visual::{apply_solar_theme, SolarThemeValidator};
 
 // Re-export infrastructure types
 pub use infrastructure::display::{DisplayMonitor, DisplayMonitorProvider};

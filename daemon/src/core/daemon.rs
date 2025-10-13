@@ -1,5 +1,5 @@
 use crate::{
-    domain::visual::theme_processor::ThemeProcessor,
+    domain::visual::theme_processor::SolarThemeProcessor,
     infrastructure::filesystem::config_manager::ConfigManager, utils::logging::setup_logging,
     DwallResult,
 };
@@ -23,7 +23,7 @@ impl DaemonApplication {
     pub async fn run(&mut self) -> DwallResult<()> {
         let config = self.config_manager.read_config().await?;
 
-        let theme_processor = ThemeProcessor::new(&config)?;
-        theme_processor.start_update_loop().await
+        let theme_processor = SolarThemeProcessor::new(&config)?;
+        theme_processor.start_solar_update_loop().await
     }
 }
