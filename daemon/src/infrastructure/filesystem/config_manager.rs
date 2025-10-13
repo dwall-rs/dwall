@@ -9,27 +9,27 @@ use crate::{
 };
 
 /// Configuration manager for file operations
-pub struct ConfigManager {
+pub(crate) struct ConfigManager {
     config_path: PathBuf,
 }
 
 impl ConfigManager {
     /// Creates a new ConfigManager with the default config directory
-    pub async fn new() -> DwallResult<Self> {
+    pub(crate) async fn new() -> DwallResult<Self> {
         Ok(Self {
             config_path: DWALL_CONFIG_DIR.join("config.toml"),
         })
     }
 
     /// Creates a new ConfigManager with a specific config directory
-    pub fn with_config_dir(config_dir: &Path) -> Self {
+    pub(crate) fn with_config_dir(config_dir: &Path) -> Self {
         Self {
             config_path: config_dir.join("config.toml"),
         }
     }
 
     /// Reads the configuration from the file system
-    pub async fn read_config(&self) -> DwallResult<Config> {
+    pub(crate) async fn read_config(&self) -> DwallResult<Config> {
         if !self.config_path.exists() {
             warn!("Config file not found, using default configuration");
             return Ok(Config::default());
@@ -50,7 +50,7 @@ impl ConfigManager {
     }
 
     /// Writes the configuration to the file system
-    pub async fn write_config(&self, config: &Config) -> DwallResult<()> {
+    pub(crate) async fn write_config(&self, config: &Config) -> DwallResult<()> {
         config.validate()?;
 
         if !self.config_path.exists() {
@@ -67,7 +67,7 @@ impl ConfigManager {
         self.write_config_to_file(config).await
     }
 
-    async fn write_config_to_file(&self, config: &Config) -> DwallResult<()> {
+    pub(crate) async fn write_config_to_file(&self, config: &Config) -> DwallResult<()> {
         let toml_string = toml::to_string(config).map_err(|e| {
             error!(error = %e, "Failed to serialize configuration");
             ConfigError::Serialization(e)
