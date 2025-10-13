@@ -30,14 +30,6 @@ windows = { version = "0.61", default-features = false }
 panic = "abort"
 codegen-units = 1
 lto = true
-incremental = false
-opt-level = "s"     # Optimize for size
+incremental = true
+opt-level = "z"
 strip = true
-
-# New profile for memory-optimized builds
-[profile.memory-opt]
-inherits = "release"
-opt-level = "z"      # Aggressive size optimization
-lto = "fat"          # Full LTO for maximum optimization
-panic = "abort"      # Reduce binary size
-strip = "symbols"    # Strip all symbols
