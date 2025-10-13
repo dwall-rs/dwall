@@ -46,7 +46,7 @@ impl fmt::Display for ColorMode {
 }
 
 /// Color scheme manager for Windows system theme management
-pub struct ColorSchemeManager;
+pub(crate) struct ColorSchemeManager;
 
 impl ColorSchemeManager {
     const PERSONALIZE_KEY_PATH: &str =
@@ -55,7 +55,7 @@ impl ColorSchemeManager {
     const SYSTEM_THEME_VALUE: &str = "SystemUsesLightTheme";
 
     /// Retrieve the current system color mode from registry
-    pub fn get_current_mode() -> DwallResult<ColorMode> {
+    pub(crate) fn get_current_mode() -> DwallResult<ColorMode> {
         info!("Retrieving current system color mode");
         let registry_key = RegistryKey::open(Self::PERSONALIZE_KEY_PATH, KEY_QUERY_VALUE)?;
 
@@ -83,7 +83,7 @@ impl ColorSchemeManager {
     }
 
     /// Set the system color mode in the registry
-    pub fn set_color_mode(mode: ColorMode) -> DwallResult<()> {
+    pub(crate) fn set_color_mode(mode: ColorMode) -> DwallResult<()> {
         info!(mode = %mode, "Setting system color mode");
         let registry_key = RegistryKey::open(Self::PERSONALIZE_KEY_PATH, KEY_SET_VALUE)?;
 
@@ -118,7 +118,7 @@ impl ColorSchemeManager {
 /// # Returns
 /// - `ColorMode::Light` if the sun is above the horizon or in twilight
 /// - `ColorMode::Dark` if the sun is below the twilight threshold
-pub fn determine_color_mode(altitude: f64) -> ColorMode {
+pub(crate) fn determine_color_mode(altitude: f64) -> ColorMode {
     trace!(altitude = altitude, "Determining color mode");
 
     if altitude > DAY_ALTITUDE_THRESHOLD {
@@ -137,7 +137,7 @@ pub fn determine_color_mode(altitude: f64) -> ColorMode {
 }
 
 /// Set the system color mode, checking first if it needs to be changed
-pub fn set_color_mode(color_mode: ColorMode) -> DwallResult<()> {
+pub(crate) fn set_color_mode(color_mode: ColorMode) -> DwallResult<()> {
     let current_color_mode = ColorSchemeManager::get_current_mode()?;
     if current_color_mode == color_mode {
         info!(mode = %color_mode, "Color mode is already set");

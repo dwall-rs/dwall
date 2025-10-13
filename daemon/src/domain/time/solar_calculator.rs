@@ -6,39 +6,39 @@ use time::OffsetDateTime;
 /// Astronomical calculation constants
 mod constants {
     /// Julian date for January 1, 2000 at 12:00 (TT)
-    pub const EPOCH_J2000: f64 = 2451545.0;
+    pub(crate) const EPOCH_J2000: f64 = 2451545.0;
 
     /// Number of days in a Julian century
-    pub const JULIAN_CENTURY_DAYS: f64 = 36525.0;
+    pub(crate) const JULIAN_CENTURY_DAYS: f64 = 36525.0;
 
     /// Earth's rotation rate in degrees per hour
-    pub const EARTH_ROTATION_RATE: f64 = 15.0;
+    pub(crate) const EARTH_ROTATION_RATE: f64 = 15.0;
 
     /// Hours per day
-    pub const HOURS_PER_DAY: f64 = 24.0;
+    pub(crate) const HOURS_PER_DAY: f64 = 24.0;
 
     /// Minutes per hour
-    pub const MINUTES_PER_HOUR: f64 = 60.0;
+    pub(crate) const MINUTES_PER_HOUR: f64 = 60.0;
 
     /// Seconds per hour
-    pub const SECONDS_PER_HOUR: f64 = 3600.0;
+    pub(crate) const SECONDS_PER_HOUR: f64 = 3600.0;
 
     /// Maximum atmospheric refraction correction at horizon (degrees)
-    pub const ATMOSPHERIC_REFRACTION_MAX: f64 = 0.55;
+    pub(crate) const ATMOSPHERIC_REFRACTION_MAX: f64 = 0.55;
 
     /// Polar region latitude threshold (degrees)
-    pub const POLAR_REGION_THRESHOLD: f64 = 89.9;
+    pub(crate) const POLAR_REGION_THRESHOLD: f64 = 89.9;
 }
 
 /// Solar angle data structure for wallpaper selection
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub(crate) struct SolarAngle {
     /// Image index for wallpaper selection
-    pub index: u8,
+    pub(crate) index: u8,
     /// Sun's altitude angle (degrees)
-    pub altitude: f64,
+    pub(crate) altitude: f64,
     /// Sun's azimuth angle (degrees)
-    pub azimuth: f64,
+    pub(crate) azimuth: f64,
 }
 
 /// Solar position calculator for astronomical computations

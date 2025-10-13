@@ -1,8 +1,7 @@
 pub mod color_scheme;
 pub mod theme_processor;
-pub mod wallpaper;
+pub(crate) mod wallpaper;
 
 // Re-export commonly used types
-pub use color_scheme::{determine_color_mode, set_color_mode, ColorMode, ColorSchemeManager};
+pub use color_scheme::ColorMode;
 pub use theme_processor::{apply_solar_theme, SolarThemeValidator, ThemeProcessingError};
-pub use wallpaper::WallpaperSelector;

@@ -22,7 +22,7 @@ pub use domain::visual::{apply_solar_theme, SolarThemeValidator};
 
 // Re-export infrastructure types
 pub use infrastructure::display::{DisplayMonitor, DisplayMonitorProvider};
-pub use infrastructure::filesystem::{read_config_file, write_config_file, ConfigManager};
+pub use infrastructure::filesystem::{read_config_file, write_config_file};
 pub use infrastructure::platform::windows::{RegistryError, RegistryKey};
 
 // Backwards compatibility aliases
