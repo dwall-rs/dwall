@@ -157,6 +157,6 @@ mod tests {
     #[tokio::test]
     async fn test_position_display() {
         let pos = Coordinate::from_raw_coordinates(45.0, 90.0);
-        assert_eq!(format!("{pos}"), "Position(lat: 45, lng: 90)");
+        assert_eq!(format!("{pos}"), "Coordinate(lat: 45, lng: 90)");
     }
 }
