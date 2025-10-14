@@ -8,11 +8,11 @@ use tokio::sync::Mutex;
 use windows::Devices::Geolocation::{GeolocationAccessStatus, Geolocator, PositionAccuracy};
 
 use crate::{
-    config::CoordinateSource,
+    config::PositionSource,
     error::{DwallError, DwallResult},
 };
 
-use super::coordinates::{Coordinate, GeolocationAccessError};
+use super::position::{GeolocationAccessError, Position};
 
 /// Helper function to handle Windows API errors with consistent logging
 async fn handle_windows_error<T, F>(operation: &str, f: F) -> DwallResult<T>
@@ -65,7 +65,7 @@ pub async fn check_location_permission() -> DwallResult<()> {
 }
 
 /// Retrieves the current geographical position using Windows Geolocator API
-async fn get_geo_position() -> DwallResult<Coordinate> {
+async fn get_geo_position() -> DwallResult<Position> {
     // First check if we have permission to access location
     check_location_permission().await?;
 
@@ -105,12 +105,14 @@ async fn get_geo_position() -> DwallResult<Coordinate> {
 
     // Create Position struct
     trace!("Creating Position struct with latitude and longitude...");
-    let result = Coordinate::from_raw_coordinates(position.Latitude, position.Longitude);
+    let result =
+        Position::from_raw_position(position.Latitude, position.Longitude, position.Altitude);
     debug!("Position struct created successfully: {}", result);
 
     info!(
         latitude = result.latitude(),
         longitude = result.longitude(),
+        altitude = result.altitude(),
         "Current geoposition"
     );
     Ok(result)
@@ -122,8 +124,8 @@ async fn get_geo_position() -> DwallResult<Coordinate> {
 /// but changes infrequently. Cache duration extended to 5 minutes to reduce 90% of API calls
 /// and significantly lower memory usage and CPU overhead.
 pub(crate) struct GeographicPositionProvider<'a> {
-    coordinate_source: &'a CoordinateSource,
-    cached_position: Mutex<Option<(Coordinate, Instant)>>,
+    coordinate_source: &'a PositionSource,
+    cached_position: Mutex<Option<(Position, Instant)>>,
 
     /// Cache duration for position data - optimized from 30 seconds to 5 minutes
     ///
@@ -137,7 +139,7 @@ pub(crate) struct GeographicPositionProvider<'a> {
 }
 
 impl<'a> GeographicPositionProvider<'a> {
-    pub(crate) fn new(coordinate_source: &'a CoordinateSource) -> Self {
+    pub(crate) fn new(coordinate_source: &'a PositionSource) -> Self {
         Self {
             coordinate_source,
             cached_position: Mutex::new(None),
@@ -148,13 +150,13 @@ impl<'a> GeographicPositionProvider<'a> {
     }
 
     /// Retrieves a fresh position from the geolocation API
-    async fn get_fresh_position(&self) -> DwallResult<Coordinate> {
+    async fn get_fresh_position(&self) -> DwallResult<Position> {
         debug!("Using fresh geolocation data");
         get_geo_position().await
     }
 
     /// Retrieves a position from cache or fetches a new one if cache is expired
-    async fn get_cached_position(&self) -> DwallResult<Coordinate> {
+    async fn get_cached_position(&self) -> DwallResult<Position> {
         debug!("Checking cached position data");
         let mut position = self.cached_position.lock().await;
 
@@ -183,20 +185,21 @@ impl<'a> GeographicPositionProvider<'a> {
         }
     }
 
-    /// Retrieves a position from manual coordinates
-    fn get_manual_position(&self, latitude: f64, longitude: f64) -> DwallResult<Coordinate> {
-        debug!(
-            latitude = latitude,
-            longitude = longitude,
-            "Using manual coordinates"
-        );
-        Coordinate::new(latitude, longitude)
+    /// Retrieves a position from manual position
+    fn get_manual_position(
+        &self,
+        latitude: f64,
+        longitude: f64,
+        altitude: f64,
+    ) -> DwallResult<Position> {
+        debug!(latitude, longitude, altitude, "Using manual position");
+        Position::new(latitude, longitude, altitude)
     }
 
     /// Retrieves the current position based on the configured coordinate source
-    pub(crate) async fn get_current_position(&self) -> DwallResult<Coordinate> {
+    pub(crate) async fn get_current_position(&self) -> DwallResult<Position> {
         match &self.coordinate_source {
-            CoordinateSource::Automatic {
+            PositionSource::Automatic {
                 update_on_each_calculation,
             } => {
                 if *update_on_each_calculation {
@@ -205,10 +208,11 @@ impl<'a> GeographicPositionProvider<'a> {
                     self.get_cached_position().await
                 }
             }
-            CoordinateSource::Manual {
+            PositionSource::Manual {
                 latitude,
                 longitude,
-            } => self.get_manual_position(*latitude, *longitude),
+                altitude,
+            } => self.get_manual_position(*latitude, *longitude, *altitude),
         }
     }
 }
@@ -219,14 +223,16 @@ mod tests {
 
     #[tokio::test]
     async fn test_provider_manual_coordinates() {
-        let coord_source = CoordinateSource::Manual {
+        let coord_source = PositionSource::Manual {
             latitude: 45.0,
             longitude: 90.0,
+            altitude: 43.5,
         };
         let provider = GeographicPositionProvider::new(&coord_source);
 
         let pos = provider.get_current_position().await.unwrap();
         assert_eq!(pos.latitude(), 45.0);
         assert_eq!(pos.longitude(), 90.0);
+        assert_eq!(pos.altitude(), 43.5);
     }
 }

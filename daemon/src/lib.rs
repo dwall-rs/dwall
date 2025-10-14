@@ -17,7 +17,7 @@ pub use lazy::{DWALL_CACHE_DIR, DWALL_CONFIG_DIR};
 pub use utils::logging::setup_logging;
 
 // Re-export domain types
-pub use domain::geography::Coordinate;
+pub use domain::geography::Position;
 pub use domain::visual::{apply_solar_theme, SolarThemeValidator};
 
 // Re-export infrastructure types
@@ -26,7 +26,7 @@ pub use infrastructure::filesystem::{read_config_file, write_config_file};
 pub use infrastructure::platform::windows::{RegistryError, RegistryKey};
 
 // Backwards compatibility aliases
-pub use domain::geography::Coordinate as GeographicPosition;
 pub use domain::geography::CoordinateError;
 pub use domain::geography::GeolocationAccessError;
+pub use domain::geography::Position as GeographicPosition;
 pub use domain::visual::ColorMode;

@@ -34,7 +34,7 @@ impl From<&ImageFormat> for &str {
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 #[serde(rename_all = "UPPERCASE", tag = "type")]
-pub enum CoordinateSource {
+pub enum PositionSource {
     Automatic {
         #[serde(default = "default_update_on_each_calculation")]
         update_on_each_calculation: bool,
@@ -43,10 +43,22 @@ pub enum CoordinateSource {
     Manual {
         latitude: f64,
         longitude: f64,
+        #[serde(default = "default_altitude")]
+        altitude: f64,
     },
 }
 
-impl Default for CoordinateSource {
+fn default_altitude() -> f64 {
+    // Some sources cite the average elevation of land as 840 meters;
+    // however, among mainstream authoritative geographic or Earth
+    // science institutions (such as National Geographic, NASA, NOAA,
+    // or relevant United Nations reports), the figure of 875 meters
+    // is more widely accepted and commonly cited. Therefore,
+    // 875 meters is used here as the default value.
+    875.
+}
+
+impl Default for PositionSource {
     fn default() -> Self {
         Self::Automatic {
             update_on_each_calculation: false,
@@ -58,13 +70,14 @@ fn default_update_on_each_calculation() -> bool {
     false
 }
 
-impl CoordinateSource {
+impl PositionSource {
     pub fn validate(&self) -> bool {
         match *self {
-            CoordinateSource::Automatic { .. } => true,
-            CoordinateSource::Manual {
+            PositionSource::Automatic { .. } => true,
+            PositionSource::Manual {
                 latitude,
                 longitude,
+                ..
             } => (-90.0..=90.0).contains(&latitude) && (-180.0..=180.0).contains(&longitude),
         }
     }
@@ -105,8 +118,8 @@ pub struct Config {
     #[serde(default = "default_image_format")]
     image_format: ImageFormat,
 
-    #[serde(default = "default_coordinate_source")]
-    coordinate_source: CoordinateSource,
+    #[serde(alias = "coordinate_source", default = "default_position_source")]
+    position_source: PositionSource,
 
     #[serde(default = "default_auto_detect_color_mode")]
     auto_detect_color_mode: bool,
@@ -134,7 +147,7 @@ fn default_image_format() -> ImageFormat {
     Default::default()
 }
 
-fn default_coordinate_source() -> CoordinateSource {
+fn default_position_source() -> PositionSource {
     Default::default()
 }
 
@@ -191,7 +204,7 @@ impl Config {
             .into());
         }
 
-        if !self.coordinate_source.validate() {
+        if !self.position_source.validate() {
             error!("Latitude or longitude is invalid");
             return Err(ConfigError::Validation {
                 reason: "Latitude or longitude is invalid".to_string(),
@@ -234,9 +247,9 @@ impl Config {
         self.lock_screen_wallpaper_enabled
     }
 
-    /// Returns the coordinate source
-    pub fn coordinate_source(&self) -> &CoordinateSource {
-        &self.coordinate_source
+    /// Returns the position source
+    pub fn position_source(&self) -> &PositionSource {
+        &self.position_source
     }
 
     /// Returns the monitor-specific wallpapers map
@@ -289,7 +302,7 @@ impl Default for Config {
     fn default() -> Self {
         Self {
             image_format: Default::default(),
-            coordinate_source: Default::default(),
+            position_source: Default::default(),
             github_mirror_template: Default::default(),
             auto_detect_color_mode: default_auto_detect_color_mode(),
             themes_directory: default_themes_directory(),

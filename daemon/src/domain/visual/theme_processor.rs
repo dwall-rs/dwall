@@ -12,7 +12,7 @@ use tokio::{fs, sync::OnceCell, time::sleep};
 use crate::{
     config::Config,
     domain::{
-        geography::{provider::GeographicPositionProvider, Coordinate},
+        geography::{provider::GeographicPositionProvider, Position},
         time::solar_calculator::{SolarAngle, SunPosition},
         visual::color_scheme::{determine_color_mode, set_color_mode},
     },
@@ -61,9 +61,7 @@ impl<'a> SolarThemeProcessor<'a> {
         let wallpaper_manager = WallpaperSetter::new()?;
 
         Ok(Self {
-            geographic_position_provider: GeographicPositionProvider::new(
-                config.coordinate_source(),
-            ),
+            geographic_position_provider: GeographicPositionProvider::new(config.position_source()),
             config,
             wallpaper_manager,
         })
@@ -187,7 +185,7 @@ impl<'a> SolarThemeProcessor<'a> {
     /// Process solar theme cycle for the current geographic position
     pub(crate) async fn process_solar_theme_cycle(
         &self,
-        geographic_position: &Coordinate,
+        geographic_position: &Position,
     ) -> DwallResult<()> {
         process_solar_theme_cycle(self.config, geographic_position, &self.wallpaper_manager).await
     }
@@ -461,7 +459,7 @@ async fn find_optimal_solar_wallpaper(
 /// Core solar theme processing function that updates wallpapers for all monitors
 async fn process_solar_theme_cycle(
     configuration: &Config,
-    current_geographic_position: &Coordinate,
+    current_geographic_position: &Position,
     wallpaper_manager: &WallpaperSetter,
 ) -> DwallResult<()> {
     debug!(
