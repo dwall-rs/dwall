@@ -1,7 +1,7 @@
 use core::ffi;
 use std::error::Error;
 
-use dwall::ColorMode;
+use dwall::ColorScheme;
 use tauri::{WebviewUrl, WebviewWindowBuilder};
 use windows::{
     Wdk::System::SystemServices::RtlGetVersion,
@@ -68,7 +68,7 @@ pub fn create_main_window(app: &tauri::AppHandle) -> Result<(), Box<dyn Error>> 
 /// A result indicating successful color mode change or an error
 pub fn set_window_color_mode(
     window_handle: HWND,
-    color_mode: ColorMode,
+    color_mode: ColorScheme,
 ) -> DwallSettingsResult<()> {
     trace!(mode = ?color_mode, "Attempting to set window color mode");
 
@@ -101,15 +101,15 @@ pub fn set_window_color_mode(
 /// A result of the color setting operation
 fn set_windows_11_caption_color(
     window_handle: HWND,
-    color_mode: &ColorMode,
+    color_mode: &ColorScheme,
 ) -> DwallSettingsResult<()> {
     // Predefined color values for dark and light modes
     const DARK_CAPTION_COLOR: u32 = 0x1F1F1F; // Dark gray
     const LIGHT_CAPTION_COLOR: u32 = 0xFAFAFA; // Light gray
 
     let caption_color = match color_mode {
-        ColorMode::Dark => DARK_CAPTION_COLOR,
-        ColorMode::Light => LIGHT_CAPTION_COLOR,
+        ColorScheme::Dark => DARK_CAPTION_COLOR,
+        ColorScheme::Light => LIGHT_CAPTION_COLOR,
     };
 
     debug!(mode = ?color_mode, color=caption_color, "Setting Windows 11+ caption color");
@@ -133,10 +133,10 @@ fn set_windows_11_caption_color(
 ///
 /// # Returns
 /// A result of the dark mode setting operation
-fn set_legacy_dark_mode(window_handle: HWND, color_mode: &ColorMode) -> DwallSettingsResult<()> {
+fn set_legacy_dark_mode(window_handle: HWND, color_mode: &ColorScheme) -> DwallSettingsResult<()> {
     let dark_mode_value: u32 = match color_mode {
-        ColorMode::Dark => 1,
-        ColorMode::Light => 0,
+        ColorScheme::Dark => 1,
+        ColorScheme::Light => 0,
     };
 
     debug!(mode = ?color_mode, value = dark_mode_value, "Setting legacy dark mode");

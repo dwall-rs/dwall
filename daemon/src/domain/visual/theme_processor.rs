@@ -14,7 +14,10 @@ use crate::{
     domain::{
         geography::{provider::GeographicPositionProvider, Position},
         time::solar_calculator::{SolarAngle, SunPosition},
-        visual::color_scheme::{determine_color_mode, set_color_mode},
+        visual::color_scheme::{
+            determine_color_scheme_with_hysteresis, set_color_scheme, ColorSchemeManager,
+            ThresholdConfig,
+        },
     },
     infrastructure::display::wallpaper_setter::WallpaperSetter,
     DwallResult,
@@ -52,7 +55,7 @@ impl<'a> SolarThemeProcessor<'a> {
     /// Creates a new SolarThemeProcessor instance with the provided configuration
     pub(crate) fn new(config: &'a Config) -> DwallResult<Self> {
         info!(
-            auto_detect_color_mode = ?config.auto_detect_color_mode(),
+            auto_detect_color_mode = ?config.auto_detect_color_scheme(),
             image_format = ?config.image_format(),
             update_interval_seconds = config.interval(),
             "Initializing solar theme processor"
@@ -463,7 +466,7 @@ async fn process_solar_theme_cycle(
     wallpaper_manager: &WallpaperSetter,
 ) -> DwallResult<()> {
     debug!(
-        auto_detect_color_mode = configuration.auto_detect_color_mode(),
+        auto_detect_color_mode = configuration.auto_detect_color_scheme(),
         image_format = ?configuration.image_format(),
         latitude = current_geographic_position.latitude(),
         longitude = current_geographic_position.longitude(),
@@ -547,18 +550,23 @@ async fn process_solar_theme_cycle(
         }
     }
 
-    // Optionally update system color mode based on solar position
-    if configuration.auto_detect_color_mode() {
-        let solar_based_color_mode = determine_color_mode(current_sun_position.altitude());
-        info!(
-            color_mode = ?solar_based_color_mode,
-            sun_altitude = current_sun_position.altitude(),
-            "Automatically updating system color mode based on solar position"
+    // Optionally update system color scheme based on solar position
+    if configuration.auto_detect_color_scheme() {
+        let current_color_scheme = ColorSchemeManager::get_current_scheme()?;
+        let solar_based_color_scheme = determine_color_scheme_with_hysteresis(
+            current_sun_position.altitude(),
+            &current_color_scheme,
+            &ThresholdConfig::from_location(current_geographic_position),
         );
-        if let Err(color_mode_error) = set_color_mode(solar_based_color_mode) {
+        info!(
+            color_scheme = ?solar_based_color_scheme,
+            sun_altitude = current_sun_position.altitude(),
+            "Automatically updating system color scheme based on solar position"
+        );
+        if let Err(color_scheme_error) = set_color_scheme(solar_based_color_scheme) {
             warn!(
-                error = %color_mode_error,
-                "Failed to update system color mode, continuing with other operations"
+                error = %color_scheme_error,
+                "Failed to update system color scheme, continuing with other operations"
             );
         }
     }

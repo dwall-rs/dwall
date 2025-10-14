@@ -8,7 +8,7 @@ use std::path::{Path, PathBuf};
 use dwall::DisplayMonitor;
 use dwall::{
     config::Config, read_config_file as dwall_read_config, setup_logging,
-    write_config_file as dwall_write_config, ColorMode, DWALL_CONFIG_DIR,
+    write_config_file as dwall_write_config, ColorScheme, DWALL_CONFIG_DIR,
 };
 use tauri::{AppHandle, Manager, RunEvent, WebviewWindow};
 use tokio::sync::OnceCell;
@@ -114,7 +114,7 @@ async fn open_config_dir() -> DwallSettingsResult<()> {
 #[tauri::command]
 async fn set_titlebar_color_mode(
     window: WebviewWindow,
-    color_mode: ColorMode,
+    color_mode: ColorScheme,
 ) -> DwallSettingsResult<()> {
     let hwnd = window.hwnd()?;
 
