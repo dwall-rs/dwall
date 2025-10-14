@@ -4,7 +4,6 @@ use std::{
 };
 
 use serde::{Deserialize, Serialize};
-use serde_valid::Validate;
 
 use crate::{
     error::{ConfigError, DwallResult},
@@ -98,7 +97,7 @@ impl MonitorSpecificWallpapers {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, Validate, Clone, PartialEq)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub struct Config {
     #[serde(skip_serializing_if = "Option::is_none")]
     github_mirror_template: Option<String>,
@@ -123,10 +122,11 @@ pub struct Config {
     monitor_specific_wallpapers: MonitorSpecificWallpapers,
 
     /// Time interval for detecting solar altitude angle and azimuth angle
-    /// Measured in seconds, range: [MIN_INTERVAL_SECONDS, MAX_INTERVAL_SECONDS]
-    #[serde(default = "default_interval")]
-    #[validate(minimum = MIN_INTERVAL_SECONDS)]
-    #[validate(maximum = MAX_INTERVAL_SECONDS)]
+    /// Measured in seconds, range: `[MIN_INTERVAL_SECONDS, MAX_INTERVAL_SECONDS]`
+    #[serde(
+        default = "default_interval",
+        deserialize_with = "deserialize_interval"
+    )]
     interval: u16,
 }
 
@@ -156,6 +156,21 @@ fn default_themes_directory() -> PathBuf {
 
 fn default_monitor_specific_wallpapers() -> MonitorSpecificWallpapers {
     MonitorSpecificWallpapers::Specific(HashMap::new())
+}
+
+/// Custom deserializer for interval field with range validation
+fn deserialize_interval<'de, D>(deserializer: D) -> Result<u16, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    let value = u16::deserialize(deserializer)?;
+    if !(MIN_INTERVAL_SECONDS..=MAX_INTERVAL_SECONDS).contains(&value) {
+        return Err(serde::de::Error::custom(format!(
+            "interval must be between {} and {}, got {}",
+            MIN_INTERVAL_SECONDS, MAX_INTERVAL_SECONDS, value
+        )));
+    }
+    Ok(value)
 }
 
 impl Config {
@@ -290,5 +305,33 @@ impl Default for Config {
             // be used to calculate the time interval required for each 0.1 degree change.
             interval: DEFAULT_INTERVAL_SECONDS,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_config_deserialize() {
+        let config_str = r#"
+        {
+            "interval": 60
+        }
+        "#;
+        let result = serde_json::from_str(config_str);
+        assert!(result.is_ok());
+        let config: Config = result.unwrap();
+        assert_eq!(config.interval, 60);
+
+        let config_str = r#"
+        {
+            "interval": 601
+        }
+        "#;
+        let result = serde_json::from_str::<Config>(config_str);
+        assert!(result.is_err());
+        let error = result.unwrap_err().to_string();
+        assert!(error.starts_with("interval must be between 1 and 600, got 601"));
     }
 }
