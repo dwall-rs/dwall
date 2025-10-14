@@ -105,17 +105,19 @@ async fn get_geo_position() -> DwallResult<Position> {
 
     // Create Position struct
     trace!("Creating Position struct with latitude and longitude...");
-    let result =
+    let position =
         Position::from_raw_position(position.Latitude, position.Longitude, position.Altitude);
-    debug!("Position struct created successfully: {}", result);
+    if position.altitude() == 0. {
+        warn!("An altitude of 0 may cause the time for switching between light and dark modes to shift earlier or later by a few minutes to an hour. This is likely because your device lacks a barometric pressure sensor. This is not an error, but an expected outcome.");
+    }
 
     info!(
-        latitude = result.latitude(),
-        longitude = result.longitude(),
-        altitude = result.altitude(),
+        latitude = position.latitude(),
+        longitude = position.longitude(),
+        altitude = position.altitude(),
         "Current geoposition"
     );
-    Ok(result)
+    Ok(position)
 }
 
 /// Geographic position provider with optimized caching strategy
