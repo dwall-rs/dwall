@@ -1,6 +1,6 @@
 import { LazyFlex } from "~/lazy";
 import AutoStart from "./AutoStart";
-import AutoDetectColorMode from "./AutoDetectColorMode";
+import AutoDetectColorScheme from "./AutoDetectColorScheme";
 import CoordinateSource from "./CoordinateSource";
 import Interval from "./Interval";
 import GithubMirror from "./GithubMirror";
@@ -32,7 +32,7 @@ const Settings = () => {
       >
         <AutoStart />
 
-        <AutoDetectColorMode />
+        <AutoDetectColorScheme />
 
         <LockScreenWallpaperSwitch />
 

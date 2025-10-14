@@ -29,9 +29,9 @@ export const useThemeApplication = (
 
     // Check coordinate configuration
     const hasValidCoordinates =
-      currentConfig.coordinate_source?.type === "MANUAL" &&
-      typeof currentConfig.coordinate_source.latitude === "number" &&
-      typeof currentConfig.coordinate_source.longitude === "number";
+      currentConfig.position_source?.type === "MANUAL" &&
+      typeof currentConfig.position_source.latitude === "number" &&
+      typeof currentConfig.position_source.longitude === "number";
 
     if (!hasValidCoordinates) {
       const hasPermission = await checkLocationPermission();
