@@ -14,7 +14,7 @@ use crate::{
 const DEFAULT_INTERVAL_SECONDS: u16 = 15;
 const MIN_INTERVAL_SECONDS: u16 = 1;
 const MAX_INTERVAL_SECONDS: u16 = 600;
-const DEFAULT_AUTO_DETECT_COLOR_MODE: bool = true;
+const DEFAULT_AUTO_DETECT_COLOR_SCHEME: bool = true;
 const DEFAULT_LOCK_SCREEN_WALLPAPER_ENABLED: bool = true;
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Default, Clone)]
@@ -121,8 +121,11 @@ pub struct Config {
     #[serde(alias = "coordinate_source", default = "default_position_source")]
     position_source: PositionSource,
 
-    #[serde(default = "default_auto_detect_color_mode")]
-    auto_detect_color_mode: bool,
+    #[serde(
+        alias = "auto_detect_color_mode",
+        default = "default_auto_detect_color_scheme"
+    )]
+    auto_detect_color_scheme: bool,
 
     #[serde(default = "default_lock_screen_wallpaper_enabled")]
     lock_screen_wallpaper_enabled: bool,
@@ -151,8 +154,8 @@ fn default_position_source() -> PositionSource {
     Default::default()
 }
 
-fn default_auto_detect_color_mode() -> bool {
-    DEFAULT_AUTO_DETECT_COLOR_MODE
+fn default_auto_detect_color_scheme() -> bool {
+    DEFAULT_AUTO_DETECT_COLOR_SCHEME
 }
 
 fn default_lock_screen_wallpaper_enabled() -> bool {
@@ -238,8 +241,8 @@ impl Config {
     }
 
     /// Returns whether auto detection of color mode is enabled
-    pub fn auto_detect_color_mode(&self) -> bool {
-        self.auto_detect_color_mode
+    pub fn auto_detect_color_scheme(&self) -> bool {
+        self.auto_detect_color_scheme
     }
 
     /// Returns whether lock screen wallpaper is enabled
@@ -304,7 +307,7 @@ impl Default for Config {
             image_format: Default::default(),
             position_source: Default::default(),
             github_mirror_template: Default::default(),
-            auto_detect_color_mode: default_auto_detect_color_mode(),
+            auto_detect_color_scheme: default_auto_detect_color_scheme(),
             themes_directory: default_themes_directory(),
             lock_screen_wallpaper_enabled: default_lock_screen_wallpaper_enabled(),
             monitor_specific_wallpapers: default_monitor_specific_wallpapers(),
