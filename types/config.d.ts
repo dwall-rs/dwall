@@ -4,20 +4,21 @@ interface Config {
   interval: number;
   image_format: string;
   themes_directory: string;
-  coordinate_source: CoordinateSource;
-  auto_detect_color_mode: boolean;
+  position_source: PositionSource;
+  auto_detect_color_scheme: boolean;
   lock_screen_wallpaper_enabled: boolean;
   monitor_specific_wallpapers: string | Record<string, string>;
 }
 
-interface CoordinateSourceAutomatic {
+interface PositionSourceAutomatic {
   type: "AUTOMATIC";
 }
 
-interface CoordinateSourceManual {
+interface PositionSourceManual {
   type: "MANUAL";
   latitude?: number;
   longitude?: number;
+  altitude?: number;
 }
 
-type CoordinateSource = CoordinateSourceAutomatic | CoordinateSourceManual;
+type PositionSource = PositionSourceAutomatic | PositionSourceManual;

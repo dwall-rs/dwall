@@ -53,18 +53,18 @@ const CoordinateSource = () => {
   const { data: config, refetch: refetchConfig } = useConfig();
   const { translate } = useTranslations();
 
-  const initialPosition: Omit<CoordinateSourceManual, "type"> =
-    config()?.coordinate_source.type === "MANUAL"
+  const initialPosition: Omit<PositionSourceManual, "type"> =
+    config()?.position_source.type === "MANUAL"
       ? {
-          latitude: (config()?.coordinate_source as CoordinateSourceManual)
+          latitude: (config()?.position_source as PositionSourceManual)
             .latitude,
-          longitude: (config()?.coordinate_source as CoordinateSourceManual)
+          longitude: (config()?.position_source as PositionSourceManual)
             .longitude,
         }
       : {};
 
   const [auto, setAuto] = createSignal(
-    config()?.coordinate_source.type === "AUTOMATIC",
+    config()?.position_source.type === "AUTOMATIC",
   );
   const [position, setPosition] = createSignal<{
     latitude?: number;
@@ -88,7 +88,7 @@ const CoordinateSource = () => {
       try {
         await writeConfigFile({
           ...config()!,
-          coordinate_source: {
+          position_source: {
             type: "AUTOMATIC",
           },
         });
@@ -111,7 +111,7 @@ const CoordinateSource = () => {
     const { latitude, longitude } = position();
     if (!isPositionValid()) return;
 
-    const newConfig: CoordinateSourceManual = {
+    const newConfig: PositionSourceManual = {
       type: "MANUAL",
       latitude,
       longitude,
@@ -120,7 +120,7 @@ const CoordinateSource = () => {
     try {
       await writeConfigFile({
         ...config()!,
-        coordinate_source: newConfig,
+        position_source: newConfig,
       });
       refetchConfig();
       message(translate("message-coordinates-saved") as string);
@@ -138,7 +138,7 @@ const CoordinateSource = () => {
   };
 
   const handlePositionChange =
-    (field: keyof Omit<CoordinateSourceManual, "type">) => (value?: number) => {
+    (field: keyof Omit<PositionSourceManual, "type">) => (value?: number) => {
       setPosition((prev) => ({
         ...prev,
         [field]: value,

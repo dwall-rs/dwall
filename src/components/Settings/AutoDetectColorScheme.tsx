@@ -15,7 +15,7 @@ const AutoDetectColorMode = () => {
     try {
       await writeConfigFile({
         ...config()!,
-        auto_detect_color_mode: !config()!.auto_detect_color_mode,
+        auto_detect_color_scheme: !config()!.auto_detect_color_scheme,
       });
       refetchConfig();
     } catch (error) {
@@ -35,7 +35,7 @@ const AutoDetectColorMode = () => {
       help={translate("help-automatically-switch-to-dark-mode")}
     >
       <LazySwitch
-        checked={config()!.auto_detect_color_mode}
+        checked={config()!.auto_detect_color_scheme}
         onChange={onSwitchAutoDetectColorMode}
       />
     </SettingsItem>

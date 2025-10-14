@@ -38,7 +38,7 @@ export const useLocationPermission = (
 
       mutate((prev) => ({
         ...prev!,
-        coordinate_source: { type: "MANUAL" },
+        position_source: { type: "MANUAL" },
       }));
       setMenuItemIndex();
       setShowSettings(true);
