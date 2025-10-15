@@ -1,3 +1,7 @@
+//! Registry infrastructure module
+//!
+//! This module contains Windows registry operations.
+
 use dwall::{utils::string::WideStringRead, RegistryError, RegistryKey};
 use windows::Win32::{
     Foundation::ERROR_FILE_NOT_FOUND,
@@ -28,25 +32,12 @@ impl AutoStartManager {
     /// # Errors
     /// Returns a `DwallSettingsResult` if auto-start cannot be enabled
     pub fn enable_auto_start() -> DwallSettingsResult<()> {
-        info!("Attempting to enable auto-start");
-
         // Safely get the executable path
         let exe_path_str = Self::get_executable_path();
 
         let registry_key = RegistryKey::open(Self::KEY_PATH, KEY_WRITE)?;
-        registry_key
-            .set(Self::APP_NAME, REG_SZ, exe_path_str.as_bytes())
-            .map_err(|e| {
-                error!(
-                    app_name = Self::APP_NAME,
-                    path = exe_path_str,
-                    error = %e,
-                    "Failed to set auto-start",
-                );
-                e
-            })?;
+        registry_key.set(Self::APP_NAME, REG_SZ, exe_path_str.as_bytes())?;
 
-        info!("Auto-start enabled successfully");
         Ok(())
     }
 
@@ -55,19 +46,9 @@ impl AutoStartManager {
     /// # Errors
     /// Returns a `DwallSettingsResult` if auto-start cannot be disabled
     pub fn disable_auto_start() -> DwallSettingsResult<()> {
-        info!("Attempting to disable auto-start");
-
         let registry_key = RegistryKey::open(Self::KEY_PATH, KEY_WRITE)?;
-        registry_key.delete(Self::APP_NAME).map_err(|e| {
-            error!(
-                app_name = Self::APP_NAME,
-                error = %e,
-                "Failed to disable auto-start",
-            );
-            e
-        })?;
+        registry_key.delete(Self::APP_NAME)?;
 
-        info!("Auto-start disabled successfully");
         Ok(())
     }
 
@@ -76,8 +57,6 @@ impl AutoStartManager {
     /// # Errors
     /// Returns a `DwallSettingsResult` if the auto-start status cannot be determined
     pub fn check_auto_start() -> DwallSettingsResult<bool> {
-        trace!("Checking auto-start status");
-
         let registry_key = RegistryKey::open(Self::KEY_PATH, KEY_QUERY_VALUE)?;
 
         // Prepare variables for querying registry value
@@ -90,18 +69,11 @@ impl AutoStartManager {
             registry_key.query(Self::APP_NAME, None, None, Some(&mut data_size))
         {
             if windows_error == ERROR_FILE_NOT_FOUND {
-                debug!(app_name = Self::APP_NAME, "No auto-start entry found");
                 return Ok(false);
             }
 
             return Err(RegistryError::Query(windows_error).into());
         }
-
-        debug!(
-            app_name = Self::APP_NAME,
-            data_size = data_size,
-            "Buffer size for registry query",
-        );
 
         // Allocate buffer and perform second query
         data.resize(data_size as usize, 0);
@@ -120,45 +92,16 @@ impl AutoStartManager {
                 // Compare registry value with current executable path
                 let is_auto_start = command_str == exe_path_str;
 
-                info!(
-                    app_name = Self::APP_NAME,
-                    status = is_auto_start,
-                    command = %command_str,
-                    exe_path = %exe_path_str,
-                    "Auto-start status",
-                );
-
                 Ok(is_auto_start)
             }
             Err(RegistryError::Query(err)) => {
                 if err == ERROR_FILE_NOT_FOUND {
-                    debug!(app_name = Self::APP_NAME, "No auto-start entry found");
                     return Ok(false);
                 }
 
-                error!(
-                    app_name = Self::APP_NAME,
-                    error_code = err.0,
-                    "Unexpected error querying registry",
-                );
                 Err(RegistryError::Query(err).into())
             }
             _ => unreachable!(),
         }
     }
-}
-
-#[tauri::command]
-pub fn enable_auto_start() -> DwallSettingsResult<()> {
-    AutoStartManager::enable_auto_start()
-}
-
-#[tauri::command]
-pub fn disable_auto_start() -> DwallSettingsResult<()> {
-    AutoStartManager::disable_auto_start()
-}
-
-#[tauri::command]
-pub fn check_auto_start() -> DwallSettingsResult<bool> {
-    AutoStartManager::check_auto_start()
 }

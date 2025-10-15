@@ -30,7 +30,7 @@ pub(super) struct DownloadProgress<'a> {
 }
 
 /// Progress notification service
-pub(super) struct ProgressEmitter<'a, R: Runtime> {
+pub struct ProgressEmitter<'a, R: Runtime> {
     window: &'a WebviewWindow<R>,
 }
 
@@ -39,7 +39,7 @@ impl<'a, R: Runtime> ProgressEmitter<'a, R> {
         Self { window }
     }
 
-    pub fn emit_progress(&self, progress: DownloadProgress) -> Result<(), tauri::Error> {
+    pub(super) fn emit_progress(&self, progress: DownloadProgress) -> Result<(), tauri::Error> {
         self.window.emit("download-theme", progress)
     }
 }

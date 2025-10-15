@@ -129,7 +129,6 @@ pub fn get_current_language() -> Language {
 //     Ok(())
 // }
 
-#[tauri::command]
 pub fn get_translations() -> LocaleTranslations {
     let current_lang = get_current_language();
     info!(language = current_lang.native_name(), "Current language");

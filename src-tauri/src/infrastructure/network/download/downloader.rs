@@ -5,11 +5,10 @@
 use std::path::PathBuf;
 
 use dwall::config::Config;
-use tauri::{Runtime, State, WebviewWindow};
+use tauri::Runtime;
 
 use crate::error::DwallSettingsResult;
 
-use super::extractor::ThemeExtractor;
 use super::file_manager::ThemeFileManager;
 use super::http_service::HttpDownloadService;
 use super::task_manager::{DownloadTaskManager, ProgressEmitter};
@@ -30,7 +29,7 @@ impl ThemeDownloader {
     }
 
     /// Download theme zip file
-    async fn download_theme<R: Runtime>(
+    pub async fn download_theme<R: Runtime>(
         &self,
         config: &Config,
         theme_id: &str,
@@ -93,36 +92,7 @@ impl ThemeDownloader {
         }
     }
 
-    async fn cancel_theme_download(&self, theme_id: &str) {
+    pub async fn cancel_theme_download(&self, theme_id: &str) {
         self.task_manager.cancel_task(theme_id).await;
     }
-}
-
-/// Download and extract a theme
-#[tauri::command]
-pub async fn download_theme_and_extract<R: Runtime>(
-    window: WebviewWindow<R>,
-    downloader: State<'_, ThemeDownloader>,
-    config: Config,
-    theme_id: &str,
-) -> DwallSettingsResult<()> {
-    let progress_emitter = ProgressEmitter::new(&window);
-
-    // Download theme
-    let zip_path = downloader
-        .download_theme(&config, theme_id, Some(&progress_emitter))
-        .await?;
-
-    // Extract theme
-    ThemeExtractor::extract_theme(config.themes_directory(), &zip_path, theme_id).await
-}
-
-/// Cancel an ongoing theme download
-#[tauri::command]
-pub async fn cancel_theme_download(
-    downloader: State<'_, ThemeDownloader>,
-    theme_id: String,
-) -> DwallSettingsResult<()> {
-    downloader.cancel_theme_download(&theme_id).await;
-    Ok(())
 }

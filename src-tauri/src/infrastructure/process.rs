@@ -1,3 +1,7 @@
+//! Process infrastructure module
+//!
+//! This module contains low-level process management functionality.
+
 use std::ffi::OsString;
 use std::os::windows::ffi::OsStringExt;
 use std::path::Path;
@@ -76,9 +80,8 @@ impl Drop for HandleWrapper {
     fn drop(&mut self) {
         // Only log and close if the handle is valid
         if !self.0.is_invalid() {
-            let c_void_addr = self.0 .0.addr();
+            let _c_void_addr = self.0 .0.addr();
             unsafe { self.0.free() };
-            trace!(addr = c_void_addr, "Released handle");
         }
     }
 }
@@ -89,7 +92,6 @@ fn get_daemon_filename(daemon_path: &Path) -> Result<&str, ProcessManagerError> 
         .file_name()
         .and_then(|name| name.to_str())
         .ok_or_else(|| {
-            error!("Invalid daemon path format");
             ProcessManagerError::InvalidDaemonPath("Could not extract filename".to_string())
         })
 }
@@ -97,7 +99,6 @@ fn get_daemon_filename(daemon_path: &Path) -> Result<&str, ProcessManagerError> 
 /// Helper function to get string representation of path
 fn path_to_string(path: &Path) -> Result<&str, ProcessManagerError> {
     path.to_str().ok_or_else(|| {
-        error!("Path contains invalid Unicode characters");
         ProcessManagerError::InvalidUnicode("Path contains invalid Unicode characters".to_string())
     })
 }
@@ -148,7 +149,6 @@ fn get_module_filename(process_handle: HANDLE) -> Result<OsString, ProcessManage
 pub fn find_daemon_process() -> DwallSettingsResult<Option<u32>> {
     // Get the daemon path
     let daemon_path = DAEMON_EXE_PATH.get().ok_or_else(|| {
-        error!("Failed to retrieve daemon executable path");
         ProcessManagerError::DaemonPathNotFound("Daemon path not set".to_string())
     })?;
 
@@ -159,10 +159,8 @@ pub fn find_daemon_process() -> DwallSettingsResult<Option<u32>> {
     let daemon_path_str = path_to_string(daemon_path)?;
 
     // Create process snapshot
-    let snapshot = unsafe { CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0) }.map_err(|e| {
-        error!(error = %e, "Failed to create process snapshot");
-        ProcessManagerError::SnapshotCreationFailed(e)
-    })?;
+    let snapshot = unsafe { CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0) }
+        .map_err(ProcessManagerError::SnapshotCreationFailed)?;
 
     let snapshot = HandleWrapper::new(snapshot);
 
@@ -181,7 +179,6 @@ pub fn find_daemon_process() -> DwallSettingsResult<Option<u32>> {
                 daemon_path_str,
             )
         } else {
-            error!("Failed to get first process in snapshot");
             Ok(None)
         }
     }
@@ -212,10 +209,6 @@ unsafe fn find_matching_process(
         }
     }
 
-    warn!(
-        path = daemon_path_str,
-        "No matching daemon process found for path"
-    );
     Ok(None)
 }
 
@@ -223,10 +216,8 @@ unsafe fn find_matching_process(
 fn check_process_path(pid: u32, expected_path: &str) -> DwallSettingsResult<Option<u32>> {
     // Try to get the full path of the executable
     let process_handle = unsafe {
-        OpenProcess(PROCESS_QUERY_INFORMATION, false, pid).map_err(|e| {
-            trace!(pid = pid, error = %e, "Could not open process");
-            ProcessManagerError::ProcessOpenFailed(e)
-        })
+        OpenProcess(PROCESS_QUERY_INFORMATION, false, pid)
+            .map_err(ProcessManagerError::ProcessOpenFailed)
     };
 
     // Skip processes we can't open
@@ -243,14 +234,7 @@ fn check_process_path(pid: u32, expected_path: &str) -> DwallSettingsResult<Opti
 
     // Compare paths
     if let Some(full_path_str) = full_path.to_str() {
-        trace!(pid = pid, path = full_path_str, "Checking process");
-
         if is_daemon_process(full_path_str, expected_path) {
-            info!(
-                pid = pid,
-                path = full_path_str,
-                "Found matching daemon process"
-            );
             return Ok(Some(pid));
         }
     }
@@ -302,35 +286,26 @@ fn is_daemon_process(process_path: &str, expected_path: &str) -> bool {
 }
 
 /// Terminates the daemon process if it's running
-#[tauri::command]
 pub fn kill_daemon() -> DwallSettingsResult<()> {
     // Find the daemon process
     match find_daemon_process()? {
         Some(pid) => {
             // Open process with termination rights
             let process_handle = unsafe {
-                OpenProcess(PROCESS_TERMINATE, false, pid).map_err(|e| {
-                    error!(error = %e, pid, "Failed to open process for termination");
-                    ProcessManagerError::ProcessTerminationFailed { pid, error: e }
-                })
+                OpenProcess(PROCESS_TERMINATE, false, pid)
+                    .map_err(|e| ProcessManagerError::ProcessTerminationFailed { pid, error: e })
             }?;
 
             let process_handle = HandleWrapper::new(process_handle);
 
             // Terminate the process
             unsafe {
-                TerminateProcess(process_handle.as_raw(), 0).map_err(|e| {
-                    error!(error = %e, pid, "Failed to terminate daemon process");
-                    ProcessManagerError::ProcessTerminationFailed { pid, error: e }
-                })
+                TerminateProcess(process_handle.as_raw(), 0)
+                    .map_err(|e| ProcessManagerError::ProcessTerminationFailed { pid, error: e })
             }?;
 
-            info!(pid, "Successfully terminated daemon process with PID");
             Ok(())
         }
-        None => {
-            warn!("No daemon process found to terminate");
-            Ok(())
-        }
+        None => Ok(()),
     }
 }

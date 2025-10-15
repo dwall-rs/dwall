@@ -7,7 +7,7 @@ use std::path::Path;
 
 use tokio::fs;
 
-use crate::fs::create_dir_if_missing;
+use crate::utils::helpers::create_dir_if_missing;
 
 use super::error::CacheResult;
 
