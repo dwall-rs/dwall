@@ -1,7 +1,7 @@
 use dwall::RegistryError;
 use serde::{Serialize, Serializer};
 
-use crate::download::DownloadError;
+use crate::infrastructure::network::download::DownloadError;
 
 pub type DwallSettingsResult<T> = std::result::Result<T, DwallSettingsError>;
 

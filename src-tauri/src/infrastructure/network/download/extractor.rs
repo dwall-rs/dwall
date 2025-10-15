@@ -5,6 +5,7 @@
 use std::path::Path;
 
 use tokio::fs;
+use zip::read::root_dir_common_filter;
 
 use crate::error::DwallSettingsResult;
 
@@ -34,16 +35,17 @@ impl ThemeExtractor {
         let mut zip = zip::ZipArchive::new(std::io::Cursor::new(archive))?;
 
         // Extract theme
-        zip.extract(&target_dir).map_err(|e| {
-            error!(
-                theme_id = theme_id,
-                target_dir = %target_dir.display(),
-                zip_path = %zip_path.display(),
-                error = %e,
-                "Failed to extract theme archive"
-            );
-            e
-        })?;
+        zip.extract_unwrapped_root_dir(&target_dir, root_dir_common_filter)
+            .map_err(|e| {
+                error!(
+                    theme_id = theme_id,
+                    target_dir = %target_dir.display(),
+                    zip_path = %zip_path.display(),
+                    error = %e,
+                    "Failed to extract theme archive"
+                );
+                e
+            })?;
 
         info!(
             theme_id = theme_id,

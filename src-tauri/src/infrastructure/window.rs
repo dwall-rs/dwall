@@ -1,3 +1,7 @@
+//! Window infrastructure module
+//!
+//! This module contains low-level window management functionality.
+
 use core::ffi;
 use std::error::Error;
 
@@ -24,19 +28,10 @@ use crate::error::DwallSettingsResult;
 /// # Returns
 /// A result indicating successful window creation or an error
 pub fn create_main_window(app: &tauri::AppHandle) -> Result<(), Box<dyn Error>> {
-    trace!("Initializing main application window");
-
     // Define window configuration parameters
     const WINDOW_TITLE: &str = "Dwall Settings";
     const WINDOW_WIDTH: f64 = 660.0;
     const WINDOW_HEIGHT: f64 = 600.0;
-
-    debug!(
-        title = WINDOW_TITLE,
-        width = WINDOW_WIDTH,
-        height = WINDOW_HEIGHT,
-        "Configuring window"
-    );
 
     let window_builder = WebviewWindowBuilder::new(app, "main", WebviewUrl::default())
         .title(WINDOW_TITLE)
@@ -47,14 +42,8 @@ pub fn create_main_window(app: &tauri::AppHandle) -> Result<(), Box<dyn Error>> 
 
     // Attempt to build the window
     match window_builder.build() {
-        Ok(_) => {
-            info!("Main application window created successfully");
-            Ok(())
-        }
-        Err(build_error) => {
-            error!(error = ?build_error, "Failed to create main window");
-            Err(build_error.into())
-        }
+        Ok(_) => Ok(()),
+        Err(build_error) => Err(build_error.into()),
     }
 }
 
@@ -70,8 +59,6 @@ pub fn set_window_color_mode(
     window_handle: HWND,
     color_mode: ColorScheme,
 ) -> DwallSettingsResult<()> {
-    trace!(mode = ?color_mode, "Attempting to set window color mode");
-
     // Determine color based on Windows version
     let result = if is_windows_11_or_newer() {
         set_windows_11_caption_color(window_handle, &color_mode)
@@ -80,14 +67,8 @@ pub fn set_window_color_mode(
     };
 
     match result {
-        Ok(_) => {
-            info!(mode = ?color_mode, "Window color mode set successfully");
-            Ok(())
-        }
-        Err(error) => {
-            error!(mode = ?color_mode, error = %error, "Failed to set window color mode");
-            Err(error)
-        }
+        Ok(_) => Ok(()),
+        Err(error) => Err(error),
     }
 }
 
@@ -111,8 +92,6 @@ fn set_windows_11_caption_color(
         ColorScheme::Dark => DARK_CAPTION_COLOR,
         ColorScheme::Light => LIGHT_CAPTION_COLOR,
     };
-
-    debug!(mode = ?color_mode, color=caption_color, "Setting Windows 11+ caption color");
 
     unsafe {
         DwmSetWindowAttribute(
@@ -139,8 +118,6 @@ fn set_legacy_dark_mode(window_handle: HWND, color_mode: &ColorScheme) -> DwallS
         ColorScheme::Light => 0,
     };
 
-    debug!(mode = ?color_mode, value = dark_mode_value, "Setting legacy dark mode");
-
     unsafe {
         DwmSetWindowAttribute(
             window_handle,
@@ -148,10 +125,7 @@ fn set_legacy_dark_mode(window_handle: HWND, color_mode: &ColorScheme) -> DwallS
             &dark_mode_value as *const _ as *const ffi::c_void,
             std::mem::size_of::<u32>() as u32,
         )
-        .map_err(|e| {
-            error!(error = %e, "Failed to set legacy dark mode");
-            e.into()
-        })
+        .map_err(|e| e.into())
     }
 }
 
@@ -168,14 +142,8 @@ fn is_windows_11_or_newer() -> bool {
     let version_check_status = unsafe { RtlGetVersion(&mut os_version_info) };
 
     if version_check_status != STATUS_SUCCESS {
-        warn!(status_code = ?version_check_status, "Failed to retrieve Windows version");
         return false;
     }
-
-    debug!(
-        build_number = os_version_info.dwBuildNumber,
-        "Windows version detected"
-    );
 
     os_version_info.dwBuildNumber > 22000
 }

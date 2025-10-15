@@ -6,4 +6,4 @@ export const requestLocationPermission = async () =>
 export const openDir = async (dirPath: string) =>
   invoke<void>("open_dir", { dirPath });
 
-export const killDaemon = async () => invoke<void>("kill_daemon");
+export const killDaemon = async () => invoke<void>("kill_daemon_cmd");
