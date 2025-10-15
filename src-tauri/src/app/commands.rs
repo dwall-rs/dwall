@@ -20,14 +20,12 @@ use crate::{
     error::{DwallSettingsError, DwallSettingsResult},
     i18n::get_translations,
     infrastructure::{
-        filesystem::move_themes_directory,
-        network::download::{download_theme_and_extract, ThemeDownloader},
-        process::kill_daemon,
-        registry::AutoStartManager,
-        window::set_window_color_mode,
+        filesystem::move_themes_directory, network::download::ThemeDownloader,
+        process::kill_daemon, registry::AutoStartManager, window::set_window_color_mode,
     },
     services::{
         cache::{clear_thumbnail_cache, get_or_save_cached_thumbnails},
+        download_service::download_theme_and_extract,
         theme_service::{apply_theme, get_applied_theme_id},
     },
 };
@@ -142,7 +140,8 @@ pub async fn cancel_theme_download_cmd(
     downloader: tauri::State<'_, ThemeDownloader>,
     theme_id: String,
 ) -> DwallSettingsResult<()> {
-    crate::infrastructure::network::download::cancel_theme_download(downloader, theme_id).await
+    downloader.cancel_theme_download(&theme_id).await;
+    Ok(())
 }
 
 #[tauri::command]

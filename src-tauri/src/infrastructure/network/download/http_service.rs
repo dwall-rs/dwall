@@ -13,9 +13,10 @@ use tauri::Runtime;
 use tokio::fs;
 use tokio::io::AsyncWriteExt;
 
+use crate::error::DwallSettingsResult;
+
 use super::error::DownloadError;
 use super::task_manager::{DownloadProgress, DownloadTaskManager, ProgressEmitter};
-use crate::error::DwallSettingsResult;
 
 /// Context for download stream processing
 struct DownloadContext<'a, R: Runtime> {

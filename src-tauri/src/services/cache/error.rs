@@ -1,6 +1,7 @@
 //! Error types for the cache module
 
 use std::path::PathBuf;
+
 use thiserror::Error;
 
 use crate::error::DwallSettingsError;

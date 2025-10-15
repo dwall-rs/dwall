@@ -2,7 +2,6 @@
 //!
 //! This module contains functionality for tracking application usage.
 
-#[allow(dead_code)]
 pub async fn track() {
     let client = reqwest::Client::new();
     if let Err(e) = client

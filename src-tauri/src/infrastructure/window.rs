@@ -2,8 +2,7 @@
 //!
 //! This module contains low-level window management functionality.
 
-use core::ffi;
-use std::error::Error;
+use std::{error::Error, ffi};
 
 use dwall::ColorScheme;
 use tauri::{WebviewUrl, WebviewWindowBuilder};

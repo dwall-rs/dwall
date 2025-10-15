@@ -11,6 +11,5 @@ mod task_manager;
 
 pub use downloader::ThemeDownloader;
 pub use error::DownloadError;
-
-// Re-export the public API
-pub use self::downloader::{cancel_theme_download, download_theme_and_extract};
+pub use extractor::ThemeExtractor;
+pub use task_manager::ProgressEmitter;
