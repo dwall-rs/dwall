@@ -19,7 +19,7 @@ tauri = { version = "2", default-features = false, features = [
 ] }
 dwall = { version = "0", path = "../daemon" }
 
-reqwest = { version = "0", default-features = false }
+reqwest = { version = "0", default-features = false, features = [] }
 zip = { version = "6", default-features = false, features = ["deflate"] }
 open = { version = "5", default-features = false }
 tokio = { workspace = true, features = ["macros", "process"] }
@@ -42,10 +42,11 @@ windows = { workspace = true, features = [
 rand = { version = "0.9", default-features = false, features = ["thread_rng"] }
 
 tauri-plugin-shell = "2"
-
-[target.'cfg(target_os = "windows")'.dependencies]
 tauri-plugin-single-instance = "2.3"
-tauri-plugin-updater = "2"
+tauri-plugin-updater = { version = "2", default-features = false, features = [
+  "native-tls",
+  "zip",
+] }
 tauri-plugin-dialog = "2"
 
 [features]
