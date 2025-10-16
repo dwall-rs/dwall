@@ -129,13 +129,7 @@ pub(crate) struct GeographicPositionProvider<'a> {
     coordinate_source: &'a PositionSource,
     cached_position: Mutex<Option<(Position, Instant)>>,
 
-    /// Cache duration for position data - optimized from 30 seconds to 5 minutes
-    ///
-    /// Based on analysis:
-    /// - Position change is relatively slow for wallpaper purposes
-    /// - 5-minute cache reduces API calls by 90%
-    /// - Significant reduction in memory usage and CPU overhead
-    /// - Still maintains acceptable accuracy for wallpaper selection
+    /// Cache duration for position data
     cache_duration: Duration,
     timeout: Duration,
 }
@@ -145,7 +139,6 @@ impl<'a> GeographicPositionProvider<'a> {
         Self {
             coordinate_source,
             cached_position: Mutex::new(None),
-            // Optimized cache duration: 5 minutes instead of 30 seconds
             cache_duration: Duration::from_secs(60 * 5),
             timeout: Duration::from_secs(10),
         }
@@ -160,31 +153,30 @@ impl<'a> GeographicPositionProvider<'a> {
     /// Retrieves a position from cache or fetches a new one if cache is expired
     async fn get_cached_position(&self) -> DwallResult<Position> {
         debug!("Checking cached position data");
-        let mut position = self.cached_position.lock().await;
+        let mut cache = self.cached_position.lock().await;
 
-        match position.as_ref() {
-            Some((pos, timestamp)) if timestamp.elapsed() < self.cache_duration => {
+        if let Some((cached_position, cached_time)) = cache.as_ref() {
+            if cached_time.elapsed() < self.cache_duration {
                 debug!(
-                    position = ?pos,
-                    age_secs = timestamp.elapsed().as_secs(),
+                    position = ?cached_position,
+                    age_secs = cached_time.elapsed().as_secs(),
                     "Using cached position data"
                 );
-                Ok(*pos)
-            }
-            _ => {
-                debug!("Cache expired or empty, fetching new position data");
-                let new_pos = tokio::time::timeout(self.timeout, get_geo_position())
-                    .await
-                    .map_err(|_| {
-                        error!("Position retrieval timed out after {:?}", self.timeout);
-                        DwallError::Timeout("Get position".to_string())
-                    })??;
-
-                *position = Some((new_pos, Instant::now()));
-                debug!(position = ?new_pos, "Updated position cache");
-                Ok(new_pos)
+                return Ok(*cached_position);
             }
         }
+
+        debug!("Cache expired or empty, fetching new position data");
+        let position = tokio::time::timeout(self.timeout, self.get_fresh_position())
+            .await
+            .map_err(|_| {
+                error!("Position retrieval timed out after {:?}", self.timeout);
+                DwallError::Timeout("Get position".to_string())
+            })??;
+
+        *cache = Some((position, Instant::now()));
+        debug!(position = ?position, "Updated position cache");
+        Ok(position)
     }
 
     /// Retrieves a position from manual position
