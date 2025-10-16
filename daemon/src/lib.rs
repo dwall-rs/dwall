@@ -13,7 +13,7 @@ extern crate tracing;
 pub use config::Config;
 pub use core::daemon::DaemonApplication;
 pub use error::DwallResult;
-pub use lazy::{DWALL_CACHE_DIR, DWALL_CONFIG_DIR};
+pub use lazy::{DWALL_CACHE_DIR, DWALL_CONFIG_DIR, DWALL_LOG_DIR};
 pub use utils::logging::setup_logging;
 
 // Re-export domain types

@@ -5,7 +5,7 @@ import { getVersion } from "@tauri-apps/api/app";
 import { ask, message } from "@tauri-apps/plugin-dialog";
 import { open } from "@tauri-apps/plugin-shell";
 
-import { openConfigDir } from "~/commands";
+import { openLogDir } from "~/commands";
 import { useTranslations, useUpdate } from "~/contexts";
 import {
   LazyButton,
@@ -21,7 +21,7 @@ const SettingsFooter = () => {
   const { update: resource, recheckUpdate, setShowUpdateDialog } = useUpdate();
 
   const onOpenLogDir = async () => {
-    await openConfigDir();
+    await openLogDir();
   };
 
   const onUpdate = async () => {

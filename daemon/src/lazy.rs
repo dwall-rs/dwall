@@ -52,3 +52,30 @@ pub static DWALL_CACHE_DIR: LazyLock<PathBuf> = LazyLock::new(|| {
 
     dir
 });
+
+/// Global log directory path
+///
+/// Initialized lazily on first access. Creates the directory if it doesn't exist.
+/// Uses the application bundle identifier for better organization.
+///
+/// # Panics
+/// Panics if unable to determine user's log directory or create the dwall subdirectory.
+pub static DWALL_LOG_DIR: LazyLock<PathBuf> = LazyLock::new(|| {
+    let log_dir = DWALL_CACHE_DIR.join("log");
+
+    if !log_dir.exists() {
+        if let Err(e) = fs::create_dir(&log_dir) {
+            error!(error = %e, "Failed to create log directory");
+            panic!("Failed to create log directory: {e}");
+        } else {
+            info!(
+                "Log directory created successfully at: {}",
+                log_dir.display()
+            );
+        }
+    } else {
+        debug!(path = %log_dir.display(), "Log directory already exists");
+    }
+
+    log_dir
+});

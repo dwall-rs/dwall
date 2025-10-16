@@ -11,7 +11,7 @@ use std::{
 use dwall::{
     config::Config, domain::geography::check_location_permission,
     read_config_file as dwall_read_config, write_config_file as dwall_write_config, ColorScheme,
-    DisplayMonitor, DWALL_CONFIG_DIR,
+    DisplayMonitor, DWALL_CONFIG_DIR, DWALL_LOG_DIR,
 };
 use tauri::{AppHandle, Manager, WebviewWindow};
 
@@ -64,6 +64,11 @@ pub async fn open_dir(dir_path: Cow<'_, Path>) -> DwallSettingsResult<()> {
 #[tauri::command]
 pub async fn open_config_dir() -> DwallSettingsResult<()> {
     open::that(DWALL_CONFIG_DIR.as_os_str()).map_err(|e| e.into())
+}
+
+#[tauri::command]
+pub async fn open_log_dir() -> DwallSettingsResult<()> {
+    open::that(DWALL_LOG_DIR.as_os_str()).map_err(|e| e.into())
 }
 
 #[tauri::command]

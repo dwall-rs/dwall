@@ -64,6 +64,7 @@ async fn main() -> DwallSettingsResult<()> {
             commands::request_location_permission,
             commands::open_dir,
             commands::open_config_dir,
+            commands::open_log_dir,
             commands::set_titlebar_color_mode,
             commands::move_themes_directory_cmd,
             commands::kill_daemon_cmd,
