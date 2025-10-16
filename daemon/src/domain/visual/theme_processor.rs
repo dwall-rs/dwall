@@ -7,7 +7,11 @@ use std::{
 };
 
 use time::OffsetDateTime;
-use tokio::{fs, sync::OnceCell, time::sleep};
+use tokio::{
+    fs,
+    sync::{Mutex, OnceCell},
+    time::sleep,
+};
 
 use crate::{
     config::Config,
@@ -340,17 +344,16 @@ impl SolarThemeValidator {
 }
 
 /// Cache solar configuration to avoid repeated reads
-static SOLAR_CACHE: OnceCell<std::sync::Mutex<HashMap<std::path::PathBuf, Vec<SolarAngle>>>> =
-    OnceCell::const_new();
+static SOLAR_CACHE: OnceCell<Mutex<HashMap<PathBuf, Vec<SolarAngle>>>> = OnceCell::const_new();
 
 /// Load solar configuration for a specific theme directory
 async fn load_cached_solar_angles(theme_directory: &Path) -> DwallResult<Vec<SolarAngle>> {
     let cache = SOLAR_CACHE
-        .get_or_init(|| async { std::sync::Mutex::new(HashMap::new()) })
+        .get_or_init(|| async { Mutex::new(HashMap::new()) })
         .await;
     // Check cache
     {
-        let cache_lock = cache.lock().unwrap();
+        let cache_lock = cache.lock().await;
         if let Some(cached_angles) = cache_lock.get(theme_directory) {
             debug!("Using cached solar configuration");
             return Ok(cached_angles.clone());
@@ -395,7 +398,7 @@ async fn load_cached_solar_angles(theme_directory: &Path) -> DwallResult<Vec<Sol
     );
     // Cache solar configuration
     {
-        let mut cache_lock = cache.lock().unwrap();
+        let mut cache_lock = cache.lock().await;
         cache_lock.insert(theme_directory.to_path_buf(), solar_angles.clone());
     }
     Ok(solar_angles)
