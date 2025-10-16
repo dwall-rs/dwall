@@ -348,13 +348,18 @@ static SOLAR_CACHE: OnceCell<Mutex<HashMap<PathBuf, Vec<SolarAngle>>>> = OnceCel
 
 /// Load solar configuration for a specific theme directory
 async fn load_cached_solar_angles(theme_directory: &Path) -> DwallResult<Vec<SolarAngle>> {
+    let theme_directory = theme_directory.canonicalize()?;
+    debug!(path = %theme_directory.display(), "Loading solar configuration from canonical and absolute path");
+
     let cache = SOLAR_CACHE
         .get_or_init(|| async { Mutex::new(HashMap::new()) })
         .await;
+
+    let mut cache_lock = cache.lock().await;
+
     // Check cache
     {
-        let cache_lock = cache.lock().await;
-        if let Some(cached_angles) = cache_lock.get(theme_directory) {
+        if let Some(cached_angles) = cache_lock.get(&theme_directory) {
             debug!("Using cached solar configuration");
             return Ok(cached_angles.clone());
         }
@@ -396,11 +401,10 @@ async fn load_cached_solar_angles(theme_directory: &Path) -> DwallResult<Vec<Sol
         solar_angles_count = solar_angles.len(),
         "Successfully loaded solar configuration"
     );
+
     // Cache solar configuration
-    {
-        let mut cache_lock = cache.lock().await;
-        cache_lock.insert(theme_directory.to_path_buf(), solar_angles.clone());
-    }
+    cache_lock.insert(theme_directory.to_path_buf(), solar_angles.clone());
+
     Ok(solar_angles)
 }
 
