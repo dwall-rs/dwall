@@ -162,7 +162,7 @@ impl<'a> GeographicPositionProvider<'a> {
                     age_secs = cached_time.elapsed().as_secs(),
                     "Using cached position data"
                 );
-                return Ok(cached_position.clone());
+                return Ok(*cached_position);
             }
         }
 
