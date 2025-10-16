@@ -7,7 +7,6 @@ use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
 use std::time::Duration;
 
-use futures_util::StreamExt;
 use reqwest::StatusCode;
 use tauri::Runtime;
 use tokio::fs;
@@ -242,26 +241,14 @@ impl HttpDownloadService {
         &self,
         context: DownloadContext<'_, R>,
     ) -> DwallSettingsResult<()> {
-        let mut stream = context.response.bytes_stream();
+        let mut response = context.response;
 
-        while let Some(chunk_result) = stream.next().await {
+        while let Some(chunk) = response.chunk().await? {
             // Check if download has been cancelled
             if context.task_manager.is_cancelled(&context.cancel_flag) {
                 info!(theme_id = context.theme_id, "Download cancelled by user");
                 return Err(DownloadError::Cancelled.into());
             }
-
-            let chunk = match chunk_result {
-                Ok(chunk) => chunk,
-                Err(e) => {
-                    error!(
-                        theme_id = context.theme_id,
-                        error = %e,
-                        "Failed to download chunk"
-                    );
-                    return Err(e.into());
-                }
-            };
 
             if let Err(e) = context.file.write_all(&chunk).await {
                 error!(
