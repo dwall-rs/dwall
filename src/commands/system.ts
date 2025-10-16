@@ -7,3 +7,5 @@ export const openDir = async (dirPath: string) =>
   invoke<void>("open_dir", { dirPath });
 
 export const killDaemon = async () => invoke<void>("kill_daemon_cmd");
+
+export const openLogDir = async () => invoke<void>("open_log_dir");
