@@ -1,7 +1,6 @@
 use crate::{
     domain::visual::theme_processor::SolarThemeProcessor,
-    infrastructure::filesystem::config_manager::ConfigManager, utils::logging::setup_logging,
-    DwallResult,
+    infrastructure::filesystem::config_manager::ConfigManager, DwallResult,
 };
 
 /// Main daemon application
@@ -11,12 +10,10 @@ pub struct DaemonApplication {
 
 impl DaemonApplication {
     /// Creates a new daemon application instance
-    pub async fn new() -> DwallResult<Self> {
-        setup_logging(&[env!("CARGO_PKG_NAME").replace("-", "_")]);
+    pub fn new() -> Self {
+        let config_manager = ConfigManager::new();
 
-        let config_manager = ConfigManager::new().await?;
-
-        Ok(Self { config_manager })
+        Self { config_manager }
     }
 
     /// Runs the daemon application
@@ -25,5 +22,11 @@ impl DaemonApplication {
 
         let theme_processor = SolarThemeProcessor::new(&config)?;
         theme_processor.start_solar_update_loop().await
+    }
+}
+
+impl Default for DaemonApplication {
+    fn default() -> Self {
+        Self::new()
     }
 }

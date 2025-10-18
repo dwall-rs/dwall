@@ -15,10 +15,8 @@ pub(crate) struct ConfigManager {
 
 impl ConfigManager {
     /// Creates a new ConfigManager with the default config directory
-    pub(crate) async fn new() -> DwallResult<Self> {
-        Ok(Self {
-            config_path: DWALL_CONFIG_DIR.join("config.toml"),
-        })
+    pub(crate) fn new() -> Self {
+        Self::with_config_dir(&DWALL_CONFIG_DIR)
     }
 
     /// Creates a new ConfigManager with a specific config directory
