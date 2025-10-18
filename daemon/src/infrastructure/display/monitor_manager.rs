@@ -1,12 +1,12 @@
 //! Monitor management infrastructure for display device detection and management
 
 use std::{
+    cell::RefCell,
     collections::HashMap,
     time::{Duration, Instant},
 };
 
 use serde::{Deserialize, Serialize};
-use tokio::sync::RwLock;
 use windows::Win32::Devices::Display::GUID_DEVINTERFACE_MONITOR;
 
 use crate::{error::DwallResult, utils::string::WideStringRead};
@@ -76,13 +76,13 @@ impl MonitorInfoCache {
 
 /// Provider for display monitor information with optimized caching
 pub struct DisplayMonitorProvider {
-    cache: RwLock<MonitorInfoCache>,
+    cache: RefCell<MonitorInfoCache>,
 }
 
 impl Default for DisplayMonitorProvider {
     fn default() -> Self {
         Self {
-            cache: RwLock::new(MonitorInfoCache::new()),
+            cache: RefCell::new(MonitorInfoCache::new()),
         }
     }
 }
@@ -93,35 +93,32 @@ impl DisplayMonitorProvider {
     }
 
     /// Gets all available monitors with optimized caching strategy
-    pub async fn get_monitors(&self) -> DwallResult<HashMap<String, DisplayMonitor>> {
+    pub fn get_monitors(&self) -> DwallResult<HashMap<String, DisplayMonitor>> {
         {
-            let cache = self.cache.read().await;
+            let cache = self.cache.borrow();
             if cache.is_valid() {
                 debug!("Using cached monitor information");
                 return Ok(cache.data.clone());
             }
         }
 
-        self.refresh_monitors().await
+        self.refresh_monitors()
     }
 
     /// Forces a refresh of monitor information
-    pub(crate) async fn refresh_monitors(&self) -> DwallResult<HashMap<String, DisplayMonitor>> {
+    pub(crate) fn refresh_monitors(&self) -> DwallResult<HashMap<String, DisplayMonitor>> {
         debug!("Refreshing monitor information");
         let monitors = fetch_system_monitors()?;
 
-        {
-            let mut cache = self.cache.write().await;
-            cache.update(monitors.clone());
-        }
+        self.cache.borrow_mut().update(monitors.clone());
 
         Ok(monitors)
     }
 
     /// Detects if monitor configuration has changed since last check
-    pub(crate) async fn has_configuration_changed(&self) -> DwallResult<bool> {
+    pub(crate) fn has_configuration_changed(&self) -> DwallResult<bool> {
         let current_monitors = fetch_system_monitors()?;
-        let cache = self.cache.read().await;
+        let cache = self.cache.borrow();
 
         if current_monitors.len() != cache.data.len() {
             return Ok(true);
@@ -137,6 +134,11 @@ impl DisplayMonitorProvider {
     }
 }
 
+thread_local! {
+    /// Caches friendly names for monitors to avoid querying them multiple times
+    static MONITOR_FRIENDLY_NAMES_CACHE: RefCell<HashMap<String, String>> = RefCell::new(HashMap::new());
+}
+
 /// Queries monitor information from the system
 pub(crate) fn fetch_system_monitors() -> DwallResult<HashMap<String, DisplayMonitor>> {
     debug!("Fetching monitor information from system");
@@ -146,14 +148,31 @@ pub(crate) fn fetch_system_monitors() -> DwallResult<HashMap<String, DisplayMoni
         let target_info = query_target_name(display_path.adapter_id, display_path.target_id)?;
         let device_path = target_info.monitorDevicePath.to_string();
 
-        let friendly_name =
-            match query_device_friendly_name(&device_path, &GUID_DEVINTERFACE_MONITOR) {
+        let friendly_name = if let Some(friendly_name) = MONITOR_FRIENDLY_NAMES_CACHE
+            .with(|friendly_names| friendly_names.borrow().get(&device_path).cloned())
+        {
+            debug!(
+                "Using cached friendly name for '{}': {}",
+                device_path, friendly_name
+            );
+            friendly_name
+        } else {
+            let name = match query_device_friendly_name(&device_path, &GUID_DEVINTERFACE_MONITOR) {
                 Ok(name) => name,
                 Err(e) => {
                     warn!(error = %e, "Failed to get friendly name, using fallback");
                     format!("Display {}", index + 1)
                 }
             };
+
+            MONITOR_FRIENDLY_NAMES_CACHE.with(|friendly_names| {
+                friendly_names
+                    .borrow_mut()
+                    .insert(device_path.clone(), name.clone());
+            });
+
+            name
+        };
 
         monitors.insert(
             device_path.clone(),

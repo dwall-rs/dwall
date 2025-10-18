@@ -1,6 +1,9 @@
 //! Configuration and filesystem management infrastructure
 
-use std::path::{Path, PathBuf};
+use std::{
+    fs,
+    path::{Path, PathBuf},
+};
 
 use crate::{
     config::Config,
@@ -27,7 +30,7 @@ impl ConfigManager {
     }
 
     /// Reads the configuration from the file system
-    pub(crate) async fn read_config(&self) -> DwallResult<Config> {
+    pub(crate) fn read_config(&self) -> DwallResult<Config> {
         if !self.config_path.exists() {
             warn!("Config file not found, using default configuration");
             return Ok(Config::default());
@@ -35,7 +38,7 @@ impl ConfigManager {
 
         debug!(path = %self.config_path.display(), "Reading configuration file");
 
-        let content = tokio::fs::read_to_string(&self.config_path).await?;
+        let content = fs::read_to_string(&self.config_path)?;
         let config: Config = toml::from_str(&content).map_err(|e| {
             error!(error = %e, "Failed to parse configuration");
             ConfigError::Deserialization(e)
@@ -48,43 +51,43 @@ impl ConfigManager {
     }
 
     /// Writes the configuration to the file system
-    pub(crate) async fn write_config(&self, config: &Config) -> DwallResult<()> {
+    pub(crate) fn write_config(&self, config: &Config) -> DwallResult<()> {
         config.validate()?;
 
         if !self.config_path.exists() {
-            return self.write_config_to_file(config).await;
+            return self.write_config_to_file(config);
         }
 
-        if let Ok(existing_config) = self.read_config().await {
+        if let Ok(existing_config) = self.read_config() {
             if existing_config == *config {
                 debug!("Configuration unchanged, skipping write");
                 return Ok(());
             }
         }
 
-        self.write_config_to_file(config).await
+        self.write_config_to_file(config)
     }
 
-    pub(crate) async fn write_config_to_file(&self, config: &Config) -> DwallResult<()> {
+    pub(crate) fn write_config_to_file(&self, config: &Config) -> DwallResult<()> {
         let toml_string = toml::to_string(config).map_err(|e| {
             error!(error = %e, "Failed to serialize configuration");
             ConfigError::Serialization(e)
         })?;
 
         info!(path = %self.config_path.display(), "Writing configuration file");
-        tokio::fs::write(&self.config_path, toml_string.as_bytes()).await?;
+        fs::write(&self.config_path, toml_string.as_bytes())?;
         Ok(())
     }
 }
 
 /// Convenience function to read the configuration file from the default location
-pub async fn read_config_file() -> DwallResult<Config> {
+pub fn read_config_file() -> DwallResult<Config> {
     let config_manager = ConfigManager::with_config_dir(&DWALL_CONFIG_DIR);
-    config_manager.read_config().await
+    config_manager.read_config()
 }
 
 /// Convenience function to write the configuration to the default location
-pub async fn write_config_file(config: &Config) -> DwallResult<()> {
+pub fn write_config_file(config: &Config) -> DwallResult<()> {
     let config_manager = ConfigManager::with_config_dir(&DWALL_CONFIG_DIR);
-    config_manager.write_config(config).await
+    config_manager.write_config(config)
 }

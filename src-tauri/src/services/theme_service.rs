@@ -51,7 +51,7 @@ pub fn launch_daemon() -> DwallSettingsResult<()> {
 }
 
 /// Gets the currently applied theme ID for a monitor
-pub async fn get_applied_theme_id(monitor_id: &str) -> DwallSettingsResult<Option<String>> {
+pub fn get_applied_theme_id(monitor_id: &str) -> DwallSettingsResult<Option<String>> {
     // Check if daemon is running
     let daemon_process = find_daemon_process()?;
     if daemon_process.is_none() {
@@ -59,7 +59,7 @@ pub async fn get_applied_theme_id(monitor_id: &str) -> DwallSettingsResult<Optio
     }
 
     // Read current configuration
-    match dwall_read_config().await {
+    match dwall_read_config() {
         Ok(config) => {
             let monitor_themes = config.monitor_specific_wallpapers();
 
@@ -97,7 +97,7 @@ pub async fn apply_theme(config: Config) -> DwallSettingsResult<()> {
         Err(_e) => {}
     }
 
-    dwall_write_config(&config).await?;
+    dwall_write_config(&config)?;
 
     // If no themes are configured, we're done
     if config.monitor_specific_wallpapers().is_empty() {

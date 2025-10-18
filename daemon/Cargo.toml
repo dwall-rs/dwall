@@ -27,7 +27,6 @@ toml = { version = "0.9", default-features = false, features = [
   "parse",
   "serde",
 ] }
-tokio = { workspace = true, features = ["sync", "macros", "time", "fs", "rt"] }
 dirs = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }

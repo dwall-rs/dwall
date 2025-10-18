@@ -126,24 +126,24 @@ pub enum GeolocationAccessError {
 mod tests {
     use super::*;
 
-    #[tokio::test]
-    async fn test_position_new() {
+    #[test]
+    fn test_position_new() {
         let pos = Position::new(45.0, 90.0, 43.5).unwrap();
         assert_eq!(pos.latitude(), 45.0);
         assert_eq!(pos.longitude(), 90.0);
         assert_eq!(pos.altitude(), 43.5);
     }
 
-    #[tokio::test]
-    async fn test_position_new_invalid() {
+    #[test]
+    fn test_position_new_invalid() {
         assert!(Position::new(91.0, 90.0, 43.5).is_err());
         assert!(Position::new(45.0, 181.0, 43.5).is_err());
         assert!(Position::new(-91.0, 0.0, 43.5).is_err());
         assert!(Position::new(0.0, -181.0, 43.5).is_err());
     }
 
-    #[tokio::test]
-    async fn test_position_validation() {
+    #[test]
+    fn test_position_validation() {
         assert!(Position::is_valid_latitude(90.0));
         assert!(Position::is_valid_latitude(-90.0));
         assert!(Position::is_valid_latitude(0.0));
@@ -157,15 +157,15 @@ mod tests {
         assert!(!Position::is_valid_longitude(-180.1));
     }
 
-    #[tokio::test]
-    async fn test_position_default() {
+    #[test]
+    fn test_position_default() {
         let pos = Position::default();
         assert_eq!(pos.latitude(), 0.0);
         assert_eq!(pos.longitude(), 0.0);
     }
 
-    #[tokio::test]
-    async fn test_position_display() {
+    #[test]
+    fn test_position_display() {
         let pos = Position::from_raw_position(45.0, 90.0, 43.5);
         assert_eq!(format!("{pos}"), "Position(lat: 45, lng: 90, alt: 43.5)");
     }
