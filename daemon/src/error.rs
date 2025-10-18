@@ -40,10 +40,6 @@ pub enum DwallError {
     #[error("String contains null character: {0}")]
     NulError(#[from] std::ffi::NulError),
 
-    /// Time offset error
-    #[error("Unable to determine time offset: {0}")]
-    TimeIndeterminateOffset(#[from] time::error::IndeterminateOffset),
-
     /// Monitor related error
     #[error("Monitor operation failed: {0}")]
     Monitor(#[from] DisplayError),
@@ -55,10 +51,6 @@ pub enum DwallError {
     /// Geolocation access error
     #[error("Geolocation access error: {0}")]
     GeolocationAccess(#[from] GeolocationAccessError),
-
-    /// Timeout error
-    #[error("Operation timed out: {0}")]
-    Timeout(String),
 
     /// Wallpaper manager error
     #[error("Wallpaper operation failed: {0}")]

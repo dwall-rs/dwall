@@ -1,13 +1,23 @@
 //! Logging utilities - moved from log.rs
 
-use std::{env, str::FromStr, sync::Mutex};
+use std::{env, str::FromStr};
 
-use time::{format_description::BorrowedFormatItem, macros::format_description};
 use tracing::Level;
-use tracing_subscriber::{
-    fmt::{time::LocalTime, writer::BoxMakeWriter},
-    EnvFilter,
-};
+use tracing_subscriber::EnvFilter;
+
+#[cfg(debug_assertions)]
+struct MyTimer;
+
+#[cfg(debug_assertions)]
+impl tracing_subscriber::fmt::time::FormatTime for MyTimer {
+    fn format_time(&self, w: &mut tracing_subscriber::fmt::format::Writer<'_>) -> std::fmt::Result {
+        write!(
+            w,
+            "{}",
+            crate::utils::datetime::UtcDateTime::now().to_rfc3339()
+        )
+    }
+}
 
 /// Get default log level
 fn default_log_level() -> Level {
@@ -41,42 +51,32 @@ fn create_env_filter<S: AsRef<str>>(pkg_names: &[S], level: Level) -> EnvFilter 
         .parse_lossy(filter_str)
 }
 
-/// Get time format based on build configuration
-fn get_time_format<'a>() -> &'a [BorrowedFormatItem<'a>] {
-    if cfg!(debug_assertions) {
-        format_description!("[hour]:[minute]:[second].[subsecond digits:3]")
-    } else {
-        format_description!("[year]-[month]-[day] [hour]:[minute]:[second].[subsecond digits:3]")
-    }
-}
-
 /// Setup logging with given configuration
 pub fn setup_logging<S: AsRef<str>>(pkg_names: &[S]) {
-    let timer = LocalTime::new(get_time_format());
     let level = get_log_level();
 
-    let writer = if cfg!(debug_assertions) {
-        BoxMakeWriter::new(Mutex::new(std::io::stderr()))
-    } else {
+    #[cfg(debug_assertions)]
+    let writer = std::io::stderr;
+
+    #[cfg(not(debug_assertions))]
+    let writer = {
         use crate::lazy::DWALL_LOG_DIR;
         use std::fs::File;
 
         let log_file = File::create(DWALL_LOG_DIR.join(format!("{}.log", pkg_names[0].as_ref())))
             .expect("Failed to create the log file");
-        BoxMakeWriter::new(Mutex::new(log_file))
+        log_file
     };
 
     let builder = tracing_subscriber::fmt()
         .with_file(cfg!(debug_assertions))
         .with_target(!cfg!(debug_assertions))
-        .with_line_number(true)
+        .with_line_number(cfg!(debug_assertions))
         .with_env_filter(create_env_filter(pkg_names, level))
-        .with_timer(timer)
         .with_writer(writer);
 
-    if cfg!(debug_assertions) {
-        builder.with_ansi(true).init();
-    } else {
-        builder.json().init();
-    }
+    #[cfg(debug_assertions)]
+    builder.with_timer(MyTimer).with_ansi(true).init();
+    #[cfg(not(debug_assertions))]
+    builder.without_time().init();
 }
