@@ -15,7 +15,7 @@ use crate::{
 use super::position::{GeolocationAccessError, Position};
 
 /// Helper function to handle Windows API errors with consistent logging
-async fn handle_windows_error<T, F>(operation: &str, f: F) -> DwallResult<T>
+fn handle_windows_error<T, F>(operation: &str, f: F) -> DwallResult<T>
 where
     F: FnOnce() -> windows::core::Result<T>,
 {
@@ -35,12 +35,11 @@ where
 /// Checks if the application has permission to access location
 ///
 /// Returns Ok(()) if permission is granted, or an error if denied or unspecified
-pub async fn check_location_permission() -> DwallResult<()> {
+pub fn check_location_permission() -> DwallResult<()> {
     let access_status = handle_windows_error(
         "Requesting geolocation access permission",
         Geolocator::RequestAccessAsync,
-    )
-    .await?
+    )?
     .get()
     .map_err(|e| {
         error!(error = %e, "Failed to get access status");
@@ -65,24 +64,22 @@ pub async fn check_location_permission() -> DwallResult<()> {
 }
 
 /// Retrieves the current geographical position using Windows Geolocator API
-async fn get_geo_position() -> DwallResult<Position> {
+fn get_geo_position() -> DwallResult<Position> {
     // First check if we have permission to access location
-    check_location_permission().await?;
+    check_location_permission()?;
 
     // Initialize geolocator
-    let geolocator = handle_windows_error("Initializing Geolocator", Geolocator::new).await?;
+    let geolocator = handle_windows_error("Initializing Geolocator", Geolocator::new)?;
 
     // Set accuracy to high
     handle_windows_error("Setting desired accuracy to High", || {
         geolocator.SetDesiredAccuracy(PositionAccuracy::High)
-    })
-    .await?;
+    })?;
 
     // Get geoposition
     let geoposition = handle_windows_error("Getting geoposition asynchronously", || {
         geolocator.GetGeopositionAsync()
-    })
-    .await?
+    })?
     .get()
     .map_err(|e| {
         error!(error = %e, "Failed to retrieve geoposition");
@@ -92,16 +89,13 @@ async fn get_geo_position() -> DwallResult<Position> {
     // Extract coordinate
     let coordinate = handle_windows_error("Extracting coordinate from geoposition", || {
         geoposition.Coordinate()
-    })
-    .await?;
+    })?;
 
     // Extract point
-    let point =
-        handle_windows_error("Extracting point from coordinate", || coordinate.Point()).await?;
+    let point = handle_windows_error("Extracting point from coordinate", || coordinate.Point())?;
 
     // Extract position
-    let position =
-        handle_windows_error("Extracting position from point", || point.Position()).await?;
+    let position = handle_windows_error("Extracting position from point", || point.Position())?;
 
     // Create Position struct
     trace!("Creating Position struct with latitude and longitude...");
@@ -147,7 +141,7 @@ impl<'a> GeographicPositionProvider<'a> {
     /// Retrieves a fresh position from the geolocation API
     async fn get_fresh_position(&self) -> DwallResult<Position> {
         debug!("Using fresh geolocation data");
-        get_geo_position().await
+        get_geo_position()
     }
 
     /// Retrieves a position from cache or fetches a new one if cache is expired
