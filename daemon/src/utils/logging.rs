@@ -32,8 +32,8 @@ fn default_log_level() -> Level {
 fn get_log_level() -> Level {
     env::var("DWALL_LOG")
         .ok()
+        .or_else(|| env::var("RUST_LOG").ok())
         .as_deref()
-        .or(option_env!("DWALL_LOG"))
         .and_then(|level| Level::from_str(level).ok())
         .unwrap_or_else(default_log_level)
 }
@@ -69,6 +69,7 @@ pub fn setup_logging<S: AsRef<str>>(pkg_names: &[S]) {
     };
 
     let builder = tracing_subscriber::fmt()
+        // .with_max_level(level)
         .with_file(cfg!(debug_assertions))
         .with_target(!cfg!(debug_assertions))
         .with_line_number(cfg!(debug_assertions))
