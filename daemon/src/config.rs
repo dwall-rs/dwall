@@ -215,6 +215,14 @@ impl Config {
             .into());
         }
 
+        if self.monitor_specific_wallpapers.is_empty() {
+            error!("No monitor specific wallpapers found");
+            return Err(ConfigError::Validation {
+                reason: "No monitor specific wallpapers found".to_string(),
+            }
+            .into());
+        }
+
         Ok(())
     }
 
