@@ -1,7 +1,8 @@
 //! Solar position calculation utilities for astronomical computations
 
 use serde::{Deserialize, Serialize};
-use time::OffsetDateTime;
+
+use crate::utils::datetime::UtcDateTime;
 
 /// Astronomical calculation constants
 mod constants {
@@ -45,15 +46,15 @@ pub(crate) struct SolarAngle {
 pub(crate) struct SunPosition {
     latitude: f64,
     longitude: f64,
-    date_time: OffsetDateTime,
+    date_time: UtcDateTime,
 }
 
 impl SunPosition {
-    pub(crate) fn new(latitude: f64, longitude: f64, utc_time: OffsetDateTime) -> Self {
+    pub(crate) fn new(latitude: f64, longitude: f64, date_time: UtcDateTime) -> Self {
         Self {
             latitude,
             longitude,
-            date_time: utc_time,
+            date_time,
         }
     }
 
@@ -209,20 +210,19 @@ impl SunPosition {
 
 #[cfg(test)]
 mod tests {
+    use crate::utils::datetime::Month;
+
     use super::*;
-    use time::{Date, Month, Time};
 
     fn create_datetime(
-        year: i32,
+        year: u16,
         month: Month,
         day: u8,
         hour: u8,
         minute: u8,
         second: u8,
-    ) -> OffsetDateTime {
-        let date = Date::from_calendar_date(year, month, day).unwrap();
-        let time = Time::from_hms(hour, minute, second).unwrap();
-        date.with_time(time).assume_utc()
+    ) -> UtcDateTime {
+        UtcDateTime::new(year, month, day, hour, minute, second).unwrap()
     }
 
     fn assert_approx_eq(a: f64, b: f64, epsilon: f64) {

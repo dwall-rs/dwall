@@ -9,8 +9,6 @@ use std::{
     time::Duration,
 };
 
-use time::OffsetDateTime;
-
 use crate::{
     config::Config,
     domain::{
@@ -22,6 +20,7 @@ use crate::{
         },
     },
     infrastructure::display::wallpaper_setter::WallpaperSetter,
+    utils::datetime::UtcDateTime,
     DwallResult,
 };
 
@@ -79,15 +78,13 @@ impl<'a> SolarThemeProcessor<'a> {
             "Starting solar-based theme update loop"
         );
 
-        let mut last_update_timestamp =
-            OffsetDateTime::now_local().unwrap_or(OffsetDateTime::now_utc());
+        let mut last_update_timestamp = UtcDateTime::now();
         let mut consecutive_failure_count = 0;
 
         let update_interval_duration = Duration::from_secs(self.config.interval().into());
 
         loop {
-            let current_timestamp =
-                OffsetDateTime::now_local().unwrap_or(OffsetDateTime::now_utc());
+            let current_timestamp = UtcDateTime::now();
             debug!(
                 last_update_timestamp = %last_update_timestamp,
                 current_timestamp = %current_timestamp,
@@ -473,7 +470,7 @@ fn process_solar_theme_cycle(
     let available_monitors = wallpaper_manager.list_available_monitors()?;
     let monitor_theme_configurations = configuration.monitor_specific_wallpapers();
 
-    let current_utc_time = OffsetDateTime::now_utc();
+    let current_utc_time = UtcDateTime::now();
     let current_sun_position = SunPosition::new(
         current_geographic_position.latitude(),
         current_geographic_position.longitude(),
