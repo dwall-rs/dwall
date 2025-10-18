@@ -2,9 +2,9 @@
 //!
 //! Handles geolocation access and position management with caching optimization.
 
+use std::cell::RefCell;
 use std::time::{Duration, Instant};
 
-use tokio::sync::Mutex;
 use windows::Devices::Geolocation::{GeolocationAccessStatus, Geolocator, PositionAccuracy};
 
 use crate::{
@@ -121,54 +121,51 @@ fn get_geo_position() -> DwallResult<Position> {
 /// and significantly lower memory usage and CPU overhead.
 pub(crate) struct GeographicPositionProvider<'a> {
     coordinate_source: &'a PositionSource,
-    cached_position: Mutex<Option<(Position, Instant)>>,
+    cached_position: RefCell<Option<(Position, Instant)>>,
 
     /// Cache duration for position data
     cache_duration: Duration,
-    timeout: Duration,
 }
 
 impl<'a> GeographicPositionProvider<'a> {
     pub(crate) fn new(coordinate_source: &'a PositionSource) -> Self {
         Self {
             coordinate_source,
-            cached_position: Mutex::new(None),
+            cached_position: RefCell::new(None),
             cache_duration: Duration::from_secs(60 * 5),
-            timeout: Duration::from_secs(10),
         }
     }
 
     /// Retrieves a fresh position from the geolocation API
-    async fn get_fresh_position(&self) -> DwallResult<Position> {
+    fn get_fresh_position(&self) -> DwallResult<Position> {
         debug!("Using fresh geolocation data");
         get_geo_position()
     }
 
     /// Retrieves a position from cache or fetches a new one if cache is expired
-    async fn get_cached_position(&self) -> DwallResult<Position> {
+    fn get_cached_position(&self) -> DwallResult<Position> {
         debug!("Checking cached position data");
-        let mut cache = self.cached_position.lock().await;
+        {
+            let cache = self.cached_position.borrow();
 
-        if let Some((cached_position, cached_time)) = cache.as_ref() {
-            if cached_time.elapsed() < self.cache_duration {
-                debug!(
-                    position = ?cached_position,
-                    age_secs = cached_time.elapsed().as_secs(),
-                    "Using cached position data"
-                );
-                return Ok(*cached_position);
+            if let Some((cached_position, cached_time)) = cache.as_ref() {
+                if cached_time.elapsed() < self.cache_duration {
+                    debug!(
+                        position = ?cached_position,
+                        age_secs = cached_time.elapsed().as_secs(),
+                        "Using cached position data"
+                    );
+                    return Ok(*cached_position);
+                }
             }
         }
 
         debug!("Cache expired or empty, fetching new position data");
-        let position = tokio::time::timeout(self.timeout, self.get_fresh_position())
-            .await
-            .map_err(|_| {
-                error!("Position retrieval timed out after {:?}", self.timeout);
-                DwallError::Timeout("Get position".to_string())
-            })??;
+        let position = self.get_fresh_position()?;
 
-        *cache = Some((position, Instant::now()));
+        self.cached_position
+            .borrow_mut()
+            .replace((position, Instant::now()));
         debug!(position = ?position, "Updated position cache");
         Ok(position)
     }
@@ -185,15 +182,15 @@ impl<'a> GeographicPositionProvider<'a> {
     }
 
     /// Retrieves the current position based on the configured coordinate source
-    pub(crate) async fn get_current_position(&self) -> DwallResult<Position> {
+    pub(crate) fn get_current_position(&self) -> DwallResult<Position> {
         match &self.coordinate_source {
             PositionSource::Automatic {
                 update_on_each_calculation,
             } => {
                 if *update_on_each_calculation {
-                    self.get_fresh_position().await
+                    self.get_fresh_position()
                 } else {
-                    self.get_cached_position().await
+                    self.get_cached_position()
                 }
             }
             PositionSource::Manual {
@@ -209,8 +206,8 @@ impl<'a> GeographicPositionProvider<'a> {
 mod tests {
     use super::*;
 
-    #[tokio::test]
-    async fn test_provider_manual_coordinates() {
+    #[test]
+    fn test_provider_manual_coordinates() {
         let coord_source = PositionSource::Manual {
             latitude: 45.0,
             longitude: 90.0,
@@ -218,7 +215,7 @@ mod tests {
         };
         let provider = GeographicPositionProvider::new(&coord_source);
 
-        let pos = provider.get_current_position().await.unwrap();
+        let pos = provider.get_current_position().unwrap();
         assert_eq!(pos.latitude(), 45.0);
         assert_eq!(pos.longitude(), 90.0);
         assert_eq!(pos.altitude(), 43.5);

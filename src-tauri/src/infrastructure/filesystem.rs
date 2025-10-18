@@ -59,7 +59,7 @@ pub async fn move_themes_directory(config: Config, dir_path: PathBuf) -> DwallSe
     validate_directory_move(&config, &dir_path)?;
 
     // Prepare new configuration
-    match prepare_new_config(&config, &dir_path).await {
+    match prepare_new_config(&config, &dir_path) {
         Ok(_) => {}
         Err(e) => {
             return Err(e);
@@ -71,7 +71,7 @@ pub async fn move_themes_directory(config: Config, dir_path: PathBuf) -> DwallSe
         Ok(_) => Ok(()),
         Err(e) => {
             // Rollback configuration if move fails
-            if let Err(rollback_err) = write_config_file(&config).await {
+            if let Err(rollback_err) = write_config_file(&config) {
                 error!(original_error = ?e, rollback_error = ?rollback_err, "Critical: Failed to rollback configuration after move failure");
             }
             e.into()
@@ -105,9 +105,9 @@ fn validate_directory_move(config: &Config, destination: &Path) -> DwallSettings
 }
 
 /// Prepares the new configuration
-async fn prepare_new_config(config: &Config, new_path: &Path) -> DwallSettingsResult<()> {
+fn prepare_new_config(config: &Config, new_path: &Path) -> DwallSettingsResult<()> {
     let new_config = config.with_themes_directory(new_path);
-    write_config_file(&new_config).await?;
+    write_config_file(&new_config)?;
 
     Ok(())
 }

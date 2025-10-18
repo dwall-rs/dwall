@@ -15,11 +15,11 @@ struct DaemonLogEntry {
 }
 
 /// Validates a theme against the solar theme specification
-pub async fn validate_solar_theme(
+pub fn validate_solar_theme(
     themes_directory: &Path,
     theme_id: &str,
 ) -> Result<(), dwall::error::DwallError> {
-    SolarThemeValidator::validate_solar_theme(themes_directory, theme_id).await
+    SolarThemeValidator::validate_solar_theme(themes_directory, theme_id)
 }
 
 /// Attempts to read the most recent error from the daemon log file

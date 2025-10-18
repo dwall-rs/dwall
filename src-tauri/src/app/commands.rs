@@ -42,18 +42,12 @@ pub fn show_window(app: AppHandle, label: &str) -> DwallSettingsResult<()> {
 
 #[tauri::command]
 pub async fn read_config_file() -> DwallSettingsResult<Config> {
-    match dwall_read_config().await {
-        Ok(config) => Ok(config),
-        Err(e) => Err(e.into()),
-    }
+    dwall_read_config().map_err(Into::into)
 }
 
 #[tauri::command]
 pub async fn write_config_file(config: Config) -> DwallSettingsResult<()> {
-    match dwall_write_config(&config).await {
-        Ok(_) => Ok(()),
-        Err(e) => Err(e.into()),
-    }
+    dwall_write_config(&config).map_err(Into::into)
 }
 
 #[tauri::command]
@@ -84,14 +78,12 @@ pub async fn set_titlebar_color_mode(
 
 #[tauri::command]
 pub async fn get_monitors_cmd() -> DwallSettingsResult<HashMap<String, DisplayMonitor>> {
-    let monitors = get_monitors().await?;
-
-    Ok(monitors)
+    get_monitors().map_err(Into::into)
 }
 
 #[tauri::command]
 pub async fn open_privacy_location_settings() -> DwallSettingsResult<()> {
-    open::that("ms-settings:privacy-location").map_err(|e| e.into())
+    open::that("ms-settings:privacy-location").map_err(Into::into)
 }
 
 #[tauri::command]
@@ -99,15 +91,12 @@ pub async fn validate_theme_cmd(
     themes_directory: &Path,
     theme_id: &str,
 ) -> DwallSettingsResult<()> {
-    match validate_solar_theme(themes_directory, theme_id).await {
-        Ok(_) => Ok(()),
-        Err(e) => Err(e.into()),
-    }
+    validate_solar_theme(themes_directory, theme_id).map_err(Into::into)
 }
 
 #[tauri::command]
 pub async fn get_applied_theme_id_cmd(monitor_id: &str) -> DwallSettingsResult<Option<String>> {
-    get_applied_theme_id(monitor_id).await
+    get_applied_theme_id(monitor_id)
 }
 
 #[tauri::command]

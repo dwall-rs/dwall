@@ -17,11 +17,11 @@ impl DaemonApplication {
     }
 
     /// Runs the daemon application
-    pub async fn run(&mut self) -> DwallResult<()> {
-        let config = self.config_manager.read_config().await?;
+    pub fn run(&mut self) -> DwallResult<()> {
+        let config = self.config_manager.read_config()?;
 
         let theme_processor = SolarThemeProcessor::new(&config)?;
-        theme_processor.start_solar_update_loop().await
+        theme_processor.start_solar_update_loop()
     }
 }
 

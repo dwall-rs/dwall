@@ -68,7 +68,7 @@ impl WallpaperSetter {
     }
 
     /// Sets wallpaper for a specific monitor
-    pub(crate) async fn set_monitor_wallpaper(
+    pub(crate) fn set_monitor_wallpaper(
         &self,
         monitor_id: &str,
         image_path: &Path,
@@ -83,7 +83,7 @@ impl WallpaperSetter {
             );
         }
 
-        let monitors = self.list_available_monitors().await?;
+        let monitors = self.list_available_monitors()?;
         let monitor = monitors.get(monitor_id).ok_or_else(|| {
             error!(
                 monitor_id = monitor_id,
@@ -92,10 +92,10 @@ impl WallpaperSetter {
             WallpaperError::MonitorNotFound(monitor_id.to_string())
         })?;
 
-        if let Err(error) = self.set_wallpaper(monitor, image_path).await {
+        if let Err(error) = self.set_wallpaper(monitor, image_path) {
             match error {
                 WallpaperError::SetWallpaper(_) => {
-                    self.retry_set_wallpaper(monitor_id, image_path).await?
+                    self.retry_set_wallpaper(monitor_id, image_path)?
                 }
                 _ => {
                     error!(
@@ -111,17 +111,15 @@ impl WallpaperSetter {
     }
 
     /// Gets all available monitors with caching
-    pub(crate) async fn list_available_monitors(
-        &self,
-    ) -> DwallResult<HashMap<String, DisplayMonitor>> {
-        self.monitor_provider.get_monitors().await
+    pub(crate) fn list_available_monitors(&self) -> DwallResult<HashMap<String, DisplayMonitor>> {
+        self.monitor_provider.get_monitors()
     }
 
     /// Forces a refresh of monitor information
-    pub(crate) async fn reload_monitor_configuration(
+    pub(crate) fn reload_monitor_configuration(
         &self,
     ) -> DwallResult<HashMap<String, DisplayMonitor>> {
-        self.monitor_provider.refresh_monitors().await
+        self.monitor_provider.refresh_monitors()
     }
 
     /// Detects if monitor configuration has changed since last check
@@ -133,8 +131,8 @@ impl WallpaperSetter {
     /// - `Ok(true)` if monitor configuration has changed
     /// - `Ok(false)` if monitor configuration is unchanged
     /// - `Err(_)` if unable to query current monitor configuration
-    pub async fn is_monitor_configuration_stale(&self) -> DwallResult<bool> {
-        self.monitor_provider.has_configuration_changed().await
+    pub fn is_monitor_configuration_stale(&self) -> DwallResult<bool> {
+        self.monitor_provider.has_configuration_changed()
     }
 
     /// Sets lock screen wallpaper
@@ -217,15 +215,11 @@ impl WallpaperSetter {
     }
 
     // Private methods
-    async fn retry_set_wallpaper(
-        &self,
-        monitor_id: &str,
-        wallpaper_path: &Path,
-    ) -> DwallResult<()> {
+    fn retry_set_wallpaper(&self, monitor_id: &str, wallpaper_path: &Path) -> DwallResult<()> {
         warn!("Refreshing monitor information and retrying...");
-        self.reload_monitor_configuration().await?;
+        self.reload_monitor_configuration()?;
 
-        let monitors = self.list_available_monitors().await?;
+        let monitors = self.list_available_monitors()?;
         let monitor = monitors.get(monitor_id).ok_or_else(|| {
             error!(
                 monitor_id = monitor_id,
@@ -234,17 +228,15 @@ impl WallpaperSetter {
             WallpaperError::MonitorNotFound(monitor_id.to_string())
         })?;
 
-        self.set_wallpaper(monitor, wallpaper_path)
-            .await
-            .map_err(|e| {
-                error!(
-                    error = %e,
-                    monitor_id = monitor_id,
-                    wallpaper_path = %wallpaper_path.display(),
-                    "Failed to set wallpaper for monitor after refresh"
-                );
-                e
-            })?;
+        self.set_wallpaper(monitor, wallpaper_path).map_err(|e| {
+            error!(
+                error = %e,
+                monitor_id = monitor_id,
+                wallpaper_path = %wallpaper_path.display(),
+                "Failed to set wallpaper for monitor after refresh"
+            );
+            e
+        })?;
 
         Ok(())
     }
@@ -285,7 +277,7 @@ impl WallpaperSetter {
         Ok(is_same)
     }
 
-    async fn set_wallpaper(
+    fn set_wallpaper(
         &self,
         monitor: &DisplayMonitor,
         wallpaper_path: &Path,
