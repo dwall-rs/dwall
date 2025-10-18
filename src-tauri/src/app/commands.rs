@@ -150,8 +150,8 @@ pub async fn cancel_theme_download_cmd(
 }
 
 #[tauri::command]
-pub async fn request_location_permission() -> DwallSettingsResult<()> {
-    check_location_permission().await.map_err(Into::into)
+pub fn request_location_permission() -> DwallSettingsResult<()> {
+    check_location_permission().map_err(Into::into)
 }
 
 #[tauri::command]
