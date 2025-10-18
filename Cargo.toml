@@ -23,7 +23,6 @@ tracing-subscriber = { version = "0", default-features = false, features = [
   'env-filter',
   'json',
 ] }
-tokio = { version = "1", default-features = false }
 windows = { version = "0.61", default-features = false }
 
 [profile.release]

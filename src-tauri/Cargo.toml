@@ -22,7 +22,7 @@ dwall = { version = "0", path = "../daemon" }
 reqwest = { version = "0", default-features = false, features = [] }
 zip = { version = "6", default-features = false, features = ["deflate"] }
 open = { version = "5", default-features = false }
-tokio = { workspace = true, features = ["macros", "process"] }
+tokio = { version = "1", default-features = false, features = ["macros"] }
 dirs = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
