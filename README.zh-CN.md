@@ -18,6 +18,11 @@ DWALL 是一款轻量级应用程序，旨在模拟 macOS 壁纸切换行为，�
 
 认识到这一差距，DWALL 被开发为一种高效的替代方案。它可以根据太阳位置自动切换明暗主题并更改壁纸，同时在运行期间保持最小的内存使用量。对于寻求资源占用更少选项的用户，DWALL 提供了一个极具吸引力的选择。
 
+有关 DWALL 与其他解决方案的详细比较，请参阅我们的文档：
+
+- [DWALL vs Auto Dark Mode](./docs/dwall-vs-auto-dark-mode.zh-CN.md)
+- [DWALL vs WinDynamicDesktop](./docs/dwall-vs-windynamicdesktop.zh-CN.md)
+
 ## 特性
 
 - **基于太阳的调度：** 自动根据太阳路径调整壁纸。

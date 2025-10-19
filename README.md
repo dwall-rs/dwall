@@ -18,6 +18,11 @@ With existing solutions like [WinDynamicDesktop](https://github.com/t1m0thyj/Win
 
 Recognizing this gap, DWALL was developed to provide an efficient alternative. It automatically toggles between light and dark themes and changes wallpapers according to the position of the sun, all while maintaining minimal memory usage during operation. For users seeking a less resource-intensive option, DWALL offers a compelling choice.
 
+For detailed comparisons between DWALL and other solutions, see our documentation:
+
+- [DWALL vs Auto Dark Mode](./docs/dwall-vs-auto-dark-mode.md)
+- [DWALL vs WinDynamicDesktop](./docs/dwall-vs-windynamicdesktop.md)
+
 ## Features
 
 - **Sun-Based Scheduling:** Automatically adjusts wallpapers in sync with the sun's path.
