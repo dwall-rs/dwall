@@ -1,6 +1,5 @@
 mod en_us;
 mod ja_jp;
-mod ko_kr;
 mod zh_cn;
 mod zh_hk;
 mod zh_tw;
