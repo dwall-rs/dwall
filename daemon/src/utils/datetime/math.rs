@@ -64,7 +64,7 @@ fn count_leap_years(start: u16, end: u16) -> u32 {
 /// which simplifies leap year handling.
 ///
 /// Returns: (year, month, day)
-pub(super) fn days_to_ymd(days: u32) -> (u16, Month, u8) {
+pub(super) const fn days_to_ymd(days: u32) -> (u16, Month, u8) {
     // Convert input days to days since March 1 of year 0
     let days_from_base = days + UNIX_EPOCH_TO_MARCH_1_YEAR_0;
 

@@ -106,7 +106,7 @@ impl UtcDateTime {
     ///
     /// Note: If you need year, month, and day together, use `ymd()` or `ymd_hms()` for better performance.
     #[inline]
-    pub fn year(&self) -> u16 {
+    pub const fn year(&self) -> u16 {
         let (year, _, _) = self.ymd();
         year
     }
@@ -115,7 +115,7 @@ impl UtcDateTime {
     ///
     /// Note: If you need year, month, and day together, use `ymd()` or `ymd_hms()` for better performance.
     #[inline]
-    pub fn month(&self) -> Month {
+    pub const fn month(&self) -> Month {
         let (_, month, _) = self.ymd();
         month
     }
@@ -124,7 +124,7 @@ impl UtcDateTime {
     ///
     /// Note: If you need year, month, and day together, use `ymd()` or `ymd_hms()` for better performance.
     #[inline]
-    pub fn day(&self) -> u8 {
+    pub const fn day(&self) -> u8 {
         let (_, _, day) = self.ymd();
         day
     }
@@ -155,7 +155,7 @@ impl UtcDateTime {
 
     /// Returns the year, month, and day (recommended for fetching multiple date components efficiently).
     #[inline]
-    pub fn ymd(&self) -> (u16, Month, u8) {
+    pub const fn ymd(&self) -> (u16, Month, u8) {
         let days = (self.inner.as_secs() / SECONDS_PER_DAY) as u32;
         days_to_ymd(days)
     }
@@ -168,7 +168,7 @@ impl UtcDateTime {
 
     /// Returns year, month, day, hour, minute, and second (more efficient than calling individual methods).
     #[inline]
-    pub fn ymd_hms(&self) -> (u16, Month, u8, u8, u8, u8) {
+    pub const fn ymd_hms(&self) -> (u16, Month, u8, u8, u8, u8) {
         let (y, m, d) = self.ymd();
         let (h, min, s) = self.hms();
         (y, m, d, h, min, s)
@@ -337,7 +337,7 @@ impl UtcDateTime {
 
     /// Checks if the year of this date is a leap year.
     #[inline]
-    pub fn is_leap_year(&self) -> bool {
+    pub const fn is_leap_year(&self) -> bool {
         is_leap_year(self.year())
     }
 }
