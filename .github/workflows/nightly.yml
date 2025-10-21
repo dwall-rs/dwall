@@ -17,6 +17,7 @@ jobs:
       should_build: ${{ steps.check.outputs.should_build }}
       has_nightly: ${{ steps.check.outputs.has_nightly }}
       latest_commit: ${{ steps.check.outputs.latest_commit }}
+      labeled_commits: ${{ steps.check.outputs.labeled_commits }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -75,6 +76,7 @@ jobs:
 
               if [ -n "$labeled_commits" ]; then
                 echo "New labeled commits found after nightly tag: $labeled_commits"
+                echo "labeled_commits=$labeled_commits" >> $GITHUB_OUTPUT
                 echo "should_build=true" >> $GITHUB_OUTPUT
               else
                 echo "No new labeled commits after nightly tag"
@@ -100,6 +102,7 @@ jobs:
 
               if [ -n "$labeled_commits" ]; then
                 echo "New labeled commits found after latest release $latest_release: $labeled_commits"
+                echo "labeled_commits=$labeled_commits" >> $GITHUB_OUTPUT
                 echo "should_build=true" >> $GITHUB_OUTPUT
               else
                 echo "No new labeled commits after latest release"
@@ -113,6 +116,7 @@ jobs:
               
               if [ -n "$labeled_commits" ]; then
                 echo "Found labeled commits, will build nightly: $labeled_commits"
+                echo "labeled_commits=$labeled_commits" >> $GITHUB_OUTPUT
                 echo "should_build=true" >> $GITHUB_OUTPUT
               else
                 echo "No labeled commits found, skipping nightly build"
@@ -160,6 +164,43 @@ jobs:
         id: date
         run: echo "date=$(date +'%Y%m%d')" >> $GITHUB_OUTPUT
 
+      - name: Generate changelog from labeled commits
+        id: changelog
+        run: |
+          labeled_commits="${{ needs.check-nightly-conditions.outputs.labeled_commits }}"
+
+          if [ -z "$labeled_commits" ]; then
+            echo "changelog=- No labeled commits found" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          changelog=""
+          for commit in $labeled_commits; do
+            # 尝试获取PR信息
+            pr_info=$(gh pr list --state merged --search "$commit" --json number,title --jq '.[0] | select(.number != null)' 2>/dev/null || echo "")
+            
+            if [ -n "$pr_info" ]; then
+              # 如果是PR commit，使用PR标题
+              pr_title=$(echo "$pr_info" | jq -r '.title')
+              pr_number=$(echo "$pr_info" | jq -r '.number')
+              changelog="${changelog}- ${pr_title} (#${pr_number})\n"
+            else
+              # 如果不是PR commit，使用commit message的第一行
+              commit_title=$(git log --format=%s -n 1 "$commit")
+              commit_short=$(echo "$commit" | cut -c1-7)
+              changelog="${changelog}- ${commit_title} (${commit_short})\n"
+            fi
+          done
+
+          # 使用EOF来处理多行输出
+          {
+            echo 'changelog<<EOF'
+            echo -e "$changelog"
+            echo 'EOF'
+          } >> $GITHUB_OUTPUT
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Create nightly release
         id: create-release
         uses: actions/github-script@v7
@@ -168,6 +209,7 @@ jobs:
           script: |
             const buildDate = '${{ steps.date.outputs.date }}';
             const commitSha = '${{ needs.check-nightly-conditions.outputs.latest_commit }}'.substring(0, 7);
+            const changelog = `${{ steps.changelog.outputs.changelog }}`;
 
             const { data } = await github.rest.repos.createRelease({
               owner: context.repo.owner,
@@ -177,6 +219,7 @@ jobs:
               body: `🌙 **Nightly Build**\n\n` +
                     `**Build Date:** ${buildDate}\n` +
                     `**Commit:** ${commitSha}\n\n` +
+                    `## 📝 Changes\n\n${changelog}\n` +
                     `⚠️ This is a nightly build and may contain unstable features. Use at your own risk.\n\n` +
                     `For stable releases, please check the [releases page](https://github.com/${context.repo.owner}/${context.repo.repo}/releases).`,
               draft: true,
