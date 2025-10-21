@@ -291,7 +291,7 @@ jobs:
         run: bun install --frozen-lockfile
 
       - name: Build nightly application
-        uses: tauri-apps/tauri-action@v0
+        uses: tauri-apps/tauri-action@v0.5.23
         env:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
@@ -302,6 +302,7 @@ jobs:
             🌙 **Nightly Build ${{ needs.create-nightly-release.outputs.build_date }}**
 
             ⚠️ This is a nightly build and may contain unstable features.
+          args: --config src-tauri/tauri.debug.conf.json
 
   publish-nightly:
     permissions:

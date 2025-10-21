@@ -169,7 +169,7 @@ jobs:
         run: bun install --frozen-lockfile
 
       - name: Build application
-        uses: tauri-apps/tauri-action@v0
+        uses: tauri-apps/tauri-action@v0.5.23
         env:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
@@ -178,7 +178,7 @@ jobs:
           releaseId: ${{ needs.create-release.outputs.release_id }}
           releaseBody: ${{ needs.create-release.outputs.changelog }}
           updaterJsonPreferNsis: true
-          args: "--features log-max-level-info"
+          args: --features log-max-level-info
 
   publish-release:
     permissions:
