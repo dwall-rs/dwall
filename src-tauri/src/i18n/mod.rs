@@ -4,12 +4,12 @@ use std::str::FromStr;
 
 use serde::Serialize;
 
-use crate::i18n::utils::get_user_preferred_language;
-
 use self::locales::{
     CHINESE_SIMPLIFIED_TRANSLATIONS, CHINESE_TRADITIONAL_HK_TRANSLATIONS,
     CHINESE_TRADITIONAL_TW_TRANSLATIONS, ENGLISH_US_TRANSLATIONS, JAPANESE_TRANSLATIONS,
+    KOREAN_TRANSLATIONS,
 };
+use self::utils::get_user_preferred_language;
 
 mod keys;
 mod locales;
@@ -36,6 +36,7 @@ pub enum Language {
     ChineseTraditionalTW,
     ChineseTraditionalHK,
     Japanese,
+    Korean,
 }
 
 impl FromStr for Language {
@@ -48,6 +49,7 @@ impl FromStr for Language {
             "zh-HK" => Ok(Language::ChineseTraditionalHK),
             "zh-TW" => Ok(Language::ChineseTraditionalTW),
             "ja-JP" => Ok(Language::Japanese),
+            "ko-KR" => Ok(Language::Korean),
             _ => Err(format!("Unsupported language identifier: {s}")),
         }
     }
@@ -62,6 +64,7 @@ impl Language {
             Language::ChineseTraditionalHK => "繁體中文（香港）",
             Language::ChineseTraditionalTW => "繁體中文（台灣）",
             Language::Japanese => "日本語",
+            Language::Korean => "한국어",
         }
     }
 
@@ -72,6 +75,7 @@ impl Language {
             Language::ChineseTraditionalHK => &CHINESE_TRADITIONAL_HK_TRANSLATIONS,
             Language::ChineseTraditionalTW => &CHINESE_TRADITIONAL_TW_TRANSLATIONS,
             Language::Japanese => &JAPANESE_TRANSLATIONS,
+            Language::Korean => &KOREAN_TRANSLATIONS,
         }
     }
 }
