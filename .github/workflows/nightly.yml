@@ -174,21 +174,33 @@ jobs:
             exit 0
           fi
 
+          # 使用关联数组来跟踪已处理的PR编号和直接提交
+          declare -A seen_prs
+          declare -A seen_commits
           changelog=""
+
           for commit in $labeled_commits; do
             # 尝试获取PR信息
             pr_info=$(gh pr list --state merged --search "$commit" --json number,title --jq '.[0] | select(.number != null)' 2>/dev/null || echo "")
             
             if [ -n "$pr_info" ]; then
-              # 如果是PR commit，使用PR标题
-              pr_title=$(echo "$pr_info" | jq -r '.title')
+              # 如果是PR commit，使用PR编号去重
               pr_number=$(echo "$pr_info" | jq -r '.number')
-              changelog="${changelog}- ${pr_title} (#${pr_number})\n"
+              
+              # 检查是否已经处理过这个PR
+              if [ -z "${seen_prs[$pr_number]}" ]; then
+                pr_title=$(echo "$pr_info" | jq -r '.title')
+                changelog="${changelog}- ${pr_title} (#${pr_number})\n"
+                seen_prs[$pr_number]=1
+              fi
             else
-              # 如果不是PR commit，使用commit message的第一行
-              commit_title=$(git log --format=%s -n 1 "$commit")
-              commit_short=$(echo "$commit" | cut -c1-7)
-              changelog="${changelog}- ${commit_title} (${commit_short})\n"
+              # 如果不是PR commit，使用commit hash去重
+              if [ -z "${seen_commits[$commit]}" ]; then
+                commit_title=$(git log --format=%s -n 1 "$commit")
+                commit_short=$(echo "$commit" | cut -c1-7)
+                changelog="${changelog}- ${commit_title} (${commit_short})\n"
+                seen_commits[$commit]=1
+              fi
             fi
           done
 
