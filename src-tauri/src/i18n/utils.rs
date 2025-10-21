@@ -17,7 +17,7 @@ pub(super) fn get_user_preferred_language() -> DwallSettingsResult<String> {
         )?
     };
 
-    debug!(buffer_size = buffer_size, "Initial buffer size obtained");
+    debug!(buffer_size, "Initial buffer size obtained");
     let mut buffer: Vec<u16> = vec![0; buffer_size as usize];
     unsafe {
         GetUserPreferredUILanguages(
@@ -28,10 +28,7 @@ pub(super) fn get_user_preferred_language() -> DwallSettingsResult<String> {
         )?;
     }
 
-    trace!(
-        num_languages = num_languages,
-        "Number of user preferred languages obtained"
-    );
+    trace!(num_languages, "Number of user preferred languages obtained");
 
     let languages = buffer
         .split(|&c| c == 0)
@@ -45,9 +42,6 @@ pub(super) fn get_user_preferred_language() -> DwallSettingsResult<String> {
 
     let language = &languages[0];
 
-    debug!(
-        language = language,
-        "Successfully got user preferred language"
-    );
+    debug!(language, "Successfully got user preferred language");
     Ok(language.to_string())
 }
