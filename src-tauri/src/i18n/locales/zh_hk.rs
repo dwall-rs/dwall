@@ -1,11 +1,9 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, sync::LazyLock};
 
-use crate::i18n::{keys::*, LocaleTranslations, TranslationMap, TranslationValue};
+use crate::i18n::{keys::*, LocaleTranslations, TranslationValue};
 
-pub struct ChineseTraditionalHKTranslations;
-
-impl TranslationMap for ChineseTraditionalHKTranslations {
-    fn get_translations() -> LocaleTranslations {
+pub static CHINESE_TRADITIONAL_HK_TRANSLATIONS: LazyLock<LocaleTranslations> = LazyLock::new(
+    || {
         let mut translations = HashMap::new();
 
         // buttons
@@ -137,5 +135,5 @@ impl TranslationMap for ChineseTraditionalHKTranslations {
         translations.insert(PLACEHOLDER_LONGITUDE, TranslationValue::Text("經度"));
 
         translations
-    }
-}
+    },
+);

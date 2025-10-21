@@ -1,5 +1,11 @@
-pub mod en_us;
-pub mod ja_jp;
-pub mod zh_cn;
-pub mod zh_hk;
-pub mod zh_tw;
+mod en_us;
+mod ja_jp;
+mod zh_cn;
+mod zh_hk;
+mod zh_tw;
+
+pub(super) use en_us::ENGLISH_US_TRANSLATIONS;
+pub(super) use ja_jp::JAPANESE_TRANSLATIONS;
+pub(super) use zh_cn::CHINESE_SIMPLIFIED_TRANSLATIONS;
+pub(super) use zh_hk::CHINESE_TRADITIONAL_HK_TRANSLATIONS;
+pub(super) use zh_tw::CHINESE_TRADITIONAL_TW_TRANSLATIONS;

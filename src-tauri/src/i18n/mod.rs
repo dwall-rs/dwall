@@ -1,43 +1,33 @@
+use std::cell::RefCell;
+use std::collections::HashMap;
 use std::str::FromStr;
-use std::sync::LazyLock;
-use std::{collections::HashMap, sync::RwLock};
 
 use serde::Serialize;
 
-use self::locales::en_us::EnglishUSTranslations;
-use self::locales::ja_jp::JapaneseTranslations;
-use self::locales::zh_cn::ChineseSimplifiedTranslations;
-use self::locales::zh_hk::ChineseTraditionalHKTranslations;
-use self::locales::zh_tw::ChineseTraditionalTWTranslations;
+use crate::i18n::utils::get_user_preferred_language;
+
+use self::locales::{
+    CHINESE_SIMPLIFIED_TRANSLATIONS, CHINESE_TRADITIONAL_HK_TRANSLATIONS,
+    CHINESE_TRADITIONAL_TW_TRANSLATIONS, ENGLISH_US_TRANSLATIONS, JAPANESE_TRANSLATIONS,
+};
 
 mod keys;
 mod locales;
 mod utils;
 
-static TRANSLATIONS: LazyLock<RwLock<HashMap<&'static str, LocaleTranslations>>> =
-    LazyLock::new(|| {
-        RwLock::new({
-            let mut m = HashMap::new();
+#[derive(Clone, Debug, Serialize)]
+#[serde(untagged)]
+pub enum TranslationValue {
+    Text(&'static str),
+    Template {
+        template: &'static str,
+        params: &'static [&'static str],
+    },
+}
 
-            // English must implement all translation keys
-            m.insert("en-US", EnglishUSTranslations::get_translations());
+pub type LocaleTranslations = HashMap<&'static str, TranslationValue>;
 
-            m.insert("zh-CN", ChineseSimplifiedTranslations::get_translations());
-            m.insert(
-                "zh-HK",
-                ChineseTraditionalHKTranslations::get_translations(),
-            );
-            m.insert(
-                "zh-TW",
-                ChineseTraditionalTWTranslations::get_translations(),
-            );
-            m.insert("ja-JP", JapaneseTranslations::get_translations());
-
-            m
-        })
-    });
-
-#[derive(Debug, Clone, Copy, Default)]
+#[derive(Debug, Clone, Copy, Default, PartialEq)]
 pub enum Language {
     #[default]
     EnglishUS,
@@ -64,17 +54,6 @@ impl FromStr for Language {
 }
 
 impl Language {
-    pub fn id(&self) -> &'static str {
-        match self {
-            Language::EnglishUS => "en-US",
-            // LanguageVariant::EnglishGB => "en-GB",
-            Language::ChineseSimplified => "zh-CN",
-            Language::ChineseTraditionalHK => "zh-HK",
-            Language::ChineseTraditionalTW => "zh-TW",
-            Language::Japanese => "ja-JP",
-        }
-    }
-
     pub fn native_name(&self) -> &'static str {
         match self {
             Language::EnglishUS => "American English",
@@ -86,35 +65,23 @@ impl Language {
         }
     }
 
-    // pub fn country_code(&self) -> &'static str {
-    //     match self {
-    //         Language::EnglishUS | Language::ChineseSimplified => "US",
-    //         // LanguageVariant::EnglishGB => "GB",
-    //         Language::ChineseSimplified => "CN",
-    //         // LanguageVariant::ChineseTraditionalTW => "TW",
-    //         // LanguageVariant::ChineseTraditionalHK => "HK",
-    //     }
-    // }
-}
-
-#[derive(Clone, Debug, Serialize)]
-#[serde(untagged)]
-pub enum TranslationValue {
-    Text(&'static str),
-    Template {
-        template: &'static str,
-        params: &'static [&'static str],
-    },
-}
-
-pub type LocaleTranslations = HashMap<&'static str, TranslationValue>;
-
-pub trait TranslationMap {
-    fn get_translations() -> LocaleTranslations;
+    pub fn translations(&self) -> &'static LocaleTranslations {
+        match self {
+            Language::EnglishUS => &ENGLISH_US_TRANSLATIONS,
+            Language::ChineseSimplified => &CHINESE_SIMPLIFIED_TRANSLATIONS,
+            Language::ChineseTraditionalHK => &CHINESE_TRADITIONAL_HK_TRANSLATIONS,
+            Language::ChineseTraditionalTW => &CHINESE_TRADITIONAL_TW_TRANSLATIONS,
+            Language::Japanese => &JAPANESE_TRANSLATIONS,
+        }
+    }
 }
 
 thread_local! {
-    static CURRENT_LANGUAGE: std::cell::RefCell<Language> = std::cell::RefCell::new(Language::from_str(&self::utils::get_user_preferred_language().unwrap_or("en-US".to_string())).unwrap_or(Language::default()));
+    static CURRENT_LANGUAGE: RefCell<Language> = RefCell::new(Language::from_str(&get_user_preferred_language().unwrap_or("en-US".to_string())).unwrap_or(Language::default()));
+
+    // Cache for current language translations to avoid repeated cloning
+    static CURRENT_TRANSLATIONS_CACHE: RefCell<Option<(Language, LocaleTranslations)>> =
+     const { RefCell::new(None) };
 }
 
 pub fn get_current_language() -> Language {
@@ -122,10 +89,17 @@ pub fn get_current_language() -> Language {
 }
 
 // pub fn set_language(language_id: &str) -> Result<(), String> {
-//     let language_id = Language::from_str(language_id)?;
+//     let language = Language::from_str(language_id)?;
 //     CURRENT_LANGUAGE.with(|current_lang| {
-//         *current_lang.borrow_mut() = language_id;
+//         *current_lang.borrow_mut() = language;
 //     });
+
+//     // Invalidate cache when language changes
+//     {
+//         let mut cache = CURRENT_TRANSLATIONS_CACHE.write().unwrap();
+//         *cache = None;
+//     }
+
 //     Ok(())
 // }
 
@@ -133,22 +107,32 @@ pub fn get_translations() -> LocaleTranslations {
     let current_lang = get_current_language();
     info!(language = current_lang.native_name(), "Current language");
 
-    let translations = TRANSLATIONS.read().unwrap();
+    // Check if we have cached translations for the current language
+    {
+        if let Some((cached_lang, cached_translations)) =
+            CURRENT_TRANSLATIONS_CACHE.with(|cache| cache.borrow().clone())
+        {
+            if cached_lang == current_lang {
+                return cached_translations;
+            }
+        }
+    }
 
-    let en_us_translations = translations
-        .get("en-US")
-        .expect("English translations must be defined");
+    // If not cached or language changed, compute translations
 
-    let mut locale_translations = translations
-        .get(&current_lang.id())
-        .cloned()
-        .unwrap_or_default();
+    let mut locale_translations = current_lang.translations().clone();
 
-    for (key, value) in en_us_translations.iter() {
+    for (key, value) in ENGLISH_US_TRANSLATIONS.iter() {
         if !locale_translations.contains_key(*key) {
             debug!(key = key, "Translation missing, using default");
             locale_translations.insert(*key, value.clone());
         }
+    }
+
+    // Cache the computed translations
+    {
+        CURRENT_TRANSLATIONS_CACHE
+            .with_borrow_mut(|cache| *cache = Some((current_lang, locale_translations.clone())));
     }
 
     locale_translations
