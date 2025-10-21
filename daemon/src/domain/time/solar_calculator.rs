@@ -60,12 +60,13 @@ impl SunPosition {
 
     /// Calculate Julian day using Fliegel-Van Flandern algorithm
     fn julian_day(&self) -> f64 {
-        let year = self.date_time.year() as f64;
-        let month = self.date_time.month() as u8 as f64;
-        let day = self.date_time.day() as f64
-            + self.date_time.hour() as f64 / constants::HOURS_PER_DAY
-            + self.date_time.minute() as f64 / 1440.0
-            + self.date_time.second() as f64 / 86400.0;
+        let (year, month, day, hour, minute, second) = self.date_time.ymd_hms();
+        let year = year as f64;
+        let month = month as u8 as f64;
+        let day = day as f64
+            + hour as f64 / constants::HOURS_PER_DAY
+            + minute as f64 / 1440.0
+            + second as f64 / 86400.0;
 
         let a = ((14.0 - month) / 12.0).floor();
         let y = year + 4800.0 - a;
