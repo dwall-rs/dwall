@@ -71,7 +71,7 @@ const ThemeMenu = (props: ThemeMenuProps) => {
       class={styles.thumbnailsContainer}
       grow={7}
       shrink={1}
-      padding="10px 10px 10px 24px"
+      padding="10px"
     >
       {menu()}
     </LazyFlex>

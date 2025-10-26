@@ -16,7 +16,14 @@ const SidebarButtons = () => {
   };
 
   return (
-    <LazySpace direction="column" gap="s" justify="end" class={sidebarButtons}>
+    <LazySpace
+      direction="column"
+      gap="s"
+      justify="end"
+      paddingBottom="m"
+      paddingRight="10px"
+      class={sidebarButtons}
+    >
       <Show when={updateIsAvailable()}>
         <LazyTooltip
           positioning="after"

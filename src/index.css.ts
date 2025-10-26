@@ -28,6 +28,10 @@ globalStyle("*", {
   MozUserSelect: "none",
   WebkitUserSelect: "none",
   msUserSelect: "none",
+
+  margin: 0,
+  padding: 0,
+  boxSizing: "border-box",
 });
 
 globalStyle("::-webkit-scrollbar", {
@@ -54,9 +58,8 @@ globalStyle("body", {
 });
 
 globalStyle("#root", {
+  display: "flex",
+  padding: `${vars.spacingHorizontalXS} ${vars.spacingVerticalL} ${vars.spacingHorizontalL} ${vars.spacingHorizontalL}`,
   height: "100vh",
   width: "100vw",
-  display: "flex",
-  flexDirection: "column",
-  overflow: "hidden",
 });
