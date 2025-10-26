@@ -5,7 +5,7 @@ import { badge as fluentBadge } from "fluent-solid/lib/components/badge/Badge.cs
 export const menuItemColorShadow = createVar();
 
 export const thumbnailsContainer = style({
-  flex: "7",
+  flex: "1",
   overflowY: "auto",
   overflowX: "hidden",
   padding: `${vars.spacingVerticalMNudge} ${vars.spacingHorizontalMNudge} ${vars.spacingVerticalMNudge} ${vars.spacingHorizontalXL}`,
@@ -19,8 +19,8 @@ export const menuItem = style({
   },
   padding: "4px",
   borderRadius: "5px",
-  height: "64px",
-  width: "64px",
+  height: "72px",
+  width: "72px",
   display: "flex",
   alignItems: "center",
   position: "relative",

@@ -1,9 +1,7 @@
 import { globalStyle, style } from "@vanilla-extract/css";
 import { themeContract, vars } from "fluent-solid/lib/themes";
-import { appVars } from "~/themes/vars.css";
 
 export const carousel = style({
-  width: appVars.contentWidth,
   height: "480px",
   borderRadius: vars.borderRadiusMedium,
   display: "flex",

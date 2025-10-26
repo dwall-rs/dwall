@@ -44,11 +44,23 @@ const App = () => {
 
   return (
     <>
-      <LazyFlex class={styles.app} align="center" gap="l" justify="stretch">
+      <LazyFlex
+        class={styles.app}
+        align="center"
+        gap="l"
+        justify="stretch"
+        style={{ flex: 1 }}
+      >
         <Sidebar />
 
         <Show when={!showSettings() && currentTheme()} fallback={<Settings />}>
-          <LazyFlex direction="column" gap="l" align="center">
+          <LazyFlex
+            direction="column"
+            gap="l"
+            align="center"
+            justify="center"
+            style={{ flex: 1, height: "100%" }}
+          >
             <Select
               options={monitors()}
               placeholder={translate("label-select-monitor")}

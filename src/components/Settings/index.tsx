@@ -7,16 +7,16 @@ import GithubMirror from "./GithubMirror";
 import ThemesDirectory from "./ThemesDirectory";
 import LockScreenWallpaperSwitch from "./LockScreenWallpaperSwitch";
 import SettingsFooter from "./Footer";
-import { appVars } from "~/themes/vars.css";
 
 const Settings = () => {
   return (
     <LazyFlex
       direction="column"
       style={{
-        width: appVars.contentWidth,
-        "box-sizing": "border-box",
+        // width: appVars.contentWidth,
+        // "box-sizing": "border-box",
         height: "100%",
+        flex: 1,
       }}
       align="stretch"
       justify="stretch"
