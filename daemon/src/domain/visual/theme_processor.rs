@@ -80,7 +80,8 @@ impl<'a> SolarThemeProcessor<'a> {
     ///
     /// Returns `true` if the cycle was successful, `false` otherwise
     pub(crate) fn run_single_cycle(&self) -> DwallResult<bool> {
-        let current_geographic_position = self.geographic_position_provider.get_current_position()?;
+        let current_geographic_position =
+            self.geographic_position_provider.get_current_position()?;
         let result = self.process_solar_theme_cycle(&current_geographic_position);
 
         if let Err(error) = &result {
@@ -115,7 +116,9 @@ impl<'a> SolarThemeProcessor<'a> {
                 {
                     error!(error = %reapply_error, "Failed to reapply solar wallpapers after monitor configuration change");
                 } else {
-                    debug!("Solar wallpapers successfully applied to updated monitor configuration");
+                    debug!(
+                        "Solar wallpapers successfully applied to updated monitor configuration"
+                    );
                 }
             }
 
