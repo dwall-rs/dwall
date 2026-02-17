@@ -71,6 +71,60 @@ impl<'a> SolarThemeProcessor<'a> {
         })
     }
 
+    /// Returns the update interval in seconds
+    pub(crate) fn update_interval(&self) -> u16 {
+        self.config.interval()
+    }
+
+    /// Runs a single solar theme update cycle
+    ///
+    /// Returns `true` if the cycle was successful, `false` otherwise
+    pub(crate) fn run_single_cycle(&self) -> DwallResult<bool> {
+        let current_geographic_position = self.geographic_position_provider.get_current_position()?;
+        let result = self.process_solar_theme_cycle(&current_geographic_position);
+
+        if let Err(error) = &result {
+            error!(error = %error, "Solar theme cycle failed");
+        }
+
+        result.map(|_| true)
+    }
+
+    /// Checks if monitor configuration has changed and reloads if necessary
+    ///
+    /// Returns `true` if monitor configuration was reloaded
+    pub(crate) fn check_and_reload_monitor_configuration(&self) -> bool {
+        let monitor_configuration_changed = self
+            .wallpaper_manager
+            .is_monitor_configuration_stale()
+            .unwrap_or(false);
+
+        if monitor_configuration_changed {
+            info!("Monitor configuration change detected, refreshing and reapplying wallpapers");
+
+            if let Err(reload_error) = self.wallpaper_manager.reload_monitor_configuration() {
+                warn!(error = %reload_error, "Failed to reload monitor configuration");
+                return false;
+            }
+
+            if let Ok(current_geographic_position) =
+                self.geographic_position_provider.get_current_position()
+            {
+                if let Err(reapply_error) =
+                    self.process_solar_theme_cycle(&current_geographic_position)
+                {
+                    error!(error = %reapply_error, "Failed to reapply solar wallpapers after monitor configuration change");
+                } else {
+                    debug!("Solar wallpapers successfully applied to updated monitor configuration");
+                }
+            }
+
+            return true;
+        }
+
+        false
+    }
+
     /// Starts a continuous loop to update wallpaper themes based on current solar position
     pub fn start_solar_update_loop(&self) -> DwallResult<()> {
         info!(
