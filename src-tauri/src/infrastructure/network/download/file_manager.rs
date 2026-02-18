@@ -61,13 +61,12 @@ impl ThemeFileManager {
     pub async fn cleanup_temp_file(temp_file_path: &Path, force_cleanup: bool) {
         if temp_file_path.exists() {
             // Check if we should keep the file for resuming download
-            if !force_cleanup {
-                if let Ok(metadata) = fs::metadata(temp_file_path).await {
-                    if metadata.len() > 0 {
-                        debug!(file_path = %temp_file_path.display(), size = metadata.len(), "Keeping temporary file for resume");
-                        return;
-                    }
-                }
+            if !force_cleanup
+                && let Ok(metadata) = fs::metadata(temp_file_path).await
+                && metadata.len() > 0
+            {
+                debug!(file_path = %temp_file_path.display(), size = metadata.len(), "Keeping temporary file for resume");
+                return;
             }
 
             // Remove the file

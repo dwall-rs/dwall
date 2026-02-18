@@ -115,10 +115,9 @@ pub fn get_translations() -> LocaleTranslations {
     {
         if let Some((cached_lang, cached_translations)) =
             CURRENT_TRANSLATIONS_CACHE.with(|cache| cache.borrow().clone())
+            && cached_lang == current_lang
         {
-            if cached_lang == current_lang {
-                return cached_translations;
-            }
+            return cached_translations;
         }
     }
 

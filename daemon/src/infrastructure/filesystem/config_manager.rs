@@ -103,11 +103,11 @@ impl ConfigManager {
             return self.write_config_to_file(config);
         }
 
-        if let Ok(existing_config) = self.read_config() {
-            if existing_config == *config {
-                debug!("Configuration unchanged, skipping write");
-                return Ok(());
-            }
+        if let Ok(existing_config) = self.read_config()
+            && existing_config == *config
+        {
+            debug!("Configuration unchanged, skipping write");
+            return Ok(());
         }
 
         self.write_config_to_file(config)

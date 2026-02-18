@@ -66,7 +66,7 @@ pub fn get_applied_theme_id(monitor_id: &str) -> DwallSettingsResult<Option<Stri
             // Handle special case for "all" monitors
             // TODO: `monitor_id == "all"` is deprecated, remove in the future
             let theme_id = if monitor_id == "all" {
-                let theme_id = match monitor_themes {
+                match monitor_themes {
                     dwall::config::MonitorSpecificWallpapers::All(theme_id) => Some(theme_id),
                     dwall::config::MonitorSpecificWallpapers::Specific(themes_map) => {
                         let mut iter = themes_map.values();
@@ -77,9 +77,7 @@ pub fn get_applied_theme_id(monitor_id: &str) -> DwallSettingsResult<Option<Stri
                             None
                         }
                     }
-                };
-
-                theme_id
+                }
             } else {
                 monitor_themes.get(monitor_id)
             };

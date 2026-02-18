@@ -204,7 +204,7 @@ unsafe fn find_matching_process(
         }
 
         // Move to next process
-        if Process32Next(snapshot, process_entry).is_err() {
+        if unsafe { Process32Next(snapshot, process_entry).is_err() } {
             break;
         }
     }
@@ -233,10 +233,10 @@ fn check_process_path(pid: u32, expected_path: &str) -> DwallSettingsResult<Opti
     };
 
     // Compare paths
-    if let Some(full_path_str) = full_path.to_str() {
-        if is_daemon_process(full_path_str, expected_path) {
+    if let Some(full_path_str) = full_path.to_str()
+        && is_daemon_process(full_path_str, expected_path)
+    {
             return Ok(Some(pid));
-        }
     }
 
     Ok(None)

@@ -137,14 +137,14 @@ impl HttpService {
         }
 
         // Clean up temporary file
-        if temp_path.exists() {
-            if let Err(e) = fs::remove_file(&temp_path) {
-                error!(
-                    temp_path = %temp_path.display(),
-                    error = %e,
-                    "Failed to remove temporary file after error"
-                );
-            }
+        if temp_path.exists()
+            && let Err(e) = fs::remove_file(&temp_path)
+        {
+            error!(
+                temp_path = %temp_path.display(),
+                error = %e,
+                "Failed to remove temporary file after error"
+            );
         }
 
         Err(last_error.unwrap_or_else(|| CacheError::DownloadFailed {

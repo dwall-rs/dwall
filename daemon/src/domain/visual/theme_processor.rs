@@ -581,20 +581,20 @@ fn process_solar_theme_cycle(
     }
 
     // Update lock screen wallpaper if enabled and at least one monitor was successful
-    if configuration.lock_screen_wallpaper_enabled() && successful_monitor_count > 0 {
-        if let Some(ref lock_screen_theme_id) = lock_screen_theme_identifier {
-            if let Err(lock_screen_error) = apply_lock_screen_solar_wallpaper(
+    if configuration.lock_screen_wallpaper_enabled()
+        && successful_monitor_count > 0
+        && let Some(ref lock_screen_theme_id) = lock_screen_theme_identifier
+        && let Err(lock_screen_error) = apply_lock_screen_solar_wallpaper(
                 configuration,
                 lock_screen_theme_id,
                 &current_sun_position,
-            ) {
+        )
+    {
                 warn!(
                     error = %lock_screen_error,
                     theme_id = lock_screen_theme_id,
                     "Failed to apply solar wallpaper to lock screen, continuing with other operations"
                 );
-            }
-        }
     }
 
     // Optionally update system color scheme based on solar position
