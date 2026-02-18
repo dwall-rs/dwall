@@ -3,8 +3,8 @@
 //! This module provides functionality for downloading files over HTTP.
 
 use std::path::Path;
-use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
+use std::sync::atomic::AtomicBool;
 use std::time::Duration;
 
 use reqwest::StatusCode;

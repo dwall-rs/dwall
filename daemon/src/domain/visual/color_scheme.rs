@@ -4,12 +4,12 @@ use serde::Deserialize;
 use windows::Win32::{
     Foundation::{LPARAM, WPARAM},
     System::Registry::{KEY_QUERY_VALUE, KEY_SET_VALUE, REG_DWORD},
-    UI::WindowsAndMessaging::{SendNotifyMessageW, HWND_BROADCAST, WM_SETTINGCHANGE},
+    UI::WindowsAndMessaging::{HWND_BROADCAST, SendNotifyMessageW, WM_SETTINGCHANGE},
 };
 
 use crate::{
-    error::DwallResult, infrastructure::platform::windows::registry_client::RegistryKey,
-    utils::string::WideStringExt, Position,
+    Position, error::DwallResult, infrastructure::platform::windows::registry_client::RegistryKey,
+    utils::string::WideStringExt,
 };
 
 // Civil twilight angle (when sun is 6° below horizon)

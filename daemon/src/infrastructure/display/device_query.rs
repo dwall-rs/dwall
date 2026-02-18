@@ -3,16 +3,16 @@
 use std::mem;
 
 use windows::{
-    core::{Free, GUID, PCWSTR},
     Win32::Devices::DeviceAndDriverInstallation::{
+        DIGCF_DEVICEINTERFACE, DIGCF_PRESENT, HDEVINFO, SP_DEVICE_INTERFACE_DATA,
+        SP_DEVICE_INTERFACE_DETAIL_DATA_W, SP_DEVINFO_DATA, SPDRP_FRIENDLYNAME,
         SetupDiEnumDeviceInfo, SetupDiEnumDeviceInterfaces, SetupDiGetClassDevsW,
-        SetupDiGetDeviceInterfaceDetailW, SetupDiGetDeviceRegistryPropertyW, DIGCF_DEVICEINTERFACE,
-        DIGCF_PRESENT, HDEVINFO, SPDRP_FRIENDLYNAME, SP_DEVICE_INTERFACE_DATA,
-        SP_DEVICE_INTERFACE_DETAIL_DATA_W, SP_DEVINFO_DATA,
+        SetupDiGetDeviceInterfaceDetailW, SetupDiGetDeviceRegistryPropertyW,
     },
+    core::{Free, GUID, PCWSTR},
 };
 
-use crate::{utils::string::WideStringRead, DwallResult};
+use crate::{DwallResult, utils::string::WideStringRead};
 
 use super::error::DisplayError;
 

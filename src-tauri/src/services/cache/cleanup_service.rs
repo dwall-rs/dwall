@@ -62,29 +62,27 @@ impl CleanupService {
 
                     if file_path.is_file() {
                         // Check file modification time
-                        if let Ok(metadata) = fs::metadata(&file_path).await {
-                            if let Ok(modified) = metadata.modified() {
-                                if now
-                                    .duration_since(modified)
-                                    .is_ok_and(|age| age > expiry_duration)
-                                {
-                                    // File expired, delete it
-                                    let file_size = metadata.len();
-                                    if let Err(e) = fs::remove_file(&file_path).await {
-                                        error!(
-                                            file = %file_path.display(),
-                                            error = %e,
-                                            "Failed to remove expired cache file"
-                                        );
-                                    } else {
-                                        cleaned_bytes += file_size;
-                                        debug!(
-                                            file = %file_path.display(),
-                                            size = file_size,
-                                            "Removed expired cache file"
-                                        );
-                                    }
-                                }
+                        if let Ok(metadata) = fs::metadata(&file_path).await
+                            && let Ok(modified) = metadata.modified()
+                            && now
+                                .duration_since(modified)
+                                .is_ok_and(|age| age > expiry_duration)
+                        {
+                            // File expired, delete it
+                            let file_size = metadata.len();
+                            if let Err(e) = fs::remove_file(&file_path).await {
+                                error!(
+                                    file = %file_path.display(),
+                                    error = %e,
+                                    "Failed to remove expired cache file"
+                                );
+                            } else {
+                                cleaned_bytes += file_size;
+                                debug!(
+                                    file = %file_path.display(),
+                                    size = file_size,
+                                    "Removed expired cache file"
+                                );
                             }
                         }
                     }
@@ -156,12 +154,11 @@ impl CleanupService {
                 while let Ok(Some(file_entry)) = theme_entries.next_entry().await {
                     let file_path = file_entry.path();
 
-                    if file_path.is_file() {
-                        if let Ok(metadata) = fs::metadata(&file_path).await {
-                            if let Ok(modified) = metadata.modified() {
-                                cache_files.push((file_path, modified, metadata.len()));
-                            }
-                        }
+                    if file_path.is_file()
+                        && let Ok(metadata) = fs::metadata(&file_path).await
+                        && let Ok(modified) = metadata.modified()
+                    {
+                        cache_files.push((file_path, modified, metadata.len()));
                     }
                 }
             }

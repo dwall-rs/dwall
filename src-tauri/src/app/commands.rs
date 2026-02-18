@@ -9,9 +9,9 @@ use std::{
 };
 
 use dwall::{
-    config::Config, domain::geography::check_location_permission,
-    read_config_file as dwall_read_config, write_config_file as dwall_write_config, ColorScheme,
-    DisplayMonitor, DWALL_CONFIG_DIR, DWALL_LOG_DIR,
+    ColorScheme, DWALL_CONFIG_DIR, DWALL_LOG_DIR, DisplayMonitor, config::Config,
+    domain::geography::check_location_permission, read_config_file as dwall_read_config,
+    write_config_file as dwall_write_config,
 };
 use tauri::{AppHandle, Manager, WebviewWindow};
 

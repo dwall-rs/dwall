@@ -1,14 +1,14 @@
 //! Windows Registry client for system configuration access
 
 use windows::{
-    core::{PCSTR, PCWSTR},
     Win32::{
         Foundation::{ERROR_FILE_NOT_FOUND, ERROR_SUCCESS, WIN32_ERROR},
         System::Registry::{
-            RegCloseKey, RegDeleteValueW, RegOpenKeyExW, RegQueryValueExW, RegSetValueExA, HKEY,
-            HKEY_CURRENT_USER, REG_SAM_FLAGS, REG_VALUE_TYPE,
+            HKEY, HKEY_CURRENT_USER, REG_SAM_FLAGS, REG_VALUE_TYPE, RegCloseKey, RegDeleteValueW,
+            RegOpenKeyExW, RegQueryValueExW, RegSetValueExA,
         },
     },
+    core::{PCSTR, PCWSTR},
 };
 
 use crate::utils::string::WideStringExt;

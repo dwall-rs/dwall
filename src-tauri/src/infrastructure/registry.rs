@@ -2,13 +2,13 @@
 //!
 //! This module contains Windows registry operations.
 
-use dwall::{utils::string::WideStringRead, RegistryError, RegistryKey};
+use dwall::{RegistryError, RegistryKey, utils::string::WideStringRead};
 use windows::Win32::{
     Foundation::ERROR_FILE_NOT_FOUND,
     System::Registry::{KEY_QUERY_VALUE, KEY_WRITE, REG_SZ},
 };
 
-use crate::{error::DwallSettingsResult, DAEMON_EXE_PATH};
+use crate::{DAEMON_EXE_PATH, error::DwallSettingsResult};
 
 /// Manages Windows registry auto-start settings for an application
 pub struct AutoStartManager;

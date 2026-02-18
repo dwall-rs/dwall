@@ -1,6 +1,6 @@
 //! Display-related error types
 
-use windows::{core::Error as WindowsError, Win32::Foundation::WIN32_ERROR};
+use windows::{Win32::Foundation::WIN32_ERROR, core::Error as WindowsError};
 
 /// Display operation related errors
 #[derive(Debug, thiserror::Error)]

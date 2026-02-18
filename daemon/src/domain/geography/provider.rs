@@ -102,7 +102,9 @@ fn get_geo_position() -> DwallResult<Position> {
     let position =
         Position::from_raw_position(position.Latitude, position.Longitude, position.Altitude);
     if position.altitude() == 0. {
-        warn!("An altitude of 0 may cause the time for switching between light and dark modes to shift earlier or later by a few minutes to an hour. This is likely because your device lacks a barometric pressure sensor. This is not an error, but an expected outcome.");
+        warn!(
+            "An altitude of 0 may cause the time for switching between light and dark modes to shift earlier or later by a few minutes to an hour. This is likely because your device lacks a barometric pressure sensor. This is not an error, but an expected outcome."
+        );
     }
 
     info!(
@@ -148,15 +150,15 @@ impl<'a> GeographicPositionProvider<'a> {
         {
             let cache = self.cached_position.borrow();
 
-            if let Some((cached_position, cached_time)) = cache.as_ref() {
-                if cached_time.elapsed() < self.cache_duration {
-                    debug!(
-                        position = ?cached_position,
-                        age_secs = cached_time.elapsed().as_secs(),
-                        "Using cached position data"
-                    );
-                    return Ok(*cached_position);
-                }
+            if let Some((cached_position, cached_time)) = cache.as_ref()
+                && cached_time.elapsed() < self.cache_duration
+            {
+                debug!(
+                    position = ?cached_position,
+                    age_secs = cached_time.elapsed().as_secs(),
+                    "Using cached position data"
+                );
+                return Ok(*cached_position);
             }
         }
 

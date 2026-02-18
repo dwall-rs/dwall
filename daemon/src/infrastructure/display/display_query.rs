@@ -2,16 +2,15 @@
 
 use std::mem;
 
-use windows::core::Error as WindowsError;
 use windows::Win32::{
     Devices::Display::{
-        DisplayConfigGetDeviceInfo, GetDisplayConfigBufferSizes, QueryDisplayConfig,
         DISPLAYCONFIG_DEVICE_INFO_GET_TARGET_NAME, DISPLAYCONFIG_DEVICE_INFO_HEADER,
         DISPLAYCONFIG_MODE_INFO, DISPLAYCONFIG_PATH_INFO, DISPLAYCONFIG_TARGET_DEVICE_NAME,
-        QDC_ALL_PATHS,
+        DisplayConfigGetDeviceInfo, GetDisplayConfigBufferSizes, QDC_ALL_PATHS, QueryDisplayConfig,
     },
     Foundation::ERROR_SUCCESS,
 };
+use windows::core::Error as WindowsError;
 
 use crate::DwallResult;
 
