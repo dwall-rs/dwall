@@ -236,7 +236,7 @@ fn check_process_path(pid: u32, expected_path: &str) -> DwallSettingsResult<Opti
     if let Some(full_path_str) = full_path.to_str()
         && is_daemon_process(full_path_str, expected_path)
     {
-            return Ok(Some(pid));
+        return Ok(Some(pid));
     }
 
     Ok(None)
