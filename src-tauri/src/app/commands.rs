@@ -47,6 +47,7 @@ pub async fn read_config_file() -> DwallSettingsResult<Config> {
 
 #[tauri::command]
 pub async fn write_config_file(config: Config) -> DwallSettingsResult<()> {
+    debug!(?config, "Writing config file");
     dwall_write_config(&config).map_err(Into::into)
 }
 
@@ -152,7 +153,7 @@ pub async fn move_themes_directory_cmd(
 }
 
 #[tauri::command]
-pub fn kill_daemon_cmd() -> DwallSettingsResult<()> {
+pub fn kill_daemon_cmd() -> DwallSettingsResult<Option<u32>> {
     kill_daemon()
 }
 

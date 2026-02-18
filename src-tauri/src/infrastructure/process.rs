@@ -286,10 +286,12 @@ fn is_daemon_process(process_path: &str, expected_path: &str) -> bool {
 }
 
 /// Terminates the daemon process if it's running
-pub fn kill_daemon() -> DwallSettingsResult<()> {
+pub fn kill_daemon() -> DwallSettingsResult<Option<u32>> {
     // Find the daemon process
     match find_daemon_process()? {
         Some(pid) => {
+            debug!("Killing daemon process with PID {}", pid);
+
             // Open process with termination rights
             let process_handle = unsafe {
                 OpenProcess(PROCESS_TERMINATE, false, pid)
@@ -304,8 +306,8 @@ pub fn kill_daemon() -> DwallSettingsResult<()> {
                     .map_err(|e| ProcessManagerError::ProcessTerminationFailed { pid, error: e })
             }?;
 
-            Ok(())
+            Ok(Some(pid))
         }
-        None => Ok(()),
+        None => Ok(None),
     }
 }

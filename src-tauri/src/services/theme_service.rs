@@ -91,8 +91,15 @@ pub fn get_applied_theme_id(monitor_id: &str) -> DwallSettingsResult<Option<Stri
 /// Applies a theme configuration
 pub async fn apply_theme(config: Config) -> DwallSettingsResult<()> {
     match kill_daemon() {
-        Ok(()) => {}
-        Err(_e) => {}
+        Ok(Some(pid)) => {
+            info!("Daemon process {} killed", pid);
+        }
+        Ok(None) => {
+            info!("No daemon process found");
+        }
+        Err(e) => {
+            error!("Failed to kill daemon: {}", e);
+        }
     }
 
     dwall_write_config(&config)?;
