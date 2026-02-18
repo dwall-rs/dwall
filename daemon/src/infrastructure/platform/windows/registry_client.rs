@@ -5,10 +5,10 @@ use windows::{
         Foundation::{ERROR_FILE_NOT_FOUND, ERROR_SUCCESS, WIN32_ERROR},
         System::Registry::{
             HKEY, HKEY_CURRENT_USER, REG_SAM_FLAGS, REG_VALUE_TYPE, RegCloseKey, RegDeleteValueW,
-            RegOpenKeyExW, RegQueryValueExW, RegSetValueExA,
+            RegOpenKeyExW, RegQueryValueExW, RegSetValueExW,
         },
     },
-    core::{PCSTR, PCWSTR},
+    core::PCWSTR,
 };
 
 use crate::utils::string::WideStringExt;
@@ -119,10 +119,11 @@ impl RegistryKey {
 
     /// Set a registry value
     pub fn set(&self, name: &str, value_type: REG_VALUE_TYPE, data: &[u8]) -> RegistryResult<()> {
-        let value_name = PCSTR(name.as_ptr());
+        let value_name_wide = Vec::from_str(name);
+        let value_name = PCWSTR(value_name_wide.as_ptr());
 
         unsafe {
-            let result = RegSetValueExA(self.hkey, value_name, None, value_type, Some(data));
+            let result = RegSetValueExW(self.hkey, value_name, None, value_type, Some(data));
 
             match result {
                 ERROR_SUCCESS => {
