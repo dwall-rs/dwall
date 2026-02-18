@@ -28,8 +28,8 @@ pub static DAEMON_EXE_PATH: OnceCell<PathBuf> = OnceCell::const_new();
 async fn main() -> DwallSettingsResult<()> {
     if cfg!(not(debug_assertions)) && cfg!(not(feature = "log-max-level-info")) {
         unsafe {
-        std::env::set_var("DWALL_LOG", "debug");
-    }
+            std::env::set_var("DWALL_LOG", "debug");
+        }
     }
 
     setup_logging(&["dwall_settings", "dwall"]);

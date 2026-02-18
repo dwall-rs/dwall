@@ -3,14 +3,14 @@
 use std::{collections::HashMap, path::Path};
 
 use windows::{
-    core::{Interface, HSTRING},
     Foundation::Uri,
     Storage::{IStorageFile, StorageFile},
     System::UserProfile::LockScreen,
     Win32::{
-        System::Com::{CoCreateInstance, CoInitialize, CoUninitialize, CLSCTX_ALL},
+        System::Com::{CLSCTX_ALL, CoCreateInstance, CoInitialize, CoUninitialize},
         UI::Shell::{DesktopWallpaper, IDesktopWallpaper},
     },
+    core::{HSTRING, Interface},
 };
 
 use crate::{

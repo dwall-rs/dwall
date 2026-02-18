@@ -10,18 +10,18 @@ use std::{
 };
 
 use crate::{
+    DwallResult,
     config::Config,
     domain::{
-        geography::{provider::GeographicPositionProvider, Position},
+        geography::{Position, provider::GeographicPositionProvider},
         time::solar_calculator::{SolarAngle, SunPosition},
         visual::color_scheme::{
-            determine_color_scheme_with_hysteresis, set_color_scheme, ColorSchemeManager,
-            ThresholdConfig,
+            ColorSchemeManager, ThresholdConfig, determine_color_scheme_with_hysteresis,
+            set_color_scheme,
         },
     },
     infrastructure::display::wallpaper_setter::WallpaperSetter,
     utils::datetime::UtcDateTime,
-    DwallResult,
 };
 
 // Constants for improved code maintainability
@@ -210,7 +210,9 @@ impl<'a> SolarThemeProcessor<'a> {
                             "Failed to reapply solar wallpapers after monitor configuration change"
                         );
                     } else {
-                        debug!("Solar wallpapers successfully applied to updated monitor configuration");
+                        debug!(
+                            "Solar wallpapers successfully applied to updated monitor configuration"
+                        );
                     }
                 }
 
@@ -299,7 +301,7 @@ impl SolarThemeValidator {
         Ok(())
     }
 
-    /// Loads solar angle configuration from theme directory  
+    /// Loads solar angle configuration from theme directory
     fn load_solar_angle_configuration(theme_directory: &Path) -> DwallResult<Vec<SolarAngle>> {
         let solar_configuration_file_path = theme_directory.join(SOLAR_CONFIG_FILENAME);
 
@@ -585,16 +587,16 @@ fn process_solar_theme_cycle(
         && successful_monitor_count > 0
         && let Some(ref lock_screen_theme_id) = lock_screen_theme_identifier
         && let Err(lock_screen_error) = apply_lock_screen_solar_wallpaper(
-                configuration,
-                lock_screen_theme_id,
-                &current_sun_position,
+            configuration,
+            lock_screen_theme_id,
+            &current_sun_position,
         )
     {
-                warn!(
-                    error = %lock_screen_error,
-                    theme_id = lock_screen_theme_id,
-                    "Failed to apply solar wallpaper to lock screen, continuing with other operations"
-                );
+        warn!(
+            error = %lock_screen_error,
+            theme_id = lock_screen_theme_id,
+            "Failed to apply solar wallpaper to lock screen, continuing with other operations"
+        );
     }
 
     // Optionally update system color scheme based on solar position
@@ -725,7 +727,9 @@ fn apply_lock_screen_solar_wallpaper(
 /// Applies a solar theme and starts background processing for periodic wallpaper updates
 pub async fn apply_solar_theme(configuration: Config) -> DwallResult<()> {
     if configuration.monitor_specific_wallpapers().is_empty() {
-        warn!("No monitor-specific wallpaper configurations found, solar theme daemon will not be started");
+        warn!(
+            "No monitor-specific wallpaper configurations found, solar theme daemon will not be started"
+        );
         return Err(ThemeProcessingError::MonitorWallpaperConfigurationMissing.into());
     }
 

@@ -7,19 +7,19 @@ use std::os::windows::ffi::OsStringExt;
 use std::path::Path;
 
 use thiserror::Error;
-use windows::core::{Error as WindowsError, Free};
 use windows::Win32::Foundation::HANDLE;
 use windows::Win32::System::ProcessStatus::GetModuleFileNameExW;
 use windows::Win32::System::{
     Diagnostics::ToolHelp::{
-        CreateToolhelp32Snapshot, Process32First, Process32Next, PROCESSENTRY32, TH32CS_SNAPPROCESS,
+        CreateToolhelp32Snapshot, PROCESSENTRY32, Process32First, Process32Next, TH32CS_SNAPPROCESS,
     },
-    Threading::{OpenProcess, TerminateProcess, PROCESS_QUERY_INFORMATION, PROCESS_TERMINATE},
+    Threading::{OpenProcess, PROCESS_QUERY_INFORMATION, PROCESS_TERMINATE, TerminateProcess},
 };
+use windows::core::{Error as WindowsError, Free};
 
 use crate::{
-    error::{DwallSettingsError, DwallSettingsResult},
     DAEMON_EXE_PATH,
+    error::{DwallSettingsError, DwallSettingsResult},
 };
 
 const INITIAL_BUFFER_SIZE: usize = 1024;
@@ -80,7 +80,7 @@ impl Drop for HandleWrapper {
     fn drop(&mut self) {
         // Only log and close if the handle is valid
         if !self.0.is_invalid() {
-            let _c_void_addr = self.0 .0.addr();
+            let _c_void_addr = self.0.0.addr();
             unsafe { self.0.free() };
         }
     }

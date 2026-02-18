@@ -1,6 +1,6 @@
 use std::{collections::HashMap, sync::LazyLock};
 
-use crate::i18n::{keys::*, LocaleTranslations, TranslationValue};
+use crate::i18n::{LocaleTranslations, TranslationValue, keys::*};
 
 pub static ENGLISH_US_TRANSLATIONS: LazyLock<LocaleTranslations> = LazyLock::new(|| {
     let mut translations = HashMap::new();

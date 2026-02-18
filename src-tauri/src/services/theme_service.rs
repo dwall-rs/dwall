@@ -5,17 +5,17 @@
 use std::{os::windows::process::CommandExt, process::Command, time::Duration};
 
 use dwall::{
-    read_config_file as dwall_read_config, write_config_file as dwall_write_config, Config,
-    DWALL_CONFIG_DIR,
+    Config, DWALL_CONFIG_DIR, read_config_file as dwall_read_config,
+    write_config_file as dwall_write_config,
 };
 use tokio::time::sleep;
 use windows::Win32::System::Threading::CREATE_NO_WINDOW;
 
 use crate::{
+    DAEMON_EXE_PATH,
     domain::theme::get_last_daemon_error,
     error::{DwallSettingsError, DwallSettingsResult},
     infrastructure::process::{find_daemon_process, kill_daemon},
-    DAEMON_EXE_PATH,
 };
 
 /// Launches the daemon process to apply wallpaper settings

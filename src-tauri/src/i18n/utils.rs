@@ -1,4 +1,4 @@
-use windows::{core::PWSTR, Win32::Globalization::GetUserPreferredUILanguages};
+use windows::{Win32::Globalization::GetUserPreferredUILanguages, core::PWSTR};
 
 use crate::error::DwallSettingsResult;
 

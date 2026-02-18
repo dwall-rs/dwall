@@ -2,8 +2,8 @@ use std::thread::sleep;
 use std::time::Duration;
 
 use crate::{
-    domain::visual::theme_processor::SolarThemeProcessor,
-    infrastructure::filesystem::config_manager::ConfigManager, DwallResult,
+    DwallResult, domain::visual::theme_processor::SolarThemeProcessor,
+    infrastructure::filesystem::config_manager::ConfigManager,
 };
 
 const MAX_CONSECUTIVE_FAILURE_THRESHOLD: u8 = 3;

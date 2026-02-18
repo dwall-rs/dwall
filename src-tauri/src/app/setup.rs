@@ -3,6 +3,7 @@ use std::{env, path::PathBuf, str::FromStr};
 use tauri::Manager;
 
 use crate::{
+    DAEMON_EXE_PATH,
     app::commands::read_config_file,
     error::DwallSettingsError,
     infrastructure::{
@@ -10,7 +11,6 @@ use crate::{
         window::create_main_window,
     },
     services::theme_service::launch_daemon,
-    DAEMON_EXE_PATH,
 };
 
 pub fn setup_app(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {

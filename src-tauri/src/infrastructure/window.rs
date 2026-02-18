@@ -11,7 +11,7 @@ use windows::{
     Win32::{
         Foundation::{HWND, STATUS_SUCCESS},
         Graphics::Dwm::{
-            DwmSetWindowAttribute, DWMWA_CAPTION_COLOR, DWMWA_USE_IMMERSIVE_DARK_MODE,
+            DWMWA_CAPTION_COLOR, DWMWA_USE_IMMERSIVE_DARK_MODE, DwmSetWindowAttribute,
         },
         System::SystemInformation::OSVERSIONINFOW,
     },
