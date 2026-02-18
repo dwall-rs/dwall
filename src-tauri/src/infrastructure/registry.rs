@@ -2,7 +2,10 @@
 //!
 //! This module contains Windows registry operations.
 
-use dwall::{RegistryError, RegistryKey, utils::string::WideStringRead};
+use dwall::{
+    RegistryError, RegistryKey,
+    utils::string::{WideStringExt, WideStringRead},
+};
 use windows::Win32::{
     Foundation::ERROR_FILE_NOT_FOUND,
     System::Registry::{KEY_QUERY_VALUE, KEY_WRITE, REG_SZ},
@@ -32,11 +35,18 @@ impl AutoStartManager {
     /// # Errors
     /// Returns a `DwallSettingsResult` if auto-start cannot be enabled
     pub fn enable_auto_start() -> DwallSettingsResult<()> {
-        // Safely get the executable path
         let exe_path_str = Self::get_executable_path();
 
         let registry_key = RegistryKey::open(Self::KEY_PATH, KEY_WRITE)?;
-        registry_key.set(Self::APP_NAME, REG_SZ, exe_path_str.as_bytes())?;
+
+        let wide_path = Vec::from_str(exe_path_str);
+        let path_bytes = unsafe {
+            std::slice::from_raw_parts(
+                wide_path.as_ptr() as *const u8,
+                wide_path.len() * std::mem::size_of::<u16>(),
+            )
+        };
+        registry_key.set(Self::APP_NAME, REG_SZ, path_bytes)?;
 
         Ok(())
     }
