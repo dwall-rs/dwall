@@ -124,9 +124,6 @@ fn get_geo_position() -> DwallResult<Position> {
 pub(crate) struct GeographicPositionProvider<'a> {
     coordinate_source: &'a PositionSource,
     cached_position: RefCell<Option<(Position, Instant)>>,
-
-    /// Cache duration for position data
-    cache_duration: Duration,
 }
 
 impl<'a> GeographicPositionProvider<'a> {
@@ -134,7 +131,6 @@ impl<'a> GeographicPositionProvider<'a> {
         Self {
             coordinate_source,
             cached_position: RefCell::new(None),
-            cache_duration: Duration::from_secs(60 * 5),
         }
     }
 
@@ -145,13 +141,13 @@ impl<'a> GeographicPositionProvider<'a> {
     }
 
     /// Retrieves a position from cache or fetches a new one if cache is expired
-    fn get_cached_position(&self) -> DwallResult<Position> {
+    fn get_cached_position(&self, cache_duration: Duration) -> DwallResult<Position> {
         debug!("Checking cached position data");
         {
             let cache = self.cached_position.borrow();
 
             if let Some((cached_position, cached_time)) = cache.as_ref()
-                && cached_time.elapsed() < self.cache_duration
+                && cached_time.elapsed() < cache_duration
             {
                 debug!(
                     position = ?cached_position,
@@ -188,11 +184,12 @@ impl<'a> GeographicPositionProvider<'a> {
         match &self.coordinate_source {
             PositionSource::Automatic {
                 update_on_each_calculation,
+                cache_minutes: position_cache_minutes,
             } => {
                 if *update_on_each_calculation {
                     self.get_fresh_position()
                 } else {
-                    self.get_cached_position()
+                    self.get_cached_position(Duration::from_secs(60 * position_cache_minutes))
                 }
             }
             PositionSource::Manual {
