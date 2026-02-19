@@ -38,6 +38,8 @@ pub enum PositionSource {
     Automatic {
         #[serde(default = "default_update_on_each_calculation")]
         update_on_each_calculation: bool,
+        #[serde(default = "default_position_cache_minutes")]
+        cache_minutes: u64,
     },
 
     Manual {
@@ -62,6 +64,7 @@ impl Default for PositionSource {
     fn default() -> Self {
         Self::Automatic {
             update_on_each_calculation: false,
+            cache_minutes: default_position_cache_minutes(),
         }
     }
 }
@@ -152,6 +155,10 @@ fn default_image_format() -> ImageFormat {
 
 fn default_position_source() -> PositionSource {
     Default::default()
+}
+
+fn default_position_cache_minutes() -> u64 {
+    30
 }
 
 fn default_auto_detect_color_scheme() -> bool {
@@ -305,8 +312,8 @@ impl Default for Config {
     fn default() -> Self {
         Self {
             image_format: Default::default(),
-            position_source: Default::default(),
             github_mirror_template: Default::default(),
+            position_source: Default::default(),
             auto_detect_color_scheme: default_auto_detect_color_scheme(),
             themes_directory: default_themes_directory(),
             lock_screen_wallpaper_enabled: default_lock_screen_wallpaper_enabled(),
