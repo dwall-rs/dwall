@@ -4,6 +4,8 @@ import { themeContract, vars } from "fluent-solid/lib/themes";
 export const markdown = style({
   lineHeight: 1.6,
   marginBottom: vars.spacingVerticalL,
+  maxHeight: "60vh",
+  overflowY: "auto",
 });
 
 export const h2 = style({
