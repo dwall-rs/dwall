@@ -18,7 +18,7 @@ path = "src/bin/daemon.rs"
 tauri-winres = { version = "0", optional = true }
 
 [dependencies]
-toml = { version = "0.9", default-features = false, features = [
+toml = { version = "1", default-features = false, features = [
   "display",
   "parse",
   "serde",
