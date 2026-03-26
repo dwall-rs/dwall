@@ -32,7 +32,7 @@
     "solid-js": "^1.9.12"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.4.8",
+    "@biomejs/biome": "^2.4.9",
     "@tauri-apps/cli": "^2.10.1",
     "@types/node": "^25.5.0",
     "@vanilla-extract/vite-plugin": "^5.2.1",
@@ -40,7 +40,7 @@
     "jsdom": "^29.0.1",
     "sass": "^1.98.0",
     "typescript": "^6.0.2",
-    "vite": "^8.0.2",
+    "vite": "7",
     "vite-plugin-solid": "^2.11.11",
     "vitest": "^4.1.1"
   }
