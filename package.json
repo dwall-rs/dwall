@@ -23,25 +23,22 @@
   "license": "MIT",
   "dependencies": {
     "@tauri-apps/api": "^2.10.1",
-    "@tauri-apps/plugin-dialog": "^2.6.0",
+    "@tauri-apps/plugin-dialog": "^2.7.0",
     "@tauri-apps/plugin-shell": "^2.3.5",
-    "@tauri-apps/plugin-updater": "^2.10.0",
-    "@vanilla-extract/css": "^1.20.0",
+    "@tauri-apps/plugin-updater": "^2.10.1",
+    "@vanilla-extract/css": "^1.20.1",
     "fluent-solid": "^0.2.14",
     "solid-icons": "^1.2.0",
     "solid-js": "^1.9.12"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.4.9",
     "@tauri-apps/cli": "^2.10.1",
-    "@types/node": "^25.5.0",
-    "@vanilla-extract/vite-plugin": "^5.2.1",
+    "@types/node": "^25.6.0",
+    "@vanilla-extract/vite-plugin": "^5.2.2",
     "cross-env": "^10.1.0",
-    "jsdom": "^29.0.1",
-    "sass": "^1.98.0",
     "typescript": "^6.0.2",
-    "vite": "7",
-    "vite-plugin-solid": "^2.11.11",
-    "vitest": "^4.1.1"
+    "vite": "^8.0.8",
+    "vite-plugin-solid": "^2.11.12",
+    "vitest": "^4.1.4"
   }
 }
