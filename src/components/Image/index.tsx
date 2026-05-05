@@ -103,7 +103,7 @@ const ThemeImage = (props: ThemeImageProps) => {
   const renderImageContent = children(() => (
     <>
       {!loaded() && !error() && (
-        <div class="absolute top-1/2 left-1/2 translate-1/2">
+        <div class="absolute top-1/2 left-1/2 -translate-1/2">
           <Spinner />
         </div>
       )}
