@@ -15,12 +15,13 @@ import {
   SidebarMenuItem,
 } from "~/components/sidebar";
 import { Tooltip, TooltipContent, TooltipTrigger } from "~/components/tooltip";
+import { Spinner } from "~/components/spinner";
+import Updater from "~/components/Update";
 
 import { generateGitHubThumbnailMirrorUrl } from "~/utils/proxy";
 
 import { type ThemeItem, themes } from "~/themes";
 
-import Updater from "~/components/Update";
 import { route, navigate } from "~/router";
 import { t } from "~/i18n";
 
@@ -46,14 +47,16 @@ export const AppSidebar = () => {
         <SidebarMenu class="gap-2 mx-1.5">
           <For each={themes}>
             {(item, index) => (
-              <ThemeMenuItem
-                {...item}
-                index={index()}
-                active={activeThemeID() === item.id}
-                applied={theme.appliedThemeID() === item.id}
-                github_mirror_template={config()?.github_mirror_template}
-                // disabled={disabled()}
-              />
+              <Show when={config.state === "ready"} fallback={<Spinner />}>
+                <ThemeMenuItem
+                  {...item}
+                  index={index()}
+                  active={activeThemeID() === item.id}
+                  applied={theme.appliedThemeID() === item.id}
+                  github_mirror_template={config()?.github_mirror_template}
+                  // disabled={disabled()}
+                />
+              </Show>
             )}
           </For>
         </SidebarMenu>
