@@ -18,6 +18,7 @@ export const dict: RawDictionary = {
     unit: {
       hour: "시간",
       second: "초",
+      minute: "분",
     },
 
     button: {
@@ -28,6 +29,7 @@ export const dict: RawDictionary = {
     label: {
       automaticallyRetrieveCoordinates: "좌표 자동 가져오기",
       automaticallySwitchModes: "다크 또는 라이트 모드 자동 전환",
+      retrieveCoordinatesInterval: "좌표 획득 간격",
       checkInterval: "확인 간격",
       githubMirrorTemplate: "Github 미러 템플릿",
       launchAtStartup: "시작 시 실행",
@@ -51,6 +53,8 @@ export const dict: RawDictionary = {
         "잠금 화면 배경화면도 동시에 설정하지 않으려면 이 옵션을 비활성화하세요.",
       updatedFailed:
         "핫 업데이트를 완료할 수 없습니다. 이 메시지 뒤의 다운로드 버튼을 클릭하여 새 버전을 수동으로 다운로드하세요:",
+      retrieveCoordinatesInterval:
+        "좌표 획득 간격(단위: 분)은 감지 간격보다 커야 합니다. 컴퓨터 위치가 고정된 경우 간격을 24시간 이상으로 설정할 수 있습니다. 자주 노트북을 가지고 출장을 다니는 경우 1시간 이내로 설정하는 것이 좋습니다.",
     },
 
     placeholder: {
@@ -85,6 +89,8 @@ export const dict: RawDictionary = {
       isLatestVersion: "이미 최신 버전을 사용하고 있습니다.",
       checkIntervalUpdateFailed:
         "업데이트 확인 간격 업데이트에 실패했습니다: \n{{ error }}",
+      saveRetrieveCoordinatesIntervalFailed:
+        "좌표 검색 간격 저장 실패:\n{{ error }}",
     },
   },
 

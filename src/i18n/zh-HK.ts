@@ -17,6 +17,7 @@ export const dict: RawDictionary = {
     unit: {
       hour: "小時",
       second: "秒",
+      minute: "分",
     },
 
     button: {
@@ -27,6 +28,7 @@ export const dict: RawDictionary = {
     label: {
       automaticallyRetrieveCoordinates: "自動獲取坐標",
       automaticallySwitchModes: "自動切換深色或淺色模式",
+      retrieveCoordinatesInterval: "座標獲取間隔",
       checkInterval: "檢查間隔",
       githubMirrorTemplate: "Github 鏡像模板",
       launchAtStartup: "開機自啟",
@@ -49,6 +51,8 @@ export const dict: RawDictionary = {
       setLockScreenWallpaperSimultaneously:
         "如果你唔希望同時設定鎖定畫面壁紙，請停用此選項。",
       updatedFailed: "無法完成熱更新，請撳本訊息後面嘅下載按鈕手動下載新版本：",
+      retrieveCoordinatesInterval:
+        "獲取坐標嘅時間間隔（單位：分鐘），呢個值必須大過檢測時間間隔。若果你嘅電腦位置固定，可以將間隔設為24小時或更長；若果你經常帶住電腦出差，建議設為1小時以內。",
     },
 
     placeholder: {
@@ -77,6 +81,8 @@ export const dict: RawDictionary = {
       movedThemesDirectory: "主題目錄已移動到：{{ directory }}",
       isLatestVersion: "你已在使用最新版本。",
       checkIntervalUpdateFailed: "更新檢查間隔失敗：\n{{ error }}",
+      saveRetrieveCoordinatesIntervalFailed:
+        "儲存座標檢索間隔失敗：\n{{ error }}",
     },
   },
 

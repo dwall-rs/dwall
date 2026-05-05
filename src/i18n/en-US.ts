@@ -16,6 +16,7 @@ export const dict = {
     unit: {
       hour: "h",
       second: "s",
+      minute: "m",
     },
 
     button: {
@@ -25,6 +26,7 @@ export const dict = {
 
     label: {
       automaticallyRetrieveCoordinates: "Automatically Retrieve Coordinates",
+      retrieveCoordinatesInterval: "Coordinates Retrieval Interval",
       automaticallySwitchModes: "Automatically Switch to Dark or Light Mode",
       checkInterval: "Check Interval",
       githubMirrorTemplate: "Github Mirror Template",
@@ -40,6 +42,8 @@ export const dict = {
     help: {
       automaticallySwitchModes:
         "If you do not want to automatically switch between light and dark modes, please disable this option.",
+      retrieveCoordinatesInterval:
+        "The interval for retrieving coordinates, in minutes, should be greater than the detection interval. If your computer is always at a fixed location, you can set it to more than 24 hours. If you frequently travel with your computer, it is recommended to set it to less than 1 hour.",
       githubMirror:
         "Github mirror template is used to accelerate downloads. In some countries and regions, due to network restrictions, accessing Github may fail, resulting in download failures. You need to set up a Github mirror template to properly load thumbnails and download themes. Click this button to view available Github mirror templates:",
       launchAtStartup:
@@ -85,6 +89,8 @@ export const dict = {
       isLatestVersion: "You are already using the latest version.",
       checkIntervalUpdateFailed:
         "Failed to update check interval: \n{{ error }}",
+      saveRetrieveCoordinatesIntervalFailed:
+        "Failed to save retrieve coordinates interval: \n{{ error }}",
     },
   },
 

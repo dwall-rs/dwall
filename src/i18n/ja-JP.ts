@@ -18,6 +18,7 @@ export const dict: RawDictionary = {
     unit: {
       hour: "時間",
       second: "秒",
+      minute: "分",
     },
 
     button: {
@@ -28,6 +29,7 @@ export const dict: RawDictionary = {
     label: {
       automaticallyRetrieveCoordinates: "座標を自動取得",
       automaticallySwitchModes: "ダークモードまたはライトモードに自動切替",
+      retrieveCoordinatesInterval: "座標取得間隔",
       checkInterval: "チェック間隔",
       githubMirrorTemplate: "Github ミラーテンプレート",
       launchAtStartup: "起動時に起動",
@@ -51,6 +53,8 @@ export const dict: RawDictionary = {
         "ロック画面の壁紙も同時に設定したくない場合は、このオプションを無効にしてください。",
       updatedFailed:
         "ホットアップデートを完了できませんでした。このメッセージの後ろにあるダウンロードボタンをクリックして、新しいバージョンを手動でダウンロードしてください：",
+      retrieveCoordinatesInterval:
+        "座標を取得する間隔（単位：分）は、検出間隔よりも大きい値に設定してください。PCの設置場所が固定されている場合は24時間以上、頻繁に持ち運び出張される場合は1時間以内を推奨します。",
     },
 
     placeholder: {
@@ -87,6 +91,8 @@ export const dict: RawDictionary = {
       isLatestVersion: "最新バージョンを使用しています。",
       checkIntervalUpdateFailed:
         "更新チェック間隔の更新に失敗しました：\n{{ error }}",
+      saveRetrieveCoordinatesIntervalFailed:
+        "座標取得間隔の保存に失敗しました：\n{{ error }}",
     },
   },
 
