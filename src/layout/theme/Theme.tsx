@@ -112,7 +112,7 @@ export const Theme = (props: ThemeProps) => {
         </Carousel>
 
         <p
-          class="absolute top-(--name-top) right-2 bg-neutral-950/30 rounded-2xl text-white dark:text-neutral-950 py-0.5 px-2 text-xs font-medium backdrop-blur-sm"
+          class="absolute top-(--name-top) right-2 bg-neutral-950/30 rounded-2xl text-white dark:text-white/60 py-0.5 px-2 text-xs font-medium backdrop-blur-sm"
           style={{ "--name-top": `${nameTop()}px` }}
         >
           {props.id}
@@ -128,9 +128,9 @@ export const Theme = (props: ThemeProps) => {
                 <button
                   type="button"
                   class={clsx(
-                    "size-2 rounded-full border-none p-0 bg-white/50 dark:bg-neutral-950/30 hover:bg-white/80 dark:hover:bg-neutral-950/50 transition-all",
+                    "size-2 rounded-full border-none p-0 bg-white/50 dark:bg-white/40 hover:bg-white/80 dark:hover:bg-white/60 transition-all",
                     store.current === index() &&
-                      "bg-white dark:bg-neutral-950 scale-120",
+                      "bg-white dark:bg-white/60 scale-120",
                   )}
                   aria-label={`Go to slide ${index() + 1}`}
                 />
