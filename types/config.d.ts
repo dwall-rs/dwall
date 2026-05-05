@@ -12,6 +12,8 @@ interface Config {
 
 interface PositionSourceAutomatic {
   type: "AUTOMATIC";
+  update_on_each_calculation?: boolean;
+  cache_minutes?: number;
 }
 
 interface PositionSourceManual {

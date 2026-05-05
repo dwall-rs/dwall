@@ -1,11 +1,12 @@
 import { createMemo, createSignal, Show } from "solid-js";
-import { AiOutlineCheck } from "solid-icons/ai";
+import { AiFillSave, AiOutlineCheck } from "solid-icons/ai";
 
 import { message } from "@tauri-apps/plugin-dialog";
 
 import {
   InputGroup,
   InputGroupAddon,
+  InputGroupButton,
   InputGroupInput,
   InputGroupText,
 } from "~/components/input-group";
@@ -50,6 +51,68 @@ const CoordinateInput = (props: CoordinateInputProps) => {
         <InputGroupText>°</InputGroupText>
       </InputGroupAddon>
     </InputGroup>
+  );
+};
+
+const CoordinatesRetrievalInterval = () => {
+  const { data: config, refetch: refetchConfig } = useConfig();
+  const [value, setValue] = createSignal(
+    (config()?.position_source as PositionSourceAutomatic).cache_minutes ?? 0,
+  );
+  const onChange = (v: number) => {
+    setValue(v);
+  };
+
+  const onSave = async () => {
+    const newConfig: PositionSourceAutomatic = {
+      type: "AUTOMATIC",
+      cache_minutes: value(),
+    };
+
+    try {
+      await writeConfigFile({
+        ...config()!,
+        position_source: newConfig,
+      });
+      refetchConfig();
+    } catch (e) {
+      message(
+        t("settings.message.saveRetrieveCoordinatesIntervalFailed", {
+          error: String(e),
+        }),
+        {
+          kind: "error",
+        },
+      );
+      return;
+    }
+  };
+
+  return (
+    <SettingsItem
+      orientation="horizontal"
+      label={t("settings.label.retrieveCoordinatesInterval")}
+      help={t("settings.help.retrieveCoordinatesInterval")}
+    >
+      <InputGroup class="max-w-32">
+        <InputGroupInput
+          type="number"
+          min={0}
+          onChange={onChange}
+          value={value()}
+        />
+        <InputGroupAddon align="inline-end">
+          <InputGroupText>{t("settings.unit.minute")}</InputGroupText>
+          <InputGroupButton
+            variant="ghost"
+            size="xs"
+            onClick={onSave}
+            icon={<AiFillSave />}
+            disabled={!value()}
+          />
+        </InputGroupAddon>
+      </InputGroup>
+    </SettingsItem>
   );
 };
 
@@ -165,6 +228,10 @@ const CoordinateSource = () => {
           onCheckedChange={handleSwitchCoordinateSource}
         />
       </SettingsItem>
+
+      <Show when={auto()}>
+        <CoordinatesRetrievalInterval />
+      </Show>
 
       <Show when={!auto()}>
         <div class="flex items-center justify-end gap-3">

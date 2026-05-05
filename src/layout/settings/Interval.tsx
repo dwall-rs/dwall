@@ -48,7 +48,7 @@ const Interval = () => {
         <InputGroupInput
           type="number"
           min={15}
-          max={300}
+          max={3600}
           onChange={onChange}
           value={value()}
         />
