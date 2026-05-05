@@ -1,7 +1,12 @@
+import { createEffect, createMemo, createSignal } from "solid-js";
 import * as i18n from "@solid-primitives/i18n";
 
 import * as enUS from "./en-US";
-import { createEffect, createResource, createSignal } from "solid-js";
+import * as zhCN from "./zh-CN";
+import * as zhHK from "./zh-HK";
+import * as zhTW from "./zh-TW";
+import * as jaJP from "./ja-JP";
+import * as koKR from "./ko-KR";
 
 export type Locale = "en-US" | "zh-CN" | "ja-JP" | "zh-HK" | "zh-TW" | "ko-KR";
 export type RawDictionary = typeof enUS.dict;
@@ -16,13 +21,17 @@ export const LANGUAGES = {
   "ko-KR": "한국어",
 } as const satisfies Record<Locale, string>;
 
-export async function fetchDictionary(locale: Locale): Promise<Dictionary> {
-  if (locale === "en-US") {
-    return i18n.flatten(enUS.dict);
-  }
+const dictionaries: Record<Locale, RawDictionary> = {
+  "en-US": enUS.dict,
+  "zh-CN": zhCN.dict,
+  "ja-JP": jaJP.dict,
+  "zh-HK": zhHK.dict,
+  "zh-TW": zhTW.dict,
+  "ko-KR": koKR.dict,
+};
 
-  const dict: RawDictionary = (await import(`../i18n/${locale}.ts`)).dict;
-  return i18n.flatten(dict);
+export function fetchDictionary(locale: Locale): Dictionary {
+  return i18n.flatten(dictionaries[locale]);
 }
 
 const getInitialLocale = (): Locale => {
@@ -39,9 +48,7 @@ const getInitialLocale = (): Locale => {
 
 const [locale, setLocale] = createSignal<Locale>(getInitialLocale());
 
-const [dict] = createResource(locale, fetchDictionary, {
-  initialValue: i18n.flatten(enUS.dict),
-});
+const dict = createMemo(() => i18n.flatten(dictionaries[locale()]));
 
 export const t = i18n.translator(dict, i18n.resolveTemplate);
 
