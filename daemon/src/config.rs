@@ -13,7 +13,7 @@ use crate::{
 // Configuration constants
 const DEFAULT_INTERVAL_SECONDS: u16 = 15;
 const MIN_INTERVAL_SECONDS: u16 = 1;
-const MAX_INTERVAL_SECONDS: u16 = 600;
+const MAX_INTERVAL_SECONDS: u16 = 3600;
 const DEFAULT_AUTO_DETECT_COLOR_SCHEME: bool = true;
 const DEFAULT_LOCK_SCREEN_WALLPAPER_ENABLED: bool = true;
 
