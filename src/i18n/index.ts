@@ -1,7 +1,7 @@
 import * as i18n from "@solid-primitives/i18n";
 
 import * as enUS from "./en-US";
-import { createResource, createSignal } from "solid-js";
+import { createEffect, createResource, createSignal } from "solid-js";
 
 export type Locale = "en-US" | "zh-CN" | "ja-JP" | "zh-HK" | "zh-TW" | "ko-KR";
 export type RawDictionary = typeof enUS.dict;
@@ -44,5 +44,10 @@ const [dict] = createResource(locale, fetchDictionary, {
 });
 
 export const t = i18n.translator(dict, i18n.resolveTemplate);
+
+createEffect(() => {
+  localStorage.setItem("locale", locale());
+  document.documentElement.lang = locale();
+});
 
 export { locale, setLocale };
