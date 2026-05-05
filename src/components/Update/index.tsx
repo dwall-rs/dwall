@@ -24,8 +24,8 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "~/components/dialog";
+import Markdown from "~/components/Markdown";
 
-import { LazyMarkdown } from "~/lazy";
 import { t } from "~/i18n";
 
 const Updater = (props: ParentProps) => {
@@ -112,7 +112,7 @@ const Updater = (props: ParentProps) => {
           </DialogTitle>
         </DialogHeader>
 
-        <LazyMarkdown content={update()!.body ?? ""} />
+        <Markdown content={update()!.body ?? ""} />
         <Progress class="w-full" value={percentage()} />
 
         <DialogFooter>
