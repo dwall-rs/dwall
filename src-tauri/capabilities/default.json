@@ -7,6 +7,10 @@
     "core:default",
     "updater:default",
     "dialog:default",
-    "shell:default"
+    "shell:default",
+    "core:window:default",
+    "core:window:allow-start-dragging",
+    "core:window:allow-minimize",
+    "core:window:allow-close"
   ]
 }

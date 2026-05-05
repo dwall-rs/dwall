@@ -1,30 +1,29 @@
-import { open } from "@tauri-apps/plugin-shell";
 import { createEffect, onMount } from "solid-js";
-import { toastMessageLinkLikeButton } from "~/App.css";
+import { open } from "@tauri-apps/plugin-shell";
+
 import {
   getAppliedThemeID,
   setTitlebarColorMode,
   showWindow,
 } from "~/commands";
-import { useMonitor, useTheme, useToast, useUpdate } from "~/contexts";
-import type { Translate } from "~/contexts/TranslationsContext";
-import { themes } from "~/themes";
+import { toast } from "~/components/toast";
+import { useMonitor, useTheme, useUpdate } from "~/contexts";
 import { detectColorMode } from "~/utils/color";
+import { themes } from "~/themes";
+import { useMonitorThemeSync } from "./monitor";
+import { navigateToTheme } from "~/router";
+import { t } from "~/i18n";
+import { Button } from "~/components/button";
 
 /**
  * App initialization Hook, used to handle application startup logic
- * @param menuItemIndex Current menu item index
- * @param handleThemeSelection Function to handle theme selection
  */
-export const useAppInitialization = (
-  translate: Translate,
-  menuItemIndex: Accessor<number | undefined>,
-  handleThemeSelection: (index: number) => void,
-) => {
-  const { setMenuItemIndex, setAppliedThemeID } = useTheme();
-  const { id: monitorID } = useMonitor();
-  const toast = useToast();
+export const useAppInitialization = () => {
+  const { setAppliedThemeID } = useTheme();
+  const { id: monitorID, allSameTheme } = useMonitor();
   const { update } = useUpdate();
+
+  useMonitorThemeSync(monitorID, allSameTheme);
 
   const openGithubRepository = async () => {
     await open("https://github.com/dwall-rs/dwall");
@@ -32,29 +31,26 @@ export const useAppInitialization = (
 
   const githubStarMessage = (
     <span>
-      {translate("message-github-star")}
-      <button
-        type="button"
-        class={toastMessageLinkLikeButton}
-        onClick={openGithubRepository}
-      >
+      {t("common.message.githubStar")}
+      <Button variant="link" onClick={openGithubRepository}>
         dwall
-      </button>
+      </Button>
     </span>
   );
 
-  const updateMessage = (
+  const updateMessage = (u: Update) => (
     <span>
-      {translate("message-update-available", {
-        version: update()?.version ?? "",
-        currentVersion: update()?.currentVersion ?? "",
+      {t("common.message.updateAvailable", {
+        version: u.version,
+        currentVersion: u.currentVersion,
       })}
     </span>
   );
 
   createEffect(() => {
-    if (update()) {
-      toast.info(updateMessage, {
+    const u = update();
+    if (u) {
+      toast.info(updateMessage(u), {
         position: "top-right",
       });
     }
@@ -65,23 +61,17 @@ export const useAppInitialization = (
 
     if (import.meta.env.PROD) await showWindow("main");
 
-    const mii = menuItemIndex();
-    if (mii !== undefined) handleThemeSelection(mii);
-
     toast.info(githubStarMessage, {
       position: "top-right",
       duration: 5000,
     });
 
-    const applied_theme_id = await getAppliedThemeID(monitorID());
-    if (applied_theme_id) {
-      const themeIndex = themes.findIndex((t) => t.id === applied_theme_id);
-      if (themeIndex !== -1) {
-        setMenuItemIndex(themeIndex);
-        handleThemeSelection(themeIndex);
-        setAppliedThemeID(applied_theme_id);
-        return;
-      }
+    const appliedThemeID = await getAppliedThemeID(monitorID());
+    if (appliedThemeID) {
+      setAppliedThemeID(appliedThemeID);
+      navigateToTheme(appliedThemeID);
+    } else {
+      navigateToTheme(themes[0].id);
     }
   });
 };

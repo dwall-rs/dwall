@@ -17,8 +17,7 @@ use tauri::{AppHandle, Manager, WebviewWindow};
 
 use crate::{
     domain::{monitor::get_monitors, theme::validate_solar_theme},
-    error::{DwallSettingsError, DwallSettingsResult},
-    i18n::get_translations,
+    error::DwallSettingsResult,
     infrastructure::{
         filesystem::move_themes_directory, network::download::ThemeDownloader,
         process::kill_daemon, registry::AutoStartManager, window::set_window_color_mode,
@@ -169,11 +168,4 @@ pub async fn get_or_save_cached_thumbnails_cmd(
 #[tauri::command]
 pub async fn clear_thumbnail_cache_cmd() -> DwallSettingsResult<u64> {
     clear_thumbnail_cache().await
-}
-
-#[tauri::command]
-pub fn get_translations_cmd() -> DwallSettingsResult<serde_json::Value> {
-    let translations = get_translations();
-    serde_json::to_value(translations)
-        .map_err(|_| DwallSettingsError::Other("Failed to serialize translations".to_string()))
 }

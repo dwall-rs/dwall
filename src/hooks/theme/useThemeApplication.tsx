@@ -1,6 +1,6 @@
 import { message } from "@tauri-apps/plugin-dialog";
 import { applyTheme } from "~/commands";
-import { useTranslations } from "~/contexts";
+import { t } from "~/i18n";
 
 /**
  * Theme application management Hook, used to handle theme application and task closure
@@ -14,16 +14,15 @@ import { useTranslations } from "~/contexts";
 export const useThemeApplication = (
   config: () => Config | undefined,
   refetchConfig: () => void,
-  currentTheme: () => ThemeItem | undefined,
   checkLocationPermission: () => Promise<boolean>,
   setAppliedThemeID: (id?: string) => void,
 ) => {
-  const { translateErrorMessage } = useTranslations();
-
   // Handle theme application
-  const handleThemeApplication = async (monitorID: Accessor<string>) => {
-    const theme = currentTheme();
-    if (!theme || !config()) return;
+  const handleThemeApplication = async (
+    monitorID: Accessor<string>,
+    themeID?: string,
+  ) => {
+    if (!themeID || !config()) return;
 
     const currentConfig = config()!;
 
@@ -46,7 +45,7 @@ export const useThemeApplication = (
 
     if (monitorID() === "all") {
       // Set the same theme for all monitors
-      monitorSpecificWallpapers = theme.id;
+      monitorSpecificWallpapers = themeID;
     } else {
       // Set theme for specific monitor
       monitorSpecificWallpapers =
@@ -54,7 +53,7 @@ export const useThemeApplication = (
           ? {}
           : { ...currentConfig.monitor_specific_wallpapers };
 
-      monitorSpecificWallpapers[monitorID()!] = theme.id;
+      monitorSpecificWallpapers[monitorID()!] = themeID;
     }
 
     currentConfig.monitor_specific_wallpapers = monitorSpecificWallpapers;
@@ -62,9 +61,9 @@ export const useThemeApplication = (
     try {
       await applyTheme(currentConfig);
       refetchConfig();
-      setAppliedThemeID(theme.id);
+      setAppliedThemeID(themeID);
     } catch (e) {
-      message(translateErrorMessage("message-apply-theme-failed", e), {
+      message(t("theme.message.applyThemeFailed", { error: String(e) }), {
         kind: "error",
       });
     }

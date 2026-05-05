@@ -1,0 +1,1 @@
+export { SidebarInset } from "./SidebarInset";

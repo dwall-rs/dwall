@@ -96,6 +96,12 @@ https://kkgithub.com/<owner>/<repo>/releases/download/<version>/<asset>
 
 与第 1 个问题相同，托盘进程本身要比后台进程的内存占用还要大，考虑到这一点，我决定不使用托盘管理后台进程。
 
+## 制作壁纸
+
+壁纸制作是一个漫长且复杂的过程，具体制作方法可以参考：https://joshjet.substack.com/p/the-missing-macos-tahoe-dynamic-desktop
+
+不过，上面的制作方法并不严谨，若想制作与macOS完全一样的壁纸请参考本项目太角方位角和高度角的计算方法，根据你的拍摄地的地理坐标对每张照片进行角度标记。
+
 ---
 
 我们欢迎社区的贡献，以帮助改进 DWALL。如果您遇到任何问题或对新功能有建议，请随时在我们的 GitHub 页面上提出问题或提交拉取请求。

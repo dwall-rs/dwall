@@ -1,4 +1,3 @@
-import * as styles from "./Markdown.css";
 import type { BlockCodeTag, MarkdownTag } from "./Markdown.types";
 
 // Utility function: HTML escaping
@@ -16,7 +15,7 @@ const parseInlineCode = (text: string): string => {
   for (let i = 0; i < parts.length; i++) {
     if (i % 2 === 1) {
       // Odd positions are code content
-      result += `<code class="${styles.inlineCode}">${escapeHtml(parts[i])}</code>`;
+      result += `<code class="font-mono">${escapeHtml(parts[i])}</code>`;
     } else {
       // Even positions are plain text
       result += escapeHtml(parts[i]);

@@ -1,25 +1,45 @@
-import { createEffect, createSignal, onMount } from "solid-js";
+import {
+  createEffect,
+  createMemo,
+  createSignal,
+  onMount,
+  type ParentProps,
+} from "solid-js";
 
 import { AiOutlineDownload } from "solid-icons/ai";
 
 import { message } from "@tauri-apps/plugin-dialog";
 import { open } from "@tauri-apps/plugin-shell";
 
-import { useToast, useTranslations, useUpdate } from "~/contexts";
+import { useUpdate } from "~/contexts";
 
-import { LazyButton, LazyMarkdown, LazyProgress } from "~/lazy";
+import { toast } from "~/components/toast";
+import { Button } from "~/components/button";
+import { Progress } from "~/components/progress";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "~/components/dialog";
 
-import Dialog from "../Dialog";
+import { LazyMarkdown } from "~/lazy";
+import { t } from "~/i18n";
 
-const Updater = () => {
-  const toast = useToast();
-  const { translate, translateErrorMessage } = useTranslations();
-  const { update, showUpdateDialog, setShowUpdateDialog } = useUpdate();
+const Updater = (props: ParentProps) => {
+  const { update } = useUpdate();
 
   const [total, setTotal] = createSignal<number | undefined>();
   const [downloaded, setDownloaded] = createSignal<number | undefined>();
   const [error, setError] = createSignal<string | undefined>();
-  const [downloadFinished, setDownloadFinished] = createSignal(false);
+
+  const percentage = createMemo(() => {
+    const totalValue = total() ?? 0;
+    const downloadedValue = downloaded() ?? 0;
+    return (totalValue === 0 ? 0 : downloadedValue / totalValue) * 100;
+  });
 
   onMount(async () => {
     try {
@@ -32,20 +52,17 @@ const Updater = () => {
             setDownloaded((prev) => (prev ?? 0) + event.data.chunkLength);
             break;
           case "Finished":
-            setDownloadFinished(true);
             break;
         }
       });
     } catch (error) {
-      const errorMessage = translateErrorMessage(
-        "message-update-failed",
-        error,
-      );
+      const errorMessage = t("update.message.updateFailed", {
+        error: String(error),
+      });
       await message(errorMessage, {
         kind: "error",
       });
       setError(errorMessage);
-      setShowUpdateDialog(false);
     }
   });
 
@@ -55,8 +72,8 @@ const Updater = () => {
         <h4>{message}</h4>
 
         <div>
-          {translate("help-update-failed")}
-          <LazyButton
+          {t("update.message.updateFailed")}
+          <Button
             onClick={() =>
               open(
                 (
@@ -67,9 +84,8 @@ const Updater = () => {
                 )["windows-x86_64"].url,
               )
             }
-            icon={<AiOutlineDownload />}
-            appearance="primary"
-            size="small"
+            icon={{ icon: <AiOutlineDownload />, ariaLabel: "Download" }}
+            size="sm"
           />
         </div>
       </div>
@@ -85,34 +101,29 @@ const Updater = () => {
   });
 
   return (
-    <Dialog
-      open={!!update() && showUpdateDialog()}
-      showCloseButton
-      onClose={() => setShowUpdateDialog(false)}
-      maskClosable={false}
-      title={
-        translate("title-downloading-new-version", {
-          newVersion: update()!.version,
-        }) as string
-      }
-      footer={
-        <LazyButton
-          onClick={() => update()!.install()}
-          appearance="primary"
-          disabled={!downloadFinished()}
-        >
-          {translate("button-install")}
-        </LazyButton>
-      }
-    >
-      <LazyMarkdown content={update()!.body ?? ""} />
+    <Dialog>
+      <DialogTrigger>{props.children}</DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>
+            {t("update.title.downloadingNewVersion", {
+              version: update()!.version,
+            })}
+          </DialogTitle>
+        </DialogHeader>
 
-      <LazyProgress
-        style={{ width: "480px" }}
-        thickness="large"
-        max={total()}
-        value={downloaded()}
-      />
+        <LazyMarkdown content={update()!.body ?? ""} />
+        <Progress class="w-full" value={percentage()} />
+
+        <DialogFooter>
+          <Button
+            onClick={() => update()!.install()}
+            disabled={percentage() < 100}
+          >
+            {t("update.button.install")}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
     </Dialog>
   );
 };

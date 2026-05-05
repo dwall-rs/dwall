@@ -1,6 +1,10 @@
 export interface ImageData {
   width: number;
   height: number;
+  top: number;
+  bottom: number;
+  left: number;
+  right: number;
 }
 
 export interface ImageProps {

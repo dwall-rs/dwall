@@ -1,0 +1,2 @@
+export const classes =
+  "group/alert-dialog-content fixed top-1/2 left-1/2 z-50 grid w-full -translate-x-1/2 -translate-y-1/2 gap-4 rounded-xl bg-white dark:bg-neutral-900 p-4 text-neutral-950 dark:text-neutral-50 ring-1 ring-neutral-950/10 dark:ring-neutral-50/10 duration-100 outline-none data-[size=md]:max-w-xs data-[size=sm]:max-w-xs data-[size=md]:sm:max-w-sm data-[open=true]:animate-in data-[open=true]:fade-in-0 data-[open=true]:zoom-in-95 data-[open=false]:animate-out data-[open=false]:fade-out-0 data-[open=false]:zoom-out-95";

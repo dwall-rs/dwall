@@ -17,9 +17,18 @@ const thumbnails_count = {
   "The Desert": 8,
   "The Lake": 8,
   "Ventura Graphic": 5,
-};
+} as const;
 
-export const themes: ThemeItem[] = Object.entries(thumbnails_count)
+export type ThemeID = keyof typeof thumbnails_count;
+
+export interface ThemeItem {
+  id: ThemeID;
+  thumbnail: string[];
+}
+
+export const themes: ThemeItem[] = (
+  Object.entries(thumbnails_count) as [ThemeID, number][]
+)
   .map(([id, count]) => ({
     id,
     thumbnail: Array.from(

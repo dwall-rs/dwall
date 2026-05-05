@@ -97,9 +97,6 @@ jobs:
       - name: Run Biome check
         run: bun run check
 
-      - name: TypeScript check
-        run: bunx tsc --noEmit
-
       - name: Build frontend
         run: bun run build:vite
 

@@ -165,8 +165,14 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-rust-
 
+      - name: Setup Biome CLI
+        uses: biomejs/setup-biome@v2
+
       - name: Install frontend dependencies
         run: bun install --frozen-lockfile
+
+      - name: Run Biome check
+        run: bun run check
 
       - name: Build application
         uses: tauri-apps/tauri-action@v0.5.23

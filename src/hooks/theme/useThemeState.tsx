@@ -6,21 +6,12 @@ import { createSignal } from "solid-js";
  */
 export const useThemeState = () => {
   const [appliedThemeID, setAppliedThemeID] = createSignal<string>();
-  const [downloadThemeID, setDownloadThemeID] = createSignal<string>();
-  const [menuItemIndex, setMenuItemIndex] = createSignal<number | undefined>(0);
-  const [themeExists, setThemeExists] = createSignal(false);
-  const [showSettings, setShowSettings] = createSignal(false);
+  const [downloadingTheme, setDownloadingTheme] = createSignal(false);
 
   return {
     appliedThemeID,
     setAppliedThemeID,
-    downloadThemeID,
-    setDownloadThemeID,
-    menuItemIndex,
-    setMenuItemIndex,
-    themeExists,
-    setThemeExists,
-    showSettings,
-    setShowSettings,
+    downloadingTheme,
+    setDownloadingTheme,
   };
 };

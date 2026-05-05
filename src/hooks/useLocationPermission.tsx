@@ -4,21 +4,16 @@ import {
 } from "~/commands";
 
 import { ask } from "@tauri-apps/plugin-dialog";
-
-import { useTranslations } from "~/contexts";
+import { t } from "~/i18n";
 
 /**
  * Location permission management Hook, used to handle location permission requests and related operations
  * @param mutate Configuration update function
- * @param setShowSettings Function to set the display of settings panel
  * @returns Location permission related methods
  */
 export const useLocationPermission = (
   mutate: (fn: (prev: Config) => Config) => void,
-  setShowSettings: (show: boolean) => void,
-  setMenuItemIndex: Setter<number | undefined>,
 ) => {
-  const { translate } = useTranslations();
   // Check location permission
   const checkLocationPermission = async (): Promise<boolean> => {
     try {
@@ -26,10 +21,9 @@ export const useLocationPermission = (
       return true;
     } catch (e) {
       console.error(e);
-      const shouldContinue = await ask(
-        translate("message-location-permission"),
-        { kind: "warning" },
-      );
+      const shouldContinue = await ask(t("common.message.locationPermission"), {
+        kind: "warning",
+      });
 
       if (!shouldContinue) {
         await openPrivacyLocationSettings();
@@ -40,8 +34,6 @@ export const useLocationPermission = (
         ...prev!,
         position_source: { type: "MANUAL" },
       }));
-      setMenuItemIndex();
-      setShowSettings(true);
       return false;
     }
   };
