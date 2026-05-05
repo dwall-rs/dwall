@@ -86,7 +86,7 @@ fn set_windows_11_caption_color(
     color_mode: &ColorScheme,
 ) -> DwallSettingsResult<()> {
     // Predefined color values for dark and light modes
-    const DARK_CAPTION_COLOR: u32 = 0x1F1F1F; // Dark gray
+    const DARK_CAPTION_COLOR: u32 = 0x171717; // Dark gray
     const LIGHT_CAPTION_COLOR: u32 = 0xFAFAFA; // Light gray
 
     let caption_color = match color_mode {
