@@ -3,6 +3,7 @@ import { Match, Switch } from "solid-js";
 import { useColorMode } from "~/hooks/useColorMode";
 import useDark from "~/hooks/useDark";
 import { useAppInitialization } from "~/hooks/useAppInitialization";
+import { useFontLoader } from "./hooks/useFontLoader";
 
 import { SidebarProvider } from "~/components/sidebar";
 import { Toaster } from "~/components/toast";
@@ -12,7 +13,6 @@ import { route, type ThemeRoute } from "~/router";
 import AppSidebar from "~/layout/sidebar";
 import Settings from "~/layout/settings";
 import Theme from "~/layout/theme";
-import { useFontLoader } from "./hooks/useFontLoader";
 
 const App = () => {
   useFontLoader();
