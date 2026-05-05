@@ -1,0 +1,1 @@
+export { AlertDialogTrigger } from "./AlertDialogTrigger";

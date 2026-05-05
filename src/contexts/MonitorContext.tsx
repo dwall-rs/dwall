@@ -1,5 +1,5 @@
 import { createContext, type ParentProps, useContext } from "solid-js";
-import { useMonitorSelection, useMonitorThemeSync } from "~/hooks/monitor";
+import { useMonitorSelection } from "~/hooks/monitor";
 
 interface MonitorContext {
   id: Accessor<string>;
@@ -22,7 +22,7 @@ export const MonitorProvider = (props: ParentProps) => {
     handleMonitorChange,
   } = useMonitorSelection();
 
-  useMonitorThemeSync(monitorID, monitorSpecificThemesIsSame);
+  // useMonitorThemeSync(monitorID, monitorSpecificThemesIsSame);
 
   return (
     <MonitorContext.Provider

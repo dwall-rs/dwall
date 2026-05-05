@@ -165,7 +165,7 @@ impl CleanupService {
         }
 
         // Sort by modification time (oldest first)
-        cache_files.sort_by(|a, b| a.1.cmp(&b.1));
+        cache_files.sort_by_key(|a| a.1);
 
         // Calculate size to be deleted
         let target_size = current_size - MAX_CACHE_SIZE_BYTES;
