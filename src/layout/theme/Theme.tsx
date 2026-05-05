@@ -56,7 +56,9 @@ export const Theme = (props: ThemeProps) => {
   return (
     <div class="flex flex-col items-center justify-between flex-1 pb-4">
       <div class="flex justify-center items-center w-96 gap-3">
-        <Label class="flex-1">{t("theme.label.selectMonitor")}</Label>
+        <Label class="flex-1 whitespace-nowrap">
+          {t("theme.label.selectMonitor")}
+        </Label>
         <Select
           class="flex-4"
           options={monitors()}
