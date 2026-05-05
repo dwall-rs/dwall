@@ -85,6 +85,8 @@ export const dict: RawDictionary = {
       movedThemesDirectory:
         "テーマディレクトリが {{ directory }} に移動されました",
       isLatestVersion: "最新バージョンを使用しています。",
+      checkIntervalUpdateFailed:
+        "更新チェック間隔の更新に失敗しました：\n{{ error }}",
     },
   },
 

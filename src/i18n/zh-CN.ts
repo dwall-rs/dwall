@@ -77,6 +77,7 @@ export const dict: RawDictionary = {
       switchToManualCoordinatesFailed: "切换到手动坐标失败：\n{{ error }}",
       movedThemesDirectory: "主题目录已移动到：{{ directory }}",
       isLatestVersion: "您已在使用最新版本。",
+      checkIntervalUpdateFailed: "更新检查间隔失败：\n{{ error }}",
     },
   },
 

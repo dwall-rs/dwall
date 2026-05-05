@@ -83,6 +83,8 @@ export const dict = {
       movedThemesDirectory:
         "The themes directory has been moved to: {{ directory }}",
       isLatestVersion: "You are already using the latest version.",
+      checkIntervalUpdateFailed:
+        "Failed to update check interval: \n{{ error }}",
     },
   },
 
