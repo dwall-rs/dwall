@@ -1,8 +1,10 @@
 /* @refresh reload */
 import { render } from "solid-js/web";
-import App from "./App";
-import { AppProvider } from "~/contexts";
+
 import "./index.css";
+
+import { AppProvider } from "./contexts";
+import App from "./App";
 
 if (import.meta.env.MODE === "production") {
   document.addEventListener("contextmenu", (event) => event.preventDefault());

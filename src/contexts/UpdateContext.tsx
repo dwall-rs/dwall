@@ -2,8 +2,6 @@ import { createContext, type ParentProps, useContext } from "solid-js";
 import { useUpdateManager } from "~/hooks/useUpdateManager";
 
 interface UpdateContext {
-  showUpdateDialog: Accessor<boolean | undefined>;
-  setShowUpdateDialog: Setter<boolean | undefined>;
   update: Resource<Update | null | undefined>;
   recheckUpdate: Refetcher<Update>;
 }

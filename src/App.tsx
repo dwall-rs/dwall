@@ -1,84 +1,42 @@
-import { Show } from "solid-js";
+import { Match, Switch } from "solid-js";
 
-import { LazyFlex } from "~/lazy";
-
-import Settings from "./components/Settings";
-import ThemeShowcase from "./components/ThemeShowcase";
-import Updater from "./components/Update";
-import Select from "./components/Select";
-import Sidebar from "./components/Sidebar";
-
+import { useColorMode } from "~/hooks/useColorMode";
 import useDark from "~/hooks/useDark";
-import { useColorMode } from "./hooks/useColorMode";
-import { useAppInitialization } from "./hooks/useAppInitialization";
+import { useAppInitialization } from "~/hooks/useAppInitialization";
 
-import {
-  useMonitor,
-  useTheme,
-  useTranslations,
-  useSettings,
-  useUpdate,
-} from "~/contexts";
+import { SidebarProvider } from "~/components/sidebar";
+import { Toaster } from "~/components/toast";
 
-import * as styles from "./App.css";
+import { route, type ThemeRoute } from "~/router";
+
+import AppSidebar from "~/layout/sidebar";
+import Settings from "~/layout/settings";
+import Theme from "~/layout/theme";
+import { useFontLoader } from "./hooks/useFontLoader";
 
 const App = () => {
-  const { translate } = useTranslations();
-  const theme = useTheme();
-
-  const { currentTheme, downloadThemeID, menuItemIndex, handleThemeSelection } =
-    theme;
-
-  const {
-    list: monitors,
-    handleChange: handleMonitorChange,
-    id: monitorID,
-  } = useMonitor();
-  const { showSettings } = useSettings();
-  const { update } = useUpdate();
-
+  useFontLoader();
   useDark();
   useColorMode();
 
-  useAppInitialization(translate, menuItemIndex, handleThemeSelection);
+  useAppInitialization();
 
   return (
     <>
-      <LazyFlex
-        class={styles.app}
-        align="center"
-        gap="l"
-        justify="stretch"
-        style={{ flex: 1 }}
-      >
-        <Sidebar />
-
-        <Show when={!showSettings() && currentTheme()} fallback={<Settings />}>
-          <LazyFlex
-            direction="column"
-            gap="l"
-            align="center"
-            justify="center"
-            style={{ flex: 1, height: "100%" }}
-          >
-            <Select
-              options={monitors()}
-              placeholder={translate("label-select-monitor")}
-              onChange={handleMonitorChange}
-              value={monitorID()}
-              label={translate("label-select-monitor")}
-              disabled={!!downloadThemeID()} // Disable select box when downloading theme
-            />
-
-            <ThemeShowcase />
-          </LazyFlex>
-        </Show>
-      </LazyFlex>
-
-      <Show when={update()}>
-        {/* Updater will auto download in background */}
-        <Updater />
-      </Show>
+      <SidebarProvider>
+        <AppSidebar />
+        <main class="flex-1 pt-3 flex flex-col items-center justify-center bg-neutral-50 dark:bg-neutral-900 h-screen overflow-hidden">
+          <Switch>
+            <Match when={route().path === "settings"}>
+              <Settings />
+            </Match>
+            <Match when={route().path === "theme"}>
+              <Theme id={(route() as ThemeRoute).id} />
+            </Match>
+          </Switch>
+        </main>
+      </SidebarProvider>
+      <Toaster />
     </>
   );
 };

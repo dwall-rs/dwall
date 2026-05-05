@@ -1,11 +1,14 @@
 {
-  "$schema": "https://biomejs.dev/schemas/2.2.0/schema.json",
+  "$schema": "https://biomejs.dev/schemas/2.4.14/schema.json",
   "assist": {
     "actions": {
       "source": {
         "organizeImports": "off"
       }
     }
+  },
+  "files": {
+    "includes": ["**", "!!**/*.css"]
   },
   "formatter": {
     "indentStyle": "space",
@@ -18,11 +21,20 @@
       "correctness": {
         "useJsxKeyInIterable": "off"
       },
-      "a11y": {
-        "useKeyWithClickEvents": "off"
+      "security": {
+        "noGlobalEval": "off"
       },
       "style": {
         "noNonNullAssertion": "off"
+      },
+      "suspicious": { "noExplicitAny": "off" },
+      "a11y": {
+        "useKeyWithClickEvents": "off",
+        "useSemanticElements": "off",
+        "noStaticElementInteractions": "off"
+      },
+      "performance": {
+        "noDelete": "off"
       }
     }
   }

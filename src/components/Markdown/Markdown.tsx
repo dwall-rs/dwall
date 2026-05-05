@@ -4,8 +4,6 @@ import type { MarkdownProps, MarkdownTag } from "./Markdown.types";
 
 import { useMarkdownParser } from "./useMarkdownParser";
 
-import * as styles from "./Markdown.css";
-
 export const Markdown: Component<MarkdownProps> = (props) => {
   const parser = useMarkdownParser();
 
@@ -72,33 +70,29 @@ export const Markdown: Component<MarkdownProps> = (props) => {
     parsedContent().map((item) => {
       switch (item.type) {
         case "h2":
-          return <h2 class={styles.h2}>{item.content}</h2>;
+          return <h2 class="m-0 pb-1.5">{item.content}</h2>;
 
         case "ul":
           return (
-            <ul class={styles.ul}>
+            <ul class="my-1 mx-0 pl-2">
               <For each={item.items}>
-                {(listItem) => <li class={styles.li} innerHTML={listItem} />}
+                {(listItem) => <li class="my-1 mx-0" innerHTML={listItem} />}
               </For>
             </ul>
           );
 
         case "pre":
           return (
-            <pre class={styles.blockCode}>
-              <code
-                class={`${styles.languageBase} ${styles.languages[item.language]}`}
-              >
-                {item.content}
-              </code>
+            <pre class="bg-neutral-100 rounded-md p-2 my-1 mx-0 overflow-auto font-mono">
+              <code class="text-sm">{item.content}</code>
             </pre>
           );
 
         default: // plain text
-          return <p class={styles.textBlock} innerHTML={item.content} />;
+          return <p class="my-1 mx-0" innerHTML={item.content} />;
       }
     }),
   );
 
-  return <div class={styles.markdown}>{content()}</div>;
+  return <div class="mb-2 max-h-72">{content()}</div>;
 };
