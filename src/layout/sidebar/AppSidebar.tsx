@@ -24,6 +24,7 @@ import { type ThemeItem, themes } from "~/themes";
 
 import { route, navigate } from "~/router";
 import { t } from "~/i18n";
+import { clsx } from "~/utils";
 
 const [imageHeights, setImageHeights] = createStore<Record<string, number>>({});
 
@@ -43,7 +44,12 @@ export const AppSidebar = () => {
       collapsible="none"
       class="[--sidebar-width:--spacing(24)] flex sticky items-center bg-neutral-200 dark:bg-transparent pt-3 h-screen"
     >
-      <SidebarContent class="overflow-x-hidden scrollbar">
+      <SidebarContent
+        class={clsx(
+          "overflow-x-hidden",
+          !theme.downloadingTheme() ? "scrollbar" : "overflow-y-hidden",
+        )}
+      >
         <SidebarMenu class="gap-2 mx-1.5">
           <For each={themes}>
             {(item, index) => (
@@ -54,7 +60,7 @@ export const AppSidebar = () => {
                   active={activeThemeID() === item.id}
                   applied={theme.appliedThemeID() === item.id}
                   github_mirror_template={config()?.github_mirror_template}
-                  // disabled={disabled()}
+                  disabled={theme.downloadingTheme()}
                 />
               </Show>
             )}
@@ -86,6 +92,7 @@ export const AppSidebar = () => {
               <TooltipTrigger>
                 <SidebarMenuButton
                   onClick={() => navigate({ path: "settings" })}
+                  disabled={theme.downloadingTheme()}
                 >
                   <Settings />
                 </SidebarMenuButton>

@@ -49,6 +49,11 @@ const ThemeActions = (props: ThemeActionsProps) => {
     }
   };
 
+  const handleDownload = () => {
+    setDowloadingID(props.currentThemeID);
+    theme.setDownloadingTheme(true);
+  };
+
   createEffect(async () => {
     await checkThemeExists();
   });
@@ -65,14 +70,12 @@ const ThemeActions = (props: ThemeActionsProps) => {
               onFinished={() => {
                 setDowloadingID();
                 checkThemeExists();
+                theme.setDownloadingTheme(false);
               }}
             />
           }
         >
-          <Button
-            onClick={() => setDowloadingID(props.currentThemeID)}
-            disabled={!!dowloadingID()}
-          >
+          <Button onClick={handleDownload} disabled={!!dowloadingID()}>
             {t("theme.button.download")}
           </Button>
         </Show>

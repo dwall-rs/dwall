@@ -15,7 +15,7 @@ import { Select } from "~/components/select";
 
 import { generateGitHubThumbnailMirrorUrl } from "~/utils/proxy";
 
-import { useConfig, useMonitor } from "~/contexts";
+import { useConfig, useMonitor, useTheme } from "~/contexts";
 import { type ThemeID, themes } from "~/themes";
 import { clsx } from "~/utils";
 import ThemeActions from "./Actions";
@@ -32,6 +32,7 @@ export const Theme = (props: ThemeProps) => {
     handleChange: handleMonitorChange,
     id: monitorID,
   } = useMonitor();
+  const { downloadingTheme } = useTheme();
 
   let aspectRatioRef: HTMLDivElement | undefined;
 
@@ -61,6 +62,7 @@ export const Theme = (props: ThemeProps) => {
           options={monitors()}
           value={monitorID()}
           onChange={handleMonitorChange}
+          disabled={downloadingTheme()}
         />
       </div>
 
