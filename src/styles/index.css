@@ -62,7 +62,7 @@
     body {
         font-synthesis-weight: none;
         text-rendering: optimizeLegibility;
-        @apply bg-neutral-50 dark:bg-neutral-950 text-neutral-950 dark:text-neutral-50;
+        @apply bg-neutral-50 dark:bg-neutral-950 text-neutral-950 dark:text-neutral-100;
     }
     * {
         @apply border-neutral-200;
