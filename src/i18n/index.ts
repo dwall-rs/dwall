@@ -17,6 +17,10 @@ export const LANGUAGES = {
 } as const satisfies Record<Locale, string>;
 
 export async function fetchDictionary(locale: Locale): Promise<Dictionary> {
+  if (locale === "en-US") {
+    return i18n.flatten(enUS.dict);
+  }
+
   const dict: RawDictionary = (await import(`../i18n/${locale}.ts`)).dict;
   return i18n.flatten(dict);
 }
