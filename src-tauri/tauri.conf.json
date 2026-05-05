@@ -1,0 +1,54 @@
+{
+  "productName": "Dwall Settings",
+  "version": "../package.json",
+  "identifier": "com.thep0y.dwall",
+  "build": {
+    "beforeDevCommand": "bun run start",
+    "devUrl": "http://localhost:1420",
+    "beforeBuildCommand": "bun run build:vite && bun run build:daemon",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "security": {
+      "csp": "default-src 'self' ipc: http://ipc.localhost; img-src 'self' asset: http://asset.localhost",
+      "assetProtocol": {
+        "enable": true,
+        "scope": ["$CACHE/com.thep0y.dwall/**"]
+      }
+    }
+  },
+  "bundle": {
+    "resources": { "../target/release/dwall.exe": "dwall.exe" },
+    "active": true,
+    "copyright": "Copyright (C) 2025 thep0y. All rights reserved.",
+    "createUpdaterArtifacts": true,
+    "targets": "nsis",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "windows": {
+      "nsis": {
+        "languages": ["SimpChinese", "English"],
+        "displayLanguageSelector": true,
+        "installerIcon": "icons/icon.ico",
+        "installerHooks": "./windows/hooks.nsi"
+      }
+    }
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDcxQTQ5NDZBNUIyMEVDRTUKUldUbDdDQmJhcFNrY2RYSkpGNUt0U3cvdEozMXJoN2pXeEFBcUQ4YmZMTi9MS2E2YjNQT1pSbTgK",
+      "endpoints": [
+        "https://app.thepoy.cc/dwall/latest-mirror-1.json",
+        "https://app.thepoy.cc/dwall/latest-mirror-2.json",
+        "https://app.thepoy.cc/dwall/latest-mirror-3.json",
+        "https://gh-proxy.com/https://github.com/dwall-rs/dwall/releases/latest/download/latest.json",
+        "https://github.com/dwall-rs/dwall/releases/latest/download/latest.json"
+      ]
+    }
+  }
+}

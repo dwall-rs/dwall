@@ -1,0 +1,39 @@
+const thumbnails_base_url =
+  "https://github.com/dwall-rs/dwall-assets/raw/refs/heads/main/thumbnails/";
+
+const thumbnails_count = {
+  "Big Sur": 8,
+  "Big Sur 1": 16,
+  Catalina: 8,
+  "Earth ISS": 16,
+  "Earth View": 16,
+  "Minya Konka": 24,
+  Mojave: 16,
+  "Monterey Bay 1": 16,
+  "Monterey Graphic": 8,
+  "Solar Gradients": 16,
+  "The Beach": 8,
+  "The Cliffs": 8,
+  "The Desert": 8,
+  "The Lake": 8,
+  "Ventura Graphic": 5,
+} as const;
+
+export type ThemeID = keyof typeof thumbnails_count;
+
+export interface ThemeItem {
+  id: ThemeID;
+  thumbnail: string[];
+}
+
+export const themes: ThemeItem[] = (
+  Object.entries(thumbnails_count) as [ThemeID, number][]
+)
+  .map(([id, count]) => ({
+    id,
+    thumbnail: Array.from(
+      { length: count },
+      (_, i) => `${thumbnails_base_url}${id.replaceAll(" ", "")}/${i + 1}.avif`,
+    ),
+  }))
+  .sort((a, b) => (a.id > b.id ? 1 : -1));

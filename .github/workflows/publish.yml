@@ -1,0 +1,395 @@
+name: "Bump new version"
+on:
+  workflow_dispatch:
+    inputs:
+      bump_type:
+        description: "Version bump type"
+        required: true
+        default: "patch"
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+
+jobs:
+  pre-checks:
+    runs-on: ubuntu-latest
+    outputs:
+      should_continue: ${{ steps.check.outputs.should_continue }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check if release is needed
+        id: check
+        run: |
+          # 检查是否有未发布的更改，但排除 nightly 标签
+          if git describe --tags --exact-match HEAD 2>/dev/null; then
+            current_tag=$(git describe --tags --exact-match HEAD 2>/dev/null)
+            if [[ "$current_tag" == "nightly" ]]; then
+              echo "Current commit has nightly tag, proceeding with release"
+              echo "should_continue=true" >> $GITHUB_OUTPUT
+            else
+              echo "Current commit is already tagged with $current_tag, skipping release"
+              echo "should_continue=false" >> $GITHUB_OUTPUT
+            fi
+          else
+            echo "should_continue=true" >> $GITHUB_OUTPUT
+          fi
+
+  create-release:
+    permissions:
+      contents: write
+    runs-on: ubuntu-latest
+    needs: pre-checks
+    if: always() && needs.pre-checks.outputs.should_continue == 'true'
+    outputs:
+      release_id: ${{ steps.create-release.outputs.result }}
+      package_version: ${{ env.VERSION }}
+      changelog: ${{ steps.github_release_changelog.outputs.changelog }}
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+
+      - name: Setup Git
+        run: |
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+
+      - name: Bump version
+        run: |
+          npm version ${{ github.event.inputs.bump_type }} --no-git-tag-version
+          VERSION=$(node -p "require('./package.json').version")
+          sed -i "s/^version = \".*\"/version = \"$VERSION\"/" Cargo.toml
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          echo "Bumping version to: $VERSION"
+
+      - name: Create and push release branch
+        run: |
+          git checkout -b release
+          git add package.json Cargo.toml
+          git commit -m "Bump version to ${{ env.VERSION }}"
+          git push origin release --force
+
+      - name: Build changelog
+        id: github_release_changelog
+        uses: mikepenz/release-changelog-builder-action@v4
+        with:
+          configuration: ".github/changelog-configuration.json"
+          toTag: "refs/heads/main"
+          failOnError: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create release
+        id: create-release
+        uses: actions/github-script@v7
+        env:
+          changelog: ${{ steps.github_release_changelog.outputs.changelog }}
+        with:
+          retries: 3
+          retry-exempt-status-codes: 400,401,403,404,422
+          script: |
+            const { data } = await github.rest.repos.createRelease({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              tag_name: `v${process.env.VERSION}`,
+              name: `v${process.env.VERSION}`,
+              body: process.env.changelog,
+              draft: true,
+              prerelease: false
+            })
+            return data.id
+
+  build-tauri:
+    needs: create-release
+    permissions:
+      contents: write
+    runs-on: windows-latest
+
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: release
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+
+      - uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: latest
+
+      - name: Cache frontend dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.bun
+            node_modules/
+          key: ${{ runner.os }}-frontend-${{ hashFiles('**/bun.lockb', '**/package.json') }}
+          restore-keys: |
+            ${{ runner.os }}-frontend-
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-pc-windows-msvc
+
+      - name: Cache Rust dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/release/deps
+            target/release/build
+          key: ${{ runner.os }}-rust-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-rust-
+
+      - name: Setup Biome CLI
+        uses: biomejs/setup-biome@v2
+
+      - name: Install frontend dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Run Biome check
+        run: bun run check
+
+      - name: Build application
+        uses: tauri-apps/tauri-action@v0.5.23
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          releaseId: ${{ needs.create-release.outputs.release_id }}
+          releaseBody: ${{ needs.create-release.outputs.changelog }}
+          updaterJsonPreferNsis: true
+          args: --features log-max-level-info
+
+  publish-release:
+    permissions:
+      contents: write
+    runs-on: ubuntu-latest
+    needs: [create-release, build-tauri]
+    if: success()
+
+    steps:
+      - name: Publish release
+        id: publish-release
+        uses: actions/github-script@v7
+        env:
+          release_id: ${{ needs.create-release.outputs.release_id }}
+          PACKAGE_VERSION: ${{ needs.create-release.outputs.package_version }}
+        with:
+          retries: 3
+          script: |
+            await github.rest.repos.updateRelease({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              release_id: process.env.release_id,
+              draft: false,
+            })
+
+      - name: Create release summary
+        run: |
+          echo "## 🎉 Release Published Successfully!" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Version:** v${{ needs.create-release.outputs.package_version }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Release ID:** ${{ needs.create-release.outputs.release_id }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "[View Release](https://github.com/${{ github.repository }}/releases/tag/v${{ needs.create-release.outputs.package_version }})" >> $GITHUB_STEP_SUMMARY
+
+  update-main-version:
+    needs: publish-release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    if: success()
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+
+      - name: Setup Git
+        run: |
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+
+      - name: Update main version
+        run: |
+          git fetch origin release:release
+          git checkout main
+          git merge release --ff-only
+          git push origin main
+        continue-on-error: false
+
+  cleanup-release-branch:
+    needs: update-main-version
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    if: success()
+    steps:
+      - name: Delete release branch
+        uses: actions/github-script@v7
+        with:
+          script: |
+            try {
+              await github.rest.git.deleteRef({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                ref: 'heads/release'
+              })
+              console.log('Release branch deleted successfully')
+            } catch (error) {
+              console.log('Failed to delete release branch:', error.message)
+              // 不让这个失败阻止整个工作流
+            }
+
+  upload_mirror_json:
+    permissions:
+      contents: write
+    runs-on: ubuntu-latest
+    needs: [create-release, update-main-version]
+    if: success()
+    env:
+      release_id: ${{ needs.create-release.outputs.release_id }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+
+      - name: Get latest.json
+        id: get-latest
+        uses: actions/github-script@v7
+        with:
+          retries: 3
+          script: |
+            const { owner, repo } = context.repo;
+
+            // 等待一段时间确保资产已上传
+            await new Promise(resolve => setTimeout(resolve, 30000));
+
+            const assets = await github.rest.repos.listReleaseAssets({
+              owner: owner,
+              repo: repo,
+              release_id: process.env.release_id,
+              per_page: 50,
+            });
+
+            const asset = assets.data.find((e) => e.name === 'latest.json');
+            if (!asset) {
+              throw new Error("latest.json was not found in release assets");
+            }
+
+            const data = await github.request(
+              "GET /repos/{owner}/{repo}/releases/assets/{asset_id}",
+              {
+                owner: owner,
+                repo: repo,
+                asset_id: asset.id,
+                headers: {
+                  accept: "application/octet-stream",
+                },
+              },
+            );
+
+            return Buffer.from(data.data).toString()
+
+      - name: Generate mirror latest.json
+        env:
+          TEXT: ${{ steps.get-latest.outputs.result }}
+        run: |
+          cd .scripts
+          node mirror-latest-json.js
+
+      - name: Upload to mirror server
+        uses: wlixcc/SFTP-Deploy-Action@v1.2.4
+        with:
+          username: thepoy
+          server: thepoy.cc
+          password: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+          local_path: ./.scripts/mirrors/*
+          remote_path: /home/thepoy/app/dwall
+          sftpArgs: "-o ConnectTimeout=10 -o ServerAliveInterval=60"
+        continue-on-error: true
+
+  delete-nightly-release-and-tag:
+    permissions:
+      contents: write
+    runs-on: ubuntu-latest
+    needs: upload_mirror_json
+    if: success()
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Delete old nightly release
+        run: |
+          # 检查是否存在 nightly release
+          if gh release view nightly >/dev/null 2>&1; then
+            echo "Deleting existing nightly release..."
+            gh release delete nightly --cleanup-tag --yes
+            echo "Nightly release deleted successfully"
+          else
+            echo "No nightly release found, skipping deletion"
+          fi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        continue-on-error: true
+
+  notify-completion:
+    runs-on: ubuntu-latest
+    needs:
+      [
+        create-release,
+        build-tauri,
+        publish-release,
+        update-main-version,
+        upload_mirror_json,
+        delete-nightly-release-and-tag,
+      ]
+    if: always()
+    steps:
+      - name: Create workflow summary
+        run: |
+          echo "## 🚀 Release Workflow Completed" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Workflow Status:** ${{ job.status }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Version:** ${{ needs.create-release.outputs.package_version }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Triggered by:** ${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Bump type:** ${{ github.event.inputs.bump_type }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          if [[ "${{ needs.publish-release.result }}" == "success" ]]; then
+            echo "✅ **Release published successfully!**" >> $GITHUB_STEP_SUMMARY
+            echo "[View Release](https://github.com/${{ github.repository }}/releases/tag/v${{ needs.create-release.outputs.package_version }})" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ **Release failed or was cancelled**" >> $GITHUB_STEP_SUMMARY
+          fi

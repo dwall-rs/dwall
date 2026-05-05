@@ -1,0 +1,5 @@
+{
+  "build": {
+    "beforeBuildCommand": "bun run build:vite && bun run build:daemon-debug"
+  }
+}

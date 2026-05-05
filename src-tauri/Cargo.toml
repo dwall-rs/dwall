@@ -1,0 +1,57 @@
+[package]
+name = "dwall-settings"
+description = "Dwall settings"
+edition.workspace = true
+version.workspace = true
+authors.workspace = true
+repository.workspace = true
+license.workspace = true
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", default-features = false, features = [
+    "protocol-asset",
+    "wry",
+    "compression",
+] }
+dwall = { version = "0", path = "../daemon" }
+
+reqwest = { version = "0", default-features = false, features = [] }
+zip = { version = "8", default-features = false, features = ["deflate"] }
+open = { version = "5", default-features = false }
+tokio = { version = "1", default-features = false, features = ["macros"] }
+dirs = { workspace = true, default-features = false }
+serde = { workspace = true }
+serde_json = { workspace = true, default-features = false }
+thiserror = { workspace = true, default-features = false }
+tracing = { workspace = true, default-features = false }
+tracing-subscriber = { workspace = true, default-features = false }
+windows = { workspace = true, default-features = false, features = [
+    "Win32_System_Registry",
+    "Win32_System_Diagnostics_ToolHelp",
+    "Win32_System_ProcessStatus",
+    "Win32_Graphics_Dwm",
+    "Wdk_System_SystemServices",
+    "Win32_System_SystemInformation",
+    "Win32_Globalization",
+    "Win32_System_Threading",
+] }
+rand = { version = "0.10", default-features = false, features = ["thread_rng"] }
+
+tauri-plugin-shell = "2"
+tauri-plugin-single-instance = "2.4"
+tauri-plugin-updater = { version = "2", default-features = false, features = [
+    "native-tls",
+    "zip",
+] }
+tauri-plugin-dialog = "2"
+
+[features]
+default = []
+log-color = ["dwall/log-color"]
+devtools = ["tauri/devtools"]
+log-max-level-info = ["tracing/release_max_level_info"]

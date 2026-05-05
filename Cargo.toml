@@ -1,0 +1,34 @@
+[workspace]
+resolver = "2"
+members = ["daemon", "src-tauri"]
+
+[workspace.package]
+authors = ["thep0y"]
+version = "0.1.33"
+# homepage = ""
+repository = "https://github.com/dwall-rs/dwall"
+license = "AGPL-3.0"
+edition = "2024"
+
+[workspace.dependencies]
+dirs = { version = "6", default-features = false }
+thiserror = { version = "2", default-features = false }
+serde = { version = "1", default-features = false, features = [
+  "std",
+  "derive",
+] }
+serde_json = { version = "1", default-features = false, features = ["std"] }
+tracing = { version = "0", default-features = false, features = ["log"] }
+tracing-subscriber = { version = "0", default-features = false, features = [
+  "fmt",
+  'env-filter',
+] }
+windows = { version = "0.61", default-features = false }
+
+[profile.release]
+panic = "abort"
+codegen-units = 1
+lto = true
+incremental = true
+opt-level = "z"
+strip = true

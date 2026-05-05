@@ -1,0 +1,99 @@
+@import "tailwindcss";
+@import "./animate.css";
+@import "./i18n-font.css";
+@import "./toast.css";
+
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
+@theme {
+    --radius: 0.625rem;
+
+    --animate-accordion-down: accordion-down
+        var(--tw-animation-duration, var(--tw-duration, 0.2s))
+        var(--tw-ease, ease-out) var(--tw-animation-delay, 0s)
+        var(--tw-animation-iteration-count, 1)
+        var(--tw-animation-direction, normal)
+        var(--tw-animation-fill-mode, none);
+
+    --animate-accordion-up: accordion-up
+        var(--tw-animation-duration, var(--tw-duration, 0.2s))
+        var(--tw-ease, ease-out) var(--tw-animation-delay, 0s)
+        var(--tw-animation-iteration-count, 1)
+        var(--tw-animation-direction, normal)
+        var(--tw-animation-fill-mode, none);
+
+    @keyframes accordion-down {
+        0% {
+            height: 0;
+        }
+        100% {
+            height: var(--accordion-panel-height, auto);
+        }
+    }
+
+    @keyframes accordion-up {
+        0% {
+            height: var(--accordion-panel-height, auto);
+        }
+        to {
+            height: 0;
+        }
+    }
+}
+
+@theme inline {
+    --radius-sm: calc(var(--radius) * 0.6);
+    --radius-md: calc(var(--radius) * 0.8);
+    --radius-lg: var(--radius);
+    --radius-xl: calc(var(--radius) * 1.4);
+    --radius-2xl: calc(var(--radius) * 1.8);
+    --radius-3xl: calc(var(--radius) * 2.2);
+    --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+@layer base {
+  ::selection {
+    @apply bg-neutral-950 text-white;
+  }
+
+  html {
+    @apply overscroll-y-none;
+  }
+  body {
+    font-synthesis-weight: none;
+    text-rendering: optimizeLegibility;
+  }
+  * {
+    @apply border-neutral-200;
+  }
+  @supports (font: -apple-system-body) and (-webkit-appearance: none) {
+    [data-wrapper] {
+      @apply min-[1800px]:border-t;
+    }
+  }
+
+  a:active,
+  button:active {
+    @apply opacity-60 md:opacity-100;
+  }
+
+  @variant dark {
+        ::selection {
+            @apply bg-neutral-200 text-neutral-900;
+        }
+        * {
+            @apply border-white/10;
+        }
+    }
+}
+
+@layer utilities {
+  :is(.\*\:data-\[slot\=accordion\]\:max-w-sm > *)[data-slot="accordion"] {
+    max-width: var(--container-sm);
+  }
+
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+}

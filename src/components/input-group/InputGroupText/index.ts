@@ -1,0 +1,1 @@
+export { InputGroupText } from "./InputGroupText";
