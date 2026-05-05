@@ -36,6 +36,8 @@ pub fn create_main_window(app: &tauri::AppHandle) -> Result<(), Box<dyn Error>> 
         .title(WINDOW_TITLE)
         .resizable(false)
         .maximizable(false)
+        .transparent(true)
+        // .decorations(false)
         .visible(cfg!(debug_assertions))
         .inner_size(WINDOW_WIDTH, WINDOW_HEIGHT);
 
@@ -144,5 +146,5 @@ fn is_windows_11_or_newer() -> bool {
         return false;
     }
 
-    os_version_info.dwBuildNumber > 22000
+    os_version_info.dwBuildNumber >= 22000
 }

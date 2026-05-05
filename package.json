@@ -17,28 +17,31 @@
     "dev": "bun run build:daemon-dev && bun run start:dev",
     "stage": "bun run build:daemon-stage && cross-env RUST_BACKTRACE=1 tauri dev --features log-color devtools --release",
     "serve": "vite preview",
-    "check": "biome check --write src",
+    "check": "tsgo --noEmit && biome check --write src",
     "test": "vitest"
   },
   "license": "MIT",
   "dependencies": {
-    "@tauri-apps/api": "^2.10.1",
-    "@tauri-apps/plugin-dialog": "^2.7.0",
+    "@solid-primitives/i18n": "^2.2.1",
+    "@tauri-apps/api": "^2.11.0",
+    "@tauri-apps/plugin-dialog": "^2.7.1",
     "@tauri-apps/plugin-shell": "^2.3.5",
     "@tauri-apps/plugin-updater": "^2.10.1",
-    "@vanilla-extract/css": "^1.20.1",
-    "fluent-solid": "^0.2.14",
+    "class-variance-authority": "^0.7.1",
+    "lucide-solid": "^1.14.0",
     "solid-icons": "^1.2.0",
-    "solid-js": "^1.9.12"
+    "solid-js": "^1.9.12",
+    "tailwind-merge": "^3.5.0"
   },
   "devDependencies": {
-    "@tauri-apps/cli": "^2.10.1",
+    "@tailwindcss/vite": "^4.2.4",
+    "@tauri-apps/cli": "^2.11.0",
     "@types/node": "^25.6.0",
-    "@vanilla-extract/vite-plugin": "^5.2.2",
+    "@typescript/native-preview": "^7.0.0-dev.20260504.1",
     "cross-env": "^10.1.0",
-    "typescript": "^6.0.2",
-    "vite": "^8.0.8",
+    "tailwindcss": "^4.2.4",
+    "vite": "^8.0.10",
     "vite-plugin-solid": "^2.11.12",
-    "vitest": "^4.1.4"
+    "vitest": "^4.1.5"
   }
 }

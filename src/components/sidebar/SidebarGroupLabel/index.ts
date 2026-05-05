@@ -1,0 +1,1 @@
+export { SidebarGroupLabel } from "./SidebarGroupLabel";

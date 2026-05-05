@@ -9,13 +9,13 @@ import type { JSX } from "solid-js";
 
 import { convertFileSrc } from "@tauri-apps/api/core";
 
-import { getOrSaveCachedThumbnails } from "~/commands";
+import { Spinner } from "../spinner";
 
-import { LazySpinner } from "~/lazy";
+import { getOrSaveCachedThumbnails } from "~/commands";
 
 import type { ImageProps as ThemeImageProps } from "./Image.types";
 
-import * as style from "./Image.css";
+import { clsx } from "~/utils";
 
 const ThemeImage = (props: ThemeImageProps) => {
   let imageRef: HTMLImageElement | undefined;
@@ -31,9 +31,15 @@ const ThemeImage = (props: ThemeImageProps) => {
     if (imageRef?.src) {
       setLoaded(true);
       setError(null);
+
+      const { top, bottom, left, right } = imageRef.getBoundingClientRect();
       props.onLoad?.({
         width: imageRef.naturalWidth,
         height: imageRef.naturalHeight,
+        top,
+        bottom,
+        left,
+        right,
       });
     }
   };
@@ -97,8 +103,8 @@ const ThemeImage = (props: ThemeImageProps) => {
   const renderImageContent = children(() => (
     <>
       {!loaded() && !error() && (
-        <div class={style.spinnerContainer}>
-          <LazySpinner />
+        <div class="absolute top-1/2 left-1/2 translate-1/2">
+          <Spinner />
         </div>
       )}
       <img
@@ -108,11 +114,9 @@ const ThemeImage = (props: ThemeImageProps) => {
         onLoad={handleLoad}
         onError={handleError}
         width={props.width}
-        class={loaded() ? style.imageStyle.visible : style.imageStyle.hidden}
+        class={clsx(loaded() ? "visible" : "invisible", props.class)}
       />
-      {error() && !props.fallbackSrc && (
-        <div class={style.errorMessage}>Failed to load image</div>
-      )}
+      {error() && !props.fallbackSrc && <div>Failed to load image</div>}
     </>
   ));
 
@@ -123,7 +127,7 @@ const ThemeImage = (props: ThemeImageProps) => {
 
   return (
     <div
-      class={`${style.imageContainer} ${props.class || ""}`}
+      class={clsx("relative inline-flex items-center justify-center")}
       style={createContainerStyle()}
     >
       {renderImageContent()}

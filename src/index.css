@@ -1,0 +1,40 @@
+@import "tailwindcss";
+
+/* Neut built-in styles (from animate.css and toast.css) */
+@import "./styles/animate.css";
+@import "./styles/toast.css";
+
+html,
+body {
+    overflow: hidden;
+}
+
+* {
+    user-select: none;
+    -webkit-user-drag: none;
+    -moz-user-select: none;
+    -webkit-user-select: none;
+    -ms-user-select: none;
+}
+
+.scrollbar {
+    &::-webkit-scrollbar {
+        @apply h-1.5 w-1.5;
+    }
+
+    &::-webkit-scrollbar-track {
+        @apply rounded-full bg-transparent;
+    }
+
+    &::-webkit-scrollbar-thumb {
+        @apply rounded-full bg-neutral-400 dark:bg-neutral-600 transition-all duration-200;
+    }
+
+    &::-webkit-scrollbar-thumb:hover {
+        @apply bg-neutral-500;
+    }
+
+    &::-webkit-scrollbar-thumb:active {
+        @apply bg-neutral-600 dark:bg-neutral-400;
+    }
+}

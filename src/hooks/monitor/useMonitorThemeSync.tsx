@@ -1,15 +1,12 @@
 import { createEffect } from "solid-js";
 import { useConfig, useTheme } from "~/contexts";
-import { themes } from "~/themes";
+import { navigateToTheme } from "~/router";
+import { type ThemeID, themes } from "~/themes";
 
 /**
  * Hook for monitoring display selection changes and synchronizing theme state
- * @param themes List of available themes
  * @param monitorID Currently selected monitor ID
- * @param config Application configuration
  * @param monitorSpecificThemesIsSame Whether all monitors use the same theme
- * @param setAppliedThemeID Function to set the applied theme ID
- * @param setMenuItemIndex Function to set the current selected theme index
  * @returns No return value, only provides side effects
  */
 export const useMonitorThemeSync = (
@@ -17,7 +14,7 @@ export const useMonitorThemeSync = (
   monitorSpecificThemesIsSame: () => boolean,
 ) => {
   const { data: config } = useConfig();
-  const { setAppliedThemeID, setMenuItemIndex } = useTheme();
+  const { setAppliedThemeID } = useTheme();
 
   // Monitor display selection changes, update theme state
   createEffect(async () => {
@@ -25,11 +22,10 @@ export const useMonitorThemeSync = (
 
     if (!id || (!monitorSpecificThemesIsSame() && monitorID() === "all")) {
       setAppliedThemeID(undefined);
-      setMenuItemIndex(0);
+      navigateToTheme(themes[0].id);
     } else {
-      const index = themes.findIndex((t) => t.id === id);
       setAppliedThemeID(id);
-      setMenuItemIndex(index);
+      navigateToTheme(id as ThemeID);
     }
   });
 };

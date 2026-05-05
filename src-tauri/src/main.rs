@@ -14,7 +14,6 @@ use crate::infrastructure::process::kill_daemon;
 mod app;
 mod domain;
 mod error;
-mod i18n;
 mod infrastructure;
 mod services;
 mod utils;
@@ -72,7 +71,6 @@ async fn main() -> DwallSettingsResult<()> {
             commands::kill_daemon_cmd,
             commands::get_or_save_cached_thumbnails_cmd,
             commands::clear_thumbnail_cache_cmd,
-            commands::get_translations_cmd,
             commands::get_monitors_cmd,
             commands::open_privacy_location_settings
         ]);

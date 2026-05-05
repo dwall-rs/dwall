@@ -1,6 +1,6 @@
 import { defineConfig } from "vite";
 import solid from "vite-plugin-solid";
-import { vanillaExtractPlugin } from "@vanilla-extract/vite-plugin";
+import tailwindcss from "@tailwindcss/vite";
 import path from "node:path";
 
 const host = process.env.TAURI_DEV_HOST;
@@ -8,22 +8,13 @@ const host = process.env.TAURI_DEV_HOST;
 const pathSrc = path.resolve(__dirname, "src");
 
 // https://vitejs.dev/config/
-export default defineConfig(async ({ mode }) => ({
-  plugins: [
-    solid(),
-    vanillaExtractPlugin({
-      identifiers: mode === "production" ? "short" : "debug",
-    }),
-  ],
+export default defineConfig({
+  plugins: [solid(), tailwindcss()],
 
   resolve: {
     alias: {
       "~/": `${pathSrc}/`,
     },
-  },
-
-  esbuild: {
-    drop: mode === "production" ? ["console"] : [],
   },
 
   // Vite options tailored for Tauri development and only applied in `tauri dev` or `tauri build`
@@ -47,4 +38,4 @@ export default defineConfig(async ({ mode }) => ({
       ignored: ["**/src-tauri/**"],
     },
   },
-}));
+});

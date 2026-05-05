@@ -1,0 +1,1 @@
+export { AlertDialogMedia } from "./AlertDialogMedia";
