@@ -1,9 +1,9 @@
 @import "tailwindcss";
 @import "./animate.css";
-@import "./i18n-font.css";
+@import "./i18n.css";
 @import "./toast.css";
 
-@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+/*@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));*/
 
 @theme {
     --radius: 0.625rem;
@@ -52,32 +52,33 @@
 }
 
 @layer base {
-  ::selection {
-    @apply bg-neutral-950 text-white;
-  }
-
-  html {
-    @apply overscroll-y-none;
-  }
-  body {
-    font-synthesis-weight: none;
-    text-rendering: optimizeLegibility;
-  }
-  * {
-    @apply border-neutral-200;
-  }
-  @supports (font: -apple-system-body) and (-webkit-appearance: none) {
-    [data-wrapper] {
-      @apply min-[1800px]:border-t;
+    ::selection {
+        @apply bg-neutral-950 text-white;
     }
-  }
 
-  a:active,
-  button:active {
-    @apply opacity-60 md:opacity-100;
-  }
+    html {
+        @apply overscroll-y-none;
+    }
+    body {
+        font-synthesis-weight: none;
+        text-rendering: optimizeLegibility;
+        @apply bg-neutral-50 dark:bg-neutral-950 text-neutral-950 dark:text-neutral-50;
+    }
+    * {
+        @apply border-neutral-200;
+    }
+    @supports (font: -apple-system-body) and (-webkit-appearance: none) {
+        [data-wrapper] {
+            @apply min-[1800px]:border-t;
+        }
+    }
 
-  @variant dark {
+    a:active,
+    button:active {
+        @apply opacity-60 md:opacity-100;
+    }
+
+    @variant dark {
         ::selection {
             @apply bg-neutral-200 text-neutral-900;
         }
@@ -88,12 +89,12 @@
 }
 
 @layer utilities {
-  :is(.\*\:data-\[slot\=accordion\]\:max-w-sm > *)[data-slot="accordion"] {
-    max-width: var(--container-sm);
-  }
+    :is(.\*\:data-\[slot\=accordion\]\:max-w-sm > *)[data-slot="accordion"] {
+        max-width: var(--container-sm);
+    }
 
-  .no-scrollbar {
-    -ms-overflow-style: none;
-    scrollbar-width: none;
-  }
+    .no-scrollbar {
+        -ms-overflow-style: none;
+        scrollbar-width: none;
+    }
 }
