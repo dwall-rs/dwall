@@ -23,13 +23,19 @@ const Interval = () => {
   const [value, setValue] = createSignal(config()?.interval);
 
   const onSave = async () => {
-    await writeConfigFile({ ...config()!, interval: value()! });
-    refetchConfig();
-    toast.success(
-      t("settings.message.checkIntervalUpdated", {
-        interval: value()!.toString(),
-      }),
-    );
+    try {
+      await writeConfigFile({ ...config()!, interval: value()! });
+      refetchConfig();
+      toast.success(
+        t("settings.message.checkIntervalUpdated", {
+          interval: value()!.toString(),
+        }),
+      );
+    } catch (e) {
+      toast.error(
+        t("settings.message.checkIntervalUpdateFailed", { error: String(e) }),
+      );
+    }
   };
 
   const onChange = async (v?: number) => {
