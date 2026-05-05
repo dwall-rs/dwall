@@ -3,6 +3,7 @@
 /* Neut built-in styles (from animate.css and toast.css) */
 @import "./styles/animate.css";
 @import "./styles/toast.css";
+@import "./styles/i18n.css";
 
 html,
 body {
