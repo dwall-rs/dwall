@@ -349,12 +349,12 @@ mod tests {
 
         let config_str = r#"
         {
-            "interval": 601
+            "interval": 3601
         }
         "#;
         let result = serde_json::from_str::<Config>(config_str);
         assert!(result.is_err());
         let error = result.unwrap_err().to_string();
-        assert!(error.starts_with("interval must be between 1 and 600, got 601"));
+        assert!(error.starts_with("interval must be between 1 and 3600, got 3601"));
     }
 }
