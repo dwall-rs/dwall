@@ -134,6 +134,7 @@ jobs:
               chore:    '🔧 Chore',
               ci:       '👷 CI',
               test:     '🧪 Tests',
+              style:     '🎨 Styles',
             };
             const order = Object.keys(sections);
             const buckets = {};
@@ -154,9 +155,6 @@ jobs:
               if (buckets[prefix]?.length) {
                 changelog += `## ${sections[prefix]}\n${buckets[prefix].join('\n')}\n\n`;
               }
-            }
-            if (buckets.other?.length) {
-              changelog += `## 📦 Other\n${buckets.other.join('\n')}\n\n`;
             }
             if (!changelog) changelog = 'No changes recorded.';
 
