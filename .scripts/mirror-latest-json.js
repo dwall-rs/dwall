@@ -2,8 +2,8 @@ import fs from "node:fs";
 import path from "node:path";
 
 const mirrors = [
+  { host: "ghfast.top", prefix: true },
   { host: "gh-proxy.com", prefix: true },
-  { host: "ghproxy.cfd", prefix: true },
   { host: "ghproxy.net", prefix: true },
 ];
 
@@ -13,7 +13,7 @@ const mirrorContent = (mirror, text) => {
   if (mirror.prefix) {
     return text.replaceAll(
       GITHUB,
-      `https://${mirror.host}/https://github.com/`
+      `https://${mirror.host}/https://github.com/`,
     );
   }
 
@@ -51,9 +51,9 @@ const run = async () => {
     fs.mkdirSync(targetDir);
   }
 
-  mirrors.forEach((m, i) =>
-    newMirrorJSON(text, m, path.join(targetDir, `latest-mirror-${i + 1}.json`))
-  );
+  mirrors.forEach((m, i) => {
+    newMirrorJSON(text, m, path.join(targetDir, `latest-mirror-${i + 1}.json`));
+  });
 };
 
 run();
