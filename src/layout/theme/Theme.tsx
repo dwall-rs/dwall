@@ -20,6 +20,7 @@ import { type ThemeID, themes } from "~/themes";
 import { clsx } from "~/utils";
 import ThemeActions from "./Actions";
 import { t } from "~/i18n";
+import { Skeleton } from "~/components/skeleton";
 
 interface ThemeProps {
   id: ThemeID;
@@ -77,7 +78,7 @@ export const Theme = (props: ThemeProps) => {
           <CarouselContent>
             <For each={images()}>
               {(src, index) => (
-                <CarouselItem>
+                <CarouselItem class="min-w-108">
                   <AspectRatio
                     ref={aspectRatioRef}
                     ratio={1}
@@ -100,6 +101,7 @@ export const Theme = (props: ThemeProps) => {
                           aspectRatioRef!.getBoundingClientRect().top;
                         setNameTop(top - aspectRatioTop + 8);
                       }}
+                      skeleton={<Skeleton class="absolute w-108 h-108" />}
                     />
                   </AspectRatio>
                 </CarouselItem>
