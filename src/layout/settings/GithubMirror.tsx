@@ -61,7 +61,7 @@ const GithubMirror = () => {
             variant="outline"
             onClick={() =>
               open(
-                "https://gh-proxy.com/gist.githubusercontent.com/thep0y/682ebeb2b8d4f6eea3841fe3f42c0e30/raw/2f5b641e77abe3cb8f74ee8f65ead95beb663444/markdown",
+                "https://gh-proxy.com/gist.githubusercontent.com/thep0y/682ebeb2b8d4f6eea3841fe3f42c0e30/raw/e0bd3f7177271fc2009030b9d69592d767ab99dd/markdown",
               )
             }
             icon={{ icon: <Compass />, ariaLabel: "Save" }}
