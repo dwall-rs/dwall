@@ -52,7 +52,7 @@ jobs:
     outputs:
       release_id: ${{ steps.create-release.outputs.result }}
       package_version: ${{ env.VERSION }}
-      changelog: ${{ steps.github_release_changelog.outputs.changelog }}
+      changelog: ${{ steps.final_changelog.outputs.changelog }}
 
     steps:
       - uses: actions/checkout@v4
