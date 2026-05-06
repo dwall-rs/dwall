@@ -1,8 +1,9 @@
 // Markdown.tsx
-import { children, type Component, createMemo, For } from "solid-js";
+import { children, type Component, createMemo, For, Show } from "solid-js";
 import type { MarkdownProps, MarkdownTag } from "./Markdown.types";
 
 import { useMarkdownParser } from "./useMarkdownParser";
+import { Separator } from "../separator";
 
 export const Markdown: Component<MarkdownProps> = (props) => {
   const parser = useMarkdownParser();
@@ -67,16 +68,28 @@ export const Markdown: Component<MarkdownProps> = (props) => {
   });
 
   const content = children(() =>
-    parsedContent().map((item) => {
+    parsedContent().map((item, index) => {
       switch (item.type) {
         case "h2":
-          return <h2 class="m-0 pb-1.5">{item.content}</h2>;
+          return (
+            <>
+              <Show when={index > 0 && parsedContent().length > 1}>
+                <Separator class="my-3" />
+              </Show>
+              <h2 class="m-0 pb-1.5 font-bold text-base">{item.content}</h2>
+            </>
+          );
 
         case "ul":
           return (
             <ul class="my-1 mx-0 pl-2">
               <For each={item.items}>
-                {(listItem) => <li class="my-1 mx-0" innerHTML={listItem} />}
+                {(listItem) => (
+                  <li
+                    class="my-1 mx-0 ml-2 marker:content-['•']"
+                    innerHTML={listItem}
+                  />
+                )}
               </For>
             </ul>
           );
@@ -94,5 +107,5 @@ export const Markdown: Component<MarkdownProps> = (props) => {
     }),
   );
 
-  return <div class="mb-2 max-h-72">{content()}</div>;
+  return <div class="mb-2 max-h-72 overflow-y-auto scrollbar">{content()}</div>;
 };
