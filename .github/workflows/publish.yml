@@ -123,7 +123,7 @@ jobs:
             const { execSync } = require('child_process');
 
             const from = process.env.FROM;
-            const log = execSync(`git log "${from}"..refs/heads/main --pretty=format:"%h %s"`).toString().trim();
+            const log = execSync(`git log "${from}"..refs/heads/main --pretty=format:"%h %s %ae"`).toString().trim();
 
             const sections = {
               feat:     '🚀 Features',
@@ -140,14 +140,14 @@ jobs:
             const buckets = {};
 
             for (const line of log.split('\n').filter(Boolean)) {
-              const spaceIdx = line.indexOf(' ');
-              const sha = line.slice(0, spaceIdx);
-              const msg = line.slice(spaceIdx + 1);
+              const parts = line.split(' ');
+              const sha = parts[0];
+              const msg = parts.slice(1, -1).join(' ');
               const match = msg.match(/^([a-z]+)[\(:!]/);
               const prefix = match ? match[1] : 'other';
               const key = order.includes(prefix) ? prefix : 'other';
               buckets[key] = buckets[key] || [];
-              buckets[key].push(`- ${msg} (\`${sha}\`)`);
+              buckets[key].push(`- ${msg}`);
             }
 
             let changelog = '';
