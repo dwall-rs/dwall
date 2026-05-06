@@ -81,6 +81,13 @@ jobs:
           echo "VERSION=$VERSION" >> $GITHUB_ENV
           echo "Bumping version to: $VERSION"
 
+      - name: Create and push release branch
+        run: |
+          git checkout -b release
+          git add package.json Cargo.toml
+          git commit -m "Bump version to ${{ env.VERSION }}"
+          git push origin release --force
+
       - name: Determine changelog range
         id: changelog_range
         run: |
