@@ -115,56 +115,52 @@ jobs:
         id: fallback_changelog
         if: steps.github_release_changelog.outputs.changelog == ''
         run: |
-          FROM=${{ steps.changelog_range.outputs.fromTag }}
-          TO=refs/heads/main
+          node << 'EOF'
+          const { execSync } = require('child_process');
+          const fs = require('fs');
 
-          declare -A sections
-          sections=(
-            ["feat"]="🚀 Features"
-            ["fix"]="🐛 Bug Fixes"
-            ["perf"]="⚡ Performance"
-            ["refactor"]="♻️ Refactor"
-            ["docs"]="📖 Documentation"
-            ["chore"]="🔧 Chore"
-            ["ci"]="👷 CI"
-            ["test"]="🧪 Tests"
-          )
-          order=("feat" "fix" "perf" "refactor" "docs" "chore" "ci" "test")
+          const from = process.env.FROM;
+          const log = execSync(`git log "${from}"..refs/heads/main --pretty=format:"%h %s"`).toString().trim();
 
-          declare -A buckets
+          const sections = {
+            feat:     '🚀 Features',
+            fix:      '🐛 Bug Fixes',
+            perf:     '⚡ Performance',
+            refactor: '♻️ Refactor',
+            docs:     '📖 Documentation',
+            chore:    '🔧 Chore',
+            ci:       '👷 CI',
+            test:     '🧪 Tests',
+          };
+          const order = Object.keys(sections);
+          const buckets = {};
 
-          while IFS= read -r line; do
-            short_sha=$(echo "$line" | cut -d' ' -f1)
-            msg=$(echo "$line" | cut -d' ' -f2-)
-            prefix=$(echo "$msg" | grep -oP '^[a-z]+(?=[\(:!]|$)')
-            if [[ -n "${sections[$prefix]+_}" ]]; then
-              buckets[$prefix]+="- ${msg} (\`${short_sha}\`)"$'\n'
-            else
-              buckets["other"]+="- ${msg} (\`${short_sha}\`)"$'\n'
-            fi
-          done < <(git log "$FROM".."$TO" --pretty=format:"%h %s")
+          for (const line of log.split('\n').filter(Boolean)) {
+            const [sha, ...rest] = line.split(' ');
+            const msg = rest.join(' ');
+            const match = msg.match(/^([a-z]+)[\(:!]/);
+            const prefix = match ? match[1] : 'other';
+            const key = order.includes(prefix) ? prefix : 'other';
+            buckets[key] = buckets[key] || [];
+            buckets[key].push(`- ${msg} (\`${sha}\`)`);
+          }
 
-          changelog=""
-          for prefix in "${order[@]}"; do
-            if [[ -n "${buckets[$prefix]}" ]]; then
-              changelog+="## ${sections[$prefix]}"$'\n'
-              changelog+="${buckets[$prefix]}"$'\n'
-            fi
-          done
-          if [[ -n "${buckets[other]}" ]]; then
-            changelog+="## 📦 Other"$'\n'
-            changelog+="${buckets[other]}"$'\n'
-          fi
+          let changelog = '';
+          for (const prefix of order) {
+            if (buckets[prefix]?.length) {
+              changelog += `## ${sections[prefix]}\n${buckets[prefix].join('\n')}\n\n`;
+            }
+          }
+          if (buckets.other?.length) {
+            changelog += `## 📦 Other\n${buckets.other.join('\n')}\n\n`;
+          }
+          if (!changelog) changelog = 'No changes recorded.';
 
-          if [[ -z "$changelog" ]]; then
-            changelog="No changes recorded."
-          fi
-
-          {
-            echo "changelog<<EOF"
-            echo "$changelog"
-            echo "EOF"
-          } >> $GITHUB_OUTPUT
+          const output = `changelog<<EOF\n${changelog}\nEOF\n`;
+          fs.appendFileSync(process.env.GITHUB_OUTPUT, output);
+          EOF
+        env:
+          FROM: ${{ steps.changelog_range.outputs.fromTag }}
 
       - name: Set final changelog
         id: final_changelog
