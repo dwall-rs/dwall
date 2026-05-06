@@ -60,6 +60,9 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           fetch-depth: 0
 
+      - name: Fetch replace refs
+        run: git fetch origin 'refs/replace/*:refs/replace/*'
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
