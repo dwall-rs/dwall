@@ -81,18 +81,27 @@ jobs:
           echo "VERSION=$VERSION" >> $GITHUB_ENV
           echo "Bumping version to: $VERSION"
 
-      - name: Create and push release branch
+      - name: Determine changelog range
+        id: changelog_range
         run: |
-          git checkout -b release
-          git add package.json Cargo.toml
-          git commit -m "Bump version to ${{ env.VERSION }}"
-          git push origin release --force
+          LAST_TAG=$(git describe --tags --abbrev=0 --exclude="nightly" refs/heads/main 2>/dev/null || echo "")
+
+          if [ -n "$LAST_TAG" ] && git merge-base --is-ancestor "$LAST_TAG" refs/heads/main 2>/dev/null; then
+            echo "fromTag=$LAST_TAG" >> $GITHUB_OUTPUT
+            echo "Using tag $LAST_TAG as changelog base"
+          else
+            # 找 main 的根提交作为起点
+            ROOT_COMMIT=$(git rev-list --max-parents=0 refs/heads/main)
+            echo "fromTag=$ROOT_COMMIT" >> $GITHUB_OUTPUT
+            echo "No valid ancestor tag found, using root commit $ROOT_COMMIT"
+          fi
 
       - name: Build changelog
         id: github_release_changelog
         uses: mikepenz/release-changelog-builder-action@v4
         with:
           configuration: ".github/changelog-configuration.json"
+          fromTag: ${{ steps.changelog_range.outputs.fromTag }}
           toTag: "refs/heads/main"
           failOnError: true
         env:
