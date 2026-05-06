@@ -114,8 +114,10 @@ jobs:
       - name: Fallback changelog from commits
         id: fallback_changelog
         if: steps.github_release_changelog.outputs.changelog == ''
+        env:
+          FROM: ${{ steps.changelog_range.outputs.fromTag }}
         run: |
-          node << 'EOF'
+          cat > /tmp/gen_changelog.js << 'JSEOF'
           const { execSync } = require('child_process');
           const fs = require('fs');
 
@@ -136,8 +138,9 @@ jobs:
           const buckets = {};
 
           for (const line of log.split('\n').filter(Boolean)) {
-            const [sha, ...rest] = line.split(' ');
-            const msg = rest.join(' ');
+            const spaceIdx = line.indexOf(' ');
+            const sha = line.slice(0, spaceIdx);
+            const msg = line.slice(spaceIdx + 1);
             const match = msg.match(/^([a-z]+)[\(:!]/);
             const prefix = match ? match[1] : 'other';
             const key = order.includes(prefix) ? prefix : 'other';
@@ -158,9 +161,9 @@ jobs:
 
           const output = `changelog<<EOF\n${changelog}\nEOF\n`;
           fs.appendFileSync(process.env.GITHUB_OUTPUT, output);
-          EOF
-        env:
-          FROM: ${{ steps.changelog_range.outputs.fromTag }}
+          JSEOF
+
+          node /tmp/gen_changelog.js
 
       - name: Set final changelog
         id: final_changelog
