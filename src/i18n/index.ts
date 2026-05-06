@@ -17,7 +17,7 @@ export const LANGUAGES = {
   "zh-CN": "简体中文",
   "ja-JP": "日本語",
   "zh-HK": "繁體中文（香港）",
-  "zh-TW": "正體中文（台湾）",
+  "zh-TW": "正體中文（台灣）",
   "ko-KR": "한국어",
 } as const satisfies Record<Locale, string>;
 
