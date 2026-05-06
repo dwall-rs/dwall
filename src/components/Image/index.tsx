@@ -134,7 +134,7 @@ const ThemeImage = (props: ThemeImageProps) => {
         />
 
         <Show when={error() && !props.fallbackSrc}>
-          <div>
+          <div class="absolute w-full h-full flex items-center justify-center text-red-600 dark:text-red-800">
             <ImageOff />
           </div>
         </Show>
