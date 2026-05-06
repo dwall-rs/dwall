@@ -32,7 +32,7 @@ export const useAppInitialization = () => {
   const githubStarMessage = (
     <span>
       {t("common.message.githubStar")}
-      <Button variant="link" onClick={openGithubRepository}>
+      <Button variant="link" size="sm" onClick={openGithubRepository}>
         dwall
       </Button>
     </span>
