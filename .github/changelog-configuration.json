@@ -29,6 +29,6 @@
       "labels": ["semver-major", "breaking-change"]
     }
   ],
-  "pr_template": "- #{{TITLE}}",
+  "pr_template": "- #{{TITLE}} (##{{NUMBER}}) @#{{AUTHOR}}",
   "base_branches": ["main"]
 }
