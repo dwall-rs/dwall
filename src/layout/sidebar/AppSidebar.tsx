@@ -25,6 +25,7 @@ import { type ThemeItem, themes } from "~/themes";
 import { route, navigate } from "~/router";
 import { t } from "~/i18n";
 import { clsx } from "~/utils";
+import { Skeleton } from "~/components/skeleton";
 
 const [imageHeights, setImageHeights] = createStore<Record<string, number>>({});
 
@@ -142,6 +143,7 @@ const ThemeMenuItem = (
                   setImageHeights(props.id, height);
                 }
               }}
+              skeleton={<Skeleton class="absolute w-15 h-15" />}
             />
 
             <Show when={props.applied}>
