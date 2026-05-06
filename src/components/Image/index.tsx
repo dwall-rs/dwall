@@ -1,21 +1,21 @@
 import {
-  children,
   createEffect,
   createSignal,
   mergeProps,
   onCleanup,
+  Show,
 } from "solid-js";
 import type { JSX } from "solid-js";
 
 import { convertFileSrc } from "@tauri-apps/api/core";
-
-import { Spinner } from "../spinner";
 
 import { getOrSaveCachedThumbnails } from "~/commands";
 
 import type { ImageProps as ThemeImageProps } from "./Image.types";
 
 import { clsx } from "~/utils";
+import { Skeleton } from "../skeleton";
+import { ImageOff } from "lucide-solid";
 
 const ThemeImage = (props: ThemeImageProps) => {
   let imageRef: HTMLImageElement | undefined;
@@ -100,38 +100,46 @@ const ThemeImage = (props: ThemeImageProps) => {
     if (cleanup) onCleanup(cleanup);
   });
 
-  const renderImageContent = children(() => (
-    <>
-      {!loaded() && !error() && (
-        <div class="absolute top-1/2 left-1/2 -translate-1/2">
-          <Spinner />
-        </div>
-      )}
-      <img
-        ref={imageRef}
-        alt={props.alt}
-        src={resolvedSrc() || undefined}
-        onLoad={handleLoad}
-        onError={handleError}
-        width={props.width}
-        class={clsx(loaded() ? "visible" : "invisible", props.class)}
-      />
-      {error() && !props.fallbackSrc && <div>Failed to load image</div>}
-    </>
-  ));
-
   const createContainerStyle = (): JSX.CSSProperties => ({
     width: props.width ? `${props.width}px` : undefined,
     height: props.height ? `${props.height}px` : undefined,
   });
 
   return (
-    <div
-      class={clsx("relative inline-flex items-center justify-center")}
-      style={createContainerStyle()}
-    >
-      {renderImageContent()}
-    </div>
+    <>
+      <Show when={!loaded() && !error()}>
+        <Show
+          when={props.skeleton}
+          fallback={<Skeleton class="flex-1 w-full h-full" />}
+        >
+          {props.skeleton}
+        </Show>
+      </Show>
+
+      <div
+        class={clsx(
+          "relative inline-flex items-center justify-center",
+          !loaded() && !error() ? "w-0 h-0" : "w-full h-full",
+        )}
+        style={createContainerStyle()}
+      >
+        <img
+          ref={imageRef}
+          alt={props.alt}
+          src={resolvedSrc() || undefined}
+          onLoad={handleLoad}
+          onError={handleError}
+          width={props.width}
+          class={clsx(loaded() ? "visible" : "invisible", props.class)}
+        />
+
+        <Show when={error() && !props.fallbackSrc}>
+          <div>
+            <ImageOff />
+          </div>
+        </Show>
+      </div>
+    </>
   );
 };
 
