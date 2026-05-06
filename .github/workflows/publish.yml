@@ -134,6 +134,7 @@ jobs:
               chore:    '🔧 Chore',
               ci:       '👷 CI',
               test:     '🧪 Tests',
+              style:     '🎨 Styles',
             };
             const order = Object.keys(sections);
             const buckets = {};
@@ -155,9 +156,6 @@ jobs:
                 changelog += `## ${sections[prefix]}\n${buckets[prefix].join('\n')}\n\n`;
               }
             }
-            if (buckets.other?.length) {
-              changelog += `## 📦 Other\n${buckets.other.join('\n')}\n\n`;
-            }
             if (!changelog) changelog = 'No changes recorded.';
 
             core.setOutput('changelog', changelog);
@@ -169,7 +167,7 @@ jobs:
             echo "changelog<<EOF"
             echo "${{ steps.github_release_changelog.outputs.changelog != '' && steps.github_release_changelog.outputs.changelog || steps.fallback_changelog.outputs.changelog }}"
             echo "EOF"
-          } >
+          } >> $GITHUB_OUTPUT
 
       - name: Create release
         id: create-release
