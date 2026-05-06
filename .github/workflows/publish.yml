@@ -114,56 +114,53 @@ jobs:
       - name: Fallback changelog from commits
         id: fallback_changelog
         if: steps.github_release_changelog.outputs.changelog == ''
+        uses: actions/github-script@v7
         env:
           FROM: ${{ steps.changelog_range.outputs.fromTag }}
-        run: |
-          cat > /tmp/gen_changelog.js << 'JSEOF'
-          const { execSync } = require('child_process');
-          const fs = require('fs');
+        with:
+          result-encoding: string
+          script: |
+            const { execSync } = require('child_process');
 
-          const from = process.env.FROM;
-          const log = execSync(`git log "${from}"..refs/heads/main --pretty=format:"%h %s"`).toString().trim();
+            const from = process.env.FROM;
+            const log = execSync(`git log "${from}"..refs/heads/main --pretty=format:"%h %s"`).toString().trim();
 
-          const sections = {
-            feat:     '🚀 Features',
-            fix:      '🐛 Bug Fixes',
-            perf:     '⚡ Performance',
-            refactor: '♻️ Refactor',
-            docs:     '📖 Documentation',
-            chore:    '🔧 Chore',
-            ci:       '👷 CI',
-            test:     '🧪 Tests',
-          };
-          const order = Object.keys(sections);
-          const buckets = {};
+            const sections = {
+              feat:     '🚀 Features',
+              fix:      '🐛 Bug Fixes',
+              perf:     '⚡ Performance',
+              refactor: '♻️ Refactor',
+              docs:     '📖 Documentation',
+              chore:    '🔧 Chore',
+              ci:       '👷 CI',
+              test:     '🧪 Tests',
+            };
+            const order = Object.keys(sections);
+            const buckets = {};
 
-          for (const line of log.split('\n').filter(Boolean)) {
-            const spaceIdx = line.indexOf(' ');
-            const sha = line.slice(0, spaceIdx);
-            const msg = line.slice(spaceIdx + 1);
-            const match = msg.match(/^([a-z]+)[\(:!]/);
-            const prefix = match ? match[1] : 'other';
-            const key = order.includes(prefix) ? prefix : 'other';
-            buckets[key] = buckets[key] || [];
-            buckets[key].push(`- ${msg} (\`${sha}\`)`);
-          }
-
-          let changelog = '';
-          for (const prefix of order) {
-            if (buckets[prefix]?.length) {
-              changelog += `## ${sections[prefix]}\n${buckets[prefix].join('\n')}\n\n`;
+            for (const line of log.split('\n').filter(Boolean)) {
+              const spaceIdx = line.indexOf(' ');
+              const sha = line.slice(0, spaceIdx);
+              const msg = line.slice(spaceIdx + 1);
+              const match = msg.match(/^([a-z]+)[\(:!]/);
+              const prefix = match ? match[1] : 'other';
+              const key = order.includes(prefix) ? prefix : 'other';
+              buckets[key] = buckets[key] || [];
+              buckets[key].push(`- ${msg} (\`${sha}\`)`);
             }
-          }
-          if (buckets.other?.length) {
-            changelog += `## 📦 Other\n${buckets.other.join('\n')}\n\n`;
-          }
-          if (!changelog) changelog = 'No changes recorded.';
 
-          const output = `changelog<<EOF\n${changelog}\nEOF\n`;
-          fs.appendFileSync(process.env.GITHUB_OUTPUT, output);
-          JSEOF
+            let changelog = '';
+            for (const prefix of order) {
+              if (buckets[prefix]?.length) {
+                changelog += `## ${sections[prefix]}\n${buckets[prefix].join('\n')}\n\n`;
+              }
+            }
+            if (buckets.other?.length) {
+              changelog += `## 📦 Other\n${buckets.other.join('\n')}\n\n`;
+            }
+            if (!changelog) changelog = 'No changes recorded.';
 
-          node /tmp/gen_changelog.js
+            core.setOutput('changelog', changelog);
 
       - name: Set final changelog
         id: final_changelog
