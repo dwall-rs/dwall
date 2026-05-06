@@ -169,7 +169,7 @@ jobs:
             echo "changelog<<EOF"
             echo "${{ steps.github_release_changelog.outputs.changelog != '' && steps.github_release_changelog.outputs.changelog || steps.fallback_changelog.outputs.changelog }}"
             echo "EOF"
-          } >
+          } >> $GITHUB_OUTPUT
 
       - name: Create release
         id: create-release
