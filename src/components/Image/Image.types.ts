@@ -1,3 +1,5 @@
+import type { JSXElement } from "solid-js";
+
 export interface ImageData {
   width: number;
   height: number;
@@ -17,6 +19,7 @@ export interface ImageProps {
   class?: string;
   onLoad?: (data: ImageData) => void;
   onError?: (error: Error) => void;
+  skeleton?: JSXElement;
   fallbackSrc?: string;
   retryCount?: number;
 }
