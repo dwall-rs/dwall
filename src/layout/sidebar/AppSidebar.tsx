@@ -45,13 +45,13 @@ export const AppSidebar = () => {
       collapsible="none"
       class="[--sidebar-width:--spacing(24)] flex sticky items-center bg-neutral-200 dark:bg-transparent pt-3 h-screen"
     >
-      <SidebarContent
-        class={clsx(
-          "overflow-x-hidden",
-          !theme.downloadingTheme() ? "scrollbar" : "overflow-y-hidden",
-        )}
-      >
-        <SidebarMenu class="gap-2 mx-1.5">
+      <SidebarContent class="overflow-hidden">
+        <SidebarMenu
+          class={clsx(
+            "gap-2 mr-1 overflow-x-hidden overflow-y-auto",
+            !theme.downloadingTheme() ? "scrollbar" : "overflow-y-hidden",
+          )}
+        >
           <For each={themes}>
             {(item, index) => (
               <Show when={config.state === "ready"} fallback={<Spinner />}>
