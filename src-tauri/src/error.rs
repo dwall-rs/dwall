@@ -3,7 +3,7 @@ use serde::{Serialize, Serializer};
 
 use crate::infrastructure::network::download::DownloadError;
 
-pub type DwallSettingsResult<T> = std::result::Result<T, DwallSettingsError>;
+pub type DwallSettingsResult<T, E = DwallSettingsError> = std::result::Result<T, E>;
 
 #[derive(Debug, thiserror::Error)]
 pub enum DwallSettingsError {

@@ -72,7 +72,8 @@ async fn main() -> DwallSettingsResult<()> {
             commands::get_or_save_cached_thumbnails_cmd,
             commands::clear_thumbnail_cache_cmd,
             commands::get_monitors_cmd,
-            commands::open_privacy_location_settings
+            commands::open_privacy_location_settings,
+            commands::check_for_updates_cmd,
         ]);
 
     if cfg!(debug_assertions) {

@@ -49,7 +49,7 @@ impl ThemeDownloader {
 
         // Construct download URL
         let github_url = HttpDownloadService::build_download_url(theme_id);
-        let asset_url = config.resolve_github_mirror_url(&github_url);
+        let asset_url = config.resolve_github_mirror_url(&github_url).await;
 
         // Download the file
         let download_result = self

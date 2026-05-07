@@ -9,11 +9,13 @@ use std::{
 };
 
 use dwall::{
-    ColorScheme, DWALL_CONFIG_DIR, DWALL_LOG_DIR, DisplayMonitor,
+    ColorScheme, DWALL_CONFIG_DIR, DWALL_LOG_DIR, DisplayMonitor, config::Network,
     domain::geography::check_location_permission, read_config_file as dwall_read_config,
     write_config_file as dwall_write_config,
 };
-use tauri::{AppHandle, Manager, WebviewWindow};
+use serde::Serialize;
+use tauri::{AppHandle, Manager, ResourceId, Url, Webview, WebviewWindow};
+use tauri_plugin_updater::UpdaterExt;
 
 use crate::{
     domain::{monitor::get_monitors, settings::Config, theme::validate_solar_theme},
@@ -27,6 +29,7 @@ use crate::{
         download_service::download_theme_and_extract,
         theme_service::{apply_theme, get_applied_theme_id},
     },
+    utils::helpers::resolve_github_mirror_url,
 };
 
 #[tauri::command]
@@ -169,4 +172,70 @@ pub async fn get_or_save_cached_thumbnails_cmd(
 #[tauri::command]
 pub async fn clear_thumbnail_cache_cmd() -> DwallSettingsResult<u64> {
     clear_thumbnail_cache().await
+}
+
+#[derive(Serialize, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct Metadata {
+    rid: ResourceId,
+    current_version: String,
+    version: String,
+    body: Option<String>,
+}
+
+#[tauri::command]
+pub async fn check_for_updates_cmd(
+    webview: Webview,
+    network: Option<Network>,
+) -> DwallSettingsResult<Option<Metadata>, tauri_plugin_updater::Error> {
+    debug!(network = ?network);
+
+    let url = resolve_github_mirror_url(
+        network.as_ref(),
+        "https://github.com/dwall-rs/dwall/releases/latest/download/latest.json",
+    )
+    .await;
+    let endpoint = Url::parse(&url).inspect_err(|&e| {
+        error!(error = ?e, "Failed to parse endpoint URL");
+    })?;
+    debug!("Endpoint URL: {}", endpoint);
+
+    let mut builder = webview.updater_builder().endpoints(vec![endpoint])?;
+
+    if let Some(Network::Socks5 { host, port }) = &network {
+        let proxy = Url::parse(&format!("socks5h://{host}:{port}")).inspect_err(|&e| {
+            error!(error = ?e, "Failed to parse proxy URL");
+        })?;
+        debug!("Proxy URL: {}", proxy);
+        builder = builder.proxy(proxy);
+    }
+
+    match builder.build()?.check().await.inspect_err(|e| {
+        error!(error = ?e, "Failed to check update");
+    })? {
+        None => Ok(None),
+        Some(mut update) => {
+            let download_url =
+                resolve_github_mirror_url(network.as_ref(), update.download_url.as_str()).await;
+
+            update.download_url = download_url.parse().inspect_err(|e| {
+                error!(error = ?e, "Failed to parse download URL");
+            })?;
+
+            info!(
+                version = update.version,
+                date = ?update.date,
+                url = %update.download_url,
+                proxy = update.proxy.as_ref().map(|p| p.as_str()),
+                "Update available"
+            );
+            let metadata = Metadata {
+                current_version: update.current_version.clone(),
+                version: update.version.clone(),
+                body: update.body.clone(),
+                rid: webview.resources_table().add(update),
+            };
+            Ok(Some(metadata))
+        }
+    }
 }
