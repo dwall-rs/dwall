@@ -346,7 +346,6 @@ jobs:
     permissions:
       contents: write
     runs-on: ubuntu-latest
-    needs: upload_mirror_json
     if: success()
 
     steps:
@@ -374,7 +373,6 @@ jobs:
         build-tauri,
         publish-release,
         update-main-version,
-        upload_mirror_json,
         delete-nightly-release-and-tag,
       ]
     if: always()
