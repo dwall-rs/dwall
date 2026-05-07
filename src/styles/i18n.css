@@ -22,19 +22,21 @@
    1. 字体 & 缩放系数 token
    ---------------------------------------------------------------- */
 @theme {
-  /* 字体 */
-  --font-en: "Inter", system-ui, sans-serif;
-  --font-ru: "Noto Sans", "Segoe UI", sans-serif;
-  --font-zh-hans: "Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif;
-  --font-zh-hant:
-    "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", sans-serif;
-  --font-ja: "Noto Sans JP", "Hiragino Sans", "Yu Gothic", sans-serif;
-  --font-ko: "Noto Sans KR", "Apple SD Gothic Neo", sans-serif;
-  --font-hi: "Noto Sans Devanagari", "Mangal", sans-serif;
-  --font-th: "Noto Sans Thai", "Leelawadee UI", sans-serif;
-  --font-bn: "Noto Sans Bengali", "Vrinda", sans-serif;
-  --font-ar: "Noto Sans Arabic", "Tahoma", sans-serif;
-  --font-he: "Noto Sans Hebrew", "Arial Hebrew", sans-serif;
+    /* 字体 */
+    --font-en: "Inter", system-ui, sans-serif;
+    --font-ru: "Inter", "Noto Sans", "Segoe UI", sans-serif;
+    --font-zh-hans:
+        "Inter", "Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif;
+    --font-zh-hant:
+        "Inter", "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", sans-serif;
+    --font-ja:
+        "Inter", "Noto Sans JP", "Hiragino Sans", "Yu Gothic", sans-serif;
+    --font-ko: "Inter", "Noto Sans KR", "Apple SD Gothic Neo", sans-serif;
+    --font-hi: "Inter", "Noto Sans Devanagari", "Mangal", sans-serif;
+    --font-th: "Inter", "Noto Sans Thai", "Leelawadee UI", sans-serif;
+    --font-bn: "Inter", "Noto Sans Bengali", "Vrinda", sans-serif;
+    --font-ar: "Inter", "Noto Sans Arabic", "Tahoma", sans-serif;
+    --font-he: "Inter", "Noto Sans Hebrew", "Arial Hebrew", sans-serif;
 }
 
 /* ----------------------------------------------------------------
@@ -43,40 +45,40 @@
 [data-lang="en"],
 [data-lang="fr"],
 [data-lang="de"] {
-  font-family: var(--font-en);
+    font-family: var(--font-en);
 }
 [data-lang="ru"] {
-  font-family: var(--font-ru);
+    font-family: var(--font-ru);
 }
 [data-lang="zh-hans"] {
-  font-family: var(--font-zh-hans);
+    font-family: var(--font-zh-hans);
 }
 [data-lang="zh-hant"] {
-  font-family: var(--font-zh-hant);
+    font-family: var(--font-zh-hant);
 }
 [data-lang="ja"] {
-  font-family: var(--font-ja);
+    font-family: var(--font-ja);
 }
 [data-lang="ko"] {
-  font-family: var(--font-ko);
+    font-family: var(--font-ko);
 }
 [data-lang="hi"] {
-  font-family: var(--font-hi);
+    font-family: var(--font-hi);
 }
 [data-lang="bn"] {
-  font-family: var(--font-bn);
+    font-family: var(--font-bn);
 }
 [data-lang="th"] {
-  font-family: var(--font-th);
+    font-family: var(--font-th);
 }
 [data-lang="ar"] {
-  font-family: var(--font-ar);
+    font-family: var(--font-ar);
 }
 [data-lang="fa"] {
-  font-family: var(--font-ar);
+    font-family: var(--font-ar);
 }
 [data-lang="he"] {
-  font-family: var(--font-he);
+    font-family: var(--font-he);
 }
 
 /* ----------------------------------------------------------------
@@ -87,36 +89,36 @@
 [data-lang="en"],
 [data-lang="fr"],
 [data-lang="de"] {
-  --text-xs--line-height: calc(1 / 0.75);
-  --text-sm--line-height: calc(1.25 / 0.875);
-  --text-base--line-height: calc(1.5 / 1);
-  --text-lg--line-height: calc(1.75 / 1.125);
-  --text-xl--line-height: calc(1.75 / 1.25);
-  --text-2xl--line-height: calc(2 / 1.5);
-  --text-3xl--line-height: calc(2.25 / 1.875);
-  --text-4xl--line-height: calc(2.5 / 2.25);
-  --text-5xl--line-height: 1;
-  --text-6xl--line-height: 1;
-  --text-7xl--line-height: 1;
-  --text-8xl--line-height: 1;
-  --text-9xl--line-height: 1;
+    --text-xs--line-height: calc(1 / 0.75);
+    --text-sm--line-height: calc(1.25 / 0.875);
+    --text-base--line-height: calc(1.5 / 1);
+    --text-lg--line-height: calc(1.75 / 1.125);
+    --text-xl--line-height: calc(1.75 / 1.25);
+    --text-2xl--line-height: calc(2 / 1.5);
+    --text-3xl--line-height: calc(2.25 / 1.875);
+    --text-4xl--line-height: calc(2.5 / 2.25);
+    --text-5xl--line-height: 1;
+    --text-6xl--line-height: 1;
+    --text-7xl--line-height: 1;
+    --text-8xl--line-height: 1;
+    --text-9xl--line-height: 1;
 }
 
 /* 西里尔（ru）× 1.07 */
 [data-lang="ru"] {
-  --text-xs--line-height: calc(1.07 / 0.75);
-  --text-sm--line-height: calc(1.338 / 0.875);
-  --text-base--line-height: calc(1.605 / 1);
-  --text-lg--line-height: calc(1.873 / 1.125);
-  --text-xl--line-height: calc(1.873 / 1.25);
-  --text-2xl--line-height: calc(2.14 / 1.5);
-  --text-3xl--line-height: calc(2.408 / 1.875);
-  --text-4xl--line-height: calc(2.675 / 2.25);
-  --text-5xl--line-height: 1.07;
-  --text-6xl--line-height: 1.07;
-  --text-7xl--line-height: 1.07;
-  --text-8xl--line-height: 1.07;
-  --text-9xl--line-height: 1.07;
+    --text-xs--line-height: calc(1.07 / 0.75);
+    --text-sm--line-height: calc(1.338 / 0.875);
+    --text-base--line-height: calc(1.605 / 1);
+    --text-lg--line-height: calc(1.873 / 1.125);
+    --text-xl--line-height: calc(1.873 / 1.25);
+    --text-2xl--line-height: calc(2.14 / 1.5);
+    --text-3xl--line-height: calc(2.408 / 1.875);
+    --text-4xl--line-height: calc(2.675 / 2.25);
+    --text-5xl--line-height: 1.07;
+    --text-6xl--line-height: 1.07;
+    --text-7xl--line-height: 1.07;
+    --text-8xl--line-height: 1.07;
+    --text-9xl--line-height: 1.07;
 }
 
 /* CJK（zh-hans / zh-hant / ja / ko）× 1.2 */
@@ -124,105 +126,105 @@
 [data-lang="zh-hant"],
 [data-lang="ja"],
 [data-lang="ko"] {
-  --text-xs--line-height: calc(1.2 / 0.75);
-  --text-sm--line-height: calc(1.5 / 0.875);
-  --text-base--line-height: calc(1.8 / 1);
-  --text-lg--line-height: calc(2.1 / 1.125);
-  --text-xl--line-height: calc(2.1 / 1.25);
-  --text-2xl--line-height: calc(2.4 / 1.5);
-  --text-3xl--line-height: calc(2.7 / 1.875);
-  --text-4xl--line-height: calc(3 / 2.25);
-  --text-5xl--line-height: 1.2;
-  --text-6xl--line-height: 1.2;
-  --text-7xl--line-height: 1.2;
-  --text-8xl--line-height: 1.2;
-  --text-9xl--line-height: 1.2;
+    --text-xs--line-height: calc(1.2 / 0.75);
+    --text-sm--line-height: calc(1.5 / 0.875);
+    --text-base--line-height: calc(1.8 / 1);
+    --text-lg--line-height: calc(2.1 / 1.125);
+    --text-xl--line-height: calc(2.1 / 1.25);
+    --text-2xl--line-height: calc(2.4 / 1.5);
+    --text-3xl--line-height: calc(2.7 / 1.875);
+    --text-4xl--line-height: calc(3 / 2.25);
+    --text-5xl--line-height: 1.2;
+    --text-6xl--line-height: 1.2;
+    --text-7xl--line-height: 1.2;
+    --text-8xl--line-height: 1.2;
+    --text-9xl--line-height: 1.2;
 }
 
 /* 天城文（hi）× 1.33 */
 [data-lang="hi"] {
-  --text-xs--line-height: calc(1.33 / 0.75);
-  --text-sm--line-height: calc(1.663 / 0.875);
-  --text-base--line-height: calc(1.995 / 1);
-  --text-lg--line-height: calc(2.328 / 1.125);
-  --text-xl--line-height: calc(2.328 / 1.25);
-  --text-2xl--line-height: calc(2.66 / 1.5);
-  --text-3xl--line-height: calc(2.993 / 1.875);
-  --text-4xl--line-height: calc(3.325 / 2.25);
-  --text-5xl--line-height: 1.33;
-  --text-6xl--line-height: 1.33;
-  --text-7xl--line-height: 1.33;
-  --text-8xl--line-height: 1.33;
-  --text-9xl--line-height: 1.33;
+    --text-xs--line-height: calc(1.33 / 0.75);
+    --text-sm--line-height: calc(1.663 / 0.875);
+    --text-base--line-height: calc(1.995 / 1);
+    --text-lg--line-height: calc(2.328 / 1.125);
+    --text-xl--line-height: calc(2.328 / 1.25);
+    --text-2xl--line-height: calc(2.66 / 1.5);
+    --text-3xl--line-height: calc(2.993 / 1.875);
+    --text-4xl--line-height: calc(3.325 / 2.25);
+    --text-5xl--line-height: 1.33;
+    --text-6xl--line-height: 1.33;
+    --text-7xl--line-height: 1.33;
+    --text-8xl--line-height: 1.33;
+    --text-9xl--line-height: 1.33;
 }
 
 /* 孟加拉文（bn）× 1.33 */
 [data-lang="bn"] {
-  --text-xs--line-height: calc(1.33 / 0.75);
-  --text-sm--line-height: calc(1.663 / 0.875);
-  --text-base--line-height: calc(1.995 / 1);
-  --text-lg--line-height: calc(2.328 / 1.125);
-  --text-xl--line-height: calc(2.328 / 1.25);
-  --text-2xl--line-height: calc(2.66 / 1.5);
-  --text-3xl--line-height: calc(2.993 / 1.875);
-  --text-4xl--line-height: calc(3.325 / 2.25);
-  --text-5xl--line-height: 1.33;
-  --text-6xl--line-height: 1.33;
-  --text-7xl--line-height: 1.33;
-  --text-8xl--line-height: 1.33;
-  --text-9xl--line-height: 1.33;
+    --text-xs--line-height: calc(1.33 / 0.75);
+    --text-sm--line-height: calc(1.663 / 0.875);
+    --text-base--line-height: calc(1.995 / 1);
+    --text-lg--line-height: calc(2.328 / 1.125);
+    --text-xl--line-height: calc(2.328 / 1.25);
+    --text-2xl--line-height: calc(2.66 / 1.5);
+    --text-3xl--line-height: calc(2.993 / 1.875);
+    --text-4xl--line-height: calc(3.325 / 2.25);
+    --text-5xl--line-height: 1.33;
+    --text-6xl--line-height: 1.33;
+    --text-7xl--line-height: 1.33;
+    --text-8xl--line-height: 1.33;
+    --text-9xl--line-height: 1.33;
 }
 
 /* 泰文（th）× 1.47 */
 [data-lang="th"] {
-  --text-xs--line-height: calc(1.47 / 0.75);
-  --text-sm--line-height: calc(1.837 / 0.875);
-  --text-base--line-height: calc(2.205 / 1);
-  --text-lg--line-height: calc(2.572 / 1.125);
-  --text-xl--line-height: calc(2.572 / 1.25);
-  --text-2xl--line-height: calc(2.94 / 1.5);
-  --text-3xl--line-height: calc(3.308 / 1.875);
-  --text-4xl--line-height: calc(3.675 / 2.25);
-  --text-5xl--line-height: 1.47;
-  --text-6xl--line-height: 1.47;
-  --text-7xl--line-height: 1.47;
-  --text-8xl--line-height: 1.47;
-  --text-9xl--line-height: 1.47;
+    --text-xs--line-height: calc(1.47 / 0.75);
+    --text-sm--line-height: calc(1.837 / 0.875);
+    --text-base--line-height: calc(2.205 / 1);
+    --text-lg--line-height: calc(2.572 / 1.125);
+    --text-xl--line-height: calc(2.572 / 1.25);
+    --text-2xl--line-height: calc(2.94 / 1.5);
+    --text-3xl--line-height: calc(3.308 / 1.875);
+    --text-4xl--line-height: calc(3.675 / 2.25);
+    --text-5xl--line-height: 1.47;
+    --text-6xl--line-height: 1.47;
+    --text-7xl--line-height: 1.47;
+    --text-8xl--line-height: 1.47;
+    --text-9xl--line-height: 1.47;
 }
 
 /* 阿拉伯文 & 波斯文（ar / fa）× 1.2 · RTL */
 [data-lang="ar"],
 [data-lang="fa"] {
-  direction: rtl;
-  --text-xs--line-height: calc(1.2 / 0.75);
-  --text-sm--line-height: calc(1.5 / 0.875);
-  --text-base--line-height: calc(1.8 / 1);
-  --text-lg--line-height: calc(2.1 / 1.125);
-  --text-xl--line-height: calc(2.1 / 1.25);
-  --text-2xl--line-height: calc(2.4 / 1.5);
-  --text-3xl--line-height: calc(2.7 / 1.875);
-  --text-4xl--line-height: calc(3 / 2.25);
-  --text-5xl--line-height: 1.2;
-  --text-6xl--line-height: 1.2;
-  --text-7xl--line-height: 1.2;
-  --text-8xl--line-height: 1.2;
-  --text-9xl--line-height: 1.2;
+    direction: rtl;
+    --text-xs--line-height: calc(1.2 / 0.75);
+    --text-sm--line-height: calc(1.5 / 0.875);
+    --text-base--line-height: calc(1.8 / 1);
+    --text-lg--line-height: calc(2.1 / 1.125);
+    --text-xl--line-height: calc(2.1 / 1.25);
+    --text-2xl--line-height: calc(2.4 / 1.5);
+    --text-3xl--line-height: calc(2.7 / 1.875);
+    --text-4xl--line-height: calc(3 / 2.25);
+    --text-5xl--line-height: 1.2;
+    --text-6xl--line-height: 1.2;
+    --text-7xl--line-height: 1.2;
+    --text-8xl--line-height: 1.2;
+    --text-9xl--line-height: 1.2;
 }
 
 /* 希伯来文（he）× 1.13 · RTL */
 [data-lang="he"] {
-  direction: rtl;
-  --text-xs--line-height: calc(1.13 / 0.75);
-  --text-sm--line-height: calc(1.412 / 0.875);
-  --text-base--line-height: calc(1.695 / 1);
-  --text-lg--line-height: calc(1.977 / 1.125);
-  --text-xl--line-height: calc(1.977 / 1.25);
-  --text-2xl--line-height: calc(2.26 / 1.5);
-  --text-3xl--line-height: calc(2.542 / 1.875);
-  --text-4xl--line-height: calc(2.825 / 2.25);
-  --text-5xl--line-height: 1.13;
-  --text-6xl--line-height: 1.13;
-  --text-7xl--line-height: 1.13;
-  --text-8xl--line-height: 1.13;
-  --text-9xl--line-height: 1.13;
+    direction: rtl;
+    --text-xs--line-height: calc(1.13 / 0.75);
+    --text-sm--line-height: calc(1.412 / 0.875);
+    --text-base--line-height: calc(1.695 / 1);
+    --text-lg--line-height: calc(1.977 / 1.125);
+    --text-xl--line-height: calc(1.977 / 1.25);
+    --text-2xl--line-height: calc(2.26 / 1.5);
+    --text-3xl--line-height: calc(2.542 / 1.875);
+    --text-4xl--line-height: calc(2.825 / 2.25);
+    --text-5xl--line-height: 1.13;
+    --text-6xl--line-height: 1.13;
+    --text-7xl--line-height: 1.13;
+    --text-8xl--line-height: 1.13;
+    --text-9xl--line-height: 1.13;
 }
