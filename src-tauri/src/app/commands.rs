@@ -188,18 +188,21 @@ pub async fn check_for_updates_cmd(
     webview: Webview,
     network: Option<Network>,
 ) -> DwallSettingsResult<Option<Metadata>, tauri_plugin_updater::Error> {
-    let endpoint = Url::parse(&resolve_github_mirror_url(
+    debug!(network = ?network);
+
+    let url = resolve_github_mirror_url(
         network.as_ref(),
         "https://github.com/dwall-rs/dwall/releases/latest/download/latest.json",
-    ))
-    .inspect_err(|&e| {
+    )
+    .await;
+    let endpoint = Url::parse(&url).inspect_err(|&e| {
         error!(error = ?e, "Failed to parse endpoint URL");
     })?;
     debug!("Endpoint URL: {}", endpoint);
 
     let mut builder = webview.updater_builder().endpoints(vec![endpoint])?;
 
-    if let Some(Network::Socks5 { host, port }) = network {
+    if let Some(Network::Socks5 { host, port }) = &network {
         let proxy = Url::parse(&format!("socks5h://{host}:{port}")).inspect_err(|&e| {
             error!(error = ?e, "Failed to parse proxy URL");
         })?;
@@ -211,11 +214,19 @@ pub async fn check_for_updates_cmd(
         error!(error = ?e, "Failed to check update");
     })? {
         None => Ok(None),
-        Some(update) => {
+        Some(mut update) => {
+            let download_url =
+                resolve_github_mirror_url(network.as_ref(), update.download_url.as_str()).await;
+
+            update.download_url = download_url.parse().inspect_err(|e| {
+                error!(error = ?e, "Failed to parse download URL");
+            })?;
+
             info!(
                 version = update.version,
                 date = ?update.date,
                 url = %update.download_url,
+                proxy = update.proxy.as_ref().map(|p| p.as_str()),
                 "Update available"
             );
             let metadata = Metadata {

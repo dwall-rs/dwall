@@ -33,8 +33,8 @@ impl Config {
     ///
     /// This method transforms GitHub release URLs using the configured mirror template,
     /// replacing placeholders like `<owner>`, `<repo>`, `<version>`, and `<asset>`.
-    pub fn resolve_github_mirror_url(&self, github_url: &str) -> String {
-        resolve_github_mirror_url(self.inner.network(), github_url)
+    pub async fn resolve_github_mirror_url(&self, github_url: &str) -> String {
+        resolve_github_mirror_url(self.inner.network(), github_url).await
     }
 
     /// Returns the themes directory path
