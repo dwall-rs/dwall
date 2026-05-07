@@ -11,8 +11,11 @@ interface UpdateMetadata {
 }
 
 export const checkForUpdates = async (network?: Network) => {
-  const metadata = await invoke<UpdateMetadata>("check_for_updates_cmd", {
-    network,
-  });
-  return new Update(metadata);
+  const metadata = await invoke<UpdateMetadata | null>(
+    "check_for_updates_cmd",
+    {
+      network,
+    },
+  );
+  return metadata ? new Update(metadata) : undefined;
 };
