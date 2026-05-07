@@ -6,6 +6,7 @@
   "permissions": [
     "core:default",
     "updater:default",
+    "updater:deny-check",
     "dialog:default",
     "shell:default",
     "core:window:default",

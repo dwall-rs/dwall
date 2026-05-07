@@ -14,7 +14,7 @@ use dwall::{
     write_config_file as dwall_write_config,
 };
 use serde::Serialize;
-use tauri::{AppHandle, Manager, ResourceId, Url, Webview, WebviewWindow};
+use tauri::{AppHandle, Manager, ResourceId, Runtime, Url, Webview, WebviewWindow};
 use tauri_plugin_updater::UpdaterExt;
 
 use crate::{
@@ -184,8 +184,8 @@ pub struct Metadata {
 }
 
 #[tauri::command]
-pub async fn check_for_updates_cmd(
-    webview: Webview,
+pub async fn check_for_updates_cmd<R: Runtime>(
+    webview: Webview<R>,
     network: Option<Network>,
 ) -> DwallSettingsResult<Option<Metadata>, tauri_plugin_updater::Error> {
     debug!(network = ?network);
@@ -235,6 +235,8 @@ pub async fn check_for_updates_cmd(
                 body: update.body.clone(),
                 rid: webview.resources_table().add(update),
             };
+
+            debug!(rid = metadata.rid, "Update metadata generated");
             Ok(Some(metadata))
         }
     }
