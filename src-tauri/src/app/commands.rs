@@ -188,7 +188,7 @@ pub async fn check_for_updates_cmd<R: Runtime>(
     webview: Webview<R>,
     network: Option<Network>,
 ) -> DwallSettingsResult<Option<Metadata>, tauri_plugin_updater::Error> {
-    debug!(network = ?network);
+    debug!(network = ?network, "Checking for updates");
 
     let url = resolve_github_mirror_url(
         network.as_ref(),
