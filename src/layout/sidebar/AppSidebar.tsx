@@ -60,7 +60,11 @@ export const AppSidebar = () => {
                   index={index()}
                   active={activeThemeID() === item.id}
                   applied={theme.appliedThemeID() === item.id}
-                  github_mirror_template={config()?.github_mirror_template}
+                  github_mirror_template={
+                    config()?.network && typeof config()?.network === "string"
+                      ? (config()?.network as string)
+                      : undefined
+                  }
                   disabled={theme.downloadingTheme()}
                 />
               </Show>

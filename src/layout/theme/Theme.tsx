@@ -85,10 +85,15 @@ export const Theme = (props: ThemeProps) => {
                     class="flex items-center justify-center"
                   >
                     <ThemeImage
-                      src={generateGitHubThumbnailMirrorUrl(
-                        src,
-                        config()!.github_mirror_template,
-                      )}
+                      src={
+                        config()?.network &&
+                        typeof config()?.network === "string"
+                          ? generateGitHubThumbnailMirrorUrl(
+                              src,
+                              config()!.network as string,
+                            )
+                          : src
+                      }
                       class="rounded-md"
                       themeID={props.id}
                       serialNumber={index() + 1}
