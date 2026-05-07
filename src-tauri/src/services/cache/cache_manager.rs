@@ -7,6 +7,7 @@ use std::path::{Path, PathBuf};
 use std::sync::{Arc, LazyLock};
 
 use dwall::DWALL_CACHE_DIR;
+use reqwest::Client;
 use tokio::sync::{Mutex, OnceCell};
 
 use crate::error::DwallSettingsResult;
@@ -39,9 +40,17 @@ static THUMBNAIL_CACHE: LazyLock<ImageCache> =
 static CLEANUP_FLAG: OnceCell<()> = OnceCell::const_new();
 
 /// Manages the thumbnail cache system
-pub struct ThumbnailCache;
+pub struct ThumbnailCache {
+    service: HttpService,
+}
 
 impl ThumbnailCache {
+    pub fn new(client: Arc<Client>) -> Self {
+        Self {
+            service: HttpService::new(client),
+        }
+    }
+
     /// Initialize the cache system
     async fn initialize_cache(thumbnails_dir: &Path) -> CacheResult<()> {
         CLEANUP_FLAG
@@ -78,6 +87,7 @@ impl ThumbnailCache {
 
     /// Get or save a cached thumbnail
     async fn get_or_save_thumbnail(
+        &self,
         theme_id: &str,
         serial_number: u8,
         url: &str,
@@ -191,7 +201,10 @@ impl ThumbnailCache {
                 image_path = %image_path.display(),
                 "Downloading image from URL"
             );
-            let file_size = HttpService::download_image(&cache_key.url, &image_path).await?;
+            let file_size = self
+                .service
+                .download_image(&cache_key.url, &image_path)
+                .await?;
 
             Ok((image_path, file_size))
         }
@@ -223,14 +236,15 @@ impl ThumbnailCache {
     }
 }
 
-/// Get or save a cached thumbnail (Tauri command)
-#[tauri::command]
+/// Get or save a cached thumbnail
 pub async fn get_or_save_cached_thumbnails(
+    cache: &ThumbnailCache,
     theme_id: &str,
     serial_number: u8,
     url: &str,
 ) -> DwallSettingsResult<PathBuf> {
-    ThumbnailCache::get_or_save_thumbnail(theme_id, serial_number, url)
+    cache
+        .get_or_save_thumbnail(theme_id, serial_number, url)
         .await
         .map_err(Into::into)
 }

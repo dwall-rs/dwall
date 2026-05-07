@@ -31,6 +31,9 @@ export const dict: RawDictionary = {
       automaticallySwitchModes: "ダークモードまたはライトモードに自動切替",
       retrieveCoordinatesInterval: "座標取得間隔",
       checkInterval: "チェック間隔",
+      network: "ネットワーク",
+      useSocks5: "SOCKS5プロキシを使用する",
+      socks5: "SOCKS5",
       githubMirrorTemplate: "Github ミラーテンプレート",
       launchAtStartup: "起動時に起動",
       setLockScreenWallpaperSimultaneously: "ロック画面の壁紙も同時に設定",
@@ -45,6 +48,8 @@ export const dict: RawDictionary = {
         "ライト/ダークモードを自動的に切り替えたくない場合は、このオプションを無効にしてください。",
       githubMirror:
         "Githubミラーテンプレートはダウンロードを高速化するために使用されます。国や地域によってはネットワーク制限のためGithubへのアクセスに失敗し、ダウンロードが失敗することがあります。サムネイルを正しく読み込み、テーマをダウンロードするには、Githubミラーテンプレートを設定する必要があります。このボタンをクリックすると、利用可能なGithubミラーテンプレートを表示できます：",
+      socks5:
+        "SOCKS5プロキシのアドレスとポート番号のみを入力してください。有効なSOCKS5プロキシサーバーがない場合は、GitHubミラーテンプレートを使用してください。",
       launchAtStartup:
         "自動起動はバックグラウンドプロセスのみを起動し、グラフィカルプログラムは起動しません。また、メモリをあまり消費しません。",
       manuallySetCoordinates:
@@ -93,6 +98,9 @@ export const dict: RawDictionary = {
         "更新チェック間隔の更新に失敗しました：\n{{ error }}",
       saveRetrieveCoordinatesIntervalFailed:
         "座標取得間隔の保存に失敗しました：\n{{ error }}",
+      socks5UpdateFailed: "SOCKS5設定の更新に失敗しました：\n{{ error }}",
+      clearNetworkFailed:
+        "ネットワーク設定のクリアに失敗しました：\n{{ error }}",
     },
   },
 

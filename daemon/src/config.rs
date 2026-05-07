@@ -113,10 +113,17 @@ impl MonitorSpecificWallpapers {
     }
 }
 
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
+#[serde(untagged)]
+pub enum Network {
+    GitHubMirrorTemplate(String),
+    Socks5 { host: String, port: u16 },
+}
+
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub struct Config {
     #[serde(skip_serializing_if = "Option::is_none")]
-    github_mirror_template: Option<String>,
+    network: Option<Network>,
 
     #[serde(default = "default_image_format")]
     image_format: ImageFormat,
@@ -230,6 +237,11 @@ impl Config {
         &self.themes_directory
     }
 
+    /// Returns the network configuration
+    pub fn network(&self) -> Option<&Network> {
+        self.network.as_ref()
+    }
+
     /// Creates a new Config with a different themes directory
     pub fn with_themes_directory(&self, themes_directory: &Path) -> Config {
         let mut config = self.clone();
@@ -266,53 +278,13 @@ impl Config {
     pub fn monitor_specific_wallpapers(&self) -> &MonitorSpecificWallpapers {
         &self.monitor_specific_wallpapers
     }
-
-    /// Resolves a GitHub asset URL to a mirrored URL if a mirror template is configured
-    ///
-    /// This method transforms GitHub release URLs using the configured mirror template,
-    /// replacing placeholders like `<owner>`, `<repo>`, `<version>`, and `<asset>`.
-    pub fn resolve_github_mirror_url(&self, github_url: &str) -> String {
-        self.github_mirror_template
-            .as_ref()
-            .and_then(|v| if v.is_empty() { None } else { Some(v.as_str()) })
-            .and_then(|template| {
-                // Parse GitHub URL: https://github.com/{owner}/{repo}/releases/download/{version}/{asset}
-                let prefix = "https://github.com/";
-                if !github_url.starts_with(prefix) {
-                    return None;
-                }
-
-                let remaining = &github_url[prefix.len()..];
-                let parts: Vec<&str> = remaining.split('/').collect();
-
-                // Expected format: {owner}/{repo}/releases/download/{version}/{asset}
-                if parts.len() >= 5 && parts[2] == "releases" && parts[3] == "download" {
-                    let owner = parts[0];
-                    let repo = parts[1];
-                    let version = parts[4];
-                    // Asset might contain slashes, so join the remaining parts
-                    let asset = parts[5..].join("/");
-
-                    Some(
-                        template
-                            .replace("<owner>", owner)
-                            .replace("<repo>", repo)
-                            .replace("<version>", version)
-                            .replace("<asset>", &asset),
-                    )
-                } else {
-                    None
-                }
-            })
-            .unwrap_or_else(|| github_url.to_owned())
-    }
 }
 
 impl Default for Config {
     fn default() -> Self {
         Self {
             image_format: Default::default(),
-            github_mirror_template: Default::default(),
+            network: Default::default(),
             position_source: Default::default(),
             auto_detect_color_scheme: default_auto_detect_color_scheme(),
             themes_directory: default_themes_directory(),
@@ -327,6 +299,70 @@ impl Default for Config {
             // FIXME: This default value is a rough estimate; a more precise algorithm should
             // be used to calculate the time interval required for each 0.1 degree change.
             interval: DEFAULT_INTERVAL_SECONDS,
+        }
+    }
+}
+
+/// Intermediate deserialization struct for backward compatibility with legacy configuration files.
+///
+/// The `github_mirror_template` field was deprecated in 0.2.0 and will be removed in 0.3.0.
+/// At that time, this struct should also be removed, and the standard `Deserialize` derivation of `Config` should be restored.
+#[derive(Debug, Deserialize)]
+pub struct RawConfig {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    github_mirror_template: Option<String>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    network: Option<Network>,
+
+    #[serde(default = "default_image_format")]
+    image_format: ImageFormat,
+
+    #[serde(alias = "coordinate_source", default = "default_position_source")]
+    position_source: PositionSource,
+
+    #[serde(
+        alias = "auto_detect_color_mode",
+        default = "default_auto_detect_color_scheme"
+    )]
+    auto_detect_color_scheme: bool,
+
+    #[serde(default = "default_lock_screen_wallpaper_enabled")]
+    lock_screen_wallpaper_enabled: bool,
+
+    #[serde(default = "default_themes_directory")]
+    themes_directory: PathBuf,
+
+    /// Wallpapers specific to each monitor, using monitor ID as key
+    #[serde(default = "default_monitor_specific_wallpapers")]
+    monitor_specific_wallpapers: MonitorSpecificWallpapers,
+
+    /// Time interval for detecting solar altitude angle and azimuth angle
+    /// Measured in seconds, range: `[MIN_INTERVAL_SECONDS, MAX_INTERVAL_SECONDS]`
+    #[serde(
+        default = "default_interval",
+        deserialize_with = "deserialize_interval"
+    )]
+    interval: u16,
+}
+
+impl From<RawConfig> for Config {
+    fn from(raw: RawConfig) -> Self {
+        // Migrate github_mirror_template
+        let network = raw.network.or_else(|| {
+            raw.github_mirror_template
+                .map(Network::GitHubMirrorTemplate)
+        });
+
+        Config {
+            network,
+            image_format: raw.image_format,
+            position_source: raw.position_source,
+            auto_detect_color_scheme: raw.auto_detect_color_scheme,
+            lock_screen_wallpaper_enabled: raw.lock_screen_wallpaper_enabled,
+            themes_directory: raw.themes_directory,
+            monitor_specific_wallpapers: raw.monitor_specific_wallpapers,
+            interval: raw.interval,
         }
     }
 }

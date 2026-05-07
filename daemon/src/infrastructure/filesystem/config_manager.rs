@@ -7,7 +7,7 @@ use std::{
 };
 
 use crate::{
-    config::Config,
+    config::{Config, RawConfig},
     error::{ConfigError, DwallResult},
     lazy::DWALL_CONFIG_DIR,
 };
@@ -84,10 +84,11 @@ impl ConfigManager {
         self.last_modified = Some(metadata.modified()?);
 
         let content = fs::read_to_string(&self.config_path)?;
-        let config: Config = toml::from_str(&content).map_err(|e| {
+        let raw_config: RawConfig = toml::from_str(&content).map_err(|e| {
             error!(error = %e, "Failed to parse configuration");
             ConfigError::Deserialization(e)
         })?;
+        let config = Config::from(raw_config);
 
         config.validate()?;
         info!("Configuration loaded successfully");

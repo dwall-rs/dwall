@@ -2,4 +2,5 @@
 //!
 //! This module contains network-related functionality.
 
+pub mod client;
 pub mod download;

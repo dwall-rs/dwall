@@ -1,5 +1,14 @@
+type GithubMirrorTemplate = string;
+
+interface Socks5 {
+  host: string;
+  port: number;
+}
+
+type Network = GithubMirrorTemplate | Socks5;
+
 interface Config {
-  github_mirror_template?: string;
+  network?: Network;
   selected_theme_id?: string;
   interval: number;
   image_format: string;

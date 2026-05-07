@@ -31,6 +31,9 @@ export const dict: RawDictionary = {
       automaticallySwitchModes: "다크 또는 라이트 모드 자동 전환",
       retrieveCoordinatesInterval: "좌표 획득 간격",
       checkInterval: "확인 간격",
+      network: "네트워크",
+      useSocks5: "SOCKS5 프록시 사용",
+      socks5: "SOCKS5",
       githubMirrorTemplate: "Github 미러 템플릿",
       launchAtStartup: "시작 시 실행",
       setLockScreenWallpaperSimultaneously: "잠금 화면 배경화면도 동시에 설정",
@@ -45,6 +48,8 @@ export const dict: RawDictionary = {
         "라이트/다크 모드를 자동으로 전환하지 않으려면 이 옵션을 비활성화하세요.",
       githubMirror:
         "Github 미러 템플릿은 다운로드를 가속화하는 데 사용됩니다. 일부 국가 및 지역에서는 네트워크 제한으로 인해 Github에 액세스하지 못해 다운로드가 실패할 수 있습니다. 썸네일을 올바르게 로드하고 테마를 다운로드하려면 Github 미러 템플릿을 설정해야 합니다. 이 버튼을 클릭하면 사용 가능한 Github 미러 템플릿을 볼 수 있습니다:",
+      socks5:
+        "SOCKS5 프록시 주소와 포트 번호만 입력하세요. 유효한 SOCKS5 프록시 서버가 없는 경우 GitHub 미러 템플릿을 사용하세요.",
       launchAtStartup:
         "자동 시작은 백그라운드 프로세스만 실행하며 그래픽 프로그램은 실행되지 않습니다. 또한 메모리를 많이 소모하지 않습니다.",
       manuallySetCoordinates:
@@ -91,6 +96,8 @@ export const dict: RawDictionary = {
         "업데이트 확인 간격 업데이트에 실패했습니다: \n{{ error }}",
       saveRetrieveCoordinatesIntervalFailed:
         "좌표 검색 간격 저장 실패:\n{{ error }}",
+      socks5UpdateFailed: "SOCKS5 설정 업데이트에 실패했습니다: \n{{ error }}",
+      clearNetworkFailed: "네트워크 설정 클리어 실패: \n{{ error }}",
     },
   },
 

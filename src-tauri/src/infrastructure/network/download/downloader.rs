@@ -3,10 +3,12 @@
 //! This module coordinates the theme download process using various components.
 
 use std::path::PathBuf;
+use std::sync::Arc;
 
-use dwall::config::Config;
+use reqwest::Client;
 use tauri::Runtime;
 
+use crate::domain::settings::Config;
 use crate::error::DwallSettingsResult;
 
 use super::file_manager::ThemeFileManager;
@@ -21,9 +23,9 @@ pub struct ThemeDownloader {
 
 impl ThemeDownloader {
     /// Create a new theme downloader
-    pub fn new() -> Self {
+    pub fn new(client: Arc<Client>) -> Self {
         Self {
-            download_service: HttpDownloadService::new(),
+            download_service: HttpDownloadService::new(client),
             task_manager: DownloadTaskManager::new(),
         }
     }
