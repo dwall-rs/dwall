@@ -97,6 +97,7 @@ export const dict: RawDictionary = {
       saveRetrieveCoordinatesIntervalFailed:
         "좌표 검색 간격 저장 실패:\n{{ error }}",
       socks5UpdateFailed: "SOCKS5 설정 업데이트에 실패했습니다: \n{{ error }}",
+      clearNetworkFailed: "네트워크 설정 클리어 실패: \n{{ error }}",
     },
   },
 

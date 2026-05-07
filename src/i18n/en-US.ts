@@ -97,6 +97,7 @@ export const dict = {
       saveRetrieveCoordinatesIntervalFailed:
         "Failed to save retrieve coordinates interval: \n{{ error }}",
       socks5UpdateFailed: "Failed to update socks5 settings: \n{{ error }}",
+      clearNetworkFailed: "Failed to clear network settings: \n{{ error }}",
     },
   },
 

@@ -99,6 +99,8 @@ export const dict: RawDictionary = {
       saveRetrieveCoordinatesIntervalFailed:
         "座標取得間隔の保存に失敗しました：\n{{ error }}",
       socks5UpdateFailed: "SOCKS5設定の更新に失敗しました：\n{{ error }}",
+      clearNetworkFailed:
+        "ネットワーク設定のクリアに失敗しました：\n{{ error }}",
     },
   },
 

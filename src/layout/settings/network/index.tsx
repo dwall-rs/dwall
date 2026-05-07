@@ -11,19 +11,35 @@ import SettingsItem from "../SettingsItem";
 import Socks5 from "./Socks5";
 import { useConfig } from "~/contexts";
 import GithubMirror from "./GithubMirror";
+import { writeConfigFile } from "~/commands";
+import { toast } from "~/components/toast";
 
 const isSocks5 = (network?: Network) =>
   !(network && typeof network === "string");
 
 const Network = () => {
-  const { data: config } = useConfig();
+  const { data: config, refetch: refetchConfig } = useConfig();
 
   const isSocks5Value = createMemo(() => isSocks5(config()?.network));
 
   const [useSocks5, setUseSocks5] = createSignal(isSocks5Value());
 
+  const handleClear = async () => {
+    try {
+      await writeConfigFile({ ...config()!, network: undefined });
+      refetchConfig();
+    } catch (e) {
+      toast.error(
+        t("settings.message.clearNetworkFailed", { error: String(e) }),
+      );
+    }
+  };
+
   return (
-    <Collapsible>
+    <Collapsible
+      defaultOpen={!!config()?.network}
+      onOpenChange={(open) => !open && handleClear()}
+    >
       <CollapsibleTrigger variant="ghost" class="w-full">
         {t("settings.label.network")}
         <ChevronRight class="ml-auto group-data-[panel-open=true]/button:rotate-90" />

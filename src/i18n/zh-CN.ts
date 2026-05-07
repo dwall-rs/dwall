@@ -90,6 +90,7 @@ export const dict: RawDictionary = {
       saveRetrieveCoordinatesIntervalFailed:
         "保存坐标获取间隔失败：\n{{ error }}",
       socks5UpdateFailed: "更新SOCKS5设置失败：\n{{ error }}",
+      clearNetworkFailed: "清除网络设置失败：\n{{ error }}",
     },
   },
 
