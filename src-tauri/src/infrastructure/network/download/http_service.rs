@@ -5,9 +5,8 @@
 use std::path::Path;
 use std::sync::Arc;
 use std::sync::atomic::AtomicBool;
-use std::time::Duration;
 
-use reqwest::StatusCode;
+use reqwest::{Client, StatusCode};
 use tauri::Runtime;
 use tokio::fs;
 use tokio::io::AsyncWriteExt;
@@ -31,21 +30,12 @@ struct DownloadContext<'a, R: Runtime> {
 
 /// Service for downloading files over HTTP
 pub(super) struct HttpDownloadService {
-    client: reqwest::Client,
+    client: Arc<Client>,
 }
 
 impl HttpDownloadService {
     /// Create a new downloader instance
-    pub(super) fn new() -> Self {
-        let client = reqwest::ClientBuilder::new()
-            .connect_timeout(Duration::from_secs(120))
-            .build()
-            .map_err(|e| {
-                error!(error = %e, "Failed to create HTTP client");
-                e
-            })
-            .unwrap();
-
+    pub(super) fn new(client: Arc<Client>) -> Self {
         Self { client }
     }
 

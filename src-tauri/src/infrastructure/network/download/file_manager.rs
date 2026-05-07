@@ -4,10 +4,9 @@
 
 use std::path::{Path, PathBuf};
 
-use dwall::config::Config;
 use tokio::fs;
 
-use crate::error::DwallSettingsResult;
+use crate::{domain::settings::Config, error::DwallSettingsResult};
 
 /// Handles file system operations for theme management
 pub(super) struct ThemeFileManager;

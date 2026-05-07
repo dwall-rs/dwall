@@ -2,10 +2,10 @@
 //!
 //! This module provides high-level download functionality by coordinating with the infrastructure.
 
-use dwall::Config;
 use tauri::{Runtime, State, WebviewWindow};
 
 use crate::{
+    domain::settings::Config,
     error::DwallSettingsResult,
     infrastructure::network::download::{ProgressEmitter, ThemeDownloader, ThemeExtractor},
 };

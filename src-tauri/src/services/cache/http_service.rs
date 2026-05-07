@@ -2,11 +2,12 @@
 //!
 //! This module provides functionality for downloading thumbnail images over HTTP.
 
-use std::fs;
 use std::path::Path;
 use std::sync::LazyLock;
 use std::time::Duration;
+use std::{fs, sync::Arc};
 
+use reqwest::Client;
 use tokio::sync::Semaphore;
 use tokio::time::sleep;
 
@@ -22,20 +23,17 @@ static DOWNLOAD_SEMAPHORE: LazyLock<Semaphore> =
     LazyLock::new(|| Semaphore::new(MAX_CONCURRENT_DOWNLOADS));
 
 /// Service for downloading images over HTTP
-pub struct HttpService;
+pub(super) struct HttpService {
+    client: Arc<Client>,
+}
 
 impl HttpService {
-    /// Create HTTP client with appropriate timeouts
-    pub async fn create_http_client() -> reqwest::Result<reqwest::Client> {
-        debug!("Creating HTTP client");
-        reqwest::ClientBuilder::new()
-            .connect_timeout(Duration::from_secs(120))
-            .read_timeout(Duration::from_secs(120))
-            .build()
+    pub fn new(client: Arc<Client>) -> Self {
+        Self { client }
     }
 
     /// Download an image from a URL to a local path
-    pub async fn download_image(url: &str, image_path: &Path) -> CacheResult<u64> {
+    pub async fn download_image(&self, url: &str, image_path: &Path) -> CacheResult<u64> {
         debug!(url = url, "Downloading image");
 
         let temp_path = image_path.with_extension("temp");
@@ -60,14 +58,9 @@ impl HttpService {
             }
 
             let result = async {
-                let client = Self::create_http_client().await.map_err(|e| {
-                    error!(error = %e, "Failed to create HTTP client");
-                    CacheError::from(e)
-                })?;
-
                 trace!(url = url, "Sending HTTP GET request");
-                let response = client.get(url).send().await.map_err(|e| {
-                    error!(url = url, error = %e, "Failed to get online image");
+                let response = self.client.get(url).send().await.map_err(|e| {
+                    error!(url = url, error = ?e, "Failed to get online image");
                     CacheError::from(e)
                 })?;
 

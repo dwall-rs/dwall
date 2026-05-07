@@ -1,15 +1,15 @@
-use std::{env, path::PathBuf, str::FromStr};
+use std::{env, path::PathBuf, str::FromStr, sync::Arc};
 
 use tauri::Manager;
 
 use crate::{
     DAEMON_EXE_PATH,
-    app::commands::read_config_file,
     infrastructure::{
-        network::download::ThemeDownloader, process::find_daemon_process,
+        network::{client::HttpClient, download::ThemeDownloader},
+        process::find_daemon_process,
         window::create_main_window,
     },
-    services::theme_service::launch_daemon,
+    services::{cache::ThumbnailCache, theme_service::launch_daemon},
 };
 
 pub fn setup_app(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
@@ -55,8 +55,14 @@ pub fn setup_app(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>>
         }
     });
 
-    let theme_downloader = ThemeDownloader::new();
+    let config = dwall::read_config_file()?;
+    let http_client = Arc::new(HttpClient::create_client(config.network())?);
+
+    let theme_downloader = ThemeDownloader::new(http_client.clone());
     app.manage(theme_downloader);
+
+    let theme_cache = ThumbnailCache::new(http_client);
+    app.manage(theme_cache);
 
     create_main_window(app.app_handle())?;
 
@@ -65,9 +71,7 @@ pub fn setup_app(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>>
     // If a theme is configured in the configuration file but the background process is not detected,
     // then run the background process when this program starts.
     tokio::spawn(async move {
-        let _ = read_config_file()
-            .await
-            .and_then(|_| find_daemon_process())
+        let _ = find_daemon_process()
             .and_then(|pid| pid.map_or_else(|| launch_daemon().map(|_| ()), |_| Ok(())));
     });
 

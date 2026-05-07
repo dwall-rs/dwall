@@ -9,21 +9,21 @@ use std::{
 };
 
 use dwall::{
-    ColorScheme, DWALL_CONFIG_DIR, DWALL_LOG_DIR, DisplayMonitor, config::Config,
+    ColorScheme, DWALL_CONFIG_DIR, DWALL_LOG_DIR, DisplayMonitor,
     domain::geography::check_location_permission, read_config_file as dwall_read_config,
     write_config_file as dwall_write_config,
 };
 use tauri::{AppHandle, Manager, WebviewWindow};
 
 use crate::{
-    domain::{monitor::get_monitors, theme::validate_solar_theme},
+    domain::{monitor::get_monitors, settings::Config, theme::validate_solar_theme},
     error::DwallSettingsResult,
     infrastructure::{
         filesystem::move_themes_directory, network::download::ThemeDownloader,
         process::kill_daemon, registry::AutoStartManager, window::set_window_color_mode,
     },
     services::{
-        cache::{clear_thumbnail_cache, get_or_save_cached_thumbnails},
+        cache::{ThumbnailCache, clear_thumbnail_cache, get_or_save_cached_thumbnails},
         download_service::download_theme_and_extract,
         theme_service::{apply_theme, get_applied_theme_id},
     },
@@ -40,12 +40,12 @@ pub fn show_window(app: AppHandle, label: &str) -> DwallSettingsResult<()> {
 }
 
 #[tauri::command]
-pub async fn read_config_file() -> DwallSettingsResult<Config> {
+pub async fn read_config_file() -> DwallSettingsResult<dwall::Config> {
     dwall_read_config().map_err(Into::into)
 }
 
 #[tauri::command]
-pub async fn write_config_file(config: Config) -> DwallSettingsResult<()> {
+pub async fn write_config_file(config: dwall::Config) -> DwallSettingsResult<()> {
     debug!(?config, "Writing config file");
     dwall_write_config(&config).map_err(Into::into)
 }
@@ -100,7 +100,7 @@ pub async fn get_applied_theme_id_cmd(monitor_id: &str) -> DwallSettingsResult<O
 }
 
 #[tauri::command]
-pub async fn apply_theme_cmd(config: Config) -> DwallSettingsResult<()> {
+pub async fn apply_theme_cmd(config: dwall::Config) -> DwallSettingsResult<()> {
     apply_theme(config).await
 }
 
@@ -123,10 +123,10 @@ pub fn enable_auto_start() -> DwallSettingsResult<()> {
 pub async fn download_theme_cmd<R: tauri::Runtime>(
     window: tauri::WebviewWindow<R>,
     downloader: tauri::State<'_, ThemeDownloader>,
-    config: Config,
+    config: dwall::Config,
     theme_id: &str,
 ) -> DwallSettingsResult<()> {
-    download_theme_and_extract(window, downloader, config, theme_id).await
+    download_theme_and_extract(window, downloader, Config::new(config), theme_id).await
 }
 
 #[tauri::command]
@@ -145,7 +145,7 @@ pub fn request_location_permission() -> DwallSettingsResult<()> {
 
 #[tauri::command]
 pub async fn move_themes_directory_cmd(
-    config: Config,
+    config: dwall::Config,
     dir_path: PathBuf,
 ) -> DwallSettingsResult<()> {
     move_themes_directory(config, dir_path).await
@@ -158,11 +158,12 @@ pub fn kill_daemon_cmd() -> DwallSettingsResult<Option<u32>> {
 
 #[tauri::command]
 pub async fn get_or_save_cached_thumbnails_cmd(
+    cache: tauri::State<'_, ThumbnailCache>,
     theme_id: &str,
     serial_number: u8,
     url: &str,
 ) -> DwallSettingsResult<PathBuf> {
-    get_or_save_cached_thumbnails(theme_id, serial_number, url).await
+    get_or_save_cached_thumbnails(cache.inner(), theme_id, serial_number, url).await
 }
 
 #[tauri::command]
