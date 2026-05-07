@@ -9,7 +9,6 @@ import {
   InputGroupButton,
   InputGroupInput,
 } from "~/components/input-group";
-import SettingsItem from "./SettingsItem";
 
 import { writeConfigFile } from "~/commands";
 
@@ -20,11 +19,12 @@ import { useConfig } from "~/contexts";
 import { Button } from "~/components/button";
 import { Compass } from "lucide-solid";
 import { t } from "~/i18n";
+import SettingsItem from "../SettingsItem";
 
-const GithubMirror = () => {
+const GithubMirror = (props: { defaultValue?: GithubMirrorTemplate }) => {
   const { data: config, refetch: refetchConfig } = useConfig();
 
-  const [value, setValue] = createSignal(config()?.github_mirror_template);
+  const [value, setValue] = createSignal(props.defaultValue ?? "");
 
   const handleInput = (v: string) => {
     setValue(v);
@@ -34,7 +34,7 @@ const GithubMirror = () => {
     const mirrorTemplate = value();
     await writeConfigFile({
       ...config()!,
-      github_mirror_template: mirrorTemplate,
+      network: mirrorTemplate,
     });
     refetchConfig();
     toast.success(

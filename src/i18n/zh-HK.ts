@@ -30,6 +30,9 @@ export const dict: RawDictionary = {
       automaticallySwitchModes: "自動切換深色或淺色模式",
       retrieveCoordinatesInterval: "座標獲取間隔",
       checkInterval: "檢查間隔",
+      network: "網絡",
+      useSocks5: "使用 SOCKS5 代理",
+      socks5: "SOCKS5",
       githubMirrorTemplate: "Github 鏡像模板",
       launchAtStartup: "開機自啟",
       setLockScreenWallpaperSimultaneously: "同時設定鎖定畫面壁紙",
@@ -44,6 +47,8 @@ export const dict: RawDictionary = {
         "如果你唔希望自動切換淺色/深色模式，請停用此選項。",
       githubMirror:
         "Github 鏡像模板用於加速下載。喺某啲國家同地區，由於網絡限制，訪問 Github 可能會失敗，導致下載失敗。你需要設定 Github 鏡像模板先可以正常載入縮圖同下載主題。撳此按鈕可查看可用嘅 Github 鏡像模板：",
+      socks5:
+        "僅需輸入SOCKS5代理地址和端口號。如果你沒有有效的SOCKS5代理伺服器，請使用GitHub鏡像模板。",
       launchAtStartup:
         "開機自啟只會啟動背景進程，唔會啟動圖形介面程式，且唔會佔用過多記憶體。",
       manuallySetCoordinates:
@@ -83,6 +88,7 @@ export const dict: RawDictionary = {
       checkIntervalUpdateFailed: "更新檢查間隔失敗：\n{{ error }}",
       saveRetrieveCoordinatesIntervalFailed:
         "儲存座標檢索間隔失敗：\n{{ error }}",
+      socks5UpdateFailed: "更新SOCKS5設定失敗：\n{{ error }}",
     },
   },
 

@@ -29,6 +29,9 @@ export const dict = {
       retrieveCoordinatesInterval: "Coordinates Retrieval Interval",
       automaticallySwitchModes: "Automatically Switch to Dark or Light Mode",
       checkInterval: "Check Interval",
+      network: "Network",
+      useSocks5: "Use SOCKS5 Proxy",
+      socks5: "SOCKS5",
       githubMirrorTemplate: "Github Mirror Template",
       launchAtStartup: "Launch at Startup",
       setLockScreenWallpaperSimultaneously:
@@ -44,6 +47,8 @@ export const dict = {
         "If you do not want to automatically switch between light and dark modes, please disable this option.",
       retrieveCoordinatesInterval:
         "The interval for retrieving coordinates, in minutes, should be greater than the detection interval. If your computer is always at a fixed location, you can set it to more than 24 hours. If you frequently travel with your computer, it is recommended to set it to less than 1 hour.",
+      socks5:
+        "Only enter the SOCKS5 proxy address and port number. If you do not have a valid SOCKS5 proxy server, please use the GitHub mirror template.",
       githubMirror:
         "Github mirror template is used to accelerate downloads. In some countries and regions, due to network restrictions, accessing Github may fail, resulting in download failures. You need to set up a Github mirror template to properly load thumbnails and download themes. Click this button to view available Github mirror templates:",
       launchAtStartup:
@@ -91,6 +96,7 @@ export const dict = {
         "Failed to update check interval: \n{{ error }}",
       saveRetrieveCoordinatesIntervalFailed:
         "Failed to save retrieve coordinates interval: \n{{ error }}",
+      socks5UpdateFailed: "Failed to update socks5 settings: \n{{ error }}",
     },
   },
 

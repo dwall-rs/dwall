@@ -2,11 +2,11 @@ import AutoStart from "./AutoStart";
 import AutoDetectColorScheme from "./AutoDetectColorScheme";
 import CoordinateSource from "./CoordinateSource";
 import Interval from "./Interval";
-import GithubMirror from "./GithubMirror";
 import ThemesDirectory from "./ThemesDirectory";
 import LockScreenWallpaperSwitch from "./LockScreenWallpaperSwitch";
 import SettingsFooter from "./Footer";
 import Languages from "./Languages";
+import Network from "./network";
 
 export const Settings = () => {
   return (
@@ -26,7 +26,7 @@ export const Settings = () => {
 
         <ThemesDirectory />
 
-        <GithubMirror />
+        <Network />
       </div>
 
       <SettingsFooter />
