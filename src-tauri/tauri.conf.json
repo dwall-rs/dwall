@@ -10,7 +10,7 @@
   },
   "app": {
     "security": {
-      "csp": "default-src 'self' ipc: http://ipc.localhost; img-src 'self' asset: http://asset.localhost",
+      "csp": "default-src 'self' ipc: http://ipc.localhost; img-src 'self' asset: http://asset.localhost; style-src-elem 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com",
       "assetProtocol": {
         "enable": true,
         "scope": ["$CACHE/com.thep0y.dwall/**"]
