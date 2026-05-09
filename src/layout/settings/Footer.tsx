@@ -1,8 +1,8 @@
-import { createResource } from "solid-js";
+import { createResource, createSignal } from "solid-js";
 import { AiFillGithub } from "solid-icons/ai";
 
 import { getVersion } from "@tauri-apps/api/app";
-import { ask, message } from "@tauri-apps/plugin-dialog";
+import { message } from "@tauri-apps/plugin-dialog";
 import { open } from "@tauri-apps/plugin-shell";
 
 import { openLogDir } from "~/commands";
@@ -21,27 +21,37 @@ const SettingsFooter = () => {
   const [version] = createResource(getVersion);
   const { update: resource, recheckUpdate } = useUpdate();
 
+  const [checking, setChecking] = createSignal(false);
+
   const onOpenLogDir = async () => {
     await openLogDir();
   };
 
   const onUpdate = async () => {
-    if (!resource()) {
-      recheckUpdate();
+    setChecking(true);
+
+    try {
+      // Force recheck update to ensure `resource()` cannot be undefined
+      await recheckUpdate();
+    } finally {
+      setChecking(false);
     }
+
     const update = resource();
+
     if (!update) {
-      if (update === null) await message(t("settings.message.isLatestVersion"));
+      await message(t("settings.message.isLatestVersion"));
       return;
     }
 
-    const { currentVersion, version, body } = update;
+    const { currentVersion, version } = update;
 
-    const result = await ask(
-      `Current version ${currentVersion}, new version ${version} available.\n\nChangelog:\n\n${body}\n\nUpdate now?`,
-      "Dwall",
-    );
-    if (!result) return;
+    const msg = t("common.message.updateAvailable", {
+      version,
+      currentVersion,
+    });
+
+    message(msg, "Dwall");
   };
 
   const onOpenGithub = () => open("https://github.com/dwall-rs/dwall");
@@ -52,7 +62,7 @@ const SettingsFooter = () => {
         <Label class="font-light">{t("settings.label.version")}</Label>
         <Tooltip>
           <TooltipTrigger>
-            <Button onClick={onUpdate} variant="ghost">
+            <Button onClick={onUpdate} variant="ghost" disabled={checking()}>
               {version()}
             </Button>
           </TooltipTrigger>
