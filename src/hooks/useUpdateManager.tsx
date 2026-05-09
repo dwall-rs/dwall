@@ -11,7 +11,7 @@ export const useUpdateManager = () => {
     config,
     async (c) => {
       try {
-        return await checkForUpdates(c?.network);
+        return await checkForUpdates(c.network);
       } catch (e) {
         console.error(e);
         message(t("update.message.updateFailed", { error: String(e) }), {

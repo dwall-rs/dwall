@@ -17,5 +17,5 @@ export const checkForUpdates = async (network?: Network) => {
       network,
     },
   );
-  return metadata ? new Update(metadata) : undefined;
+  return metadata ? new Update(metadata) : null;
 };
