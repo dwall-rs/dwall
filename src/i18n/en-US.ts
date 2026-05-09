@@ -140,6 +140,7 @@ export const dict = {
     },
     title: {
       downloadingNewVersion: "Downloading New Version {{ version }}",
+      newVersionDownloaded: "New Version {{version}} Downloaded",
     },
     message: {
       updateFailed: "Failed to update: \n{{ error }}",

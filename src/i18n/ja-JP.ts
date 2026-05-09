@@ -143,6 +143,7 @@ export const dict: RawDictionary = {
     },
     title: {
       downloadingNewVersion: "新しいバージョン {{ version }} をダウンロード中",
+      newVersionDownloaded: "新バージョン {{version}} ダウンロード済",
     },
     message: {
       updateFailed: "更新に失敗しました：\n{{ error }}",

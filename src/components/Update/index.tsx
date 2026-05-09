@@ -106,9 +106,14 @@ const Updater = (props: ParentProps) => {
       <DialogContent>
         <DialogHeader>
           <DialogTitle>
-            {t("update.title.downloadingNewVersion", {
-              version: update()!.version,
-            })}
+            {t(
+              percentage() < 100
+                ? "update.title.downloadingNewVersion"
+                : "update.title.newVersionDownloaded",
+              {
+                version: update()!.version,
+              },
+            )}
           </DialogTitle>
         </DialogHeader>
 
