@@ -10,6 +10,7 @@
     "build:daemon-debug": "cargo build -p dwall --release --features build-script",
     "build:daemon-stage": "cargo build -p dwall --release --features log-color,build-script",
     "build:debug": "tauri build --config src-tauri/tauri.debug.conf.json",
+    "build:stage": "tauri build --features log-color devtools",
     "build": "tauri build --features log-max-level-info",
     "tauri": "tauri",
     "start": "vite",
@@ -34,13 +35,13 @@
     "tailwind-merge": "^3.5.0"
   },
   "devDependencies": {
-    "@tailwindcss/vite": "^4.2.4",
+    "@tailwindcss/vite": "^4.3.0",
     "@tauri-apps/cli": "^2.11.1",
-    "@types/node": "^25.6.0",
-    "@typescript/native-preview": "^7.0.0-dev.20260506.1",
+    "@types/node": "^25.6.2",
+    "@typescript/native-preview": "^7.0.0-dev.20260509.2",
     "cross-env": "^10.1.0",
-    "tailwindcss": "^4.2.4",
-    "vite": "^8.0.10",
+    "tailwindcss": "^4.3.0",
+    "vite": "^8.0.11",
     "vite-plugin-solid": "^2.11.12",
     "vitest": "^4.1.5"
   }
