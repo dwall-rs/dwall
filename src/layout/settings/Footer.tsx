@@ -28,13 +28,14 @@ const SettingsFooter = () => {
   };
 
   const onUpdate = async () => {
-    setChecking(true);
-
-    try {
+    if (resource() === undefined) {
       // Force recheck update to ensure `resource()` cannot be undefined
-      await recheckUpdate();
-    } finally {
-      setChecking(false);
+      try {
+        setChecking(true);
+        await recheckUpdate();
+      } finally {
+        setChecking(false);
+      }
     }
 
     const update = resource();
