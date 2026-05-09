@@ -132,6 +132,7 @@ export const dict: RawDictionary = {
     },
     title: {
       downloadingNewVersion: "正在下载新版本 {{ version }}",
+      newVersionDownloaded: "新版本 {{version}} 已下载",
     },
     message: {
       updateFailed: "更新失败：\n{{ error }}",

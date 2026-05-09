@@ -140,6 +140,7 @@ export const dict: RawDictionary = {
     },
     title: {
       downloadingNewVersion: "새 버전 {{ version }} 다운로드 중",
+      newVersionDownloaded: "새 버전 {{version}} 다운로드됨",
     },
     message: {
       updateFailed: "업데이트 실패: \n{{ error }}",
