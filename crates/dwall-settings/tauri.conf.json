@@ -1,6 +1,6 @@
 {
   "productName": "Dwall Settings",
-  "version": "../package.json",
+  "version": "../../package.json",
   "identifier": "com.thep0y.dwall",
   "build": {
     "beforeDevCommand": "bun run start",
@@ -18,7 +18,7 @@
     }
   },
   "bundle": {
-    "resources": { "../target/release/dwall.exe": "dwall.exe" },
+    "resources": { "../../target/release/dwall.exe": "dwall.exe" },
     "active": true,
     "copyright": "Copyright (C) 2025 thep0y. All rights reserved.",
     "createUpdaterArtifacts": true,
