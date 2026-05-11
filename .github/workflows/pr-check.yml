@@ -8,14 +8,7 @@ on:
       - ".github/workflows/pr-check.yml"
       - "Cargo.toml"
       - "Cargo.lock"
-      - "daemon/src/**"
-      - "daemon/build.rs"
-      - "daemon/Cargo.toml"
-      - "src-tauri/src/**"
-      - "src-tauri/Cargo.toml"
-      - "src-tauri/build.rs"
-      - "src-tauri/tauri.conf.json"
-      - "src-tauri/tauri.*.conf.json"
+      - "crates/**"
       - "src/**"
       - "package.json"
       - "bun.lockb"
@@ -54,14 +47,7 @@ jobs:
             backend:
               - "Cargo.toml"
               - "Cargo.lock"
-              - "daemon/src/**"
-              - "daemon/build.rs"
-              - "daemon/Cargo.toml"
-              - "src-tauri/src/**"
-              - "src-tauri/Cargo.toml"
-              - "src-tauri/build.rs"
-              - "src-tauri/tauri.conf.json"
-              - "src-tauri/tauri.*.conf.json"
+              - "crates/**"
             workflow:
               - '.github/workflows/**'
 

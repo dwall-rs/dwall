@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["daemon", "src-tauri"]
+members = ["crates/dwall", "crates/dwall-settings"]
 
 [workspace.package]
 authors = ["thep0y"]
@@ -14,14 +14,14 @@ edition = "2024"
 dirs = { version = "6", default-features = false }
 thiserror = { version = "2", default-features = false }
 serde = { version = "1", default-features = false, features = [
-  "std",
-  "derive",
+    "std",
+    "derive",
 ] }
 serde_json = { version = "1", default-features = false, features = ["std"] }
 tracing = { version = "0", default-features = false, features = ["log"] }
 tracing-subscriber = { version = "0", default-features = false, features = [
-  "fmt",
-  'env-filter',
+    "fmt",
+    'env-filter',
 ] }
 windows = { version = "0.61", default-features = false }
 
