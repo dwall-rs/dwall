@@ -2,7 +2,7 @@ use std::thread::sleep;
 use std::time::Duration;
 
 use crate::{
-    DwallResult, domain::visual::theme_processor::SolarThemeProcessor,
+    DwallResult, domain::visual::theme_processor::ThemeProcessor,
     infrastructure::filesystem::config_manager::ConfigManager,
 };
 
@@ -27,7 +27,7 @@ impl DaemonApplication {
 
         loop {
             let config = self.config_manager.read_config()?;
-            let theme_processor = SolarThemeProcessor::new(&config)?;
+            let theme_processor = ThemeProcessor::new(&config)?;
 
             info!(
                 update_interval_seconds = config.interval(),
@@ -41,7 +41,7 @@ impl DaemonApplication {
     /// Runs the processor loop until config changes or max failures reached
     fn run_processor_loop(
         &mut self,
-        theme_processor: &SolarThemeProcessor,
+        theme_processor: &ThemeProcessor,
         consecutive_failure_count: &mut u8,
     ) -> DwallResult<()> {
         let update_interval = Duration::from_secs(theme_processor.update_interval().into());
@@ -52,7 +52,7 @@ impl DaemonApplication {
                 return Ok(());
             }
 
-            match theme_processor.run_single_cycle() {
+            match theme_processor.run_once() {
                 Ok(_) => {
                     *consecutive_failure_count = 0;
                 }
@@ -68,7 +68,7 @@ impl DaemonApplication {
                 }
             }
 
-            theme_processor.check_and_reload_monitor_configuration();
+            theme_processor.reload_if_monitors_changed();
 
             sleep(update_interval);
         }
