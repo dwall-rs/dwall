@@ -4,6 +4,7 @@ mod math;
 mod month;
 
 use std::fmt;
+use std::ops::Add;
 use std::time::{Duration, SystemTime};
 
 use crate::utils::datetime::consts::{SECONDS_PER_DAY, SECONDS_PER_HOUR, SECONDS_PER_MINUTE};
@@ -181,6 +182,14 @@ impl UtcDateTime {
             .checked_add(Duration::from_secs(secs))
             .map(|inner| Self { inner })
             .ok_or(DateTimeError::Overflow)
+    }
+
+    /// Adds the specified number of seconds without checking for overflow.
+    #[inline]
+    pub fn add_seconds_unchecked(&self, secs: u64) -> Self {
+        Self {
+            inner: self.inner.add(Duration::from_secs(secs)),
+        }
     }
 
     /// Adds the specified number of minutes.
