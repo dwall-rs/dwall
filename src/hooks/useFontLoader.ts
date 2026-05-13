@@ -135,8 +135,6 @@ function loadGoogleFonts(locale: Locale): void {
 
 // ─── Hook ─────────────────────────────────────────────────────
 export function useFontLoader(options?: UseFontLoaderOptions) {
-  locale;
-
   const { apply = true } = options ?? {};
 
   createEffect(() => {
