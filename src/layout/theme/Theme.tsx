@@ -35,7 +35,7 @@ export const Theme = (props: ThemeProps) => {
   } = useMonitor();
   const { downloadingTheme } = useTheme();
 
-  let aspectRatioRef: HTMLDivElement | undefined;
+  let aspectRatioRef!: HTMLDivElement;
 
   const [indicatorsBottom, setIndicatorsBottom] = createSignal(10);
   const [nameTop, setNameTop] = createSignal(8);
