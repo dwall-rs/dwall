@@ -6,7 +6,7 @@
     "beforeDevCommand": "bun run start",
     "devUrl": "http://localhost:1420",
     "beforeBuildCommand": "bun run build:vite && bun run build:daemon",
-    "frontendDist": "../dist"
+    "frontendDist": "../../dist"
   },
   "app": {
     "security": {
