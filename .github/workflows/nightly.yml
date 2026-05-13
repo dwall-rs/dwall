@@ -302,7 +302,7 @@ jobs:
             🌙 **Nightly Build ${{ needs.create-nightly-release.outputs.build_date }}**
 
             ⚠️ This is a nightly build and may contain unstable features.
-          args: --config src-tauri/tauri.debug.conf.json
+          args: --config crates/dwall-settings/tauri.debug.conf.json
 
   publish-nightly:
     permissions:
