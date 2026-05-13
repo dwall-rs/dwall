@@ -14,46 +14,75 @@ use crate::{
     config::Config,
     domain::{
         geography::{Position, provider::GeographicPositionProvider},
-        time::solar_calculator::{SolarAngle, SunPosition},
+        time::{
+            solar_calculator::{SolarAngle, SunPosition},
+            solar_transitions::{PolarState, SolarTransitions},
+        },
         visual::color_scheme::{
-            ColorSchemeManager, ThresholdConfig, determine_color_scheme_with_hysteresis,
-            set_color_scheme,
+            SwitchSchedule, determine_color_scheme_by_schedule, set_color_scheme,
         },
     },
     infrastructure::display::wallpaper_setter::WallpaperSetter,
     utils::datetime::UtcDateTime,
 };
 
-// Constants for improved code maintainability
-const MAX_CONSECUTIVE_FAILURE_THRESHOLD: u8 = 3;
-const SOLAR_CONFIG_FILENAME: &str = "solar.json";
+const MAX_CONSECUTIVE_FAILURES: u8 = 3;
+const SOLAR_CONFIG_FILE: &str = "solar.json";
 
 /// Comprehensive error handling for solar theme-related operations
 #[derive(Debug, thiserror::Error)]
-pub enum ThemeProcessingError {
+pub enum ThemeError {
     #[error("Theme directory '{0}' does not exist")]
-    ThemeDirectoryNotFound(String),
+    DirectoryNotFound(String),
     #[error("Default theme is missing or not configured")]
     DefaultThemeMissing,
     #[error("Solar configuration file 'solar.json' is missing in theme directory")]
-    SolarConfigurationMissing,
+    SolarConfigMissing,
     #[error("Image files do not match solar configuration: expected {expected}, found {found}")]
-    ImageSolarConfigurationMismatch { expected: usize, found: usize },
+    ImageConfigMismatch { expected: usize, found: usize },
     #[error("Wallpaper image file '{path}' does not exist")]
-    WallpaperImageMissing { path: String },
+    WallpaperMissing { path: String },
     #[error("No monitor-specific wallpaper configurations found")]
-    MonitorWallpaperConfigurationMissing,
+    NoMonitorConfig,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+struct ScheduleCacheKey {
+    date: u32, // yyyymmdd
+    // 位置精度截断到小数点后 3 位（约 111 米），
+    // 避免 GPS 抖动导致每次 tick 都重算
+    lat_i32: i32, // latitude  × 1000 as i32
+    lon_i32: i32, // longitude × 1000 as i32
+}
+
+impl ScheduleCacheKey {
+    fn from(now: UtcDateTime, position: &Position) -> Self {
+        let (y, m, d, ..) = now.ymd_hms();
+        Self {
+            date: y as u32 * 10000 + m as u8 as u32 * 100 + d as u32,
+            lat_i32: (position.latitude() * 1000.0).round() as i32,
+            lon_i32: (position.longitude() * 1000.0).round() as i32,
+        }
+    }
+}
+
+// 缓存当天的切换计划，避免每分钟重算
+struct CachedSchedule {
+    key: ScheduleCacheKey,
+    schedule: SwitchSchedule,
+    polar_state: PolarState,
 }
 
 /// Manages the lifecycle and processing of solar-based visual themes
-pub(crate) struct SolarThemeProcessor<'a> {
+pub(crate) struct ThemeProcessor<'a> {
     config: &'a Config,
-    geographic_position_provider: GeographicPositionProvider<'a>,
-    wallpaper_manager: WallpaperSetter,
+    position_provider: GeographicPositionProvider<'a>,
+    wallpaper_setter: WallpaperSetter,
+    cached_schedule: RefCell<Option<CachedSchedule>>,
 }
 
-impl<'a> SolarThemeProcessor<'a> {
-    /// Creates a new SolarThemeProcessor instance with the provided configuration
+impl<'a> ThemeProcessor<'a> {
+    /// Creates a new `ThemeProcessor` with the provided configuration
     pub(crate) fn new(config: &'a Config) -> DwallResult<Self> {
         info!(
             auto_detect_color_mode = ?config.auto_detect_color_scheme(),
@@ -62,12 +91,11 @@ impl<'a> SolarThemeProcessor<'a> {
             "Initializing solar theme processor"
         );
 
-        let wallpaper_manager = WallpaperSetter::new()?;
-
         Ok(Self {
-            geographic_position_provider: GeographicPositionProvider::new(config.position_source()),
+            position_provider: GeographicPositionProvider::new(config.position_source()),
+            wallpaper_setter: WallpaperSetter::new()?,
             config,
-            wallpaper_manager,
+            cached_schedule: RefCell::new(None),
         })
     }
 
@@ -76,668 +104,545 @@ impl<'a> SolarThemeProcessor<'a> {
         self.config.interval()
     }
 
-    /// Runs a single solar theme update cycle
+    /// Runs a single solar theme update cycle.
     ///
-    /// Returns `true` if the cycle was successful, `false` otherwise
-    pub(crate) fn run_single_cycle(&self) -> DwallResult<bool> {
-        let current_geographic_position =
-            self.geographic_position_provider.get_current_position()?;
-        let result = self.process_solar_theme_cycle(&current_geographic_position);
+    /// Returns `true` if the cycle succeeded.
+    pub(crate) fn run_once(&self) -> DwallResult<bool> {
+        let position = self.position_provider.get_current_position()?;
 
-        if let Err(error) = &result {
-            error!(error = %error, "Solar theme cycle failed");
+        let now = UtcDateTime::now();
+
+        let result = self.process_cycle(&position, now);
+
+        if let Err(ref e) = result {
+            error!(error = %e, "Solar theme cycle failed");
         }
 
         result.map(|_| true)
     }
 
-    /// Checks if monitor configuration has changed and reloads if necessary
+    /// Checks if monitor configuration has changed and reloads if necessary.
     ///
-    /// Returns `true` if monitor configuration was reloaded
-    pub(crate) fn check_and_reload_monitor_configuration(&self) -> bool {
-        let monitor_configuration_changed = self
-            .wallpaper_manager
+    /// Returns `true` if the configuration was reloaded.
+    pub(crate) fn reload_if_monitors_changed(&self) -> bool {
+        let changed = self
+            .wallpaper_setter
             .is_monitor_configuration_stale()
             .unwrap_or(false);
 
-        if monitor_configuration_changed {
-            info!("Monitor configuration change detected, refreshing and reapplying wallpapers");
-
-            if let Err(reload_error) = self.wallpaper_manager.reload_monitor_configuration() {
-                warn!(error = %reload_error, "Failed to reload monitor configuration");
-                return false;
-            }
-
-            if let Ok(current_geographic_position) =
-                self.geographic_position_provider.get_current_position()
-            {
-                if let Err(reapply_error) =
-                    self.process_solar_theme_cycle(&current_geographic_position)
-                {
-                    error!(error = %reapply_error, "Failed to reapply solar wallpapers after monitor configuration change");
-                } else {
-                    debug!(
-                        "Solar wallpapers successfully applied to updated monitor configuration"
-                    );
-                }
-            }
-
-            return true;
+        if !changed {
+            return false;
         }
 
-        false
+        info!("Monitor configuration change detected, refreshing and reapplying wallpapers");
+
+        if let Err(e) = self.wallpaper_setter.reload_monitor_configuration() {
+            warn!(error = %e, "Failed to reload monitor configuration");
+            return false;
+        }
+
+        if let Ok(position) = self.position_provider.get_current_position() {
+            if let Err(e) = self.process_cycle(&position, UtcDateTime::now()) {
+                error!(error = %e, "Failed to reapply wallpapers after monitor configuration change");
+            } else {
+                debug!("Wallpapers successfully applied to updated monitor configuration");
+            }
+        }
+
+        true
     }
 
     /// Starts a continuous loop to update wallpaper themes based on current solar position
-    pub fn start_solar_update_loop(&self) -> DwallResult<()> {
+    pub fn start_update_loop(&self) -> DwallResult<()> {
         info!(
             update_interval_seconds = self.config.interval(),
             "Starting solar-based theme update loop"
         );
 
-        let mut last_update_timestamp = UtcDateTime::now();
-        let mut consecutive_failure_count = 0;
-
-        let update_interval_duration = Duration::from_secs(self.config.interval().into());
+        let mut last_update = UtcDateTime::now();
+        let mut failure_count = 0u8;
+        let interval = Duration::from_secs(self.config.interval().into());
 
         loop {
-            let current_timestamp = UtcDateTime::now();
+            let now = UtcDateTime::now();
             debug!(
-                last_update_timestamp = %last_update_timestamp,
-                current_timestamp = %current_timestamp,
+                last_update = %last_update,
+                current = %now,
                 "Starting solar theme update cycle"
             );
 
-            // Get current geographic position and process solar theme cycle
-            let current_geographic_position =
-                self.geographic_position_provider.get_current_position()?;
-            let theme_cycle_result = self.process_solar_theme_cycle(&current_geographic_position);
+            let position = self.position_provider.get_current_position()?;
 
-            match theme_cycle_result {
+            match self.process_cycle(&position, now) {
                 Ok(_) => {
                     debug!(
-                        latitude = current_geographic_position.latitude(),
-                        longitude = current_geographic_position.longitude(),
+                        latitude = position.latitude(),
+                        longitude = position.longitude(),
                         "Solar theme cycle completed successfully"
                     );
-                    consecutive_failure_count = 0; // Reset failure counter on success
+                    failure_count = 0;
                 }
-                Err(error) => {
-                    consecutive_failure_count += 1;
+                Err(e) => {
+                    failure_count += 1;
                     error!(
-                        error = %error,
-                        consecutive_failure_count,
-                        max_failure_threshold = MAX_CONSECUTIVE_FAILURE_THRESHOLD,
+                        error = %e,
+                        failure_count,
+                        max_failures = MAX_CONSECUTIVE_FAILURES,
                         "Solar theme cycle failed"
                     );
 
-                    if consecutive_failure_count >= MAX_CONSECUTIVE_FAILURE_THRESHOLD {
+                    if failure_count >= MAX_CONSECUTIVE_FAILURES {
                         error!(
-                            consecutive_failures = consecutive_failure_count,
-                            "Maximum consecutive failures reached, terminating solar theme update loop"
+                            failure_count,
+                            "Maximum consecutive failures reached, terminating update loop"
                         );
                         break;
                     }
                 }
             }
 
-            // Check if monitor configuration has changed after processing
-            let monitor_configuration_changed = self
-                .wallpaper_manager
+            let monitors_changed = self
+                .wallpaper_setter
                 .is_monitor_configuration_stale()
                 .unwrap_or(false);
 
-            if monitor_configuration_changed {
+            if monitors_changed {
                 info!(
                     "Monitor configuration change detected, refreshing and reapplying wallpapers"
                 );
 
-                // Refresh monitor list
-                if let Err(reload_error) = self.wallpaper_manager.reload_monitor_configuration() {
-                    warn!(
-                        error = %reload_error,
-                        "Failed to reload monitor configuration after change detection"
-                    );
+                if let Err(e) = self.wallpaper_setter.reload_monitor_configuration() {
+                    warn!(error = %e, "Failed to reload monitor configuration after change detection");
                 } else {
-                    // Immediately reapply wallpaper to new monitor configuration
-                    info!("Reapplying solar wallpapers to updated monitor configuration");
-                    let reapply_result =
-                        self.process_solar_theme_cycle(&current_geographic_position);
-
-                    if let Err(reapply_error) = reapply_result {
-                        error!(
-                            error = %reapply_error,
-                            "Failed to reapply solar wallpapers after monitor configuration change"
-                        );
+                    info!("Reapplying wallpapers to updated monitor configuration");
+                    if let Err(e) = self.process_cycle(&position, now) {
+                        error!(error = %e, "Failed to reapply wallpapers after monitor configuration change");
                     } else {
-                        debug!(
-                            "Solar wallpapers successfully applied to updated monitor configuration"
-                        );
+                        debug!("Wallpapers successfully applied to updated monitor configuration");
                     }
                 }
 
-                // Skip sleep interval and continue immediately to next cycle
-                last_update_timestamp = current_timestamp;
+                last_update = now;
                 continue;
             }
 
-            // Normal flow: sleep before next update
             debug!(
-                sleep_duration_seconds = update_interval_duration.as_secs(),
+                sleep_seconds = interval.as_secs(),
                 "Waiting before next solar theme update cycle"
             );
 
-            last_update_timestamp = current_timestamp;
-            sleep(update_interval_duration);
+            last_update = now;
+            sleep(interval);
         }
 
         warn!("Solar theme update loop terminated");
         Ok(())
     }
 
-    /// Process solar theme cycle for the current geographic position
-    pub(crate) fn process_solar_theme_cycle(
-        &self,
-        geographic_position: &Position,
-    ) -> DwallResult<()> {
-        process_solar_theme_cycle(self.config, geographic_position, &self.wallpaper_manager)
+    /// Processes one solar theme cycle for the given geographic position
+    pub(crate) fn process_cycle(&self, position: &Position, now: UtcDateTime) -> DwallResult<()> {
+        self.run_theme_cycle(position, now)
+    }
+
+    /// Core cycle function: updates wallpapers for all monitors and optionally the lock screen
+    fn run_theme_cycle(&self, position: &Position, now: UtcDateTime) -> DwallResult<()> {
+        debug!(
+            auto_detect_color_mode = self.config.auto_detect_color_scheme(),
+            image_format = ?self.config.image_format(),
+            latitude = position.latitude(),
+            longitude = position.longitude(),
+            "Starting solar theme processing cycle"
+        );
+
+        let monitors = self.wallpaper_setter.list_available_monitors()?;
+        let monitor_themes = self.config.monitor_specific_wallpapers();
+        let sun = SunPosition::new(position.latitude(), position.longitude(), now);
+
+        let mut lock_screen_theme: Option<String> = None;
+        let mut success_count = 0usize;
+
+        for monitor_id in monitors.keys() {
+            let theme_id = match monitor_themes.get(monitor_id) {
+                Some(id) => id,
+                None => {
+                    debug!(
+                        monitor_id,
+                        "No theme configuration found for monitor, skipping"
+                    );
+                    continue;
+                }
+            };
+
+            info!(
+                monitor_id,
+                theme_id, "Processing solar wallpaper for monitor"
+            );
+
+            if lock_screen_theme.is_none() {
+                lock_screen_theme = Some(theme_id.to_string());
+            }
+
+            if let Err(e) = set_monitor_wallpaper(
+                self.config,
+                monitor_id,
+                theme_id,
+                &sun,
+                &self.wallpaper_setter,
+            ) {
+                error!(error = %e, monitor_id, theme_id, "Failed to update solar wallpaper for monitor");
+                continue;
+            }
+
+            success_count += 1;
+        }
+
+        if self.config.lock_screen_wallpaper_enabled()
+            && success_count > 0
+            && let Some(ref theme_id) = lock_screen_theme
+            && let Err(e) = set_lock_screen_wallpaper(self.config, theme_id, &sun)
+        {
+            warn!(
+                error = %e,
+                theme_id,
+                "Failed to apply solar wallpaper to lock screen, continuing"
+            );
+        }
+
+        if self.config.auto_detect_color_scheme() {
+            let cache_key = ScheduleCacheKey::from(now, position);
+
+            if self
+                .cached_schedule
+                .borrow()
+                .as_ref()
+                .is_none_or(|c| c.key != cache_key)
+            {
+                let day_start = now.start_of_day(); // 需要在 UtcDateTime 上实现此方法
+                let transitions = SolarTransitions::calculate(position, day_start);
+                let schedule = SwitchSchedule::from_transitions(
+                    &transitions,
+                    0,     // 日落即切 Dark
+                    -1800, // 日出前 30 分钟切 Light
+                );
+
+                *self.cached_schedule.borrow_mut() = Some(CachedSchedule {
+                    key: cache_key,
+                    schedule,
+                    polar_state: transitions.polar_state,
+                });
+            }
+
+            let borrow = self.cached_schedule.borrow();
+            let cached = borrow.as_ref().unwrap();
+
+            let target = determine_color_scheme_by_schedule(
+                now.timestamp(),
+                &cached.schedule,
+                cached.polar_state,
+            );
+
+            info!(
+                scheme = ?target,
+                altitude = sun.altitude(),
+                "Updating system color scheme based on solar position"
+            );
+            if let Err(e) = set_color_scheme(target) {
+                warn!(error = %e, "Failed to update system color scheme, continuing");
+            }
+        }
+
+        info!(
+            success_count,
+            total = monitors.len(),
+            "Solar theme processing cycle completed"
+        );
+
+        Ok(())
     }
 }
 
 /// Theme validation utilities for solar-based wallpaper themes
-pub struct SolarThemeValidator;
+pub struct ThemeValidator;
 
-impl SolarThemeValidator {
-    /// Validates if a solar theme exists and has proper configuration and image files
-    pub fn validate_solar_theme(
-        themes_directory: &Path,
-        theme_identifier: &str,
-    ) -> DwallResult<()> {
+impl ThemeValidator {
+    /// Validates that a solar theme exists and has proper configuration and image files
+    pub fn validate(themes_dir: &Path, theme_id: &str) -> DwallResult<()> {
         trace!(
-            theme_id = theme_identifier,
-            themes_directory = %themes_directory.display(),
+            theme_id,
+            themes_dir = %themes_dir.display(),
             "Starting solar theme validation"
         );
 
-        let theme_directory_path = themes_directory.join(theme_identifier);
+        let theme_dir = themes_dir.join(theme_id);
 
-        if !theme_directory_path.exists() {
+        if !theme_dir.exists() {
             warn!(
-                theme_id = theme_identifier,
-                theme_path = %theme_directory_path.display(),
+                theme_id,
+                theme_dir = %theme_dir.display(),
                 "Solar theme directory not found"
             );
-            return Err(
-                ThemeProcessingError::ThemeDirectoryNotFound(theme_identifier.to_string()).into(),
-            );
+            return Err(ThemeError::DirectoryNotFound(theme_id.to_string()).into());
         }
 
-        let solar_angle_configuration =
-            Self::load_solar_angle_configuration(&theme_directory_path)?;
-        let expected_image_indices: Vec<u8> = solar_angle_configuration
-            .iter()
-            .map(|angle| angle.index)
-            .collect();
+        let solar_angles = Self::load_solar_angles(&theme_dir)?;
+        let expected_indices: Vec<u8> = solar_angles.iter().map(|a| a.index).collect();
 
-        if !Self::validate_theme_image_files(&theme_directory_path, &expected_image_indices, "jpg")
-        {
+        if !Self::validate_images(&theme_dir, &expected_indices, "jpg") {
             warn!(
-                theme_id = theme_identifier,
-                expected_images = expected_image_indices.len(),
+                theme_id,
+                expected_images = expected_indices.len(),
                 "Solar theme image validation failed"
             );
-            return Err(ThemeProcessingError::ImageSolarConfigurationMismatch {
-                expected: expected_image_indices.len(),
-                found: 0, // We'll improve this in validate_theme_image_files
+            return Err(ThemeError::ImageConfigMismatch {
+                expected: expected_indices.len(),
+                found: 0,
             }
             .into());
         }
 
         info!(
-            theme_id = theme_identifier,
-            solar_angles_count = solar_angle_configuration.len(),
+            theme_id,
+            solar_angles_count = solar_angles.len(),
             "Solar theme validation completed successfully"
         );
         Ok(())
     }
 
-    /// Loads solar angle configuration from theme directory
-    fn load_solar_angle_configuration(theme_directory: &Path) -> DwallResult<Vec<SolarAngle>> {
-        let solar_configuration_file_path = theme_directory.join(SOLAR_CONFIG_FILENAME);
+    /// Loads solar angle configuration from a theme directory
+    fn load_solar_angles(theme_dir: &Path) -> DwallResult<Vec<SolarAngle>> {
+        let config_path = theme_dir.join(SOLAR_CONFIG_FILE);
 
-        if !solar_configuration_file_path.exists() {
+        if !config_path.exists() {
             error!(
-                solar_config_path = %solar_configuration_file_path.display(),
+                config_path = %config_path.display(),
                 "Solar configuration file 'solar.json' is missing from theme directory"
             );
-            return Err(ThemeProcessingError::SolarConfigurationMissing.into());
+            return Err(ThemeError::SolarConfigMissing.into());
         }
 
-        let solar_configuration_content = fs::read_to_string(&solar_configuration_file_path)
-            .map_err(|io_error| {
-                error!(
-                    error = %io_error,
-                    solar_config_path = %solar_configuration_file_path.display(),
-                    "Failed to read solar configuration file"
-                );
-                io_error
-            })?;
+        let content = fs::read_to_string(&config_path).map_err(|e| {
+            error!(error = %e, config_path = %config_path.display(), "Failed to read solar configuration file");
+            e
+        })?;
 
-        let solar_angle_list: Vec<SolarAngle> = serde_json::from_str(&solar_configuration_content)
-            .map_err(|json_error| {
-                error!(
-                    error = %json_error,
-                    solar_config_path = %solar_configuration_file_path.display(),
-                    "Failed to parse solar configuration JSON"
-                );
-                json_error
-            })?;
+        let angles: Vec<SolarAngle> = serde_json::from_str(&content).map_err(|e| {
+            error!(error = %e, config_path = %config_path.display(), "Failed to parse solar configuration JSON");
+            e
+        })?;
 
         debug!(
-            solar_angles_count = solar_angle_list.len(),
-            solar_config_path = %solar_configuration_file_path.display(),
+            count = angles.len(),
+            config_path = %config_path.display(),
             "Successfully loaded solar angle configuration"
         );
-        Ok(solar_angle_list)
+        Ok(angles)
     }
 
     /// Validates that all required image files exist for the theme's solar configuration
-    fn validate_theme_image_files(
-        theme_directory: &Path,
-        expected_image_indices: &[u8],
-        image_file_format: &str,
-    ) -> bool {
-        let images_directory_path = theme_directory.join(image_file_format);
+    fn validate_images(theme_dir: &Path, indices: &[u8], format: &str) -> bool {
+        let images_dir = theme_dir.join(format);
 
-        if !images_directory_path.is_dir() {
+        if !images_dir.is_dir() {
             warn!(
-                images_directory = %images_directory_path.display(),
+                images_dir = %images_dir.display(),
                 "Theme images directory not found or is not a directory"
             );
             return false;
         }
 
-        let mut missing_images_count = 0;
-        let validation_successful = expected_image_indices.iter().all(|&image_index| {
-            let image_filename = format!("{}.{}", image_index + 1, image_file_format);
-            let image_file_path = images_directory_path.join(image_filename);
-
-            let image_exists = image_file_path.exists() && image_file_path.is_file();
-            if !image_exists {
-                missing_images_count += 1;
-                warn!(
-                    image_path = %image_file_path.display(),
-                    image_index = image_index,
-                    "Required theme image file is missing"
-                );
+        let mut missing = 0usize;
+        let valid = indices.iter().all(|&idx| {
+            let filename = format!("{}.{}", idx + 1, format);
+            let path = images_dir.join(&filename);
+            let exists = path.exists() && path.is_file();
+            if !exists {
+                missing += 1;
+                warn!(image_path = %path.display(), index = idx, "Required theme image file is missing");
             }
-            image_exists
+            exists
         });
 
-        if !validation_successful {
+        if !valid {
             error!(
-                missing_images = missing_images_count,
-                total_expected = expected_image_indices.len(),
+                missing,
+                total = indices.len(),
                 "Theme image validation failed due to missing files"
             );
         }
 
-        validation_successful
+        valid
     }
 }
 
 thread_local! {
-    /// Cache solar configuration to avoid repeated reads
+    /// Cache solar configuration to avoid repeated disk reads
     static SOLAR_CACHE: RefCell<HashMap<PathBuf, Vec<SolarAngle>>> =
         RefCell::new(HashMap::new());
 }
 
-/// Load solar configuration for a specific theme directory
-fn load_cached_solar_angles(theme_directory: &Path) -> DwallResult<Vec<SolarAngle>> {
-    let theme_directory = theme_directory.canonicalize()?;
-    debug!(path = %theme_directory.display(), "Loading solar configuration from canonical and absolute path");
+/// Load solar angles for a theme directory, using an in-memory cache
+fn load_solar_angles_cached(theme_dir: &Path) -> DwallResult<Vec<SolarAngle>> {
+    let canonical = theme_dir.canonicalize()?;
+    debug!(path = %canonical.display(), "Loading solar configuration");
 
-    // Check cache
-    {
-        if let Some(cached_angles) =
-            SOLAR_CACHE.with(|cache| cache.borrow().get(&theme_directory).cloned())
-        {
-            debug!("Using cached solar configuration");
-            return Ok(cached_angles);
-        }
+    if let Some(cached) = SOLAR_CACHE.with(|c| c.borrow().get(&canonical).cloned()) {
+        debug!("Using cached solar configuration");
+        return Ok(cached);
     }
-    let solar_config_path = theme_directory.join("solar.json");
-    // Validate solar configuration file exists
-    if !solar_config_path.exists() {
-        error!(
-            solar_config_path = %solar_config_path.display(),
-            "Solar configuration file is missing"
-        );
-        return Err(ThemeProcessingError::SolarConfigurationMissing.into());
+
+    let config_path = canonical.join(SOLAR_CONFIG_FILE);
+
+    if !config_path.exists() {
+        error!(config_path = %config_path.display(), "Solar configuration file is missing");
+        return Err(ThemeError::SolarConfigMissing.into());
     }
-    // Read solar configuration file
-    let solar_config_content = match fs::read_to_string(&solar_config_path) {
-        Ok(content) => content,
-        Err(read_error) => {
-            error!(
-                solar_config_path = %solar_config_path.display(),
-                error = ?read_error,
-                "Failed to read solar configuration file"
-            );
-            return Err(read_error.into());
-        }
-    };
-    // Parse solar configuration
-    let solar_angles: Vec<SolarAngle> = match serde_json::from_str(&solar_config_content) {
-        Ok(angles) => angles,
-        Err(parse_error) => {
-            error!(
-                solar_config_path = %solar_config_path.display(),
-                error = ?parse_error,
-                "Failed to parse solar configuration JSON"
-            );
-            return Err(parse_error.into());
-        }
-    };
+
+    let content = fs::read_to_string(&config_path).map_err(|e| {
+        error!(config_path = %config_path.display(), error = ?e, "Failed to read solar configuration file");
+        e
+    })?;
+
+    let angles: Vec<SolarAngle> = serde_json::from_str(&content).map_err(|e| {
+        error!(config_path = %config_path.display(), error = ?e, "Failed to parse solar configuration JSON");
+        e
+    })?;
+
     debug!(
-        solar_angles_count = solar_angles.len(),
+        count = angles.len(),
         "Successfully loaded solar configuration"
     );
 
-    // Cache solar configuration
-    SOLAR_CACHE.with(|cache| {
-        cache
-            .borrow_mut()
-            .insert(theme_directory.to_path_buf(), solar_angles.clone());
+    SOLAR_CACHE.with(|c| {
+        c.borrow_mut().insert(canonical, angles.clone());
     });
 
-    Ok(solar_angles)
+    Ok(angles)
 }
 
-/// Build wallpaper file path based on theme directory, image format, and solar image index
-fn construct_wallpaper_file_path<'a>(
-    theme_directory_path: &Path,
-    image_file_format: impl Into<&'a str>,
-    solar_image_index: u8,
-) -> PathBuf {
-    let image_format_str = image_file_format.into();
-    let mut wallpaper_path = theme_directory_path.to_path_buf();
-    wallpaper_path.push(image_format_str);
-    wallpaper_path.push(format!("{}.{}", solar_image_index + 1, image_format_str));
-    wallpaper_path
+/// Build the wallpaper file path from a theme directory, image format, and solar image index
+fn wallpaper_path<'a>(theme_dir: &Path, format: impl Into<&'a str>, index: u8) -> PathBuf {
+    let fmt = format.into();
+    theme_dir.join(fmt).join(format!("{}.{}", index + 1, fmt))
 }
 
 /// Find the wallpaper image that best matches the current solar position
-fn find_optimal_solar_wallpaper(
-    theme_directory_path: &Path,
-    current_sun_position: &SunPosition,
+fn best_wallpaper_for_sun(
+    theme_dir: &Path,
+    sun: &SunPosition,
 ) -> DwallResult<(u8, Vec<SolarAngle>)> {
-    let solar_angle_configuration = load_cached_solar_angles(theme_directory_path)?;
-    let sun_altitude_degrees = current_sun_position.altitude();
-    let sun_azimuth_degrees = current_sun_position.azimuth();
+    let angles = load_solar_angles_cached(theme_dir)?;
+    let altitude = sun.altitude();
+    let azimuth = sun.azimuth();
 
     debug!(
-        sun_altitude = sun_altitude_degrees,
-        sun_azimuth = sun_azimuth_degrees,
-        theme_directory = %theme_directory_path.display(),
-        "Calculated current solar position for wallpaper selection"
+        altitude,
+        azimuth,
+        theme_dir = %theme_dir.display(),
+        "Selecting wallpaper for solar position"
     );
 
-    let optimal_image_index = WallpaperSetter::find_closest_image(
-        &solar_angle_configuration,
-        sun_altitude_degrees,
-        sun_azimuth_degrees,
-    )
-    .ok_or_else(|| {
-        error!(
-            theme_directory = %theme_directory_path.display(),
-            sun_altitude = sun_altitude_degrees,
-            sun_azimuth = sun_azimuth_degrees,
-            solar_angles_available = solar_angle_configuration.len(),
-            "No suitable wallpaper image found for current solar position"
-        );
-        ThemeProcessingError::ImageSolarConfigurationMismatch {
-            expected: solar_angle_configuration.len(),
-            found: 0,
-        }
-    })?;
-
-    info!(
-        optimal_image_index,
-        sun_altitude = sun_altitude_degrees,
-        sun_azimuth = sun_azimuth_degrees,
-        "Selected optimal wallpaper image for current solar position"
-    );
-
-    Ok((optimal_image_index, solar_angle_configuration))
-}
-
-/// Core solar theme processing function that updates wallpapers for all monitors
-fn process_solar_theme_cycle(
-    configuration: &Config,
-    current_geographic_position: &Position,
-    wallpaper_manager: &WallpaperSetter,
-) -> DwallResult<()> {
-    debug!(
-        auto_detect_color_mode = configuration.auto_detect_color_scheme(),
-        image_format = ?configuration.image_format(),
-        latitude = current_geographic_position.latitude(),
-        longitude = current_geographic_position.longitude(),
-        "Starting solar theme processing cycle"
-    );
-
-    let available_monitors = wallpaper_manager.list_available_monitors()?;
-    let monitor_theme_configurations = configuration.monitor_specific_wallpapers();
-
-    let current_utc_time = UtcDateTime::now();
-    let current_sun_position = SunPosition::new(
-        current_geographic_position.latitude(),
-        current_geographic_position.longitude(),
-        current_utc_time,
-    );
-
-    let mut lock_screen_theme_identifier: Option<String> = None;
-    let mut successful_monitor_count = 0;
-
-    // Process wallpaper update for each configured monitor
-    for monitor_identifier in available_monitors.keys() {
-        let assigned_theme_id: &str = match monitor_theme_configurations.get(monitor_identifier) {
-            Some(theme_id) => theme_id.as_ref(),
-            None => {
-                debug!(
-                    monitor_id = monitor_identifier,
-                    "No theme configuration found for monitor, skipping"
-                );
-                continue;
-            }
-        };
-
-        info!(
-            monitor_id = monitor_identifier,
-            assigned_theme = assigned_theme_id,
-            "Processing solar wallpaper for monitor"
-        );
-
-        // Use the first successfully configured theme for lock screen
-        if lock_screen_theme_identifier.is_none() {
-            lock_screen_theme_identifier = Some(assigned_theme_id.to_string());
-        }
-
-        if let Err(processing_error) = update_monitor_solar_wallpaper(
-            configuration,
-            monitor_identifier,
-            assigned_theme_id,
-            &current_sun_position,
-            wallpaper_manager,
-        ) {
+    let index =
+        WallpaperSetter::find_closest_image(&angles, altitude, azimuth).ok_or_else(|| {
             error!(
-                error = %processing_error,
-                monitor_id = monitor_identifier,
-                theme_id = assigned_theme_id,
-                "Failed to update solar wallpaper for monitor"
+                theme_dir = %theme_dir.display(),
+                altitude,
+                azimuth,
+                available = angles.len(),
+                "No suitable wallpaper found for current solar position"
             );
-            continue;
-        }
-
-        successful_monitor_count += 1;
-    }
-
-    // Update lock screen wallpaper if enabled and at least one monitor was successful
-    if configuration.lock_screen_wallpaper_enabled()
-        && successful_monitor_count > 0
-        && let Some(ref lock_screen_theme_id) = lock_screen_theme_identifier
-        && let Err(lock_screen_error) = apply_lock_screen_solar_wallpaper(
-            configuration,
-            lock_screen_theme_id,
-            &current_sun_position,
-        )
-    {
-        warn!(
-            error = %lock_screen_error,
-            theme_id = lock_screen_theme_id,
-            "Failed to apply solar wallpaper to lock screen, continuing with other operations"
-        );
-    }
-
-    // Optionally update system color scheme based on solar position
-    if configuration.auto_detect_color_scheme() {
-        let current_color_scheme = ColorSchemeManager::get_current_scheme()?;
-        let solar_based_color_scheme = determine_color_scheme_with_hysteresis(
-            current_sun_position.altitude(),
-            &current_color_scheme,
-            &ThresholdConfig::from_location(current_geographic_position),
-        );
-        info!(
-            color_scheme = ?solar_based_color_scheme,
-            sun_altitude = current_sun_position.altitude(),
-            "Automatically updating system color scheme based on solar position"
-        );
-        if let Err(color_scheme_error) = set_color_scheme(solar_based_color_scheme) {
-            warn!(
-                error = %color_scheme_error,
-                "Failed to update system color scheme, continuing with other operations"
-            );
-        }
-    }
+            ThemeError::ImageConfigMismatch {
+                expected: angles.len(),
+                found: 0,
+            }
+        })?;
 
     info!(
-        successful_monitors = successful_monitor_count,
-        total_monitors = available_monitors.len(),
-        "Solar theme processing cycle completed"
+        index,
+        altitude, azimuth, "Selected optimal wallpaper for solar position"
     );
 
-    Ok(())
+    Ok((index, angles))
 }
 
-/// Update solar wallpaper for a specific monitor based on current sun position
-fn update_monitor_solar_wallpaper(
-    configuration: &Config,
-    monitor_identifier: &str,
-    theme_identifier: &str,
-    current_sun_position: &SunPosition,
-    wallpaper_manager: &WallpaperSetter,
+/// Apply the optimal solar wallpaper to a specific monitor
+fn set_monitor_wallpaper(
+    config: &Config,
+    monitor_id: &str,
+    theme_id: &str,
+    sun: &SunPosition,
+    setter: &WallpaperSetter,
 ) -> DwallResult<()> {
-    let theme_directory_path = configuration.themes_directory().join(theme_identifier);
-    let (optimal_image_index, _) =
-        find_optimal_solar_wallpaper(&theme_directory_path, current_sun_position)?;
-    let wallpaper_file_path = construct_wallpaper_file_path(
-        &theme_directory_path,
-        configuration.image_format(),
-        optimal_image_index,
-    );
+    let theme_dir = config.themes_directory().join(theme_id);
+    let (index, _) = best_wallpaper_for_sun(&theme_dir, sun)?;
+    let path = wallpaper_path(&theme_dir, config.image_format(), index);
 
     info!(
-        wallpaper_path = %wallpaper_file_path.display(),
-        image_index = optimal_image_index,
-        monitor_id = monitor_identifier,
-        theme_id = theme_identifier,
-        "Selected optimal solar wallpaper for monitor"
+        path = %path.display(),
+        index,
+        monitor_id,
+        theme_id,
+        "Selected optimal wallpaper for monitor"
     );
 
-    if !wallpaper_file_path.exists() {
-        error!(
-            wallpaper_path = %wallpaper_file_path.display(),
-            theme_id = theme_identifier,
-            "Selected wallpaper image file does not exist"
-        );
-        return Err(ThemeProcessingError::WallpaperImageMissing {
-            path: wallpaper_file_path.display().to_string(),
+    if !path.exists() {
+        error!(path = %path.display(), theme_id, "Wallpaper image file does not exist");
+        return Err(ThemeError::WallpaperMissing {
+            path: path.display().to_string(),
         }
         .into());
     }
 
-    wallpaper_manager.set_monitor_wallpaper(monitor_identifier, &wallpaper_file_path)?;
+    setter.set_monitor_wallpaper(monitor_id, &path)?;
 
-    debug!(
-        monitor_id = monitor_identifier,
-        wallpaper_path = %wallpaper_file_path.display(),
-        "Successfully applied solar wallpaper to monitor"
-    );
+    debug!(monitor_id, path = %path.display(), "Successfully applied wallpaper to monitor");
 
     Ok(())
 }
 
-/// Apply solar wallpaper to lock screen based on theme and current sun position
-fn apply_lock_screen_solar_wallpaper(
-    configuration: &Config,
-    theme_identifier: &str,
-    current_sun_position: &SunPosition,
+/// Apply the optimal solar wallpaper to the lock screen
+fn set_lock_screen_wallpaper(
+    config: &Config,
+    theme_id: &str,
+    sun: &SunPosition,
 ) -> DwallResult<()> {
-    let theme_directory_path = configuration.themes_directory().join(theme_identifier);
+    let theme_dir = config.themes_directory().join(theme_id);
 
-    match find_optimal_solar_wallpaper(&theme_directory_path, current_sun_position) {
-        Ok((optimal_image_index, _)) => {
-            let wallpaper_file_path = construct_wallpaper_file_path(
-                &theme_directory_path,
-                configuration.image_format(),
-                optimal_image_index,
-            );
+    match best_wallpaper_for_sun(&theme_dir, sun) {
+        Ok((index, _)) => {
+            let path = wallpaper_path(&theme_dir, config.image_format(), index);
 
-            if wallpaper_file_path.exists() {
-                info!(
-                    wallpaper_path = %wallpaper_file_path.display(),
-                    theme_id = theme_identifier,
-                    "Applying optimal solar wallpaper to lock screen"
-                );
-                WallpaperSetter::set_lock_screen_image(&wallpaper_file_path)?;
+            if path.exists() {
+                info!(path = %path.display(), theme_id, "Applying wallpaper to lock screen");
+                WallpaperSetter::set_lock_screen_image(&path)?;
             } else {
-                warn!(
-                    wallpaper_path = %wallpaper_file_path.display(),
-                    theme_id = theme_identifier,
-                    "Optimal lock screen wallpaper file does not exist"
-                );
-                return Err(ThemeProcessingError::WallpaperImageMissing {
-                    path: wallpaper_file_path.display().to_string(),
+                warn!(path = %path.display(), theme_id, "Lock screen wallpaper file does not exist");
+                return Err(ThemeError::WallpaperMissing {
+                    path: path.display().to_string(),
                 }
                 .into());
             }
             Ok(())
         }
-        Err(wallpaper_error) => {
-            warn!(
-                error = %wallpaper_error,
-                theme_id = theme_identifier,
-                "Failed to find optimal solar wallpaper for lock screen"
-            );
-            Err(wallpaper_error)
+        Err(e) => {
+            warn!(error = %e, theme_id, "Failed to find optimal wallpaper for lock screen");
+            Err(e)
         }
     }
 }
 
 /// Applies a solar theme and starts background processing for periodic wallpaper updates
-pub async fn apply_solar_theme(configuration: Config) -> DwallResult<()> {
-    if configuration.monitor_specific_wallpapers().is_empty() {
+pub async fn apply_solar_theme(config: Config) -> DwallResult<()> {
+    if config.monitor_specific_wallpapers().is_empty() {
         warn!(
             "No monitor-specific wallpaper configurations found, solar theme daemon will not be started"
         );
-        return Err(ThemeProcessingError::MonitorWallpaperConfigurationMissing.into());
+        return Err(ThemeError::NoMonitorConfig.into());
     }
 
     info!(
-        configured_monitors = ?configuration.monitor_specific_wallpapers(),
+        monitors = ?config.monitor_specific_wallpapers(),
         "Starting solar theme processor with monitor configurations"
     );
 
-    let solar_theme_processor = SolarThemeProcessor::new(&configuration)?;
-    solar_theme_processor.start_solar_update_loop()
+    ThemeProcessor::new(&config)?.start_update_loop()
 }

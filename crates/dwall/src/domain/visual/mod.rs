@@ -4,4 +4,4 @@ pub(crate) mod wallpaper;
 
 // Re-export commonly used types
 pub use color_scheme::ColorScheme;
-pub use theme_processor::{SolarThemeValidator, ThemeProcessingError, apply_solar_theme};
+pub use theme_processor::{ThemeError, ThemeValidator, apply_solar_theme};
