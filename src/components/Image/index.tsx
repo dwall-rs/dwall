@@ -18,7 +18,7 @@ import { Skeleton } from "../skeleton";
 import { ImageOff } from "lucide-solid";
 
 const ThemeImage = (props: ThemeImageProps) => {
-  let imageRef: HTMLImageElement | undefined;
+  let imageRef!: HTMLImageElement;
 
   const [loaded, setLoaded] = createSignal(false);
   const [error, setError] = createSignal<Error | null>(null);
