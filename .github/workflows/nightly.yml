@@ -47,7 +47,7 @@ jobs:
             local since_commit=$1
             local commits=$(git rev-list --reverse "$since_commit"..HEAD 2>/dev/null || git rev-list --reverse HEAD)
             local labeled_commits=""
-            
+
             for commit in $commits; do
               if has_labels "$commit"; then
                 if [ -z "$labeled_commits" ]; then
@@ -57,7 +57,7 @@ jobs:
                 fi
               fi
             done
-            
+
             echo "$labeled_commits"
           }
 
@@ -113,7 +113,7 @@ jobs:
               labeled_commits=$(get_labeled_commits_since "")
               latest_commit=$(git rev-parse HEAD)
               echo "latest_commit=$latest_commit" >> $GITHUB_OUTPUT
-              
+
               if [ -n "$labeled_commits" ]; then
                 echo "Found labeled commits, will build nightly: $labeled_commits"
                 echo "labeled_commits=$labeled_commits" >> $GITHUB_OUTPUT
@@ -182,11 +182,11 @@ jobs:
           for commit in $labeled_commits; do
             # 尝试获取PR信息
             pr_info=$(gh pr list --state merged --search "$commit" --json number,title --jq '.[0] | select(.number != null)' 2>/dev/null || echo "")
-            
+
             if [ -n "$pr_info" ]; then
               # 如果是PR commit，使用PR编号去重
               pr_number=$(echo "$pr_info" | jq -r '.number')
-              
+
               # 检查是否已经处理过这个PR
               if [ -z "${seen_prs[$pr_number]}" ]; then
                 pr_title=$(echo "$pr_info" | jq -r '.title')
@@ -309,7 +309,7 @@ jobs:
       contents: write
     runs-on: ubuntu-latest
     needs: [check-nightly-conditions, create-nightly-release, build-nightly]
-    if: always() && needs.create-nightly-release.result == 'success'
+    if: always() && needs.create-nightly-release.result == 'success' && needs.build-nightly.result == 'success'
 
     steps:
       - name: Publish nightly release
