@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use time::UtcDateTime;
 
 /// Astronomical calculation constants
-mod constants {
+pub(crate) mod constants {
     /// Julian date for January 1, 2000 at 12:00 (TT)
     pub(crate) const EPOCH_J2000: f64 = 2451545.0;
 
@@ -57,8 +57,12 @@ impl SunPosition {
         }
     }
 
+    pub(crate) const fn latitude(&self) -> f64 {
+        self.latitude
+    }
+
     /// Calculate Julian day using Fliegel-Van Flandern algorithm
-    fn julian_day(&self) -> f64 {
+    const fn julian_day(&self) -> f64 {
         let (year, month, day, hour, minute, second) = self.date_time.ymd_hms();
         let year = year as f64;
         let month = month as u8 as f64;
@@ -76,13 +80,13 @@ impl SunPosition {
     }
 
     /// Calculate the Julian century offset from J2000 epoch
-    fn julian_century_offset(&self) -> f64 {
+    pub(super) const fn julian_century_offset(&self) -> f64 {
         let jd = self.julian_day();
         (jd - constants::EPOCH_J2000) / constants::JULIAN_CENTURY_DAYS
     }
 
     /// Calculate the mean obliquity of the ecliptic (Earth's axial tilt)
-    fn earth_axial_tilt(&self, t: f64) -> f64 {
+    pub(super) fn earth_axial_tilt(&self, t: f64) -> f64 {
         23.43929111 - 0.0130042 * t - 0.00000164 * t.powi(2) - 0.000000503 * t.powi(3)
     }
 
@@ -98,7 +102,7 @@ impl SunPosition {
     }
 
     /// Calculate the solar declination angle
-    fn solar_declination(&self) -> f64 {
+    pub(crate) fn solar_declination(&self) -> f64 {
         let t = self.julian_century_offset();
         let epsilon = self.earth_axial_tilt(t);
         let lambda = Self::solar_ecliptic_longitude(t);
@@ -107,7 +111,7 @@ impl SunPosition {
     }
 
     /// Calculate the equation of time correction
-    fn solar_time_correction(&self) -> f64 {
+    pub(super) fn solar_time_correction(&self) -> f64 {
         let t = self.julian_century_offset();
 
         let m_deg = 357.52911 + 35999.05029 * t - 0.0001537 * t.powi(2);
@@ -130,14 +134,14 @@ impl SunPosition {
         eot / constants::MINUTES_PER_HOUR // Convert to hours
     }
 
-    fn decimal_hours(&self) -> f64 {
+    const fn decimal_hours(&self) -> f64 {
         self.date_time.hour() as f64
             + self.date_time.minute() as f64 / constants::MINUTES_PER_HOUR
             + self.date_time.second() as f64 / constants::SECONDS_PER_HOUR
     }
 
     /// Calculate the hour angle
-    fn hour_angle(&self) -> f64 {
+    pub(crate) fn hour_angle(&self) -> f64 {
         let hours = self.decimal_hours();
         let equation_of_time = self.solar_time_correction();
         let local_mean_time =

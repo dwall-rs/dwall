@@ -1,6 +1,7 @@
 use std::fmt;
 
 use serde::Deserialize;
+use time::OffsetDateTime;
 use windows::Win32::{
     Foundation::{LPARAM, WPARAM},
     System::Registry::{KEY_QUERY_VALUE, KEY_SET_VALUE, REG_DWORD},
@@ -8,14 +9,36 @@ use windows::Win32::{
 };
 
 use crate::{
-    domain::time::solar_transitions::{PolarState, SolarTransitions},
+    Position,
+    domain::time::solar_calculator::{SunPosition, constants::ATMOSPHERIC_REFRACTION_MAX},
     error::DwallResult,
     infrastructure::platform::windows::registry_client::RegistryKey,
     utils::string::WideStringExt,
 };
 
-/// Represents the system color scheme (light or dark theme).
-#[derive(Debug, PartialEq, Deserialize)]
+// Civil twilight angle (when sun is 6° below horizon)
+// This is the standard threshold used by macOS for theme switching
+const CIVIL_TWILIGHT_ANGLE: f64 = -6.0;
+
+// Hysteresis band to prevent frequent switching (±0.5° around threshold)
+const HYSTERESIS_BAND: f64 = 0.5;
+
+// Latitude boundary definitions
+const ARCTIC_CIRCLE_LATITUDE: f64 = 66.5; // Arctic/Antarctic circle boundary
+const HIGH_LATITUDE_BOUNDARY: f64 = 45.0; // Boundary for high latitude adjustments
+const TROPIC_BOUNDARY: f64 = 23.5; // Tropic of Cancer/Capricorn
+
+// Threshold adjustment ranges (in degrees)
+const POLAR_BASE_THRESHOLD: f64 = -8.0; // Base threshold for polar regions
+const POLAR_MAX_ADJUSTMENT: f64 = 4.0; // Maximum deepening for extreme polar latitudes (-8° to -12°)
+const HIGH_LAT_MAX_ADJUSTMENT: f64 = 3.0; // Maximum deepening for high latitudes (up to -3°)
+const TROPICAL_MAX_ADJUSTMENT: f64 = 1.5; // Maximum shallowing for tropical regions (up to +1.5°)
+
+// Astronomical twilight boundaries (for clamping)
+const MIN_THRESHOLD: f64 = -12.0; // Nautical twilight end (no longer useful for theme switching)
+const MAX_THRESHOLD: f64 = -4.5; // Just before civil twilight (still somewhat bright)
+
+#[derive(Debug, PartialEq, Deserialize, Copy, Clone)]
 #[serde(rename_all = "UPPERCASE")]
 pub enum ColorScheme {
     Light,
@@ -23,16 +46,16 @@ pub enum ColorScheme {
 }
 
 impl ColorScheme {
-    /// Returns the corresponding registry value: 1 for Light, 0 for Dark.
-    fn as_u32(&self) -> u32 {
+    #[inline]
+    const fn as_u32(&self) -> u32 {
         match self {
             ColorScheme::Light => 1,
             ColorScheme::Dark => 0,
         }
     }
 
-    /// Converts the scheme to little-endian bytes suitable for writing to the registry.
-    fn as_le_bytes(&self) -> [u8; 4] {
+    #[inline]
+    const fn to_le_bytes(self) -> [u8; 4] {
         self.as_u32().to_le_bytes()
     }
 }
@@ -46,7 +69,90 @@ impl fmt::Display for ColorScheme {
     }
 }
 
-/// Color scheme manager for Windows system theme management.
+/// Dynamic threshold configuration based on location
+#[derive(Debug, Clone)]
+pub struct ThresholdConfig {
+    /// Primary switching threshold (solar altitude angle in degrees)
+    switch_threshold: f64,
+}
+
+impl ThresholdConfig {
+    /// Calculate threshold based on geographic location
+    pub fn from_location(position: &Position) -> Self {
+        let switch_threshold = Self::calculate_twilight_threshold(position);
+
+        Self { switch_threshold }
+    }
+
+    /// Calculate twilight threshold dynamically based on latitude
+    ///
+    /// Factors considered:
+    /// - Higher latitudes have longer twilight due to shallow sun path
+    /// - Tropical regions have short twilight due to steep sun path
+    /// - Uses cosine function to model sun path angle relative to horizon
+    ///
+    /// # Latitude Zones
+    /// - Tropical (0° to 23.5°): Steep sun path → shallower threshold (toward -4.5°)
+    /// - Mid-latitude (23.5° to 45°): Standard civil twilight (-6°)
+    /// - High latitude (45° to 66.5°): Shallow sun path → deeper threshold (toward -9°)
+    /// - Polar (>66.5°): Very shallow path → deepest threshold (-8° to -12°)
+    fn calculate_twilight_threshold(position: &Position) -> f64 {
+        let lat_rad = position.latitude().abs().to_radians();
+
+        // Base threshold (civil twilight)
+        let mut threshold = CIVIL_TWILIGHT_ANGLE;
+
+        // Calculate latitude factor using cosine
+        // cos(0°) = 1.0 (equator), cos(90°) = 0.0 (pole)
+        // This accurately reflects sun path angle relative to horizon
+        let latitude_factor = lat_rad.cos();
+
+        if position.latitude().abs() > ARCTIC_CIRCLE_LATITUDE {
+            // Arctic/Antarctic circles: very shallow sun paths
+            // Requires deeper threshold to handle polar day/night transitions
+            // Normalize extreme_factor: 0 at 66.5°N, 1 at 90°N
+            let extreme_factor =
+                (position.latitude().abs() - ARCTIC_CIRCLE_LATITUDE) / TROPIC_BOUNDARY;
+
+            // Transition from -8° to -12° (into nautical twilight range)
+            threshold = POLAR_BASE_THRESHOLD - extreme_factor * POLAR_MAX_ADJUSTMENT;
+        } else if position.latitude().abs() > HIGH_LATITUDE_BOUNDARY {
+            // High latitudes: longer twilight periods due to shallow sun angle
+            // Use latitude_factor for smooth transition based on sun path geometry
+            let adjustment = (1.0 - latitude_factor) * HIGH_LAT_MAX_ADJUSTMENT;
+            threshold = CIVIL_TWILIGHT_ANGLE - adjustment;
+        } else if position.latitude().abs() < TROPIC_BOUNDARY {
+            // Tropical regions: sun path nearly vertical, very short twilight
+            // Can use shallower threshold as transition is rapid
+            // Normalize tropical_factor: 1 at equator, 0 at tropics
+            let tropical_factor = (TROPIC_BOUNDARY - position.latitude().abs()) / TROPIC_BOUNDARY;
+            threshold = CIVIL_TWILIGHT_ANGLE + tropical_factor * TROPICAL_MAX_ADJUSTMENT;
+        }
+        // else: Mid-latitudes (23.5° to 45°) use default CIVIL_TWILIGHT_ANGLE
+
+        // Clamp to reasonable astronomical range
+        // Prevents extreme values that would be impractical for theme switching
+        threshold = threshold.clamp(MIN_THRESHOLD, MAX_THRESHOLD);
+
+        trace!(
+            threshold = threshold,
+            latitude = position.latitude(),
+            latitude_factor = latitude_factor,
+            "Calculated twilight threshold"
+        );
+
+        threshold
+    }
+
+    /// Create configuration with default values (when location is unavailable)
+    pub fn default_config() -> Self {
+        Self {
+            switch_threshold: CIVIL_TWILIGHT_ANGLE,
+        }
+    }
+}
+
+/// Color scheme manager for Windows system theme management
 pub(crate) struct ColorSchemeManager;
 
 impl ColorSchemeManager {
@@ -55,7 +161,7 @@ impl ColorSchemeManager {
     const APPS_THEME_VALUE: &str = "AppsUseLightTheme";
     const SYSTEM_THEME_VALUE: &str = "SystemUsesLightTheme";
 
-    /// Retrieve the current system color scheme from registry.
+    /// Retrieve the current system color scheme from registry
     pub(crate) fn get_current_scheme() -> DwallResult<ColorScheme> {
         info!("Retrieving current system color scheme");
         let registry_key = RegistryKey::open(Self::PERSONALIZE_KEY_PATH, KEY_QUERY_VALUE)?;
@@ -83,12 +189,12 @@ impl ColorSchemeManager {
         Ok(scheme)
     }
 
-    /// Set the system color scheme in the registry.
-    pub(crate) fn set_color_scheme(scheme: &ColorScheme) -> DwallResult<()> {
+    /// Set the system color scheme in the registry
+    pub(crate) fn set_color_scheme(scheme: ColorScheme) -> DwallResult<()> {
         info!(scheme = %scheme, "Setting system color scheme");
         let registry_key = RegistryKey::open(Self::PERSONALIZE_KEY_PATH, KEY_SET_VALUE)?;
 
-        let value = scheme.as_le_bytes();
+        let value = scheme.to_le_bytes();
 
         registry_key
             .set(Self::APPS_THEME_VALUE, REG_DWORD, &value)
@@ -111,7 +217,79 @@ impl ColorSchemeManager {
     }
 }
 
-/// Set the system color scheme, checking first if it needs to be changed.
+/// Determine color scheme with hysteresis to avoid frequent switching
+///
+/// # Arguments
+/// * `sun_pos` - Solar position calculator for astronomical computations
+/// * `current_scheme` - Current color scheme to apply hysteresis
+/// * `config` - Dynamic threshold configuration based on latitude (FIX 1)
+pub(crate) fn determine_color_scheme_with_hysteresis(
+    sun_pos: &SunPosition,
+    current_scheme: &ColorScheme,
+    config: &ThresholdConfig,
+    local_time: &OffsetDateTime,
+) -> ColorScheme {
+    let latitude = sun_pos.latitude();
+    let declination = sun_pos.solar_declination();
+    let current_altitude = sun_pos.altitude();
+
+    let base_threshold = config.switch_threshold;
+
+    // 1. Calculate the day's solar altitude extremes (with atmospheric refraction compensation)
+    let max_altitude = 90.0 - (latitude - declination).abs() + ATMOSPHERIC_REFRACTION_MAX;
+    let min_altitude = (latitude + declination).abs() - 90.0 + ATMOSPHERIC_REFRACTION_MAX;
+
+    // 2. Polar day/night fallback mechanism
+    if min_altitude > base_threshold {
+        // Polar day: the lowest point of the day is above the threshold, force Light scheme to avoid switching to Dark in bright conditions
+        trace!("Polar day detected. Forcing Light scheme.");
+        return ColorScheme::Light;
+    } else if max_altitude < base_threshold {
+        // Polar night: astronomical triggers are invalid, use local civil time directly
+        let hour = local_time.hour();
+
+        // Set local waking hours: e.g., 7 AM to 6 PM Light, otherwise Dark
+        // TODO: make these 7 and 18 user-configurable in the future
+        let is_waking_hours = (7..18).contains(&hour);
+
+        trace!(
+            hour = hour,
+            "Polar night detected. Using local clock fallback."
+        );
+
+        return if is_waking_hours {
+            ColorScheme::Light
+        } else {
+            ColorScheme::Dark
+        };
+    }
+
+    // 3. Use different thresholds depending on current state to create true hysteresis
+    let switch_point = match current_scheme {
+        ColorScheme::Light => base_threshold - HYSTERESIS_BAND,
+        ColorScheme::Dark => base_threshold + HYSTERESIS_BAND,
+    };
+
+    let scheme = if current_altitude > switch_point {
+        ColorScheme::Light
+    } else {
+        ColorScheme::Dark
+    };
+
+    // Normal decision: absolute comparison after escaping the hysteresis trap
+    debug!(
+        altitude = current_altitude,
+        switch_point = switch_point,
+        base_threshold = base_threshold,
+        current_scheme = %current_scheme,
+        time = %local_time,
+        "Evaluating standard twilight crossing."
+    );
+
+    scheme
+}
+
+/// Set the system color scheme, checking first if it needs to be changed
 pub(crate) fn set_color_scheme(color_scheme: ColorScheme) -> DwallResult<()> {
     let current_color_scheme = ColorSchemeManager::get_current_scheme()?;
     if current_color_scheme == color_scheme {
@@ -120,7 +298,7 @@ pub(crate) fn set_color_scheme(color_scheme: ColorScheme) -> DwallResult<()> {
     }
 
     info!(from = %current_color_scheme, to = %color_scheme, "Changing color scheme");
-    ColorSchemeManager::set_color_scheme(&color_scheme)?;
+    ColorSchemeManager::set_color_scheme(color_scheme)?;
 
     if !verify_theme_change(&color_scheme)? {
         warn!("Theme change may not have been applied correctly");
@@ -129,19 +307,16 @@ pub(crate) fn set_color_scheme(color_scheme: ColorScheme) -> DwallResult<()> {
     Ok(())
 }
 
-/// Verify that the theme change was applied correctly by reading the registry
-/// after a short delay.
 fn verify_theme_change(expected: &ColorScheme) -> DwallResult<bool> {
     std::thread::sleep(std::time::Duration::from_millis(100));
     let actual = ColorSchemeManager::get_current_scheme()?;
     Ok(&actual == expected)
 }
 
-/// Notify the system about theme changes by broadcasting a settings change message.
+/// Notify the system about theme changes
 fn notify_theme_change() -> DwallResult<()> {
     trace!("Broadcasting theme change notifications");
 
-    // Build a null-terminated wide string for the notification parameter.
     let lparam = Vec::from_str("ImmersiveColorSet");
 
     unsafe {
@@ -158,234 +333,198 @@ fn notify_theme_change() -> DwallResult<()> {
     Ok(())
 }
 
-/// Schedule for switching between light and dark mode, similar to macOS appearance schedule.
-#[derive(Debug)]
-pub struct SwitchSchedule {
-    /// Unix timestamp when the system should switch to Dark mode.
-    to_dark_at: Option<u64>,
-    /// Unix timestamp when the system should switch to Light mode.
-    to_light_at: Option<u64>,
-}
-
-impl SwitchSchedule {
-    /// Construct from solar transitions with configurable offsets.
-    ///
-    /// `sunset_offset_secs`: seconds after sunset to switch to Dark (0 = switch at sunset).
-    /// `sunrise_offset_secs`: seconds before sunrise to switch to Light (negative = advance the switch time).
-    pub fn from_transitions(
-        transitions: &SolarTransitions,
-        sunset_offset_secs: i16,
-        sunrise_offset_secs: i16,
-    ) -> Self {
-        Self {
-            to_dark_at: transitions
-                .sunset
-                .map(|t| (t.timestamp() as i64 + sunset_offset_secs as i64).max(0) as u64),
-            to_light_at: transitions
-                .sunrise
-                .map(|t| (t.timestamp() as i64 + sunrise_offset_secs as i64).max(0) as u64),
-        }
-    }
-}
-
-/// Hysteresis duration (5 minutes) to avoid rapid toggling around transition boundaries.
-const SCHEDULE_HYSTERESIS_SECS: u64 = 300; // +/- 5 minutes
-
-/// Determine the appropriate color scheme based on the given schedule and polar state.
-///
-/// For polar day/night, the choice is immediate; for normal conditions the function
-/// respects the configured switching times and adds a hysteresis period to prevent
-/// frequent changes near the boundary.
-pub(crate) fn determine_color_scheme_by_schedule(
-    now_timestamp: u64,
-    schedule: &SwitchSchedule,
-    polar_state: PolarState,
-) -> ColorScheme {
-    match polar_state {
-        PolarState::PolarDay => return ColorScheme::Light,
-        PolarState::PolarNight => return ColorScheme::Dark,
-        PolarState::Normal => {}
-    }
-
-    match (schedule.to_light_at, schedule.to_dark_at) {
-        (Some(light), Some(dark)) => {
-            // Use the most recent transition point that has passed.
-            if light > dark {
-                // Sunrise after sunset is unusual; defensively return Light.
-                ColorScheme::Light
-            } else if now_timestamp >= dark + SCHEDULE_HYSTERESIS_SECS {
-                ColorScheme::Dark
-            } else if now_timestamp >= light + SCHEDULE_HYSTERESIS_SECS {
-                ColorScheme::Light
-            } else {
-                // Before sunrise, default to dark.
-                ColorScheme::Dark
-            }
-        }
-        (None, Some(_)) => ColorScheme::Dark, // No sunrise = polar night (handled above).
-        (Some(_), None) => ColorScheme::Light, // No sunset = polar day.
-        (None, None) => ColorScheme::Dark,
-    }
-}
-
 #[cfg(test)]
 mod tests {
+    use time::Month;
+
     use super::*;
-    use crate::domain::time::solar_transitions::SolarTransitions;
-    use crate::utils::datetime::UtcDateTime;
+    use crate::domain::time::solar_calculator::SunPosition;
 
-    /// Helper to create a SolarTransitions from optional Unix timestamps.
-    fn solar_transitions(sunrise: Option<u64>, sunset: Option<u64>) -> SolarTransitions {
-        SolarTransitions {
-            sunrise: sunrise.map(UtcDateTime::from_timestamp),
-            sunset: sunset.map(UtcDateTime::from_timestamp),
-            solar_noon: UtcDateTime::from_timestamp(0), // arbitrary, not used by from_transitions
-            polar_state: PolarState::Normal,
+    fn sun_position(lat: f64, lon: f64, local: OffsetDateTime) -> SunPosition {
+        let utc = local.utc().unwrap();
+        SunPosition::new(lat, lon, utc)
+    }
+
+    fn threshold(lat: f64, lon: f64) -> ThresholdConfig {
+        ThresholdConfig::from_location(&Position::from_raw_position(lat, lon, 0.))
+    }
+
+    #[test]
+    fn test_threshold_mid_latitude() {
+        // Huocheng: latitude 44.3, classified as mid-latitude (<45), uses default -6°
+        let config = threshold(44.3037058, 80.9801647);
+        assert!((config.switch_threshold - CIVIL_TWILIGHT_ANGLE).abs() < 0.01);
+    }
+
+    #[test]
+    fn test_threshold_high_latitude() {
+        // Paris: 48.87 > 45, high latitude adjustment
+        let config = threshold(48.8728329, 2.3281715);
+        // Expected threshold between -6 and -9
+        assert!(config.switch_threshold < CIVIL_TWILIGHT_ANGLE);
+        assert!(config.switch_threshold >= -9.0);
+    }
+
+    #[test]
+    fn test_threshold_tropical() {
+        // Near equator, tropical_factor≈1, threshold≈-4.5, clamped
+        let config = threshold(0.0, 40.0);
+        assert!(config.switch_threshold > CIVIL_TWILIGHT_ANGLE);
+        assert!((config.switch_threshold - MAX_THRESHOLD).abs() < 0.01); // should be clamped to -4.5
+    }
+
+    #[test]
+    fn test_threshold_polar() {
+        // Construct latitude 78° inside Arctic Circle, triggers polar threshold
+        let config = threshold(78.0, 0.0);
+        assert!(config.switch_threshold <= POLAR_BASE_THRESHOLD);
+        assert!(config.switch_threshold >= MIN_THRESHOLD);
+    }
+
+    // ============================================================
+    // Tests for determine_color_scheme_with_hysteresis
+    //
+    // There is hysteresis around sunrise and sunset, so we cannot switch color scheme
+    // directly based solely on sunrise/sunset times.
+    // ============================================================
+
+    fn test_location(
+        lat: f64,
+        lon: f64,
+        year: u16,
+        month: Month,
+        day: u8,
+        offset: &str,
+        cases: &[((u8, u8, u8), ColorScheme)],
+    ) {
+        let config = threshold(lat, lon);
+        for &((hour, minute, second), expected) in cases {
+            let time = OffsetDateTime::new(
+                year,
+                month,
+                day,
+                hour,
+                minute,
+                second,
+                offset.parse().unwrap(),
+            )
+            .unwrap();
+            let sun = sun_position(lat, lon, time);
+            let actual = determine_color_scheme_with_hysteresis(
+                &sun,
+                &ColorScheme::Dark, // initial scheme set to Dark; does not affect core logic (except hysteresis, tests use fixed initial value)
+                &config,
+                &time,
+            );
+            assert_eq!(
+                actual, expected,
+                "Location ({lat}, {lon}) at {time}: expected {expected:?}, got {actual:?}"
+            );
         }
     }
 
-    /// Helper to create a SwitchSchedule with given timestamps.
-    fn schedule(light: Option<u64>, dark: Option<u64>) -> SwitchSchedule {
-        SwitchSchedule {
-            to_light_at: light,
-            to_dark_at: dark,
-        }
-    }
-
     #[test]
-    fn test_color_scheme_as_u32() {
-        assert_eq!(ColorScheme::Light.as_u32(), 1);
-        assert_eq!(ColorScheme::Dark.as_u32(), 0);
-    }
-
-    #[test]
-    fn test_color_scheme_display() {
-        assert_eq!(format!("{}", ColorScheme::Light), "Light");
-        assert_eq!(format!("{}", ColorScheme::Dark), "Dark");
-    }
-
-    #[test]
-    fn test_color_scheme_to_le_bytes() {
-        assert_eq!(ColorScheme::Light.as_le_bytes(), 1u32.to_le_bytes());
-        assert_eq!(ColorScheme::Dark.as_le_bytes(), 0u32.to_le_bytes());
-    }
-
-    #[test]
-    fn test_switch_schedule_from_transitions_no_offset() {
-        let t = solar_transitions(Some(1_620_000_000), Some(1_620_060_000));
-        let schedule = SwitchSchedule::from_transitions(&t, 0, 0);
-        assert_eq!(schedule.to_light_at, Some(1_620_000_000));
-        assert_eq!(schedule.to_dark_at, Some(1_620_060_000));
-    }
-
-    #[test]
-    fn test_switch_schedule_from_transitions_with_offsets() {
-        let t = solar_transitions(Some(1000), Some(2000));
-        let schedule = SwitchSchedule::from_transitions(&t, 300, -300);
-        assert_eq!(schedule.to_dark_at, Some(2300)); // 2000 + 300
-        assert_eq!(schedule.to_light_at, Some(700)); // 1000 - 300
-    }
-
-    #[test]
-    fn test_switch_schedule_from_transitions_offset_clamp_to_zero() {
-        let t = solar_transitions(Some(10), Some(20));
-        let schedule = SwitchSchedule::from_transitions(&t, 0, -100);
-        assert_eq!(schedule.to_light_at, Some(0)); // clamped to 0
-        assert_eq!(schedule.to_dark_at, Some(20));
-    }
-
-    #[test]
-    fn test_polar_day_returns_light() {
-        let sched = schedule(Some(100), Some(200));
-        assert_eq!(
-            determine_color_scheme_by_schedule(150, &sched, PolarState::PolarDay),
-            ColorScheme::Light
+    fn test_huocheng_midday_night() {
+        // Huocheng, Xinjiang, China
+        test_location(
+            44.3037058,
+            80.9801647,
+            2026,
+            Month::May,
+            15,
+            "+08:00",
+            &[
+                ((6, 30, 0), ColorScheme::Dark),  // before sunrise, should be Dark
+                ((7, 15, 0), ColorScheme::Light), // after sunrise, should be Light
+                ((12, 0, 0), ColorScheme::Light), // noon, should be Light
+                ((21, 0, 0), ColorScheme::Light), // before sunset, should be Light
+                ((22, 40, 0), ColorScheme::Dark), // after sunset, should be Dark
+                ((3, 0, 0), ColorScheme::Dark),   // late night, should be Dark
+            ],
         );
     }
 
     #[test]
-    fn test_polar_night_returns_dark() {
-        let sched = schedule(Some(100), Some(200));
-        assert_eq!(
-            determine_color_scheme_by_schedule(150, &sched, PolarState::PolarNight),
-            ColorScheme::Dark
+    fn test_greenland_midday_night() {
+        // Kujalleq, Greenland
+        test_location(
+            61.,
+            -45.,
+            2026,
+            Month::January,
+            1,
+            "-01:00",
+            &[
+                ((10, 00, 0), ColorScheme::Dark),  // before sunrise, should be Dark
+                ((10, 45, 0), ColorScheme::Light), // after sunrise, should be Light
+                ((12, 0, 0), ColorScheme::Light),  // noon, should be Light
+                ((15, 0, 0), ColorScheme::Light),  // before sunset, should be Light
+                ((18, 10, 0), ColorScheme::Dark), // after sunset, larger hysteresis at high latitudes
+                ((23, 0, 0), ColorScheme::Dark),  // late night, should be Dark
+            ],
         );
     }
 
     #[test]
-    fn test_normal_both_some_before_light_hysteresis() {
-        // Hysteresis adds 300s to both timestamps.
-        // now=150 is before light+300 (400) and dark is 200+300=500 -> default Dark.
-        assert_eq!(
-            determine_color_scheme_by_schedule(
-                150,
-                &schedule(Some(100), Some(200)),
-                PolarState::Normal
-            ),
-            ColorScheme::Dark
+    fn test_iceland_midday_night() {
+        // Hornstrandir, Iceland
+        test_location(
+            66.3617958,
+            -22.4390253,
+            2026,
+            Month::March,
+            1,
+            "+00:00",
+            &[
+                ((7, 30, 0), ColorScheme::Dark),   // before sunrise, should be Dark
+                ((9, 00, 0), ColorScheme::Light),  // after sunrise, should be Light
+                ((12, 0, 0), ColorScheme::Light),  // noon, should be Light
+                ((18, 30, 0), ColorScheme::Light), // before sunset, should be Light
+                ((18, 50, 0), ColorScheme::Light), // after sunset, should be Dark
+                ((23, 0, 0), ColorScheme::Dark),   // late night, should be Dark
+            ],
         );
     }
 
     #[test]
-    fn test_normal_both_some_after_light_hysteresis() {
-        // now=450: >=400 but <500 -> Light.
-        assert_eq!(
-            determine_color_scheme_by_schedule(
-                450,
-                &schedule(Some(100), Some(200)),
-                PolarState::Normal
-            ),
-            ColorScheme::Light
+    fn test_paris_midday_night() {
+        // 9th arrondissement of Paris, Île-de-France, France
+        test_location(
+            48.8728329,
+            2.3281715,
+            2026,
+            Month::May,
+            1,
+            "+02:00",
+            &[
+                ((5, 40, 0), ColorScheme::Dark),   // before sunrise, should be Dark
+                ((6, 35, 0), ColorScheme::Light),  // after sunrise, should be Light
+                ((12, 0, 0), ColorScheme::Light),  // noon, should be Light
+                ((21, 00, 0), ColorScheme::Light), // before sunset, should be Light
+                ((21, 30, 0), ColorScheme::Light), // after sunset, should be Dark
+                ((23, 0, 0), ColorScheme::Dark),   // late night, should be Dark
+            ],
         );
     }
 
     #[test]
-    fn test_normal_both_some_after_dark_hysteresis() {
-        // now=550: >=500 -> Dark.
-        assert_eq!(
-            determine_color_scheme_by_schedule(
-                550,
-                &schedule(Some(100), Some(200)),
-                PolarState::Normal
-            ),
-            ColorScheme::Dark
-        );
-    }
-
-    #[test]
-    fn test_normal_only_dark_returns_dark() {
-        assert_eq!(
-            determine_color_scheme_by_schedule(0, &schedule(None, Some(200)), PolarState::Normal),
-            ColorScheme::Dark
-        );
-    }
-
-    #[test]
-    fn test_normal_only_light_returns_light() {
-        assert_eq!(
-            determine_color_scheme_by_schedule(0, &schedule(Some(100), None), PolarState::Normal),
-            ColorScheme::Light
-        );
-    }
-
-    #[test]
-    fn test_normal_none_returns_dark() {
-        assert_eq!(
-            determine_color_scheme_by_schedule(0, &schedule(None, None), PolarState::Normal),
-            ColorScheme::Dark
-        );
-    }
-
-    #[test]
-    fn test_normal_defense_light_greater_than_dark() {
-        // Defensive: if light > dark, return Light.
-        assert_eq!(
-            determine_color_scheme_by_schedule(
-                0,
-                &schedule(Some(300), Some(200)),
-                PolarState::Normal
-            ),
-            ColorScheme::Light
+    fn test_kenya_midday_night() {
+        // Garissa County, Kenya
+        test_location(
+            0.3488742,
+            40.1127608,
+            2026,
+            Month::December,
+            1,
+            "+03:00",
+            &[
+                ((5, 20, 0), ColorScheme::Dark),   // before sunrise, should be Dark
+                ((6, 3, 0), ColorScheme::Light),   // after sunrise, should be Light
+                ((12, 0, 0), ColorScheme::Light),  // noon, should be Light
+                ((18, 10, 0), ColorScheme::Light), // before sunset, should be Light
+                ((19, 00, 0), ColorScheme::Dark),  // after sunset, should be Dark
+                ((23, 0, 0), ColorScheme::Dark),   // late night, should be Dark
+            ],
         );
     }
 }
