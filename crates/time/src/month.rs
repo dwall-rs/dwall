@@ -1,4 +1,4 @@
-use crate::utils::datetime::{error::DateTimeError, math::is_leap_year};
+use super::{error::Error, math::is_leap_year};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Month {
@@ -67,7 +67,7 @@ impl Month {
 }
 
 impl TryFrom<u8> for Month {
-    type Error = DateTimeError;
+    type Error = Error;
 
     #[inline]
     fn try_from(value: u8) -> Result<Self, Self::Error> {
@@ -84,7 +84,7 @@ impl TryFrom<u8> for Month {
             10 => Ok(Month::October),
             11 => Ok(Month::November),
             12 => Ok(Month::December),
-            _ => Err(DateTimeError::InvalidMonth(value)),
+            _ => Err(Error::InvalidMonth(value)),
         }
     }
 }

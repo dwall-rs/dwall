@@ -1,9 +1,9 @@
-use crate::utils::datetime::{
+use super::{
     consts::{
         CUMULATIVE_DAYS, DAYS_PER_4_YEARS, DAYS_PER_100_YEARS, DAYS_PER_400_YEARS, DAYS_PER_YEAR,
         MONTH_DIVISOR, UNIX_EPOCH_TO_MARCH_1_YEAR_0,
     },
-    error::DateTimeResult,
+    error::Result,
     month::Month,
 };
 
@@ -14,7 +14,7 @@ pub(super) const fn is_leap_year(year: u16) -> bool {
 }
 
 /// Converts a Gregorian calendar date into the number of days since the Unix epoch (1970-01-01).
-pub(super) fn days_since_epoch(year: u16, month: Month, day: u8) -> DateTimeResult<u32> {
+pub(super) fn days_since_epoch(year: u16, month: Month, day: u8) -> Result<u32> {
     let years_since_epoch = year as u32 - 1970;
 
     // Compute total days from complete years
