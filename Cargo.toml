@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["crates/dwall", "crates/dwall-settings"]
+members = ["crates/dwall", "crates/dwall-settings", "crates/time"]
 
 [workspace.package]
 authors = ["thep0y"]

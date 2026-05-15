@@ -1,9 +1,7 @@
 use std::time::SystemTimeError;
 
-use thiserror::Error;
-
-#[derive(Debug, Error)]
-pub enum DateTimeError {
+#[derive(Debug, thiserror::Error)]
+pub enum Error {
     #[error("Year must be >= 1970, got {0}")]
     InvalidYear(u16),
 
@@ -32,4 +30,4 @@ pub enum DateTimeError {
     NegativeDuration,
 }
 
-pub type DateTimeResult<T> = Result<T, DateTimeError>;
+pub type Result<T> = std::result::Result<T, Error>;

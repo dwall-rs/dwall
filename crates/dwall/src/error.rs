@@ -55,6 +55,9 @@ pub enum DwallError {
     /// Wallpaper manager error
     #[error("Wallpaper operation failed: {0}")]
     WallpaperManager(#[from] WallpaperError),
+
+    #[error(transparent)]
+    DateTime(#[from] time::Error),
 }
 
 /// Configuration-related errors

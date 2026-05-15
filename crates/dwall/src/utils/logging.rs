@@ -11,11 +11,10 @@ struct MyTimer;
 #[cfg(debug_assertions)]
 impl tracing_subscriber::fmt::time::FormatTime for MyTimer {
     fn format_time(&self, w: &mut tracing_subscriber::fmt::format::Writer<'_>) -> std::fmt::Result {
-        write!(
-            w,
-            "{}",
-            crate::utils::datetime::UtcDateTime::now().to_rfc3339()
-        )
+        let time = time::OffsetDateTime::now_local()
+            .map(|dt| dt.to_rfc3339())
+            .unwrap_or(time::UtcDateTime::now().to_rfc3339());
+        write!(w, "{time}")
     }
 }
 

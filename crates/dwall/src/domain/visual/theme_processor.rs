@@ -9,6 +9,8 @@ use std::{
     time::Duration,
 };
 
+use time::{OffsetDateTime, UtcDateTime};
+
 use crate::{
     DwallResult,
     config::Config,
@@ -23,7 +25,6 @@ use crate::{
         },
     },
     infrastructure::display::wallpaper_setter::WallpaperSetter,
-    utils::datetime::UtcDateTime,
 };
 
 const MAX_CONSECUTIVE_FAILURES: u8 = 3;

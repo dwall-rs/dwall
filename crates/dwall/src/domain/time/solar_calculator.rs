@@ -1,8 +1,7 @@
 //! Solar position calculation utilities for astronomical computations
 
 use serde::{Deserialize, Serialize};
-
-use crate::utils::datetime::UtcDateTime;
+use time::UtcDateTime;
 
 /// Astronomical calculation constants
 mod constants {
@@ -211,7 +210,7 @@ impl SunPosition {
 
 #[cfg(test)]
 mod tests {
-    use crate::utils::datetime::Month;
+    use time::Month;
 
     use super::*;
 
