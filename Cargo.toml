@@ -9,7 +9,7 @@ members = [
 
 [workspace.package]
 authors = ["thep0y"]
-version = "0.2.2"
+version = "0.2.3"
 # homepage = ""
 repository = "https://github.com/dwall-rs/dwall"
 license = "AGPL-3.0"
