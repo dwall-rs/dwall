@@ -1,7 +1,7 @@
-/// 内部处理宏，递归解析 tracing 风格的键值对，并与主消息分离传递
+/// Internal processing macro that recursively parses tracing-style key-value pairs and separates them from the main message for passing.
 #[macro_export]
 macro_rules! kv_log_internal {
-    // 基础情况 1：不带 target
+    // Base case 1: without target
     (@build $lvl:ident () ($($kv_fmt:tt)*) ($($kv_args:expr,)*) $msg:literal $(, $($msg_args:tt)*)?) => {
         ::log::$lvl!(
             concat!("{} ", $($kv_fmt)*),
@@ -10,7 +10,7 @@ macro_rules! kv_log_internal {
         )
     };
 
-    // 基础情况 2：带 target
+    // Base case 2: with target
     (@build $lvl:ident (target: $tgt:expr) ($($kv_fmt:tt)*) ($($kv_args:expr,)*) $msg:literal $(, $($msg_args:tt)*)?) => {
         ::log::$lvl!(
             target: $tgt,
@@ -20,7 +20,7 @@ macro_rules! kv_log_internal {
         )
     };
 
-    // 解析带 % 前缀的键值对（Display）
+    // Parse key-value pair with % prefix (Display)
     (@build $lvl:ident $tgt:tt ($($kv_fmt:tt)*) ($($kv_args:expr,)*) $k:ident = %$v:expr, $($rest:tt)+) => {
         $crate::kv_log_internal!(@build $lvl $tgt
             ($($kv_fmt)* stringify!($k), "={} ",)
@@ -29,7 +29,7 @@ macro_rules! kv_log_internal {
         )
     };
 
-    // 解析带 ? 前缀的键值对（Debug）
+    // Parse key-value pair with ? prefix (Debug)
     (@build $lvl:ident $tgt:tt ($($kv_fmt:tt)*) ($($kv_args:expr,)*) $k:ident = ?$v:expr, $($rest:tt)+) => {
         $crate::kv_log_internal!(@build $lvl $tgt
             ($($kv_fmt)* stringify!($k), "={:?} ",)
@@ -38,7 +38,7 @@ macro_rules! kv_log_internal {
         )
     };
 
-    // 解析无前缀的键值对（退化到 Debug）
+    // Parse key-value pair without prefix (falls back to Debug)
     (@build $lvl:ident $tgt:tt ($($kv_fmt:tt)*) ($($kv_args:expr,)*) $k:ident = $v:expr, $($rest:tt)+) => {
         $crate::kv_log_internal!(@build $lvl $tgt
             ($($kv_fmt)* stringify!($k), "={:?} ",)
