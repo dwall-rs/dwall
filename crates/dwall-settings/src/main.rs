@@ -3,7 +3,7 @@
 
 use std::path::PathBuf;
 
-use dwall::setup_logging;
+use logging::Logger;
 use tauri::{Manager, RunEvent};
 use tokio::sync::OnceCell;
 
@@ -19,19 +19,24 @@ mod services;
 mod utils;
 
 #[macro_use]
-extern crate tracing;
+extern crate logging;
 
 pub static DAEMON_EXE_PATH: OnceCell<PathBuf> = OnceCell::const_new();
 
 #[tokio::main]
 async fn main() -> DwallSettingsResult<()> {
-    if cfg!(not(debug_assertions)) && cfg!(not(feature = "log-max-level-info")) {
-        unsafe {
-            std::env::set_var("DWALL_LOG", "debug");
-        }
-    }
+    #[cfg(debug_assertions)]
+    Logger::default().with_target("dwall").init()?;
+    #[cfg(not(debug_assertions))]
+    {
+        use dwall::lazy::DWALL_LOG_DIR;
 
-    setup_logging(&["dwall_settings", "dwall"]);
+        let package_name = env!("CARGO_PKG_NAME");
+        Logger::default()
+            .with_target("dwall")
+            .with_file_path(DWALL_LOG_DIR.join(format!("{}.log", package_name)))?
+            .init()?;
+    }
 
     let builder = tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())

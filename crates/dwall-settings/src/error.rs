@@ -29,6 +29,8 @@ pub enum DwallSettingsError {
     Download(#[from] DownloadError),
     #[error("Failed to spawn daemon: {0}")]
     Daemon(String),
+    #[error(transparent)]
+    Logger(#[from] log::SetLoggerError),
     #[error("{0}")]
     Other(String),
 }

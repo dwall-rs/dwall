@@ -1,6 +1,11 @@
 [workspace]
 resolver = "2"
-members = ["crates/dwall", "crates/dwall-settings", "crates/time"]
+members = [
+    "crates/dwall",
+    "crates/dwall-settings",
+    "crates/logging",
+    "crates/time",
+]
 
 [workspace.package]
 authors = ["thep0y"]
@@ -18,11 +23,7 @@ serde = { version = "1", default-features = false, features = [
     "derive",
 ] }
 serde_json = { version = "1", default-features = false, features = ["std"] }
-tracing = { version = "0", default-features = false, features = ["log"] }
-tracing-subscriber = { version = "0", default-features = false, features = [
-    "fmt",
-    'env-filter',
-] }
+log = { version = "0", default-features = false, features = ["std"] }
 windows = { version = "0.61", default-features = false }
 
 [profile.release]

@@ -62,21 +62,22 @@ pub(crate) fn query_device_friendly_name(
     device_guid: &GUID,
 ) -> DwallResult<String> {
     debug!(
-        device_path,
+        device_path = device_path,
         guid = ?device_guid,
         "Querying device friendly name"
     );
 
     let device_info_set = DeviceInfoSet::new(device_guid)?;
     let device_index = find_device_by_path(&device_info_set, device_guid, device_path)?;
-    debug!(device_index, "Found device at index");
+    debug!(device_index = device_index, "Found device at index");
 
     let device_info_data = get_device_info_data(&device_info_set, device_index)?;
     let friendly_name = get_device_friendly_name(&device_info_set, &device_info_data)?;
 
     debug!(
-        device_path,
-        friendly_name, "Successfully retrieved device friendly name"
+        device_path = device_path,
+        friendly_name = friendly_name,
+        "Successfully retrieved device friendly name"
     );
 
     Ok(friendly_name)
@@ -88,7 +89,7 @@ fn find_device_by_path(
     target_path: &str,
 ) -> DwallResult<u32> {
     debug!(
-        target_path,
+        target_path = target_path,
         guid = ?device_guid,
         "Finding device by path"
     );
@@ -114,7 +115,11 @@ fn find_device_by_path(
         .is_ok()
     } {
         if let Some(current_path) = get_device_path(device_info_set, &device_interface_data)? {
-            debug!(index, current_path, "Checking device path");
+            debug!(
+                index = index,
+                current_path = current_path,
+                "Checking device path"
+            );
 
             if current_path.eq_ignore_ascii_case(target_path) {
                 debug!(index = index, "Found matching device");
@@ -125,7 +130,10 @@ fn find_device_by_path(
         index += 1;
     }
 
-    error!(target_path, "Failed to find device matching path");
+    error!(
+        target_path = target_path,
+        "Failed to find device matching path"
+    );
     Err(DisplayError::MatchDevice.into())
 }
 
@@ -178,7 +186,7 @@ fn get_device_info_data(
     device_info_set: &DeviceInfoSet,
     device_index: u32,
 ) -> DwallResult<SP_DEVINFO_DATA> {
-    debug!(device_index, "Getting device info data");
+    debug!(device_index = device_index, "Getting device info data");
 
     let mut device_info_data = SP_DEVINFO_DATA {
         cbSize: mem::size_of::<SP_DEVINFO_DATA>() as u32,
@@ -196,7 +204,7 @@ fn get_device_info_data(
     }
     .map_err(|e| {
         error!(
-            device_index,
+            device_index = device_index,
             error = %e,
             "Failed to get device info"
         );

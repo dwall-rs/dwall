@@ -210,10 +210,8 @@ impl Config {
     pub fn validate(&self) -> DwallResult<()> {
         if self.interval < MIN_INTERVAL_SECONDS || self.interval > MAX_INTERVAL_SECONDS {
             error!(
-                interval = self.interval,
-                min = MIN_INTERVAL_SECONDS,
-                max = MAX_INTERVAL_SECONDS,
-                "Interval validation failed"
+                "Interval validation failed: min={MIN_INTERVAL_SECONDS}, max={MAX_INTERVAL_SECONDS}, interval={}",
+                self.interval
             );
             return Err(ConfigError::Validation {
                 reason: "Interval is out of range".to_string(),

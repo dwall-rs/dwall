@@ -110,7 +110,7 @@ impl RegistryKey {
                 error!(
                     name = name,
                     error_code = result.0,
-                    "Failed to query registry value",
+                    "Failed to query registry value"
                 );
                 Err(RegistryError::Query(result))
             }

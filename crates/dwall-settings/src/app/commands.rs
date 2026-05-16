@@ -49,7 +49,7 @@ pub async fn read_config_file() -> DwallSettingsResult<dwall::Config> {
 
 #[tauri::command]
 pub async fn write_config_file(config: dwall::Config) -> DwallSettingsResult<()> {
-    debug!(?config, "Writing config file");
+    debug!(config = ?config, "Writing config file");
     dwall_write_config(&config).map_err(Into::into)
 }
 
