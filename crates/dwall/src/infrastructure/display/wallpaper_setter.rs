@@ -142,7 +142,7 @@ impl WallpaperSetter {
             error!(
                 path = %image_path.display(),
                 error = %e,
-                "Failed to create URI for lock screen image",
+                "Failed to create URI for lock screen image"
             );
             e
         })?;
@@ -160,7 +160,7 @@ impl WallpaperSetter {
             error!(
                 path = %image_path.display(),
                 error = %e,
-                "Failed to get storage file for lock screen",
+                "Failed to get storage file for lock screen"
             );
             e
         })?;
@@ -169,7 +169,7 @@ impl WallpaperSetter {
             error!(
                 path = %image_path.display(),
                 error = %e,
-                "Failed to retrieve async storage file",
+                "Failed to retrieve async storage file"
             );
             e
         })?;
@@ -178,7 +178,7 @@ impl WallpaperSetter {
             error!(
                 path = %image_path.display(),
                 error = %e,
-                "Failed to cast storage file",
+                "Failed to cast storage file"
             );
             e
         })?;
@@ -187,7 +187,7 @@ impl WallpaperSetter {
             error!(
                 path = %image_path.display(),
                 error = %e,
-                "Failed to set lock screen image async",
+                "Failed to set lock screen image async"
             );
             e
         })?;
@@ -196,7 +196,7 @@ impl WallpaperSetter {
             error!(
                 path = %image_path.display(),
                 error = %e,
-                "Failed to complete lock screen image setting",
+                "Failed to complete lock screen image setting"
             );
             e
         })?;

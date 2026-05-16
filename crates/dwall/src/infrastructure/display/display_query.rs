@@ -44,7 +44,11 @@ pub(crate) fn query_target_name(
     adapter_id: u32,
     target_id: u32,
 ) -> DwallResult<DISPLAYCONFIG_TARGET_DEVICE_NAME> {
-    debug!(adapter_id, target_id, "Querying target device name");
+    debug!(
+        adapter_id = adapter_id,
+        target_id = target_id,
+        "Querying target device name"
+    );
 
     let mut target_name: DISPLAYCONFIG_TARGET_DEVICE_NAME = unsafe { mem::zeroed() };
 
@@ -80,7 +84,11 @@ fn get_buffer_sizes() -> DwallResult<(u32, u32)> {
         error!(error = ?error, "Failed to get buffer sizes");
         return Err(DisplayError::GetBufferSizes(error).into());
     }
-    debug!(path_count, mode_count, "Got buffer sizes");
+    debug!(
+        path_count = path_count,
+        mode_count = mode_count,
+        "Got buffer sizes"
+    );
 
     Ok((path_count, mode_count))
 }
@@ -110,7 +118,7 @@ fn query_config(
 
     paths.truncate(*path_count as usize);
     modes.truncate(*mode_count as usize);
-    debug!(path_count, "Got display count");
+    debug!(path_count = path_count, "Got display count");
 
     Ok((paths, modes))
 }

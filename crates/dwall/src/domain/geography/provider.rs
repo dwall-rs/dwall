@@ -26,7 +26,7 @@ where
             Ok(result)
         }
         Err(e) => {
-            error!(error = %e, "{} failed", operation);
+            error!(error = e, "{} failed", operation);
             Err(DwallError::Windows(e))
         }
     }
@@ -41,9 +41,8 @@ pub fn check_location_permission() -> DwallResult<()> {
         Geolocator::RequestAccessAsync,
     )?
     .get()
-    .map_err(|e| {
-        error!(error = %e, "Failed to get access status");
-        DwallError::Windows(e)
+    .inspect_err(|e| {
+        error!(error = e, "Failed to get access status");
     })?;
 
     match access_status {
@@ -81,9 +80,8 @@ fn get_geo_position() -> DwallResult<Position> {
         geolocator.GetGeopositionAsync()
     })?
     .get()
-    .map_err(|e| {
-        error!(error = %e, "Failed to retrieve geoposition");
-        DwallError::Windows(e)
+    .inspect_err(|e| {
+        error!(error = e, "Failed to retrieve geoposition");
     })?;
 
     // Extract coordinate
@@ -108,10 +106,10 @@ fn get_geo_position() -> DwallResult<Position> {
     }
 
     info!(
-        latitude = position.latitude(),
-        longitude = position.longitude(),
-        altitude = position.altitude(),
-        "Current geoposition"
+        "Current geoposition: latitude={}, longitude={}, altitude={}",
+        position.latitude(),
+        position.longitude(),
+        position.altitude()
     );
     Ok(position)
 }
@@ -150,9 +148,9 @@ impl<'a> GeographicPositionProvider<'a> {
                 && cached_time.elapsed() < cache_duration
             {
                 debug!(
-                    position = ?cached_position,
-                    age_secs = cached_time.elapsed().as_secs(),
-                    "Using cached position data"
+                    "Using cached position data: position={}, age_secs={}",
+                    cached_position,
+                    cached_time.elapsed().as_secs()
                 );
                 return Ok(*cached_position);
             }
@@ -164,7 +162,7 @@ impl<'a> GeographicPositionProvider<'a> {
         self.cached_position
             .borrow_mut()
             .replace((position, Instant::now()));
-        debug!(position = ?position, "Updated position cache");
+        debug!(position = position, "Updated position cache");
         Ok(position)
     }
 
@@ -175,7 +173,12 @@ impl<'a> GeographicPositionProvider<'a> {
         longitude: f64,
         altitude: f64,
     ) -> DwallResult<Position> {
-        debug!(latitude, longitude, altitude, "Using manual position");
+        debug!(
+            latitude = latitude,
+            longitude = longitude,
+            altitude = altitude,
+            "Using manual position"
+        );
         Position::new(latitude, longitude, altitude)
     }
 

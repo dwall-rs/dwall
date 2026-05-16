@@ -14,13 +14,19 @@ pub static DWALL_CONFIG_DIR: LazyLock<PathBuf> = LazyLock::new(|| {
 
     if !app_config_dir.exists() {
         if let Err(e) = fs::create_dir(&app_config_dir) {
-            error!(error = %e, "Failed to create config directory");
+            error!("Failed to create config directory: {e}");
             panic!("Failed to create config directory: {e}");
         } else {
-            info!(path = %app_config_dir.display(), "Config directory created successfully");
+            info!(
+                "Config directory created successfully: {}",
+                app_config_dir.display()
+            );
         }
     } else {
-        debug!(path = %app_config_dir.display(), "Config directory already exists");
+        debug!(
+            "Config directory already exists: {}",
+            app_config_dir.display()
+        );
     }
 
     app_config_dir
@@ -37,17 +43,17 @@ pub static DWALL_CACHE_DIR: LazyLock<PathBuf> = LazyLock::new(|| {
     let cache_dir = dirs::cache_dir().expect("Failed to determine user cache directory");
 
     let dir = cache_dir.join("com.thep0y.dwall"); // bundle identifier
-    trace!(path = %dir.display(), "Initializing cache directory");
+    trace!("Initializing cache directory: {}", dir.display());
 
     if !dir.exists() {
         if let Err(e) = fs::create_dir(&dir) {
-            error!(error = %e, "Failed to create cache directory");
+            error!("Failed to create cache directory: {e}");
             panic!("Failed to create cache directory: {e}");
         } else {
             info!("Cache directory created successfully at: {}", dir.display());
         }
     } else {
-        debug!(path = %dir.display(), "Cache directory already exists");
+        debug!("Cache directory already exists: {}", dir.display());
     }
 
     dir
@@ -65,7 +71,7 @@ pub static DWALL_LOG_DIR: LazyLock<PathBuf> = LazyLock::new(|| {
 
     if !log_dir.exists() {
         if let Err(e) = fs::create_dir(&log_dir) {
-            error!(error = %e, "Failed to create log directory");
+            error!("Failed to create log directory: {e}");
             panic!("Failed to create log directory: {e}");
         } else {
             info!(
@@ -74,7 +80,7 @@ pub static DWALL_LOG_DIR: LazyLock<PathBuf> = LazyLock::new(|| {
             );
         }
     } else {
-        debug!(path = %log_dir.display(), "Log directory already exists");
+        debug!("Log directory already exists: {}", log_dir.display());
     }
 
     log_dir

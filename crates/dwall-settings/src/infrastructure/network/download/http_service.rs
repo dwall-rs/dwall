@@ -88,7 +88,7 @@ impl HttpDownloadService {
 
         info!(
             theme_id = theme_id,
-            downloaded_bytes,
+            downloaded_bytes = downloaded_bytes,
             total_bytes = total_size,
             "Successfully downloaded file"
         );
@@ -118,7 +118,8 @@ impl HttpDownloadService {
             downloaded_bytes = metadata.len();
             debug!(
                 theme_id = theme_id,
-                downloaded_bytes, "Found existing temp file, resuming download"
+                downloaded_bytes = downloaded_bytes,
+                "Found existing temp file, resuming download"
             );
 
             // Open file in append mode
@@ -285,8 +286,8 @@ impl HttpDownloadService {
             .map_err(|e| {
                 error!(
                     theme_id = theme_id,
-                    downloaded_bytes,
-                    total_bytes,
+                    downloaded_bytes = downloaded_bytes,
+                    total_bytes = total_bytes,
                     error = %e,
                     "Failed to emit download progress"
                 );

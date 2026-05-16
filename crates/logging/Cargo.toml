@@ -1,0 +1,15 @@
+[package]
+name = "logging"
+authors.workspace = true
+version.workspace = true
+repository.workspace = true
+license.workspace = true
+edition.workspace = true
+
+[dependencies]
+log = { workspace = true, default-features = false, features = ["std"] }
+time = { path = "../time" }
+
+[features]
+default = []
+max-level-info = []

@@ -167,7 +167,7 @@ impl<'a> ThemeProcessor<'a> {
                     consecutive_failure_count += 1;
                     error!(
                         error = %error,
-                        consecutive_failure_count,
+                        consecutive_failure_count = consecutive_failure_count,
                         max_failure_threshold = MAX_CONSECUTIVE_FAILURE_THRESHOLD,
                         "Solar theme cycle failed"
                     );
@@ -499,7 +499,7 @@ fn find_optimal_solar_wallpaper(
     })?;
 
     info!(
-        optimal_image_index,
+        optimal_image_index = optimal_image_index,
         sun_altitude = sun_altitude_degrees,
         sun_azimuth = sun_azimuth_degrees,
         "Selected optimal wallpaper image for current solar position"

@@ -30,8 +30,8 @@ impl DaemonApplication {
             let theme_processor = ThemeProcessor::new(&config)?;
 
             info!(
-                update_interval_seconds = config.interval(),
-                "Starting daemon with config change detection"
+                "Starting daemon with config change detection: update_interval_seconds={}",
+                config.interval()
             );
 
             self.run_processor_loop(&theme_processor, &mut consecutive_failure_count)?;
@@ -60,8 +60,7 @@ impl DaemonApplication {
                     *consecutive_failure_count += 1;
                     if *consecutive_failure_count >= MAX_CONSECUTIVE_FAILURE_THRESHOLD {
                         error!(
-                            consecutive_failures = consecutive_failure_count,
-                            "Maximum consecutive failures reached, terminating daemon"
+                            "Maximum consecutive failures reached, terminating daemon: consecutive_failures={consecutive_failure_count}"
                         );
                         std::process::exit(1);
                     }

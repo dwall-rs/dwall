@@ -58,6 +58,9 @@ pub enum DwallError {
 
     #[error(transparent)]
     DateTime(#[from] time::Error),
+
+    #[error(transparent)]
+    Logger(#[from] log::SetLoggerError),
 }
 
 /// Configuration-related errors
