@@ -185,10 +185,9 @@ const fn default_log_level() -> LevelFilter {
 
 /// Get log level from environment variable
 fn get_log_level() -> LevelFilter {
-    env::var("DWALL_LOG")
-        .ok()
-        .or_else(|| env::var("RUST_LOG").ok())
-        .as_deref()
+    option_env!("DWALL_LOG")
+        .or(env::var("DWALL_LOG").ok().as_deref())
+        .or(env::var("RUST_LOG").ok().as_deref())
         .and_then(|level| LevelFilter::from_str(level).ok())
         .unwrap_or_else(default_log_level)
 }
