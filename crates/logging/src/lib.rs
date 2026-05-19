@@ -29,6 +29,31 @@ impl Logger {
         self
     }
 
+    /// Adds a target filter using the current log level set on this `Logger`.
+    ///
+    /// # ⚠️ Order-Dependent
+    ///
+    /// This method captures `self.level` **at the time of the call**.
+    /// If you want the target to use a custom level, you **must** call
+    /// [`with_level`](Logger::with_level) **before** calling this method.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// // ✅ Correct: level is set before adding the target
+    /// Logger::default()
+    ///     .with_level(LevelFilter::Info)
+    ///     .with_target("my_crate");
+    ///
+    /// // ❌ Wrong: target is added before level is set,
+    /// //    so it captures the default level instead of Info
+    /// Logger::default()
+    ///     .with_target("my_crate")
+    ///     .with_level(LevelFilter::Info);
+    /// ```
+    ///
+    /// To set a specific level for a target without this ordering constraint,
+    /// use [`with_target_level`](Logger::with_target_level) instead.
     pub fn with_target(mut self, target: &str) -> Self {
         if let Some(targets) = &mut self.targets {
             targets.push((target.to_string(), self.level));
