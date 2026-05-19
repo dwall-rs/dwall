@@ -110,6 +110,8 @@ jobs:
             ~/.cargo/git/db/
             target/release/deps
             target/release/build
+            target/debug/deps
+            target/debug/build
           key: ${{ runner.os }}-rust-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: |
             ${{ runner.os }}-rust-
