@@ -1,4 +1,4 @@
-use std::{env, str::FromStr};
+use std::{env, io::Write, str::FromStr};
 
 use log::{LevelFilter, Log, SetLoggerError, set_boxed_logger, set_max_level};
 use time::{OffsetDateTime, UtcDateTime};
@@ -29,6 +29,31 @@ impl Logger {
         self
     }
 
+    /// Adds a target filter using the current log level set on this `Logger`.
+    ///
+    /// # ⚠️ Order-Dependent
+    ///
+    /// This method captures `self.level` **at the time of the call**.
+    /// If you want the target to use a custom level, you **must** call
+    /// [`with_level`](Logger::with_level) **before** calling this method.
+    ///
+    /// # Examples
+    ///
+    /// ```ignore
+    /// // ✅ Correct: level is set before adding the target
+    /// Logger::default()
+    ///     .with_level(LevelFilter::Info)
+    ///     .with_target("my_crate");
+    ///
+    /// // ❌ Wrong: target is added before level is set,
+    /// //    so it captures the default level instead of Info
+    /// Logger::default()
+    ///     .with_target("my_crate")
+    ///     .with_level(LevelFilter::Info);
+    /// ```
+    ///
+    /// To set a specific level for a target without this ordering constraint,
+    /// use [`with_target_level`](Logger::with_target_level) instead.
     pub fn with_target(mut self, target: &str) -> Self {
         if let Some(targets) = &mut self.targets {
             targets.push((target.to_string(), self.level));
@@ -146,9 +171,13 @@ impl Log for Logger {
     }
 
     fn flush(&self) {
+        #[cfg(debug_assertions)]
+        {
+            let _ = std::io::stderr().flush();
+        }
+
         #[cfg(not(debug_assertions))]
         {
-            use std::io::Write;
             match &self.output {
                 ProductionOutput::Stderr => {
                     let _ = std::io::stderr().flush();
@@ -185,9 +214,11 @@ const fn default_log_level() -> LevelFilter {
 
 /// Get log level from environment variable
 fn get_log_level() -> LevelFilter {
-    option_env!("DWALL_LOG")
-        .or(env::var("DWALL_LOG").ok().as_deref())
-        .or(env::var("RUST_LOG").ok().as_deref())
-        .and_then(|level| LevelFilter::from_str(level).ok())
+    let from_env = env::var("DWALL_LOG").or_else(|_| env::var("RUST_LOG")).ok();
+
+    from_env
+        .as_deref()
+        .or(option_env!("DWALL_LOG"))
+        .and_then(|s| LevelFilter::from_str(s).ok())
         .unwrap_or_else(default_log_level)
 }
