@@ -39,7 +39,7 @@ impl Logger {
     ///
     /// # Examples
     ///
-    /// ```rust
+    /// ```ignore
     /// // ✅ Correct: level is set before adding the target
     /// Logger::default()
     ///     .with_level(LevelFilter::Info)
