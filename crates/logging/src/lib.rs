@@ -1,4 +1,4 @@
-use std::{env, str::FromStr};
+use std::{env, io::Write, str::FromStr};
 
 use log::{LevelFilter, Log, SetLoggerError, set_boxed_logger, set_max_level};
 use time::{OffsetDateTime, UtcDateTime};
@@ -146,9 +146,13 @@ impl Log for Logger {
     }
 
     fn flush(&self) {
+        #[cfg(debug_assertions)]
+        {
+            let _ = std::io::stderr().flush();
+        }
+
         #[cfg(not(debug_assertions))]
         {
-            use std::io::Write;
             match &self.output {
                 ProductionOutput::Stderr => {
                     let _ = std::io::stderr().flush();
