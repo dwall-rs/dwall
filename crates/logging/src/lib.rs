@@ -77,8 +77,22 @@ impl Logger {
         use std::fs::OpenOptions;
 
         if path.exists() {
-            let bak_path = path.with_extension("bak");
-            std::fs::rename(&path, &bak_path)?;
+            let backup_dir = path
+                .parent()
+                .unwrap_or_else(|| std::path::Path::new("."))
+                .join("backup");
+
+            std::fs::create_dir_all(&backup_dir)?;
+
+            let timestamp = std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .map(|d| d.as_secs())
+                .unwrap_or(0);
+
+            let stem = path.file_stem().and_then(|s| s.to_str()).unwrap_or("app");
+
+            let bak_name = format!("{stem}_{timestamp}.log");
+            std::fs::rename(&path, backup_dir.join(bak_name))?;
         }
 
         let file = OpenOptions::new().create(true).write(true).open(&path)?;
