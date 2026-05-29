@@ -13,7 +13,7 @@ use time::{OffsetDateTime, UtcDateTime};
 
 use crate::{
     DwallResult,
-    config::Config,
+    config::{Config, ImageFormat},
     domain::{
         geography::{Position, provider::GeographicPositionProvider},
         time::solar_calculator::{SolarAngle, SunPosition},
@@ -560,10 +560,13 @@ fn process_solar_theme_cycle(
             lock_screen_theme_identifier = Some(assigned_theme_id.to_string());
         }
 
+        let theme_directory_path = get_theme_directory_path(configuration, assigned_theme_id);
+
         if let Err(processing_error) = update_monitor_solar_wallpaper(
-            configuration,
+            configuration.image_format(),
             monitor_identifier,
             assigned_theme_id,
+            &theme_directory_path,
             &current_sun_position,
             wallpaper_manager,
         ) {
@@ -584,8 +587,9 @@ fn process_solar_theme_cycle(
         && successful_monitor_count > 0
         && let Some(ref lock_screen_theme_id) = lock_screen_theme_identifier
         && let Err(lock_screen_error) = apply_lock_screen_solar_wallpaper(
-            configuration,
+            configuration.image_format(),
             lock_screen_theme_id,
+            &get_theme_directory_path(configuration, lock_screen_theme_id),
             &current_sun_position,
         )
     {
@@ -629,20 +633,17 @@ fn process_solar_theme_cycle(
 
 /// Update solar wallpaper for a specific monitor based on current sun position
 fn update_monitor_solar_wallpaper(
-    configuration: &Config,
+    image_format: &ImageFormat,
     monitor_identifier: &str,
     theme_identifier: &str,
+    theme_directory_path: &Path,
     current_sun_position: &SunPosition,
     wallpaper_manager: &WallpaperSetter,
 ) -> DwallResult<()> {
-    let theme_directory_path = configuration.themes_directory().join(theme_identifier);
     let (optimal_image_index, _) =
-        find_optimal_solar_wallpaper(&theme_directory_path, current_sun_position)?;
-    let wallpaper_file_path = construct_wallpaper_file_path(
-        &theme_directory_path,
-        configuration.image_format(),
-        optimal_image_index,
-    );
+        find_optimal_solar_wallpaper(theme_directory_path, current_sun_position)?;
+    let wallpaper_file_path =
+        construct_wallpaper_file_path(theme_directory_path, image_format, optimal_image_index);
 
     info!(
         wallpaper_path = %wallpaper_file_path.display(),
@@ -677,17 +678,16 @@ fn update_monitor_solar_wallpaper(
 
 /// Apply solar wallpaper to lock screen based on theme and current sun position
 fn apply_lock_screen_solar_wallpaper(
-    configuration: &Config,
+    image_format: &ImageFormat,
     theme_identifier: &str,
+    theme_directory_path: &Path,
     current_sun_position: &SunPosition,
 ) -> DwallResult<()> {
-    let theme_directory_path = configuration.themes_directory().join(theme_identifier);
-
-    match find_optimal_solar_wallpaper(&theme_directory_path, current_sun_position) {
+    match find_optimal_solar_wallpaper(theme_directory_path, current_sun_position) {
         Ok((optimal_image_index, _)) => {
             let wallpaper_file_path = construct_wallpaper_file_path(
-                &theme_directory_path,
-                configuration.image_format(),
+                theme_directory_path,
+                image_format,
                 optimal_image_index,
             );
 
@@ -738,4 +738,15 @@ pub async fn apply_solar_theme(configuration: Config) -> DwallResult<()> {
 
     let solar_theme_processor = ThemeProcessor::new(&configuration)?;
     solar_theme_processor.start_solar_update_loop()
+}
+
+fn get_theme_directory_path(configuration: &Config, theme_identifier: &str) -> PathBuf {
+    let mut path = configuration.themes_directory().join(theme_identifier);
+    if !path.exists() {
+        path = configuration
+            .customized_themes_directory()
+            .join("themes")
+            .join(theme_identifier);
+    }
+    path
 }
