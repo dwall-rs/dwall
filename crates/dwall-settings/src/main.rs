@@ -79,6 +79,7 @@ async fn main() -> DwallSettingsResult<()> {
             commands::get_monitors_cmd,
             commands::open_privacy_location_settings,
             commands::check_for_updates_cmd,
+            commands::get_customized_themes_cmd,
         ]);
 
     if cfg!(debug_assertions) {

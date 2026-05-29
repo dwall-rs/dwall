@@ -19,10 +19,13 @@ use tauri_plugin_updater::UpdaterExt;
 
 use crate::{
     domain::{monitor::get_monitors, settings::Config, theme::validate_solar_theme},
-    error::DwallSettingsResult,
+    error::{DwallSettingsError, DwallSettingsResult},
     infrastructure::{
-        filesystem::move_themes_directory, network::download::ThemeDownloader,
-        process::kill_daemon, registry::AutoStartManager, window::set_window_color_mode,
+        filesystem::{find_files_in_dir, list_subdirectories, move_themes_directory},
+        network::download::ThemeDownloader,
+        process::kill_daemon,
+        registry::AutoStartManager,
+        window::set_window_color_mode,
     },
     services::{
         cache::{ThumbnailCache, clear_thumbnail_cache, get_or_save_cached_thumbnails},
@@ -240,4 +243,45 @@ pub async fn check_for_updates_cmd<R: Runtime>(
             Ok(Some(metadata))
         }
     }
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Theme {
+    id: String,
+    thumbnail: Vec<PathBuf>,
+    is_customized: bool,
+}
+
+#[tauri::command]
+pub async fn get_customized_themes_cmd(
+    customized_themes_directory: PathBuf,
+) -> DwallSettingsResult<Vec<Theme>> {
+    let thumbnails_dir = customized_themes_directory.join("thumbnails");
+    if !thumbnails_dir.exists() {
+        return Ok(Vec::new());
+    }
+
+    let subdirs = list_subdirectories(&thumbnails_dir).await?;
+    debug!("Found {} subdirectories", subdirs.len());
+
+    let mut themes = Vec::with_capacity(subdirs.len());
+    for subdir in subdirs {
+        let files = find_files_in_dir(&subdir, "avif").await?;
+        let id = subdir
+            .file_name()
+            .and_then(|n| n.to_str())
+            .ok_or(DwallSettingsError::Other(
+                "Failed to get theme ID".to_string(),
+            ))?;
+        themes.push(Theme {
+            id: id.to_string(),
+            thumbnail: files,
+            is_customized: true,
+        });
+    }
+
+    info!("Found {} customized themes", themes.len());
+
+    Ok(themes)
 }
