@@ -24,6 +24,7 @@ export type ThemeID = keyof typeof thumbnails_count;
 export interface ThemeItem {
   id: ThemeID;
   thumbnail: string[];
+  isCustomized?: boolean;
 }
 
 export const themes: ThemeItem[] = (

@@ -65,11 +65,14 @@ const ThemeImage = (props: ThemeImageProps) => {
 
   const loadCachedImage = async () => {
     try {
-      const path = await getOrSaveCachedThumbnails(
-        props.themeID,
-        props.serialNumber,
-        props.src,
-      );
+      const path = props.isLocal
+        ? props.src
+        : await getOrSaveCachedThumbnails(
+            props.themeID,
+            props.serialNumber,
+            props.src,
+          );
+
       const src = convertFileSrc(path);
       setResolvedSrc(src);
     } catch (err) {

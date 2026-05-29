@@ -143,6 +143,9 @@ pub struct Config {
     #[serde(default = "default_themes_directory")]
     themes_directory: PathBuf,
 
+    #[serde(default = "default_customized_themes_directory")]
+    customized_themes_directory: PathBuf,
+
     /// Wallpapers specific to each monitor, using monitor ID as key
     #[serde(default = "default_monitor_specific_wallpapers")]
     monitor_specific_wallpapers: MonitorSpecificWallpapers,
@@ -182,6 +185,10 @@ fn default_interval() -> u16 {
 
 fn default_themes_directory() -> PathBuf {
     DWALL_CONFIG_DIR.join("themes")
+}
+
+fn default_customized_themes_directory() -> PathBuf {
+    DWALL_CONFIG_DIR.join("customize")
 }
 
 fn default_monitor_specific_wallpapers() -> MonitorSpecificWallpapers {
@@ -235,6 +242,11 @@ impl Config {
         &self.themes_directory
     }
 
+    /// Returns the customized themes directory path
+    pub fn customized_themes_directory(&self) -> &Path {
+        &self.customized_themes_directory
+    }
+
     /// Returns the network configuration
     pub fn network(&self) -> Option<&Network> {
         self.network.as_ref()
@@ -286,6 +298,7 @@ impl Default for Config {
             position_source: Default::default(),
             auto_detect_color_scheme: default_auto_detect_color_scheme(),
             themes_directory: default_themes_directory(),
+            customized_themes_directory: default_customized_themes_directory(),
             lock_screen_wallpaper_enabled: default_lock_screen_wallpaper_enabled(),
             monitor_specific_wallpapers: default_monitor_specific_wallpapers(),
             // On the equator, an azimuth change of 0.1 degrees takes
@@ -331,6 +344,9 @@ pub struct RawConfig {
     #[serde(default = "default_themes_directory")]
     themes_directory: PathBuf,
 
+    #[serde(default = "default_customized_themes_directory")]
+    customized_themes_directory: PathBuf,
+
     /// Wallpapers specific to each monitor, using monitor ID as key
     #[serde(default = "default_monitor_specific_wallpapers")]
     monitor_specific_wallpapers: MonitorSpecificWallpapers,
@@ -359,6 +375,7 @@ impl From<RawConfig> for Config {
             auto_detect_color_scheme: raw.auto_detect_color_scheme,
             lock_screen_wallpaper_enabled: raw.lock_screen_wallpaper_enabled,
             themes_directory: raw.themes_directory,
+            customized_themes_directory: raw.customized_themes_directory,
             monitor_specific_wallpapers: raw.monitor_specific_wallpapers,
             interval: raw.interval,
         }

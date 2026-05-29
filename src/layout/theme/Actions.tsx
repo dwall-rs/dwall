@@ -9,6 +9,7 @@ import { t } from "~/i18n";
 interface ThemeActionsProps {
   currentThemeID: string;
   themesDirectory?: string;
+  isCustomized?: boolean;
 }
 
 const ThemeActions = (props: ThemeActionsProps) => {

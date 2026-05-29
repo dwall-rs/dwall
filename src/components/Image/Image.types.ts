@@ -13,6 +13,7 @@ export interface ImageProps {
   themeID: string;
   serialNumber: number;
   src: string;
+  isLocal?: boolean;
   alt?: string;
   width?: number;
   height?: number;
