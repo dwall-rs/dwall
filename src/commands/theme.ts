@@ -1,5 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
-import type { ThemeID } from "~/themes";
+import type { ThemeID, ThemeItem } from "~/themes";
 
 export const validateTheme = async (themesDirectory: string, themeId: string) =>
   invoke<void>("validate_theme_cmd", { themesDirectory, themeId });
@@ -34,3 +34,8 @@ export const clearThumbnailCache = async () =>
 
 export const moveThemesDirectory = async (config: Config, dirPath: string) =>
   invoke<void>("move_themes_directory_cmd", { config, dirPath });
+
+export const getCustomizedThemes = async (customizedThemesDirectory: string) =>
+  invoke<ThemeItem[]>("get_customized_themes_cmd", {
+    customizedThemesDirectory,
+  });

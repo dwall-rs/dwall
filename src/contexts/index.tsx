@@ -6,19 +6,22 @@ import { MonitorProvider } from "./MonitorContext";
 import { UpdateProvider } from "./UpdateContext";
 import { SettingsProvider } from "./SettingsContext";
 import { TaskProvider } from "./TaskContext";
+import { ThemesProvider } from "./ThemesContext";
 
 export const AppProvider = (props: ParentProps) => {
   return (
     <ConfigProvider>
-      <MonitorProvider>
-        <ThemeProvider>
-          <SettingsProvider>
-            <UpdateProvider>
-              <TaskProvider>{props.children}</TaskProvider>
-            </UpdateProvider>
-          </SettingsProvider>
-        </ThemeProvider>
-      </MonitorProvider>
+      <ThemesProvider>
+        <MonitorProvider>
+          <ThemeProvider>
+            <SettingsProvider>
+              <UpdateProvider>
+                <TaskProvider>{props.children}</TaskProvider>
+              </UpdateProvider>
+            </SettingsProvider>
+          </ThemeProvider>
+        </MonitorProvider>
+      </ThemesProvider>
     </ConfigProvider>
   );
 };
@@ -29,3 +32,4 @@ export { useMonitor } from "./MonitorContext";
 export { useSettings } from "./SettingsContext";
 export { useUpdate } from "./UpdateContext";
 export { useTask } from "./TaskContext";
+export { useThemesContext } from "./ThemesContext";

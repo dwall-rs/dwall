@@ -3,7 +3,7 @@ import { createStore } from "solid-js/store";
 
 import { CircleFadingArrowUp, Settings } from "lucide-solid";
 
-import { useConfig, useTheme, useUpdate } from "~/contexts";
+import { useConfig, useTheme, useThemesContext, useUpdate } from "~/contexts";
 
 import ThemeImage from "~/components/Image";
 import {
@@ -17,15 +17,15 @@ import {
 import { Tooltip, TooltipContent, TooltipTrigger } from "~/components/tooltip";
 import { Spinner } from "~/components/spinner";
 import Updater from "~/components/Update";
+import { Skeleton } from "~/components/skeleton";
 
 import { generateGitHubThumbnailMirrorUrl } from "~/utils/proxy";
 
-import { type ThemeItem, themes } from "~/themes";
+import type { ThemeItem } from "~/themes";
 
 import { route, navigate } from "~/router";
 import { t } from "~/i18n";
 import { clsx } from "~/utils";
-import { Skeleton } from "~/components/skeleton";
 
 const [imageHeights, setImageHeights] = createStore<Record<string, number>>({});
 
@@ -40,6 +40,8 @@ export const AppSidebar = () => {
     return r.id;
   });
 
+  const { themes } = useThemesContext();
+
   return (
     <Sidebar
       collapsible="none"
@@ -52,7 +54,7 @@ export const AppSidebar = () => {
             !theme.downloadingTheme() ? "scrollbar" : "overflow-y-hidden",
           )}
         >
-          <For each={themes}>
+          <For each={themes()}>
             {(item, index) => (
               <Show when={config.state === "ready"} fallback={<Spinner />}>
                 <ThemeMenuItem
@@ -138,6 +140,7 @@ const ThemeMenuItem = (
                 props.thumbnail[0],
                 props.github_mirror_template,
               )}
+              isLocal={props.isCustomized}
               width={64}
               themeID={props.id}
               serialNumber={props.index + 1}

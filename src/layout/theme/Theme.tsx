@@ -15,19 +15,19 @@ import { Select } from "~/components/select";
 
 import { generateGitHubThumbnailMirrorUrl } from "~/utils/proxy";
 
-import { useConfig, useMonitor, useTheme } from "~/contexts";
-import { type ThemeID, themes } from "~/themes";
+import { useConfig, useMonitor, useTheme, useThemesContext } from "~/contexts";
 import { clsx } from "~/utils";
 import ThemeActions from "./Actions";
 import { t } from "~/i18n";
 import { Skeleton } from "~/components/skeleton";
 
 interface ThemeProps {
-  id: ThemeID;
+  id: string;
 }
 
 export const Theme = (props: ThemeProps) => {
   const { data: config } = useConfig();
+  const { themes } = useThemesContext();
   const {
     list: monitors,
     handleChange: handleMonitorChange,
@@ -46,12 +46,12 @@ export const Theme = (props: ThemeProps) => {
     setStore({ count, current: index });
   };
 
-  const images = createMemo(() => {
-    return (config() && themes.find((t) => t.id === props.id)?.thumbnail) ?? [];
+  const theme = createMemo(() => {
+    return config() && themes().find((t) => t.id === props.id);
   });
 
   createEffect(() => {
-    setStore({ count: images().length, current: 0 });
+    setStore({ count: theme()?.thumbnail.length, current: 0 });
   });
 
   return (
@@ -76,7 +76,7 @@ export const Theme = (props: ThemeProps) => {
           id={props.id}
         >
           <CarouselContent>
-            <For each={images()}>
+            <For each={theme()?.thumbnail}>
               {(src, index) => (
                 <CarouselItem class="min-w-108">
                   <AspectRatio
@@ -94,6 +94,7 @@ export const Theme = (props: ThemeProps) => {
                             )
                           : src
                       }
+                      isLocal={theme()?.isCustomized}
                       class="rounded-md"
                       themeID={props.id}
                       serialNumber={index() + 1}
@@ -130,7 +131,7 @@ export const Theme = (props: ThemeProps) => {
           style={{ "--indicators-bottom": `${indicatorsBottom()}px` }}
         >
           <div class="flex gap-1.5 z-10 py-1 px-1.5 bg-neutral-950/30 rounded-2xl backdrop-blur-sm">
-            <For each={images()}>
+            <For each={theme()?.thumbnail}>
               {(_, index) => (
                 <button
                   type="button"
@@ -150,7 +151,11 @@ export const Theme = (props: ThemeProps) => {
       <div class="flex items-center justify-center w-full relative">
         <ThemeActions
           currentThemeID={props.id}
-          themesDirectory={config()?.themes_directory}
+          themesDirectory={
+            theme()?.isCustomized
+              ? `${config()?.customized_themes_directory}\\themes`
+              : config()?.themes_directory
+          }
         />
       </div>
     </div>

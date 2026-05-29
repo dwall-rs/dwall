@@ -13,6 +13,7 @@ interface Config {
   interval: number;
   image_format: string;
   themes_directory: string;
+  customized_themes_directory: string;
   position_source: PositionSource;
   auto_detect_color_scheme: boolean;
   lock_screen_wallpaper_enabled: boolean;
