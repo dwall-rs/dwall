@@ -7,12 +7,15 @@ import LockScreenWallpaperSwitch from "./LockScreenWallpaperSwitch";
 import SettingsFooter from "./Footer";
 import Languages from "./Languages";
 import Network from "./network";
+import TitleBarColor from "./TitleBarColor";
 
 export const Settings = () => {
   return (
     <div class="flex flex-col items-stretch h-screen pb-1.5 px-1.5">
       <div class="flex flex-col flex-1 gap-3.5 px-2 py-1.5 overflow-y-auto overflow-x-hidden scrollbar">
         <Languages />
+
+        <TitleBarColor />
 
         <AutoStart />
 

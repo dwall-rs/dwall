@@ -40,6 +40,7 @@ export const dict = {
       themesDirectory: "Themes Directory",
       version: "Version",
       language: "Language",
+      titleBarColorFollowsWindowsTheme: "Title Bar Color Follows Windows Theme",
     },
 
     help: {
@@ -59,6 +60,8 @@ export const dict = {
         "If you do not want to set the lock screen wallpaper simultaneously, please disable this option.",
       updatedFailed:
         "Unable to complete the hot update. Please click the download button behind this message to manually download the new version: ",
+      titleBarColorFollowsWindowsTheme:
+        "If enabled, the title bar color will follow the Windows theme, which is useful when you have set a theme color.",
     },
 
     placeholder: {
@@ -98,6 +101,13 @@ export const dict = {
         "Failed to save retrieve coordinates interval: \n{{ error }}",
       socks5UpdateFailed: "Failed to update socks5 settings: \n{{ error }}",
       clearNetworkFailed: "Failed to clear network settings: \n{{ error }}",
+      titleBarColorFollowsWindowsTheme:
+        "Failed to enable title bar color to follow Windows theme:\n{{ error }}",
+    },
+
+    ask: {
+      titleBarColorFollowsWindowsTheme:
+        "After changing 'Title bar color follows Windows theme', you need to restart this application for it to take effect. Do you want to restart now?",
     },
   },
 

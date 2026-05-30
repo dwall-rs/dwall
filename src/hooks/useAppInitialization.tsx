@@ -3,6 +3,7 @@ import { open } from "@tauri-apps/plugin-shell";
 
 import {
   getAppliedThemeID,
+  readConfigFile,
   setTitlebarColorMode,
   showWindow,
 } from "~/commands";
@@ -57,7 +58,10 @@ export const useAppInitialization = () => {
   });
 
   onMount(async () => {
-    await setTitlebarColorMode(detectColorMode());
+    const config = await readConfigFile();
+
+    if (!config.title_bar_color_follows_windows_theme)
+      await setTitlebarColorMode(detectColorMode());
 
     if (import.meta.env.PROD) await showWindow("main");
 

@@ -18,6 +18,7 @@ interface Config {
   auto_detect_color_scheme: boolean;
   lock_screen_wallpaper_enabled: boolean;
   monitor_specific_wallpapers: string | Record<string, string>;
+  title_bar_color_follows_windows_theme: boolean;
 }
 
 interface PositionSourceAutomatic {
