@@ -250,14 +250,22 @@ pub struct ThemeValidator;
 
 impl ThemeValidator {
     /// Validates if a solar theme exists and has proper configuration and image files
-    pub fn validate(themes_directory: &Path, theme_identifier: &str) -> DwallResult<()> {
+    pub fn validate(
+        themes_directory: &Path,
+        theme_identifier: &str,
+        is_customized: bool,
+    ) -> DwallResult<()> {
         trace!(
             theme_id = theme_identifier,
             themes_directory = %themes_directory.display(),
             "Starting solar theme validation"
         );
 
-        let theme_directory_path = themes_directory.join(theme_identifier);
+        let theme_directory_path = if is_customized {
+            themes_directory.join(theme_identifier).join("images")
+        } else {
+            themes_directory.join(theme_identifier)
+        };
 
         if !theme_directory_path.exists() {
             warn!(
@@ -292,6 +300,7 @@ impl ThemeValidator {
         info!(
             theme_id = theme_identifier,
             solar_angles_count = solar_angle_configuration.len(),
+            is_customized = is_customized,
             "Solar theme validation completed successfully"
         );
         Ok(())
@@ -745,8 +754,8 @@ fn get_theme_directory_path(configuration: &Config, theme_identifier: &str) -> P
     if !path.exists() {
         path = configuration
             .customized_themes_directory()
-            .join("themes")
-            .join(theme_identifier);
+            .join(theme_identifier)
+            .join("images");
     }
     path
 }

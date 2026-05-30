@@ -42,7 +42,11 @@ const ThemeActions = (props: ThemeActionsProps) => {
     }
 
     try {
-      await validateTheme(props.themesDirectory, props.currentThemeID);
+      await validateTheme(
+        props.themesDirectory,
+        props.currentThemeID,
+        props.isCustomized,
+      );
       setThemeExists(true);
     } catch (e) {
       setThemeExists(false);
