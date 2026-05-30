@@ -96,8 +96,9 @@ pub async fn open_privacy_location_settings() -> DwallSettingsResult<()> {
 pub async fn validate_theme_cmd(
     themes_directory: &Path,
     theme_id: &str,
+    is_customized: bool,
 ) -> DwallSettingsResult<()> {
-    validate_solar_theme(themes_directory, theme_id).map_err(Into::into)
+    validate_solar_theme(themes_directory, theme_id, is_customized).map_err(Into::into)
 }
 
 #[tauri::command]
@@ -257,17 +258,16 @@ pub struct Theme {
 pub async fn get_customized_themes_cmd(
     customized_themes_directory: PathBuf,
 ) -> DwallSettingsResult<Vec<Theme>> {
-    let thumbnails_dir = customized_themes_directory.join("thumbnails");
-    if !thumbnails_dir.exists() {
+    if !customized_themes_directory.exists() {
         return Ok(Vec::new());
     }
 
-    let subdirs = list_subdirectories(&thumbnails_dir).await?;
+    let subdirs = list_subdirectories(&customized_themes_directory).await?;
     debug!("Found {} subdirectories", subdirs.len());
 
     let mut themes = Vec::with_capacity(subdirs.len());
     for subdir in subdirs {
-        let files = find_files_in_dir(&subdir, "avif").await?;
+        let files = find_files_in_dir(&subdir.join("thumbnails"), "avif").await?;
         let id = subdir
             .file_name()
             .and_then(|n| n.to_str())

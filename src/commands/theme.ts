@@ -1,8 +1,16 @@
 import { invoke } from "@tauri-apps/api/core";
 import type { ThemeID, ThemeItem } from "~/themes";
 
-export const validateTheme = async (themesDirectory: string, themeId: string) =>
-  invoke<void>("validate_theme_cmd", { themesDirectory, themeId });
+export const validateTheme = async (
+  themesDirectory: string,
+  themeId: string,
+  isCustomized = false,
+) =>
+  invoke<void>("validate_theme_cmd", {
+    themesDirectory,
+    themeId,
+    isCustomized,
+  });
 
 export const applyTheme = async (config: Config) =>
   invoke<void>("apply_theme_cmd", { config });

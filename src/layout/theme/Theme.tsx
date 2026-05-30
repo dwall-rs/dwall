@@ -153,9 +153,10 @@ export const Theme = (props: ThemeProps) => {
           currentThemeID={props.id}
           themesDirectory={
             theme()?.isCustomized
-              ? `${config()?.customized_themes_directory}\\themes`
+              ? config()?.customized_themes_directory
               : config()?.themes_directory
           }
+          isCustomized={theme()?.isCustomized}
         />
       </div>
     </div>

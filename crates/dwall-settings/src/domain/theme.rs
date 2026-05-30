@@ -18,8 +18,9 @@ struct DaemonLogEntry {
 pub fn validate_solar_theme(
     themes_directory: &Path,
     theme_id: &str,
+    is_customized: bool,
 ) -> Result<(), dwall::error::DwallError> {
-    ThemeValidator::validate(themes_directory, theme_id)
+    ThemeValidator::validate(themes_directory, theme_id, is_customized)
 }
 
 /// Attempts to read the most recent error from the daemon log file
