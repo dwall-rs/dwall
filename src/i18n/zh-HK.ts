@@ -40,6 +40,7 @@ export const dict: RawDictionary = {
       themesDirectory: "主題目錄",
       version: "版本",
       language: "語言",
+      titleBarColorFollowsWindowsTheme: "標題欄顏色跟隨 Windows 主題",
     },
 
     help: {
@@ -58,6 +59,8 @@ export const dict: RawDictionary = {
       updatedFailed: "無法完成熱更新，請撳本訊息後面嘅下載按鈕手動下載新版本：",
       retrieveCoordinatesInterval:
         "獲取坐標嘅時間間隔（單位：分鐘），呢個值必須大過檢測時間間隔。若果你嘅電腦位置固定，可以將間隔設為24小時或更長；若果你經常帶住電腦出差，建議設為1小時以內。",
+      titleBarColorFollowsWindowsTheme:
+        "如果啟用，標題欄顏色將跟隨 Windows 主題，這在你設定了主題色時很有用。",
     },
 
     placeholder: {
@@ -90,6 +93,13 @@ export const dict: RawDictionary = {
         "儲存座標檢索間隔失敗：\n{{ error }}",
       socks5UpdateFailed: "更新SOCKS5設定失敗：\n{{ error }}",
       clearNetworkFailed: "清除網絡設定失敗：\n{{ error }}",
+      titleBarColorFollowsWindowsTheme:
+        "開啟標題欄顏色將跟隨 Windows 主題失敗：\n{{ error }}",
+    },
+
+    ask: {
+      titleBarColorFollowsWindowsTheme:
+        "修改「標題欄顏色將跟隨 Windows 主題」後需要重新啟動本應用程式才能生效，是否立即重新啟動？",
     },
   },
 

@@ -41,6 +41,8 @@ export const dict: RawDictionary = {
       themesDirectory: "테마 디렉토리",
       version: "버전",
       language: "언어",
+      titleBarColorFollowsWindowsTheme:
+        "제목 표시줄 색상이 Windows 테마를 따릅니다",
     },
 
     help: {
@@ -60,6 +62,8 @@ export const dict: RawDictionary = {
         "핫 업데이트를 완료할 수 없습니다. 이 메시지 뒤의 다운로드 버튼을 클릭하여 새 버전을 수동으로 다운로드하세요:",
       retrieveCoordinatesInterval:
         "좌표 획득 간격(단위: 분)은 감지 간격보다 커야 합니다. 컴퓨터 위치가 고정된 경우 간격을 24시간 이상으로 설정할 수 있습니다. 자주 노트북을 가지고 출장을 다니는 경우 1시간 이내로 설정하는 것이 좋습니다.",
+      titleBarColorFollowsWindowsTheme:
+        "사용하도록 설정하면 제목 표시줄 색상이 Windows 테마를 따릅니다. 이는 테마 색상을 설정한 경우 유용합니다.",
     },
 
     placeholder: {
@@ -98,6 +102,13 @@ export const dict: RawDictionary = {
         "좌표 검색 간격 저장 실패:\n{{ error }}",
       socks5UpdateFailed: "SOCKS5 설정 업데이트에 실패했습니다: \n{{ error }}",
       clearNetworkFailed: "네트워크 설정 클리어 실패: \n{{ error }}",
+      titleBarColorFollowsWindowsTheme:
+        "제목 표시줄 색상이 Windows 테마를 따르도록 설정하지 못했습니다：\n{{ error }}",
+    },
+
+    ask: {
+      titleBarColorFollowsWindowsTheme:
+        "'Windows 테마를 따르도록 제목 표시줄 색상을 변경한 후에는 이 앱을 다시 시작해야 적용됩니다. 지금 다시 시작하시겠습니까?'",
     },
   },
 

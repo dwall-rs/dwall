@@ -41,6 +41,8 @@ export const dict: RawDictionary = {
       themesDirectory: "テーマディレクトリ",
       version: "バージョン",
       language: "言語",
+      titleBarColorFollowsWindowsTheme:
+        "タイトルバーの色はWindowsテーマに従います",
     },
 
     help: {
@@ -60,6 +62,8 @@ export const dict: RawDictionary = {
         "ホットアップデートを完了できませんでした。このメッセージの後ろにあるダウンロードボタンをクリックして、新しいバージョンを手動でダウンロードしてください：",
       retrieveCoordinatesInterval:
         "座標を取得する間隔（単位：分）は、検出間隔よりも大きい値に設定してください。PCの設置場所が固定されている場合は24時間以上、頻繁に持ち運び出張される場合は1時間以内を推奨します。",
+      titleBarColorFollowsWindowsTheme:
+        "有効にすると、タイトルバーの色がWindowsテーマに従います。これは、テーマカラーを設定している場合に便利です。",
     },
 
     placeholder: {
@@ -101,6 +105,13 @@ export const dict: RawDictionary = {
       socks5UpdateFailed: "SOCKS5設定の更新に失敗しました：\n{{ error }}",
       clearNetworkFailed:
         "ネットワーク設定のクリアに失敗しました：\n{{ error }}",
+      titleBarColorFollowsWindowsTheme:
+        "タイトルバーの色をWindowsテーマに従うように設定できませんでした：\n{{ error }}",
+    },
+
+    ask: {
+      titleBarColorFollowsWindowsTheme:
+        "「タイトルバーの色をWindowsテーマに従う」に変更した後、このアプリを再起動する必要があります。今すぐ再起動しますか？",
     },
   },
 

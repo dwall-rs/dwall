@@ -16,6 +16,7 @@ const MIN_INTERVAL_SECONDS: u16 = 1;
 const MAX_INTERVAL_SECONDS: u16 = 3600;
 const DEFAULT_AUTO_DETECT_COLOR_SCHEME: bool = true;
 const DEFAULT_LOCK_SCREEN_WALLPAPER_ENABLED: bool = true;
+const DEFAULT_TITLE_BAR_COLOR_FOLLOWS_WINDOWS_THEME: bool = false;
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Default, Clone)]
 #[serde(rename_all = "lowercase")]
@@ -122,8 +123,19 @@ pub enum Network {
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub struct Config {
+    /// Network configuration for specifying a GitHub mirror template or SOCKS5 proxy.
+    ///
+    /// Only used in dwall-settings.
     #[serde(skip_serializing_if = "Option::is_none")]
     network: Option<Network>,
+
+    /// Title bar follows the Windows theme color.
+    ///
+    /// By default, the program sets the same color as the window background. Users can manually disable this to use the Windows theme color.
+    ///
+    /// Only used in dwall-settings.
+    #[serde(default = "default_title_bar_color_follows_windows_theme")]
+    title_bar_color_follows_windows_theme: bool,
 
     #[serde(default = "default_image_format")]
     image_format: ImageFormat,
@@ -161,6 +173,10 @@ pub struct Config {
 
 fn default_image_format() -> ImageFormat {
     Default::default()
+}
+
+fn default_title_bar_color_follows_windows_theme() -> bool {
+    DEFAULT_TITLE_BAR_COLOR_FOLLOWS_WINDOWS_THEME
 }
 
 fn default_position_source() -> PositionSource {
@@ -293,8 +309,9 @@ impl Config {
 impl Default for Config {
     fn default() -> Self {
         Self {
-            image_format: Default::default(),
             network: Default::default(),
+            title_bar_color_follows_windows_theme: default_title_bar_color_follows_windows_theme(),
+            image_format: Default::default(),
             position_source: Default::default(),
             auto_detect_color_scheme: default_auto_detect_color_scheme(),
             themes_directory: default_themes_directory(),
@@ -325,6 +342,9 @@ pub struct RawConfig {
 
     #[serde(skip_serializing_if = "Option::is_none")]
     network: Option<Network>,
+
+    #[serde(default = "default_title_bar_color_follows_windows_theme")]
+    title_bar_color_follows_windows_theme: bool,
 
     #[serde(default = "default_image_format")]
     image_format: ImageFormat,
@@ -369,6 +389,7 @@ impl From<RawConfig> for Config {
         });
 
         Config {
+            title_bar_color_follows_windows_theme: raw.title_bar_color_follows_windows_theme,
             network,
             image_format: raw.image_format,
             position_source: raw.position_source,

@@ -40,6 +40,7 @@ export const dict: RawDictionary = {
       themesDirectory: "主题目录",
       version: "版本",
       language: "语言",
+      titleBarColorFollowsWindowsTheme: "标题栏颜色跟随 Windows 主题",
     },
 
     help: {
@@ -59,6 +60,8 @@ export const dict: RawDictionary = {
         "无法完成热更新，请点击本消息后面的下载按钮手动下载新版本：",
       retrieveCoordinatesInterval:
         "获取坐标的时间间隔（单位：分钟），该值必须大于检测时间间隔。若您的电脑位置固定，可将间隔设为24小时或更长；若您经常携带电脑出差，建议设为1小时以内。",
+      titleBarColorFollowsWindowsTheme:
+        "如果启用，标题栏颜色将跟随 Windows 主题，这在你设置了主题色时很有用。",
     },
 
     placeholder: {
@@ -91,6 +94,13 @@ export const dict: RawDictionary = {
         "保存坐标获取间隔失败：\n{{ error }}",
       socks5UpdateFailed: "更新SOCKS5设置失败：\n{{ error }}",
       clearNetworkFailed: "清除网络设置失败：\n{{ error }}",
+      titleBarColorFollowsWindowsTheme:
+        "开启标题栏颜色将跟随 Windows 主题失败：\n{{ error }}",
+    },
+
+    ask: {
+      titleBarColorFollowsWindowsTheme:
+        "修改“标题栏颜色将跟随 Windows 主题”后需要重启本应用才能生效，是否立即重启？",
     },
   },
 
