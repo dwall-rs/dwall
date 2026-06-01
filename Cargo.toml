@@ -8,7 +8,6 @@ members = [
 ]
 
 [workspace.package]
-authors = ["thep0y"]
 version = "0.1.33"
 # homepage = ""
 repository = "https://github.com/dwall-rs/dwall"
@@ -24,7 +23,6 @@ serde = { version = "1", default-features = false, features = [
 ] }
 serde_json = { version = "1", default-features = false, features = ["std"] }
 log = { version = "0", default-features = false, features = ["std"] }
-windows = { version = "0.61", default-features = false }
 
 [profile.release]
 panic = "abort"
