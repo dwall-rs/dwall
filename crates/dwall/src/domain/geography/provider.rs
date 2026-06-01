@@ -106,10 +106,10 @@ fn get_geo_position() -> DwallResult<Position> {
     }
 
     info!(
-        "Current geoposition: latitude={}, longitude={}, altitude={}",
-        position.latitude(),
-        position.longitude(),
-        position.altitude()
+        latitude = position.latitude(),
+        longitude = position.longitude(),
+        altitude = position.altitude(),
+        "Current geoposition"
     );
     Ok(position)
 }
