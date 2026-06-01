@@ -66,7 +66,11 @@ jobs:
           path: ~/.cargo
           key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
 
-      - name: Cache Rust dependencies
+      - name: Build dwall
+        run: |
+          cargo build --release -p dwall
+
+      - name: Cache Rust debug dependencies
         uses: actions/cache@v5
         with:
           path: |
