@@ -1,48 +1,53 @@
-/// Internal processing macro that recursively parses tracing-style key-value pairs and separates them from the main message for passing.
+/// Internal processing macro that recursively parses tracing-style key-value pairs.
+///
+/// Output format:  `{message}, {key1}={val1}, {key2}={val2}, ...`
+/// In debug builds, each key is rendered with ANSI bold-italic styling.
 #[macro_export]
 macro_rules! kv_log_internal {
-    // Base case 1: without target
+    // ── Base case 1: no target ───────────────────────────────────────────────
+    // Accumulated kv segments are each prefixed with ", " so the final string is:
+    //   "{msg}, k1=v1, k2=v2"
     (@build $lvl:ident () ($($kv_fmt:tt)*) ($($kv_args:expr,)*) $msg:literal $(, $($msg_args:tt)*)?) => {
         ::log::$lvl!(
-            concat!("{} ", $($kv_fmt)*),
+            concat!("{}", $($kv_fmt)*),
             format_args!($msg $(, $($msg_args)*)?),
             $($kv_args,)*
         )
     };
 
-    // Base case 2: with target
+    // ── Base case 2: with target ─────────────────────────────────────────────
     (@build $lvl:ident (target: $tgt:expr) ($($kv_fmt:tt)*) ($($kv_args:expr,)*) $msg:literal $(, $($msg_args:tt)*)?) => {
         ::log::$lvl!(
             target: $tgt,
-            concat!("{} ", $($kv_fmt)*),
+            concat!("{}", $($kv_fmt)*),
             format_args!($msg $(, $($msg_args)*)?),
             $($kv_args,)*
         )
     };
 
-    // Parse key-value pair with % prefix (Display)
+    // ── key = %value  (Display) ──────────────────────────────────────────────
     (@build $lvl:ident $tgt:tt ($($kv_fmt:tt)*) ($($kv_args:expr,)*) $k:ident = %$v:expr, $($rest:tt)+) => {
         $crate::kv_log_internal!(@build $lvl $tgt
-            ($($kv_fmt)* stringify!($k), "={} ",)
-            ($($kv_args,)* $v,)
+            ($($kv_fmt)* ", {}={}",)
+            ($($kv_args,)* $crate::__fmt_key(::core::stringify!($k)), $v,)
             $($rest)+
         )
     };
 
-    // Parse key-value pair with ? prefix (Debug)
+    // ── key = ?value  (Debug) ────────────────────────────────────────────────
     (@build $lvl:ident $tgt:tt ($($kv_fmt:tt)*) ($($kv_args:expr,)*) $k:ident = ?$v:expr, $($rest:tt)+) => {
         $crate::kv_log_internal!(@build $lvl $tgt
-            ($($kv_fmt)* stringify!($k), "={:?} ",)
-            ($($kv_args,)* $v,)
+            ($($kv_fmt)* ", {}={:?}",)
+            ($($kv_args,)* $crate::__fmt_key(::core::stringify!($k)), $v,)
             $($rest)+
         )
     };
 
-    // Parse key-value pair without prefix (falls back to Debug)
+    // ── key = value  (Debug fallback) ────────────────────────────────────────
     (@build $lvl:ident $tgt:tt ($($kv_fmt:tt)*) ($($kv_args:expr,)*) $k:ident = $v:expr, $($rest:tt)+) => {
         $crate::kv_log_internal!(@build $lvl $tgt
-            ($($kv_fmt)* stringify!($k), "={:?} ",)
-            ($($kv_args,)* $v,)
+            ($($kv_fmt)* ", {}={:?}",)
+            ($($kv_args,)* $crate::__fmt_key(::core::stringify!($k)), $v,)
             $($rest)+
         )
     };
