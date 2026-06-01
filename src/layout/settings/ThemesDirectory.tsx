@@ -12,7 +12,7 @@ import {
 
 import SettingsItem from "./SettingsItem";
 
-import { moveThemesDirectory, openDir } from "~/commands";
+import { moveDirectory, openDir, writeConfigFile } from "~/commands";
 
 import { useConfig } from "~/contexts";
 import { t } from "~/i18n";
@@ -40,7 +40,12 @@ const ThemesDirectory = () => {
     if (!ok) return;
 
     try {
-      await moveThemesDirectory(config()!, newThemesDirectory);
+      await moveDirectory(config()!.themes_directory, newThemesDirectory);
+      await writeConfigFile({
+        ...config()!,
+        themes_directory: newThemesDirectory,
+      });
+
       message(
         t("settings.message.movedThemesDirectory", {
           directory: newThemesDirectory,
