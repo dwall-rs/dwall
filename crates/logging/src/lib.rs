@@ -3,9 +3,9 @@ use std::{env, io::Write, str::FromStr};
 use log::{LevelFilter, Log, SetLoggerError, set_boxed_logger, set_max_level};
 use time::{OffsetDateTime, UtcDateTime};
 
-#[cfg(debug_assertions)]
-mod colors;
 mod macros;
+#[cfg(debug_assertions)]
+mod rich;
 
 #[doc(hidden)]
 pub const LOG_MAX_LEVEL_INFO: bool = cfg!(feature = "max-level-info");
@@ -129,7 +129,9 @@ impl Log for Logger {
 
         #[cfg(debug_assertions)]
         {
-            use crate::colors::{BOLD, CYAN, DIM, MAGENTA, RED, RESET, WHITE, YELLOW};
+            use crate::rich::{
+                BOLD, CYAN, DIM, ITALIC, MAGENTA, RED, RESET, WHITE, YELLOW, restore_color,
+            };
 
             let (level_color, level_str) = match record.level() {
                 log::Level::Error => (RED, "ERROR"),
@@ -142,12 +144,16 @@ impl Log for Logger {
             let file = record.file().unwrap_or("<unknown>");
             let line = record.line().unwrap_or(0);
 
+            //   2026-06-01T01:27:42.340486Z DEBUG  Reading configuration file, path: C:\Users\wzl03\AppData\Roaming\dwall\config.toml
+            //     at src\config.rs:79
+
+            let msg = record.args().to_string();
+            let msg = restore_color(&msg, level_color);
             eprintln!(
-                "{DIM}{timestamp}{RESET} \
-                 {BOLD}{level_color}{level_str}{RESET} \
-                 {DIM}[{file}:{line}]{RESET} \
-                 {}",
-                record.args(),
+                "  {DIM}{timestamp}{RESET} \
+                 {BOLD}{level_color}{level_str}{RESET} {level_color}{}{RESET}\n    \
+                 {DIM}{ITALIC}at{RESET} {file}:{line}\n",
+                msg,
             );
         }
 
@@ -235,4 +241,22 @@ fn get_log_level() -> LevelFilter {
         .or(option_env!("DWALL_LOG"))
         .and_then(|s| LevelFilter::from_str(s).ok())
         .unwrap_or_else(default_log_level)
+}
+
+/// In debug builds, wraps the key name with ANSI bold-italic escape codes.
+/// In release builds, returns the key as-is with zero overhead.
+#[cfg(debug_assertions)]
+#[doc(hidden)]
+#[inline(always)]
+pub fn __fmt_key(key: &'static str) -> String {
+    use crate::rich::{BOLD, ITALIC, RESET};
+
+    format!("{BOLD}{ITALIC}{key}{RESET}")
+}
+
+#[cfg(not(debug_assertions))]
+#[doc(hidden)]
+#[inline(always)]
+pub fn __fmt_key(key: &'static str) -> &'static str {
+    key
 }
