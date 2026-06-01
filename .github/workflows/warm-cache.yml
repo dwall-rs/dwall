@@ -10,10 +10,22 @@ on:
       - "crates/*/Cargo.toml"
       - "package.json"
       - "bun.lockb"
+  pull_request:
+    types:
+      - closed
+    branches:
+      - main
+    paths:
+      - "Cargo.lock"
+      - "Cargo.toml"
+      - "crates/*/Cargo.toml"
+      - "package.json"
+      - "bun.lockb"
   workflow_dispatch:
 
 jobs:
   warm-frontend-cache:
+    if: github.event_name != 'pull_request' || github.event.pull_request.merged == true
     name: "Warm Frontend Cache"
     runs-on: windows-latest
     steps:
@@ -36,6 +48,7 @@ jobs:
         run: bun install --frozen-lockfile
 
   warm-rust-cache:
+    if: github.event_name != 'pull_request' || github.event.pull_request.merged == true
     name: "Warm Rust Cache"
     runs-on: windows-latest
     steps:
