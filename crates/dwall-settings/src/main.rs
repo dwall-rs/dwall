@@ -73,7 +73,7 @@ async fn main() -> DwallSettingsResult<()> {
             commands::open_config_dir,
             commands::open_log_dir,
             commands::set_titlebar_color_mode,
-            commands::move_themes_directory_cmd,
+            commands::move_directory_cmd,
             commands::kill_daemon_cmd,
             commands::get_or_save_cached_thumbnails_cmd,
             commands::clear_thumbnail_cache_cmd,
