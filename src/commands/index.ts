@@ -1,5 +1,6 @@
 export * from "./autostart";
 export * from "./config";
+export * from "./fs";
 export * from "./monitor";
 export * from "./shell";
 export * from "./system";

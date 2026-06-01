@@ -16,11 +16,12 @@ import { moveDirectory, openDir, writeConfigFile } from "~/commands";
 
 import { useConfig } from "~/contexts";
 import { t } from "~/i18n";
+import { toast } from "~/components/toast";
 
-const ThemesDirectory = () => {
+const CustomizedThemesDirectory = () => {
   const { data: config, refetch: refetchConfig } = useConfig();
 
-  const [path, setPath] = createSignal(config()?.themes_directory);
+  const [path, setPath] = createSignal(config()?.customized_themes_directory);
 
   const onOpenThemesDirectory = () => {
     openDir(path()!);
@@ -30,38 +31,53 @@ const ThemesDirectory = () => {
     const dirPath = await open({ directory: true });
     if (!dirPath) return;
 
-    const newThemesDirectory = `${dirPath}\\themes`;
+    const newCustomizedThemesDirectory = `${dirPath}\\customize`;
 
     const ok = await confirm(
-      t("settings.message.changeThemesDirectory", {
-        directory: newThemesDirectory,
+      t("settings.message.changeCustomizedThemesDirectory", {
+        directory: newCustomizedThemesDirectory,
       }),
     );
     if (!ok) return;
 
     try {
-      await moveDirectory(config()!.themes_directory, newThemesDirectory);
+      await moveDirectory(
+        config()!.customized_themes_directory,
+        newCustomizedThemesDirectory,
+      );
       await writeConfigFile({
         ...config()!,
-        themes_directory: newThemesDirectory,
+        customized_themes_directory: newCustomizedThemesDirectory,
       });
 
       message(
-        t("settings.message.movedThemesDirectory", {
-          directory: newThemesDirectory,
+        t("settings.message.movedCustomizedThemesDirectory", {
+          directory: newCustomizedThemesDirectory,
         }),
       );
-      setPath(newThemesDirectory);
+      setPath(newCustomizedThemesDirectory);
       refetchConfig();
     } catch (e) {
       message(String(e), { kind: "error" });
     }
   };
 
+  const handleOpenDwallMaker = () => {
+    toast.warning("This app is under development, please be patient.");
+  };
+
   return (
     <SettingsItem
       orientation="vertical"
-      label={t("settings.label.themesDirectory")}
+      label={t("settings.label.customizedThemesDirectory")}
+      help={
+        <span>
+          {t("settings.help.customizedThemesDirectory")}
+          <Button size="xs" variant="link" onClick={handleOpenDwallMaker}>
+            Dwall Maker
+          </Button>
+        </span>
+      }
     >
       <div class="flex items-center justify-between">
         <Tooltip>
@@ -72,7 +88,7 @@ const ThemesDirectory = () => {
           </TooltipTrigger>
           <TooltipContent>
             <TooltipArrow />
-            <p>{t("settings.tooltip.openThemesDirectory")}</p>
+            <p>{t("settings.tooltip.openCustomizedThemesDirectory")}</p>
           </TooltipContent>
         </Tooltip>
 
@@ -84,4 +100,4 @@ const ThemesDirectory = () => {
   );
 };
 
-export default ThemesDirectory;
+export default CustomizedThemesDirectory;

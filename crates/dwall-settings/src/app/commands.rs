@@ -21,7 +21,7 @@ use crate::{
     domain::{monitor::get_monitors, settings::Config, theme::validate_solar_theme},
     error::{DwallSettingsError, DwallSettingsResult},
     infrastructure::{
-        filesystem::{find_files_in_dir, list_subdirectories, move_themes_directory},
+        filesystem::{find_files_in_dir, list_subdirectories, move_directory},
         network::download::ThemeDownloader,
         process::kill_daemon,
         registry::AutoStartManager,
@@ -151,11 +151,10 @@ pub fn request_location_permission() -> DwallSettingsResult<()> {
 }
 
 #[tauri::command]
-pub async fn move_themes_directory_cmd(
-    config: dwall::Config,
-    dir_path: PathBuf,
-) -> DwallSettingsResult<()> {
-    move_themes_directory(config, dir_path).await
+pub async fn move_directory_cmd(source: PathBuf, destination: PathBuf) -> DwallSettingsResult<()> {
+    move_directory(source, destination)
+        .await
+        .map_err(Into::into)
 }
 
 #[tauri::command]

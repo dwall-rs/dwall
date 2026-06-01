@@ -1,7 +1,7 @@
 use dwall::RegistryError;
 use serde::{Serialize, Serializer};
 
-use crate::infrastructure::network::download::DownloadError;
+use crate::infrastructure::{filesystem::DirectoryMoveError, network::download::DownloadError};
 
 pub type DwallSettingsResult<T, E = DwallSettingsError> = std::result::Result<T, E>;
 
@@ -31,6 +31,8 @@ pub enum DwallSettingsError {
     Daemon(String),
     #[error(transparent)]
     Logger(#[from] log::SetLoggerError),
+    #[error(transparent)]
+    DirectoryMove(#[from] DirectoryMoveError),
     #[error("{0}")]
     Other(String),
 }

@@ -40,9 +40,6 @@ export const getOrSaveCachedThumbnails = async (
 export const clearThumbnailCache = async () =>
   invoke<number>("clear_thumbnail_cache_cmd");
 
-export const moveThemesDirectory = async (config: Config, dirPath: string) =>
-  invoke<void>("move_themes_directory_cmd", { config, dirPath });
-
 export const getCustomizedThemes = async (customizedThemesDirectory: string) =>
   invoke<ThemeItem[]>("get_customized_themes_cmd", {
     customizedThemesDirectory,

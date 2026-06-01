@@ -39,6 +39,7 @@ export const dict: RawDictionary = {
       setLockScreenWallpaperSimultaneously: "ロック画面の壁紙も同時に設定",
       sourceCode: "ソースコード",
       themesDirectory: "テーマディレクトリ",
+      customizedThemesDirectory: "カスタマイズされたテーマディレクトリ",
       version: "バージョン",
       language: "言語",
       titleBarColorFollowsWindowsTheme:
@@ -64,6 +65,8 @@ export const dict: RawDictionary = {
         "座標を取得する間隔（単位：分）は、検出間隔よりも大きい値に設定してください。PCの設置場所が固定されている場合は24時間以上、頻繁に持ち運び出張される場合は1時間以内を推奨します。",
       titleBarColorFollowsWindowsTheme:
         "有効にすると、タイトルバーの色がWindowsテーマに従います。これは、テーマカラーを設定している場合に便利です。",
+      customizedThemesDirectory:
+        "カスタムテーマの作成は簡単なスキルではありません。天文学アルゴリズムに精通している場合は、組み込みのテーマ構造に基づいて手動で作成できます。それ以外の場合は、このアプリケーションを使用してテーマを作成してください：",
     },
 
     placeholder: {
@@ -73,12 +76,16 @@ export const dict: RawDictionary = {
 
     tooltip: {
       openThemesDirectory: "クリックしてテーマディレクトリを開きます。",
+      openCustomizedThemesDirectory:
+        "クリックしてカスタマイズされたテーマディレクトリを開きます。",
       checkForNewVersion: "クリックして新バージョンを確認",
     },
 
     message: {
       changeThemesDirectory:
         "テーマディレクトリを {{ directory }} に変更しますか？",
+      changeCustomizedThemesDirectory:
+        "カスタマイズされたテーマディレクトリを {{ directory }} に変更しますか？",
       checkIntervalUpdated: "チェック間隔が {{ interval }} 秒に更新されました",
       disableStartupFailed:
         "起動時の自動起動の無効化に失敗しました：\n{{ error }}",
@@ -97,6 +104,8 @@ export const dict: RawDictionary = {
         "手動座標への切り替えに失敗しました：\n{{ error }}",
       movedThemesDirectory:
         "テーマディレクトリが {{ directory }} に移動されました",
+      movedCustomizedThemesDirectory:
+        "カスタマイズされたテーマディレクトリは {{ directory }} に移動されました。",
       isLatestVersion: "最新バージョンを使用しています。",
       checkIntervalUpdateFailed:
         "更新チェック間隔の更新に失敗しました：\n{{ error }}",

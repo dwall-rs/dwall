@@ -39,6 +39,7 @@ export const dict: RawDictionary = {
       setLockScreenWallpaperSimultaneously: "잠금 화면 배경화면도 동시에 설정",
       sourceCode: "소스 코드",
       themesDirectory: "테마 디렉토리",
+      customizedThemesDirectory: "사용자 지정 테마 디렉터리",
       version: "버전",
       language: "언어",
       titleBarColorFollowsWindowsTheme:
@@ -64,6 +65,8 @@ export const dict: RawDictionary = {
         "좌표 획득 간격(단위: 분)은 감지 간격보다 커야 합니다. 컴퓨터 위치가 고정된 경우 간격을 24시간 이상으로 설정할 수 있습니다. 자주 노트북을 가지고 출장을 다니는 경우 1시간 이내로 설정하는 것이 좋습니다.",
       titleBarColorFollowsWindowsTheme:
         "사용하도록 설정하면 제목 표시줄 색상이 Windows 테마를 따릅니다. 이는 테마 색상을 설정한 경우 유용합니다.",
+      customizedThemesDirectory:
+        "사용자 정의 테마는 간단한 기술이 아닙니다. 천문 알고리즘에 익숙하다면 내장된 테마 구조를 기반으로 수동으로 만들 수 있습니다. 그렇지 않으면 이 애플리케이션을 사용하여 테마를 만드십시오: ",
     },
 
     placeholder: {
@@ -73,12 +76,16 @@ export const dict: RawDictionary = {
 
     tooltip: {
       openThemesDirectory: "클릭하여 테마 디렉토리를 엽니다.",
+      openCustomizedThemesDirectory:
+        "클릭하여 사용자 지정 테마 디렉터리를 엽니다.",
       checkForNewVersion: "클릭하여 새 버전 확인",
     },
 
     message: {
       changeThemesDirectory:
         "테마 디렉토리를 {{ directory }}(으)로 변경하시겠습니까?",
+      changeCustomizedThemesDirectory:
+        "사용자 지정 테마 디렉터리를 {{ directory }}(으)로 변경하시겠습니까?",
       checkIntervalUpdated:
         "확인 간격이 {{ interval }}초로 업데이트되었습니다.",
       disableStartupFailed: "시작 시 실행 비활성화 실패: \n{{ error }}",
@@ -95,6 +102,8 @@ export const dict: RawDictionary = {
       switchToManualCoordinatesFailed: "수동 좌표로 전환 실패: \n{{ error }}",
       movedThemesDirectory:
         "테마 디렉토리가 {{ directory }}(으)로 이동되었습니다.",
+      movedCustomizedThemesDirectory:
+        "사용자 지정 테마 디렉터리가 {{ directory }}(으)로 이동되었습니다.",
       isLatestVersion: "이미 최신 버전을 사용하고 있습니다.",
       checkIntervalUpdateFailed:
         "업데이트 확인 간격 업데이트에 실패했습니다: \n{{ error }}",
