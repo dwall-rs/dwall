@@ -8,7 +8,8 @@ members = [
 ]
 
 [workspace.package]
-version = "0.1.33"
+authors = ["thep0y"]
+version = "0.2.4"
 # homepage = ""
 repository = "https://github.com/dwall-rs/dwall"
 license = "AGPL-3.0"
