@@ -1,0 +1,80 @@
+name: "Cache Warming"
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "Cargo.lock"
+      - "Cargo.toml"
+      - "crates/*/Cargo.toml"
+      - "package.json"
+      - "bun.lockb"
+  pull_request:
+    types:
+      - closed
+    branches:
+      - main
+    paths:
+      - "Cargo.lock"
+      - "Cargo.toml"
+      - "crates/*/Cargo.toml"
+      - "package.json"
+      - "bun.lockb"
+  workflow_dispatch:
+
+jobs:
+  warm-frontend-cache:
+    if: github.event_name != 'pull_request' || github.event.pull_request.merged == true
+    name: "Warm Frontend Cache"
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Cache frontend dependencies
+        uses: actions/cache@v5
+        with:
+          path: |
+            ~/.bun
+            node_modules/
+          key: ${{ runner.os }}-frontend-${{ hashFiles('**/bun.lockb', '**/package.json') }}
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+  warm-rust-cache:
+    if: github.event_name != 'pull_request' || github.event.pull_request.merged == true
+    name: "Warm Rust Cache"
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Rust
+        id: rust-toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-pc-windows-msvc
+
+      - name: Cache cargo registry
+        uses: actions/cache@v5
+        with:
+          path: ~/.cargo
+          key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Cache Rust dependencies
+        uses: actions/cache@v5
+        with:
+          path: |
+            target/debug/deps
+            target/debug/build
+          key: ${{ runner.os }}-rust-debug-${{ steps.rust-toolchain.outputs.cachekey }}-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Build caches
+        run: |
+          cargo fetch
+          cargo build --tests 2>&1 | Out-Null
