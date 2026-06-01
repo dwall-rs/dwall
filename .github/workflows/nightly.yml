@@ -274,8 +274,12 @@ jobs:
       - name: Cache cargo registry
         uses: actions/cache@v5
         with:
-          path: ~/.cargo
-          key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+          key: ${{ runner.os }}-cargo-registry-${{ steps.rust-toolchain.outputs.cachekey }}-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: |
             ${{ runner.os }}-cargo-registry-
 
@@ -285,7 +289,7 @@ jobs:
           path: |
             target/release/deps
             target/release/build
-          key: ${{ runner.os }}-rust-release-${{ hashFiles('**/Cargo.lock') }}
+          key: ${{ runner.os }}-rust-release-${{ steps.rust-toolchain.outputs.cachekey }}-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: |
             ${{ runner.os }}-rust-release-
 
