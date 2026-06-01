@@ -4,7 +4,6 @@ description = "Dwall daemon"
 exclude = ["CHANGELOG.md", "/target"]
 readme = "README.md"
 version.workspace = true
-authors.workspace = true
 edition.workspace = true
 # homepage.workspace = true
 repository.workspace = true
@@ -30,7 +29,7 @@ dirs = { workspace = true, default-features = false }
 serde = { workspace = true, default-features = false }
 serde_json = { workspace = true, default-features = false }
 thiserror = { workspace = true, default-features = false }
-windows = { workspace = true, default-features = false, features = [
+windows = { version = "0", default-features = false, features = [
     "std",
     "Devices_Geolocation",
     "Win32_System_Registry",

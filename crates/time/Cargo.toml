@@ -1,6 +1,5 @@
 [package]
 name = "time"
-authors.workspace = true
 version.workspace = true
 repository.workspace = true
 license.workspace = true

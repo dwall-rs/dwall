@@ -24,7 +24,6 @@ serde = { version = "1", default-features = false, features = [
 ] }
 serde_json = { version = "1", default-features = false, features = ["std"] }
 log = { version = "0", default-features = false, features = ["std"] }
-windows = { version = "0.61", default-features = false }
 
 [profile.release]
 panic = "abort"

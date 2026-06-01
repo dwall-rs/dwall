@@ -3,7 +3,6 @@ name = "dwall-settings"
 description = "Dwall settings"
 edition.workspace = true
 version.workspace = true
-authors.workspace = true
 repository.workspace = true
 license.workspace = true
 
@@ -29,7 +28,7 @@ dirs = { workspace = true, default-features = false }
 serde = { workspace = true }
 serde_json = { workspace = true, default-features = false }
 thiserror = { workspace = true, default-features = false }
-windows = { workspace = true, default-features = false, features = [
+windows = { version = "0.61", default-features = false, features = [
     "Win32_System_Registry",
     "Win32_System_Diagnostics_ToolHelp",
     "Win32_System_ProcessStatus",
