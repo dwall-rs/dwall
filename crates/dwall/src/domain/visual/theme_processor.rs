@@ -618,7 +618,7 @@ fn process_solar_theme_cycle(
             &ThresholdConfig::from_location(current_geographic_position),
             &current_local_time,
         );
-        info!(
+        debug!(
             color_scheme = ?solar_based_color_scheme,
             sun_altitude = current_sun_position.altitude(),
             "Automatically updating system color scheme based on solar position"

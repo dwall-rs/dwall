@@ -30,8 +30,8 @@ impl DaemonApplication {
             let theme_processor = ThemeProcessor::new(&config)?;
 
             info!(
-                "Starting daemon with config change detection: update_interval_seconds={}",
-                config.interval()
+                update_interval_seconds = config.interval(),
+                "Starting daemon with config change detection"
             );
 
             self.run_processor_loop(&theme_processor, &mut consecutive_failure_count)?;

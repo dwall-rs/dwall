@@ -163,7 +163,7 @@ impl ColorSchemeManager {
 
     /// Retrieve the current system color scheme from registry
     pub(crate) fn get_current_scheme() -> DwallResult<ColorScheme> {
-        info!("Retrieving current system color scheme");
+        debug!("Retrieving current system color scheme");
         let registry_key = RegistryKey::open(Self::PERSONALIZE_KEY_PATH, KEY_QUERY_VALUE)?;
 
         let mut data: u32 = 0;

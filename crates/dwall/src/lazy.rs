@@ -14,18 +14,18 @@ pub static DWALL_CONFIG_DIR: LazyLock<PathBuf> = LazyLock::new(|| {
 
     if !app_config_dir.exists() {
         if let Err(e) = fs::create_dir(&app_config_dir) {
-            error!("Failed to create config directory: {e}");
+            error!(error = e, "Failed to create config directory");
             panic!("Failed to create config directory: {e}");
         } else {
             info!(
-                "Config directory created successfully: {}",
-                app_config_dir.display()
+                path = app_config_dir.display(),
+                "Config directory created successfully"
             );
         }
     } else {
         debug!(
-            "Config directory already exists: {}",
-            app_config_dir.display()
+            path = %app_config_dir.display(),
+            "Config directory already exists"
         );
     }
 
@@ -43,17 +43,17 @@ pub static DWALL_CACHE_DIR: LazyLock<PathBuf> = LazyLock::new(|| {
     let cache_dir = dirs::cache_dir().expect("Failed to determine user cache directory");
 
     let dir = cache_dir.join("com.thep0y.dwall"); // bundle identifier
-    trace!("Initializing cache directory: {}", dir.display());
+    trace!(path = dir.display(), "Initializing cache directory");
 
     if !dir.exists() {
         if let Err(e) = fs::create_dir(&dir) {
-            error!("Failed to create cache directory: {e}");
+            error!(error = e, "Failed to create cache directory");
             panic!("Failed to create cache directory: {e}");
         } else {
-            info!("Cache directory created successfully at: {}", dir.display());
+            info!(path = dir.display(), "Cache directory created successfully");
         }
     } else {
-        debug!("Cache directory already exists: {}", dir.display());
+        debug!(path = dir.display(), "Cache directory already exists");
     }
 
     dir
@@ -71,16 +71,16 @@ pub static DWALL_LOG_DIR: LazyLock<PathBuf> = LazyLock::new(|| {
 
     if !log_dir.exists() {
         if let Err(e) = fs::create_dir(&log_dir) {
-            error!("Failed to create log directory: {e}");
+            error!(error = e, "Failed to create log directory");
             panic!("Failed to create log directory: {e}");
         } else {
             info!(
-                "Log directory created successfully at: {}",
-                log_dir.display()
+                path = log_dir.display(),
+                "Log directory created successfully"
             );
         }
     } else {
-        debug!("Log directory already exists: {}", log_dir.display());
+        debug!(path = log_dir.display(), "Log directory already exists");
     }
 
     log_dir
