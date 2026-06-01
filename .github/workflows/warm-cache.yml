@@ -77,4 +77,4 @@ jobs:
       - name: Build caches
         run: |
           cargo fetch
-          cargo build --tests 2>&1 | Out-Null
+          cargo build --tests
