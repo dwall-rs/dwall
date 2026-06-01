@@ -179,6 +179,7 @@ impl ThumbnailCache {
 
             if image_path.exists() {
                 debug!(
+                    source = cache_key.url,
                     image_path = %image_path.display(),
                     "Image already cached"
                 );
@@ -213,6 +214,7 @@ impl ThumbnailCache {
         match result {
             Ok((path, size)) => {
                 debug!(
+                    source = cache_key.url,
                     path = %path.display(),
                     size = size,
                     "Image successfully cached"
