@@ -38,6 +38,7 @@ export const dict = {
         "Set Lock Screen Wallpaper Simultaneously",
       sourceCode: "Source Code",
       themesDirectory: "Themes Directory",
+      customizedThemesDirectory: "Customized Themes Directory",
       version: "Version",
       language: "Language",
       titleBarColorFollowsWindowsTheme: "Title Bar Color Follows Windows Theme",
@@ -62,6 +63,8 @@ export const dict = {
         "Unable to complete the hot update. Please click the download button behind this message to manually download the new version: ",
       titleBarColorFollowsWindowsTheme:
         "If enabled, the title bar color will follow the Windows theme, which is useful when you have set a theme color.",
+      customizedThemesDirectory:
+        "Creating custom themes is not a simple skill. If you are familiar with astronomical algorithms, you can manually create them based on the built-in theme structure; otherwise, please use this application to create themes: ",
     },
 
     placeholder: {
@@ -71,11 +74,15 @@ export const dict = {
 
     tooltip: {
       openThemesDirectory: "Click it to open the themes directory.",
+      openCustomizedThemesDirectory:
+        "Click it to open the customized themes directory.",
       checkForNewVersion: "Click it to check for new version",
     },
 
     message: {
       changeThemesDirectory: "Change the themes directory to: {{ directory }}?",
+      changeCustomizedThemesDirectory:
+        "Change the customized themes directory to: {{ directory }}?",
       checkIntervalUpdated:
         "Check interval has been updated to: {{ interval }} seconds",
       disableStartupFailed: "Failed to disable startup: \n{{ error }}",
@@ -94,6 +101,8 @@ export const dict = {
         "Failed to switch to manual coordinates: \n{{ error }}",
       movedThemesDirectory:
         "The themes directory has been moved to: {{ directory }}",
+      movedCustomizedThemesDirectory:
+        "The customized themes directory has been moved to: {{ directory }}",
       isLatestVersion: "You are already using the latest version.",
       checkIntervalUpdateFailed:
         "Failed to update check interval: \n{{ error }}",

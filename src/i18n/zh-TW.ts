@@ -38,6 +38,7 @@ export const dict: RawDictionary = {
       setLockScreenWallpaperSimultaneously: "同時設定鎖定畫面桌布",
       sourceCode: "原始碼",
       themesDirectory: "主題目錄",
+      customizedThemesDirectory: "自訂主題目錄",
       version: "版本",
       language: "語言",
       titleBarColorFollowsWindowsTheme: "標題列顏色跟隨 Windows 主題",
@@ -62,6 +63,8 @@ export const dict: RawDictionary = {
         "獲取座標的時間間隔（單位：分鐘），該值必須大於偵測時間間隔。若您的電腦位置固定，可將間隔設為24小時或更長；若您經常攜帶電腦出差，建議設為1小時以內。",
       titleBarColorFollowsWindowsTheme:
         "如果啟用，標題列顏色將跟隨 Windows 主題，這在你設定了主題色時很有用。",
+      customizedThemesDirectory:
+        "自訂主題並非一項簡單的技能。如果你熟悉天文演算法，可以根據內建的主題結構手動製作；否則，請使用此應用程式製作主題：",
     },
 
     placeholder: {
@@ -71,11 +74,14 @@ export const dict: RawDictionary = {
 
     tooltip: {
       openThemesDirectory: "點擊以開啟主題目錄。",
+      openCustomizedThemesDirectory: "點擊開啟自訂主題目錄。",
       checkForNewVersion: "點擊以檢查新版本",
     },
 
     message: {
       changeThemesDirectory: "將主題目錄更改為：{{ directory }}？",
+      changeCustomizedThemesDirectory:
+        "將自訂主題目錄變更為：{{ directory }}？",
       checkIntervalUpdated: "檢查間隔已更新為：{{ interval }} 秒",
       disableStartupFailed: "停用開機自啟失敗：\n{{ error }}",
       githubMirrorTemplateUpdated: "Github 鏡像模板已更新為：{{ template }}",
@@ -88,6 +94,7 @@ export const dict: RawDictionary = {
       switchAutoModesFailed: "切換自動淺色/深色模式失敗：\n{{ error }}",
       switchToManualCoordinatesFailed: "切換到手動座標失敗：\n{{ error }}",
       movedThemesDirectory: "主題目錄已移動到：{{ directory }}",
+      movedCustomizedThemesDirectory: "自訂主題目錄已移動到：{{ directory }}。",
       isLatestVersion: "您已在使用最新版本。",
       checkIntervalUpdateFailed: "更新檢查間隔失敗：\n{{ error }}",
       saveRetrieveCoordinatesIntervalFailed:

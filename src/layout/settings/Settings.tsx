@@ -8,6 +8,7 @@ import SettingsFooter from "./Footer";
 import Languages from "./Languages";
 import Network from "./network";
 import TitleBarColor from "./TitleBarColor";
+import CustomizedThemesDirectory from "./CustomizedThemesDirectory";
 
 export const Settings = () => {
   return (
@@ -28,6 +29,8 @@ export const Settings = () => {
         <Interval />
 
         <ThemesDirectory />
+
+        <CustomizedThemesDirectory />
 
         <Network />
       </div>
