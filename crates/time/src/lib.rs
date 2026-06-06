@@ -401,6 +401,12 @@ impl OffsetDateTime {
         Ok(UtcDateTime::from_timestamp(utc_secs as u64))
     }
 
+    pub fn assume_utc(&self) -> UtcDateTime {
+        let local_secs = self.inner.timestamp() as i64;
+        let utc_secs = local_secs.sub(self.offset.seconds() as i64);
+        UtcDateTime::from_timestamp(utc_secs as u64)
+    }
+
     #[cfg(debug_assertions)]
     /// Constructs a local time from local time components and a time zone offset.
     ///
@@ -481,6 +487,18 @@ impl OffsetDateTime {
     #[inline]
     pub fn ymd_hms(&self) -> (u16, Month, u8, u8, u8, u8) {
         self.inner.ymd_hms()
+    }
+
+    /// Returns the year, month, day.
+    #[inline]
+    pub fn ymd(&self) -> (u16, Month, u8) {
+        self.inner.ymd()
+    }
+
+    pub fn date(&self) -> Date {
+        let (year, month, day) = self.ymd();
+
+        Date { year, month, day }
     }
 
     /// Adds the specified number of seconds, keeping the offset unchanged.
@@ -597,6 +615,22 @@ impl PartialOrd for OffsetDateTime {
         let a = self.utc().ok()?;
         let b = other.utc().ok()?;
         Some(a.cmp(&b))
+    }
+}
+
+pub struct Date {
+    year: u16,
+    month: Month,
+    day: u8,
+}
+
+impl Date {
+    pub fn with_hms(&self, hour: u8, minute: u8, second: u8) -> Result<OffsetDateTime> {
+        let offset = Offset::local_offset();
+
+        OffsetDateTime::new(
+            self.year, self.month, self.day, hour, minute, second, offset,
+        )
     }
 }
 
