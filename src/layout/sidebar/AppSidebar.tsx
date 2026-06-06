@@ -26,6 +26,7 @@ import type { ThemeItem } from "~/themes";
 import { route, navigate } from "~/router";
 import { t } from "~/i18n";
 import { clsx } from "~/utils";
+import type { CustomizedTheme } from "~/types";
 
 const [imageHeights, setImageHeights] = createStore<Record<string, number>>({});
 
@@ -40,7 +41,7 @@ export const AppSidebar = () => {
     return r.id;
   });
 
-  const { themes } = useThemesContext();
+  const { allThemes } = useThemesContext();
 
   return (
     <Sidebar
@@ -54,7 +55,7 @@ export const AppSidebar = () => {
             !theme.downloadingTheme() ? "scrollbar" : "overflow-y-hidden",
           )}
         >
-          <For each={themes()}>
+          <For each={allThemes()}>
             {(item, index) => (
               <Show when={config.state === "ready"} fallback={<Spinner />}>
                 <ThemeMenuItem
@@ -116,7 +117,7 @@ export const AppSidebar = () => {
 };
 
 const ThemeMenuItem = (
-  props: ThemeItem & {
+  props: (ThemeItem | CustomizedTheme) & {
     github_mirror_template?: string;
     disabled?: boolean;
     active: boolean;
@@ -137,10 +138,10 @@ const ThemeMenuItem = (
             <ThemeImage
               class="rounded-sm"
               src={generateGitHubThumbnailMirrorUrl(
-                props.thumbnail[0],
+                props.thumbnails[0],
                 props.github_mirror_template,
               )}
-              isLocal={props.isCustomized}
+              isLocal={"author" in props}
               width={64}
               themeID={props.id}
               serialNumber={props.index + 1}
@@ -158,7 +159,9 @@ const ThemeMenuItem = (
             </Show>
           </SidebarMenuButton>
         </TooltipTrigger>
-        <TooltipContent side="right">{props.id}</TooltipContent>
+        <TooltipContent side="right">
+          {"theme_name" in props ? props.theme_name : props.id}
+        </TooltipContent>
       </Tooltip>
     </SidebarMenuItem>
   );

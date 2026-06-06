@@ -258,6 +258,7 @@ impl ThemeValidator {
         themes_directory: &Path,
         theme_identifier: &str,
         is_customized: bool,
+        image_format: &ImageFormat,
     ) -> DwallResult<()> {
         trace!(
             theme_id = theme_identifier,
@@ -265,11 +266,7 @@ impl ThemeValidator {
             "Starting solar theme validation"
         );
 
-        let theme_directory_path = if is_customized {
-            themes_directory.join(theme_identifier).join("images")
-        } else {
-            themes_directory.join(theme_identifier)
-        };
+        let theme_directory_path = themes_directory.join(theme_identifier);
 
         if !theme_directory_path.exists() {
             warn!(
@@ -287,8 +284,12 @@ impl ThemeValidator {
             .map(|angle| angle.index())
             .collect();
 
-        if !Self::validate_theme_image_files(&theme_directory_path, &expected_image_indices, "jpg")
-        {
+        if !Self::validate_theme_image_files(
+            &theme_directory_path,
+            &expected_image_indices,
+            is_customized,
+            image_format.as_str(),
+        ) {
             warn!(
                 theme_id = theme_identifier,
                 expected_images = expected_image_indices.len(),
@@ -354,9 +355,14 @@ impl ThemeValidator {
     fn validate_theme_image_files(
         theme_directory: &Path,
         expected_image_indices: &[u8],
+        is_customized: bool,
         image_file_format: &str,
     ) -> bool {
-        let images_directory_path = theme_directory.join(image_file_format);
+        let images_directory_path = if is_customized {
+            theme_directory.join("images")
+        } else {
+            theme_directory.join(image_file_format)
+        };
 
         if !images_directory_path.is_dir() {
             warn!(
@@ -464,16 +470,20 @@ fn load_cached_solar_angles(theme_directory: &Path) -> DwallResult<Vec<SolarAngl
 }
 
 /// Build wallpaper file path based on theme directory, image format, and solar image index
-fn construct_wallpaper_file_path<'a>(
+fn construct_wallpaper_file_path(
     theme_directory_path: &Path,
-    image_file_format: impl Into<&'a str>,
+    image_format: &str,
     solar_image_index: u8,
+    is_customized: bool,
 ) -> PathBuf {
-    let image_format_str = image_file_format.into();
-    let mut wallpaper_path = theme_directory_path.to_path_buf();
-    wallpaper_path.push(image_format_str);
-    wallpaper_path.push(format!("{}.{}", solar_image_index + 1, image_format_str));
-    wallpaper_path
+    let image_file_name = format!("{}.{}", solar_image_index + 1, image_format);
+    if is_customized {
+        theme_directory_path.join("images").join(image_file_name)
+    } else {
+        theme_directory_path
+            .join(image_format)
+            .join(image_file_name)
+    }
 }
 
 /// Find the wallpaper image that best matches the current solar position
@@ -569,7 +579,9 @@ fn process_solar_theme_cycle(
             lock_screen_theme_identifier = Some(assigned_theme_id.to_string());
         }
 
-        let theme_directory_path = get_theme_directory_path(configuration, assigned_theme_id);
+        let (theme_directory_path, is_customized) =
+            get_theme_directory_path(configuration, assigned_theme_id);
+        info!(theme_directory = %theme_directory_path.display(), is_customized = is_customized, theme_id = assigned_theme_id, "Using theme directory");
 
         if let Err(processing_error) = update_monitor_solar_wallpaper(
             configuration.image_format(),
@@ -578,6 +590,7 @@ fn process_solar_theme_cycle(
             &theme_directory_path,
             &current_solar_position,
             wallpaper_manager,
+            is_customized,
         ) {
             error!(
                 error = %processing_error,
@@ -595,18 +608,22 @@ fn process_solar_theme_cycle(
     if configuration.lock_screen_wallpaper_enabled()
         && successful_monitor_count > 0
         && let Some(ref lock_screen_theme_id) = lock_screen_theme_identifier
-        && let Err(lock_screen_error) = apply_lock_screen_solar_wallpaper(
+    {
+        let (theme_directory_path, is_customized) =
+            get_theme_directory_path(configuration, lock_screen_theme_id);
+        if let Err(lock_screen_error) = apply_lock_screen_solar_wallpaper(
             configuration.image_format(),
             lock_screen_theme_id,
-            &get_theme_directory_path(configuration, lock_screen_theme_id),
+            &theme_directory_path,
             &current_solar_position,
-        )
-    {
-        warn!(
-            error = %lock_screen_error,
-            theme_id = lock_screen_theme_id,
-            "Failed to apply solar wallpaper to lock screen, continuing with other operations"
-        );
+            is_customized,
+        ) {
+            warn!(
+                error = %lock_screen_error,
+                theme_id = lock_screen_theme_id,
+                "Failed to apply solar wallpaper to lock screen, continuing with other operations"
+            );
+        }
     }
 
     let cache = get_cache();
@@ -673,17 +690,23 @@ fn update_monitor_solar_wallpaper(
     theme_directory_path: &Path,
     current_sun_position: &SolarPosition,
     wallpaper_manager: &WallpaperSetter,
+    is_customized: bool,
 ) -> DwallResult<()> {
     let (optimal_image_index, _) =
         find_optimal_solar_wallpaper(theme_directory_path, current_sun_position)?;
-    let wallpaper_file_path =
-        construct_wallpaper_file_path(theme_directory_path, image_format, optimal_image_index);
+    let wallpaper_file_path = construct_wallpaper_file_path(
+        theme_directory_path,
+        image_format.as_str(),
+        optimal_image_index,
+        is_customized,
+    );
 
     info!(
         wallpaper_path = %wallpaper_file_path.display(),
         image_index = optimal_image_index,
         monitor_id = monitor_identifier,
         theme_id = theme_identifier,
+        is_customized = is_customized,
         "Selected optimal solar wallpaper for monitor"
     );
 
@@ -716,13 +739,15 @@ fn apply_lock_screen_solar_wallpaper(
     theme_identifier: &str,
     theme_directory_path: &Path,
     current_sun_position: &SolarPosition,
+    is_customized: bool,
 ) -> DwallResult<()> {
     match find_optimal_solar_wallpaper(theme_directory_path, current_sun_position) {
         Ok((optimal_image_index, _)) => {
             let wallpaper_file_path = construct_wallpaper_file_path(
                 theme_directory_path,
-                image_format,
+                image_format.as_str(),
                 optimal_image_index,
+                is_customized,
             );
 
             if wallpaper_file_path.exists() {
@@ -774,13 +799,15 @@ pub async fn apply_solar_theme(configuration: Config) -> DwallResult<()> {
     solar_theme_processor.start_solar_update_loop()
 }
 
-fn get_theme_directory_path(configuration: &Config, theme_identifier: &str) -> PathBuf {
-    let mut path = configuration.themes_directory().join(theme_identifier);
-    if !path.exists() {
-        path = configuration
-            .customized_themes_directory()
-            .join(theme_identifier)
-            .join("images");
+fn get_theme_directory_path(configuration: &Config, theme_identifier: &str) -> (PathBuf, bool) {
+    let path = configuration.themes_directory().join(theme_identifier);
+    if path.exists() {
+        return (path, false);
     }
-    path
+
+    let path = configuration
+        .customized_themes_directory()
+        .join(theme_identifier);
+
+    (path, true)
 }

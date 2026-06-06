@@ -9,13 +9,13 @@ export const useThemes = () => {
     () => config()?.customized_themes_directory,
     getCustomizedThemes,
   );
-  const mergedThemes = createMemo(() => {
-    return [...(customizedThemes() ?? []), ...themes].sort((a, b) =>
-      a.id.localeCompare(b.id),
-    );
-  });
+
+  const allThemes = createMemo(() => [
+    ...(customizedThemes() ?? []),
+    ...themes,
+  ]);
 
   return {
-    themes: mergedThemes,
+    allThemes,
   };
 };

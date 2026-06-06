@@ -39,6 +39,7 @@ windows = { version = "0.61", default-features = false, features = [
     "Win32_System_Threading",
 ] }
 rand = { version = "0.10", default-features = false, features = ["thread_rng"] }
+toml = { version = "1", default-features = false, features = ["parse"] }
 
 tauri-plugin-shell = "2"
 tauri-plugin-single-instance = "2.4"

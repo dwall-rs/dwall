@@ -6,6 +6,7 @@ use std::io::Read;
 use std::path::Path;
 
 use dwall::ThemeValidator;
+use dwall::config::ImageFormat;
 use serde::Deserialize;
 use serde_json::Value;
 
@@ -19,8 +20,9 @@ pub fn validate_solar_theme(
     themes_directory: &Path,
     theme_id: &str,
     is_customized: bool,
+    image_format: &ImageFormat,
 ) -> Result<(), dwall::error::DwallError> {
-    ThemeValidator::validate(themes_directory, theme_id, is_customized)
+    ThemeValidator::validate(themes_directory, theme_id, is_customized, image_format)
 }
 
 /// Attempts to read the most recent error from the daemon log file

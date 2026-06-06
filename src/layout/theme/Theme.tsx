@@ -27,7 +27,7 @@ interface ThemeProps {
 
 export const Theme = (props: ThemeProps) => {
   const { data: config } = useConfig();
-  const { themes } = useThemesContext();
+  const { allThemes } = useThemesContext();
   const {
     list: monitors,
     handleChange: handleMonitorChange,
@@ -47,11 +47,26 @@ export const Theme = (props: ThemeProps) => {
   };
 
   const theme = createMemo(() => {
-    return config() && themes().find((t) => t.id === props.id);
+    return config() && allThemes().find((t) => t.id === props.id);
+  });
+
+  const isCustomized = createMemo(() => {
+    const t = theme();
+    return t && "author" in t;
+  });
+
+  const themeName = createMemo(() => {
+    const t = theme();
+    return t && "theme_name" in t ? t.theme_name : props.id;
+  });
+
+  const imageFormat = createMemo(() => {
+    const t = theme();
+    return t && "image_format" in t ? t.image_format : "jpeg";
   });
 
   createEffect(() => {
-    setStore({ count: theme()?.thumbnail.length, current: 0 });
+    setStore({ count: theme()?.thumbnails.length, current: 0 });
   });
 
   return (
@@ -76,7 +91,7 @@ export const Theme = (props: ThemeProps) => {
           id={props.id}
         >
           <CarouselContent>
-            <For each={theme()?.thumbnail}>
+            <For each={theme()?.thumbnails}>
               {(src, index) => (
                 <CarouselItem class="min-w-108">
                   <AspectRatio
@@ -94,7 +109,7 @@ export const Theme = (props: ThemeProps) => {
                             )
                           : src
                       }
-                      isLocal={theme()?.isCustomized}
+                      isLocal={isCustomized()}
                       class="rounded-md"
                       themeID={props.id}
                       serialNumber={index() + 1}
@@ -123,7 +138,7 @@ export const Theme = (props: ThemeProps) => {
           class="absolute top-(--name-top) right-2 bg-neutral-950/30 rounded-2xl text-white dark:text-white/60 py-0.5 px-2 text-xs font-medium backdrop-blur-sm"
           style={{ "--name-top": `${nameTop()}px` }}
         >
-          {props.id}
+          {themeName()}
         </p>
 
         <div
@@ -131,7 +146,7 @@ export const Theme = (props: ThemeProps) => {
           style={{ "--indicators-bottom": `${indicatorsBottom()}px` }}
         >
           <div class="flex gap-1.5 z-10 py-1 px-1.5 bg-neutral-950/30 rounded-2xl backdrop-blur-sm">
-            <For each={theme()?.thumbnail}>
+            <For each={theme()?.thumbnails}>
               {(_, index) => (
                 <button
                   type="button"
@@ -152,11 +167,12 @@ export const Theme = (props: ThemeProps) => {
         <ThemeActions
           currentThemeID={props.id}
           themesDirectory={
-            theme()?.isCustomized
+            isCustomized()
               ? config()?.customized_themes_directory
               : config()?.themes_directory
           }
-          isCustomized={theme()?.isCustomized}
+          isCustomized={isCustomized()}
+          imageFormat={imageFormat()}
         />
       </div>
     </div>
