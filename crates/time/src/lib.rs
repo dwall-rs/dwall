@@ -407,7 +407,6 @@ impl OffsetDateTime {
         UtcDateTime::from_timestamp(utc_secs as u64)
     }
 
-    #[cfg(debug_assertions)]
     /// Constructs a local time from local time components and a time zone offset.
     ///
     /// First validates the local time, then computes UTC as `local - offset`.
