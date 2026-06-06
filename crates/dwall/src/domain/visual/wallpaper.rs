@@ -12,28 +12,33 @@ impl WallpaperSelector {
         current_altitude: f64,
         current_azimuth: f64,
     ) -> Option<u8> {
-        let min_altitude_diff = solar_configs
+        solar_configs
             .iter()
-            .map(|sa| (sa.altitude - current_altitude).abs())
-            .min_by(|a, b| a.partial_cmp(b).unwrap())?;
-
-        let closest_altitude_matches: Vec<&SolarAngle> = solar_configs
-            .iter()
-            .filter(|sa| (sa.altitude - current_altitude).abs() == min_altitude_diff)
-            .collect();
-
-        if closest_altitude_matches.len() == 1 {
-            return closest_altitude_matches[0].index.into();
-        }
-
-        closest_altitude_matches
-            .iter()
-            .min_by(|&&a, &&b| {
-                (a.azimuth - current_azimuth)
-                    .abs()
-                    .partial_cmp(&(b.azimuth - current_azimuth).abs())
+            .min_by(|a, b| {
+                solar_distance(a.altitude(), a.azimuth(), current_altitude, current_azimuth)
+                    .partial_cmp(&solar_distance(
+                        b.altitude(),
+                        b.azimuth(),
+                        current_altitude,
+                        current_azimuth,
+                    ))
                     .unwrap()
             })
-            .map(|&sa| sa.index)
+            .map(|sa| sa.index())
     }
+}
+
+/// Calculates the normalized distance between two solar positions
+///
+/// altitude range `[-90°, +90°]` (span of 180°)
+/// azimuth  range `[0°, 360°)` (span of 360°, and wraps around)
+/// After normalization both have the same scale, avoiding overly large azimuth weight
+fn solar_distance(alt1: f64, az1: f64, alt2: f64, az2: f64) -> f64 {
+    let da = (alt1 - alt2) / 180.0;
+
+    // Azimuth is a circular space; the difference between 359° and 1° is 2°, not 358°
+    let daz_raw = (az1 - az2).abs() % 360.0;
+    let daz = daz_raw.min(360.0 - daz_raw) / 360.0;
+
+    da * da + daz * daz // No need to take square root; the comparison result is the same
 }
