@@ -2,11 +2,11 @@
 //!
 //! Handles geolocation access and position management with caching optimization.
 
-use std::cell::RefCell;
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
 use windows::Devices::Geolocation::{GeolocationAccessStatus, Geolocator, PositionAccuracy};
 
+use crate::utils::cache::get_cache;
 use crate::{
     config::PositionSource,
     error::{DwallError, DwallResult},
@@ -121,49 +121,17 @@ fn get_geo_position() -> DwallResult<Position> {
 /// and significantly lower memory usage and CPU overhead.
 pub(crate) struct GeographicPositionProvider<'a> {
     coordinate_source: &'a PositionSource,
-    cached_position: RefCell<Option<(Position, Instant)>>,
 }
 
 impl<'a> GeographicPositionProvider<'a> {
     pub(crate) fn new(coordinate_source: &'a PositionSource) -> Self {
-        Self {
-            coordinate_source,
-            cached_position: RefCell::new(None),
-        }
+        Self { coordinate_source }
     }
 
     /// Retrieves a fresh position from the geolocation API
     fn get_fresh_position(&self) -> DwallResult<Position> {
         debug!("Using fresh geolocation data");
         get_geo_position()
-    }
-
-    /// Retrieves a position from cache or fetches a new one if cache is expired
-    fn get_cached_position(&self, cache_duration: Duration) -> DwallResult<Position> {
-        debug!("Checking cached position data");
-        {
-            let cache = self.cached_position.borrow();
-
-            if let Some((cached_position, cached_time)) = cache.as_ref()
-                && cached_time.elapsed() < cache_duration
-            {
-                debug!(
-                    "Using cached position data: position={}, age_secs={}",
-                    cached_position,
-                    cached_time.elapsed().as_secs()
-                );
-                return Ok(*cached_position);
-            }
-        }
-
-        debug!("Cache expired or empty, fetching new position data");
-        let position = self.get_fresh_position()?;
-
-        self.cached_position
-            .borrow_mut()
-            .replace((position, Instant::now()));
-        debug!(position = position, "Updated position cache");
-        Ok(position)
     }
 
     /// Retrieves a position from manual position
@@ -180,6 +148,18 @@ impl<'a> GeographicPositionProvider<'a> {
             "Using manual position"
         );
         Position::new(latitude, longitude, altitude)
+    }
+
+    fn get_cached_position(&self, ttl: Duration) -> DwallResult<Position> {
+        let cache = get_cache();
+        match cache.get::<Position>() {
+            Some(pos) => Ok(pos),
+            None => {
+                let pos = self.get_fresh_position()?;
+                cache.set(pos, ttl);
+                Ok(pos)
+            }
+        }
     }
 
     /// Retrieves the current position based on the configured coordinate source
