@@ -2,7 +2,7 @@ import { createSignal } from "solid-js";
 import type { ThemeID } from "~/themes";
 
 export type SettingsRoute = { path: "settings" };
-export type ThemeRoute = { path: "theme"; id: ThemeID };
+export type ThemeRoute = { path: "theme"; id: string };
 export type Route = SettingsRoute | ThemeRoute;
 
 const [route, setRoute] = createSignal<Route>({

@@ -1,18 +1,19 @@
 import { createContext, useContext, type ParentProps } from "solid-js";
 import { useThemes } from "~/hooks/theme/useThemes";
 import type { ThemeItem } from "~/themes";
+import type { CustomizedTheme } from "~/types";
 
 interface ThemesContext {
-  themes: Accessor<ThemeItem[]>;
+  allThemes: Accessor<(CustomizedTheme | ThemeItem)[]>;
 }
 
 const ThemesContext = createContext<ThemesContext>();
 
 export const ThemesProvider = (props: ParentProps) => {
-  const { themes } = useThemes();
+  const { allThemes } = useThemes();
 
   return (
-    <ThemesContext.Provider value={{ themes }}>
+    <ThemesContext.Provider value={{ allThemes }}>
       {props.children}
     </ThemesContext.Provider>
   );

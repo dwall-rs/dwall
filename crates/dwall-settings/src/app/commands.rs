@@ -5,21 +5,24 @@
 use std::{
     borrow::Cow,
     collections::HashMap,
-    path::{Path, PathBuf},
+    ffi::OsStr,
+    fs,
+    path::{Component, Path, PathBuf},
 };
 
 use dwall::{
-    ColorScheme, DWALL_CONFIG_DIR, DWALL_LOG_DIR, DisplayMonitor, config::Network,
-    domain::geography::check_location_permission, read_config_file as dwall_read_config,
-    write_config_file as dwall_write_config,
+    ColorScheme, DWALL_CONFIG_DIR, DWALL_LOG_DIR, DisplayMonitor,
+    config::{ImageFormat, Network},
+    domain::geography::check_location_permission,
+    read_config_file as dwall_read_config, write_config_file as dwall_write_config,
 };
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Manager, ResourceId, Runtime, Url, Webview, WebviewWindow};
 use tauri_plugin_updater::UpdaterExt;
 
 use crate::{
     domain::{monitor::get_monitors, settings::Config, theme::validate_solar_theme},
-    error::{DwallSettingsError, DwallSettingsResult},
+    error::DwallSettingsResult,
     infrastructure::{
         filesystem::{find_files_in_dir, list_subdirectories, move_directory},
         network::download::ThemeDownloader,
@@ -97,8 +100,10 @@ pub async fn validate_theme_cmd(
     themes_directory: &Path,
     theme_id: &str,
     is_customized: bool,
+    image_format: ImageFormat,
 ) -> DwallSettingsResult<()> {
-    validate_solar_theme(themes_directory, theme_id, is_customized).map_err(Into::into)
+    validate_solar_theme(themes_directory, theme_id, is_customized, &image_format)
+        .map_err(Into::into)
 }
 
 #[tauri::command]
@@ -247,36 +252,71 @@ pub async fn check_for_updates_cmd<R: Runtime>(
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct Theme {
+pub struct CustomizedTheme {
     id: String,
-    thumbnail: Vec<PathBuf>,
-    is_customized: bool,
+    directory: PathBuf,
+    thumbnails: Vec<PathBuf>,
+    #[serde(flatten)]
+    metadata: CustomizedThemeMetadata,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+struct CustomizedThemeMetadata {
+    image_format: ImageFormat,
+    theme_name: String,
+    author: String,
+    version: u16,
 }
 
 #[tauri::command]
 pub async fn get_customized_themes_cmd(
     customized_themes_directory: PathBuf,
-) -> DwallSettingsResult<Vec<Theme>> {
+) -> DwallSettingsResult<Vec<CustomizedTheme>> {
     if !customized_themes_directory.exists() {
         return Ok(Vec::new());
     }
 
     let subdirs = list_subdirectories(&customized_themes_directory).await?;
-    debug!("Found {} subdirectories", subdirs.len());
+    debug!(subdirs = ?subdirs, "Found subdirectories");
 
     let mut themes = Vec::with_capacity(subdirs.len());
-    for subdir in subdirs {
-        let files = find_files_in_dir(&subdir.join("thumbnails"), "avif").await?;
-        let id = subdir
-            .file_name()
-            .and_then(|n| n.to_str())
-            .ok_or(DwallSettingsError::Other(
-                "Failed to get theme ID".to_string(),
-            ))?;
-        themes.push(Theme {
-            id: id.to_string(),
-            thumbnail: files,
-            is_customized: true,
+    for subdir in subdirs
+        .into_iter()
+        .filter(|p| p.components().next_back() != Some(Component::Normal(OsStr::new("backup"))))
+    {
+        let metadata_file = subdir.join("metadata.toml");
+        let metadata_content = fs::read_to_string(&metadata_file)
+            .inspect_err(|e| error!(error = ?e, "Failed to read metadata.toml"))?;
+        let metadata: CustomizedThemeMetadata = toml::from_str(&metadata_content)
+            .inspect_err(|e| error!(error = ?e, "Failed to parse metadata"))?;
+
+        let images = find_files_in_dir(&subdir.join("images"), metadata.image_format.as_str())
+            .await
+            .inspect_err(|e| error!(error = ?e, "Failed to find images in directory"))?;
+
+        let thumbnails = find_files_in_dir(&subdir.join("thumbnails"), "avif")
+            .await
+            .inspect_err(|e| error!(error = ?e, "Failed to find avif files in directory"))?;
+
+        if images.len() != thumbnails.len() {
+            error!(
+                images = images.len(),
+                thumbnails = thumbnails.len(),
+                "Invalid subject: number of images and thumbnails are not equal"
+            );
+            continue;
+        }
+
+        themes.push(CustomizedTheme {
+            id: format!(
+                "{}-{}-v{}",
+                metadata.theme_name.replace(" ", "-"),
+                metadata.author,
+                metadata.version
+            ),
+            directory: subdir,
+            thumbnails,
+            metadata,
         });
     }
 

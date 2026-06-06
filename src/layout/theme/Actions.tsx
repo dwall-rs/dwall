@@ -5,11 +5,13 @@ import { Button } from "~/components/button";
 import { validateTheme } from "~/commands";
 import Download from "./Download";
 import { t } from "~/i18n";
+import type { ImageFormat } from "~/types";
 
 interface ThemeActionsProps {
   currentThemeID: string;
   themesDirectory?: string;
   isCustomized?: boolean;
+  imageFormat: ImageFormat;
 }
 
 const ThemeActions = (props: ThemeActionsProps) => {
@@ -45,6 +47,7 @@ const ThemeActions = (props: ThemeActionsProps) => {
       await validateTheme(
         props.themesDirectory,
         props.currentThemeID,
+        props.imageFormat,
         props.isCustomized,
       );
       setThemeExists(true);

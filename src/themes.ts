@@ -23,7 +23,7 @@ export type ThemeID = keyof typeof thumbnails_count;
 
 export interface ThemeItem {
   id: ThemeID;
-  thumbnail: string[];
+  thumbnails: string[];
   isCustomized?: boolean;
 }
 
@@ -32,7 +32,7 @@ export const themes: ThemeItem[] = (
 )
   .map(([id, count]) => ({
     id,
-    thumbnail: Array.from(
+    thumbnails: Array.from(
       { length: count },
       (_, i) => `${thumbnails_base_url}${id.replaceAll(" ", "")}/${i + 1}.avif`,
     ),

@@ -33,6 +33,10 @@ pub enum DwallSettingsError {
     Logger(#[from] log::SetLoggerError),
     #[error(transparent)]
     DirectoryMove(#[from] DirectoryMoveError),
+    #[error(transparent)]
+    Json(#[from] serde_json::Error),
+    #[error(transparent)]
+    TomlDeserialize(#[from] toml::de::Error),
     #[error("{0}")]
     Other(String),
 }

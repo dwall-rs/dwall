@@ -23,15 +23,26 @@ const DEFAULT_TITLE_BAR_COLOR_FOLLOWS_WINDOWS_THEME: bool = false;
 pub enum ImageFormat {
     #[default]
     Jpeg,
+    Png,
 }
 
-impl From<&ImageFormat> for &str {
-    fn from(val: &ImageFormat) -> Self {
-        match val {
+impl ImageFormat {
+    pub fn as_str(&self) -> &'static str {
+        match self {
             ImageFormat::Jpeg => "jpg",
+            ImageFormat::Png => "png",
         }
     }
 }
+
+// impl From<&ImageFormat> for &str {
+//     fn from(val: &ImageFormat) -> Self {
+//         match val {
+//             ImageFormat::Jpeg => "jpg",
+//             ImageFormat::Png => "png",
+//         }
+//     }
+// }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 #[serde(rename_all = "UPPERCASE", tag = "type")]

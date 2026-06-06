@@ -28,4 +28,5 @@ pub use infrastructure::platform::windows::{RegistryError, RegistryKey};
 pub use domain::geography::CoordinateError;
 pub use domain::geography::GeolocationAccessError;
 pub use domain::geography::Position as GeographicPosition;
+pub use domain::time::solar_calculator::SolarAngle;
 pub use domain::visual::ColorScheme;
