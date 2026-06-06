@@ -16,13 +16,17 @@ use crate::{
     config::{Config, ImageFormat},
     domain::{
         geography::{Position, provider::GeographicPositionProvider},
-        time::solar_calculator::{SolarAngle, SunPosition},
-        visual::color_scheme::{
-            ColorSchemeManager, ThresholdConfig, determine_color_scheme_with_hysteresis,
-            set_color_scheme,
+        time::solar_calculator::{SolarAngle, SolarPosition},
+        visual::{
+            DaylightState,
+            color_scheme::{
+                ColorSchemeManager, ThresholdConfig, determine_color_scheme_with_hysteresis,
+                set_color_scheme,
+            },
         },
     },
     infrastructure::display::wallpaper_setter::WallpaperSetter,
+    utils::cache::get_cache,
 };
 
 // Constants for improved code maintainability
@@ -280,7 +284,7 @@ impl ThemeValidator {
             Self::load_solar_angle_configuration(&theme_directory_path)?;
         let expected_image_indices: Vec<u8> = solar_angle_configuration
             .iter()
-            .map(|angle| angle.index)
+            .map(|angle| angle.index())
             .collect();
 
         if !Self::validate_theme_image_files(&theme_directory_path, &expected_image_indices, "jpg")
@@ -475,7 +479,7 @@ fn construct_wallpaper_file_path<'a>(
 /// Find the wallpaper image that best matches the current solar position
 fn find_optimal_solar_wallpaper(
     theme_directory_path: &Path,
-    current_sun_position: &SunPosition,
+    current_sun_position: &SolarPosition,
 ) -> DwallResult<(u8, Vec<SolarAngle>)> {
     let solar_angle_configuration = load_cached_solar_angles(theme_directory_path)?;
     let sun_altitude_degrees = current_sun_position.altitude();
@@ -536,11 +540,7 @@ fn process_solar_theme_cycle(
 
     let current_local_time = OffsetDateTime::now_local()?;
     let current_utc_time = current_local_time.utc()?;
-    let current_sun_position = SunPosition::new(
-        current_geographic_position.latitude(),
-        current_geographic_position.longitude(),
-        current_utc_time,
-    );
+    let current_solar_position = SolarPosition::new(current_geographic_position, &current_utc_time);
 
     let mut lock_screen_theme_identifier: Option<String> = None;
     let mut successful_monitor_count = 0;
@@ -576,7 +576,7 @@ fn process_solar_theme_cycle(
             monitor_identifier,
             assigned_theme_id,
             &theme_directory_path,
-            &current_sun_position,
+            &current_solar_position,
             wallpaper_manager,
         ) {
             error!(
@@ -599,7 +599,7 @@ fn process_solar_theme_cycle(
             configuration.image_format(),
             lock_screen_theme_id,
             &get_theme_directory_path(configuration, lock_screen_theme_id),
-            &current_sun_position,
+            &current_solar_position,
         )
     {
         warn!(
@@ -609,18 +609,43 @@ fn process_solar_theme_cycle(
         );
     }
 
+    let cache = get_cache();
+
+    let threshold_config = match cache.get::<ThresholdConfig>() {
+        Some(tc) => tc,
+        None => {
+            let tc = ThresholdConfig::from_position(current_geographic_position);
+            cache.set(tc, Duration::from_hours(24));
+            tc
+        }
+    };
+
+    let daylight_state = match cache.get::<DaylightState>() {
+        Some(ds) => ds,
+        None => {
+            let ds = DaylightState::detect(
+                current_geographic_position,
+                current_local_time.date(),
+                &threshold_config,
+            );
+            cache.set(ds, Duration::from_hours(24));
+            ds
+        }
+    };
+
     // Optionally update system color scheme based on solar position
     if configuration.auto_detect_color_scheme() {
         let current_color_scheme = ColorSchemeManager::get_current_scheme()?;
         let solar_based_color_scheme = determine_color_scheme_with_hysteresis(
-            &current_sun_position,
+            &current_solar_position,
             &current_color_scheme,
-            &ThresholdConfig::from_location(current_geographic_position),
+            &threshold_config,
             &current_local_time,
+            &daylight_state,
         );
         debug!(
             color_scheme = ?solar_based_color_scheme,
-            sun_altitude = current_sun_position.altitude(),
+            sun_altitude = current_solar_position.altitude(),
             "Automatically updating system color scheme based on solar position"
         );
         if let Err(color_scheme_error) = set_color_scheme(solar_based_color_scheme) {
@@ -646,7 +671,7 @@ fn update_monitor_solar_wallpaper(
     monitor_identifier: &str,
     theme_identifier: &str,
     theme_directory_path: &Path,
-    current_sun_position: &SunPosition,
+    current_sun_position: &SolarPosition,
     wallpaper_manager: &WallpaperSetter,
 ) -> DwallResult<()> {
     let (optimal_image_index, _) =
@@ -690,7 +715,7 @@ fn apply_lock_screen_solar_wallpaper(
     image_format: &ImageFormat,
     theme_identifier: &str,
     theme_directory_path: &Path,
-    current_sun_position: &SunPosition,
+    current_sun_position: &SolarPosition,
 ) -> DwallResult<()> {
     match find_optimal_solar_wallpaper(theme_directory_path, current_sun_position) {
         Ok((optimal_image_index, _)) => {
