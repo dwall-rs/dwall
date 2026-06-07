@@ -860,7 +860,7 @@ checksum = "92773504d58c093f6de2459af4af33faa518c13451eb8f2b5698ed3d36e7c813"
 
 [[package]]
 name = "dwall"
-version = "0.2.4"
+version = "0.2.5"
 dependencies = [
  "dirs",
  "log",
@@ -869,14 +869,14 @@ dependencies = [
  "serde_json",
  "tauri-winres",
  "thiserror 2.0.18",
- "time 0.2.4",
+ "time 0.2.5",
  "toml 1.1.2+spec-1.1.0",
  "windows",
 ]
 
 [[package]]
 name = "dwall-settings"
-version = "0.2.4"
+version = "0.2.5"
 dependencies = [
  "dirs",
  "dwall",
@@ -2010,16 +2010,16 @@ dependencies = [
 
 [[package]]
 name = "log"
-version = "0.4.30"
+version = "0.4.32"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "616ec5685824bcc94416c6d4a7a446eea774a31efd7062c8480ba6fd06d7a6e5"
+checksum = "953f07c43838f8e6f9758cab68bf5bed85465e7587ebe0b823f1bcd81978ad3a"
 
 [[package]]
 name = "logging"
-version = "0.2.4"
+version = "0.2.5"
 dependencies = [
  "log",
- "time 0.2.4",
+ "time 0.2.5",
 ]
 
 [[package]]
@@ -4016,7 +4016,7 @@ dependencies = [
 
 [[package]]
 name = "time"
-version = "0.2.4"
+version = "0.2.5"
 dependencies = [
  "libc",
  "thiserror 2.0.18",
