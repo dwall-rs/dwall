@@ -13,15 +13,10 @@ use windows::{
     core::{HSTRING, Interface},
 };
 
-use crate::{
-    domain::{
-        time::solar_calculator::SolarAngle,
-        visual::{MonitorProvider, WallpaperProvider, wallpaper::WallpaperSelector},
-    },
-    error::DwallResult,
-};
+use crate::{domain::visual::WallpaperProvider, error::DwallResult};
 
 use super::monitor_manager::{DisplayMonitor, DisplayMonitorProvider};
+use crate::domain::visual::monitor::MonitorProvider;
 
 impl WallpaperProvider for WallpaperSetter {
     fn set_monitor_wallpaper(&self, monitor_id: &str, image_path: &Path) -> DwallResult<()> {
@@ -30,20 +25,6 @@ impl WallpaperProvider for WallpaperSetter {
 
     fn set_lock_screen_image(&self, image_path: &Path) -> DwallResult<()> {
         Self::set_lock_screen_image(image_path)
-    }
-}
-
-impl MonitorProvider for WallpaperSetter {
-    fn get_monitors(&self) -> DwallResult<HashMap<String, DisplayMonitor>> {
-        self.list_available_monitors()
-    }
-
-    fn refresh_monitors(&self) -> DwallResult<HashMap<String, DisplayMonitor>> {
-        self.monitor_provider.refresh_monitors()
-    }
-
-    fn has_configuration_changed(&self) -> DwallResult<bool> {
-        self.monitor_provider.has_configuration_changed()
     }
 }
 
@@ -217,15 +198,6 @@ impl WallpaperSetter {
 
         info!(path = %image_path.display(), "Lock screen image updated");
         Ok(())
-    }
-
-    /// Finds the closest matching image using wallpaper selection logic
-    pub(crate) fn find_closest_image(
-        solar_configs: &[SolarAngle],
-        current_altitude: f64,
-        current_azimuth: f64,
-    ) -> Option<u8> {
-        WallpaperSelector::find_closest_image(solar_configs, current_altitude, current_azimuth)
     }
 
     // Private methods
