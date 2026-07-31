@@ -35,6 +35,15 @@ impl DisplayMonitor {
         }
     }
 
+    /// Test-only constructor for creating DisplayMonitor instances in tests
+    pub fn new_test(
+        device_path: String,
+        friendly_name: String,
+        position_index: Option<u32>,
+    ) -> Self {
+        Self::new(device_path, friendly_name, position_index)
+    }
+
     pub fn device_path(&self) -> &str {
         &self.device_path
     }

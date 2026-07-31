@@ -14,11 +14,38 @@ use windows::{
 };
 
 use crate::{
-    domain::{time::solar_calculator::SolarAngle, visual::wallpaper::WallpaperSelector},
+    domain::{
+        time::solar_calculator::SolarAngle,
+        visual::{MonitorProvider, WallpaperProvider, wallpaper::WallpaperSelector},
+    },
     error::DwallResult,
 };
 
 use super::monitor_manager::{DisplayMonitor, DisplayMonitorProvider};
+
+impl WallpaperProvider for WallpaperSetter {
+    fn set_monitor_wallpaper(&self, monitor_id: &str, image_path: &Path) -> DwallResult<()> {
+        self.set_monitor_wallpaper_internal(monitor_id, image_path)
+    }
+
+    fn set_lock_screen_image(&self, image_path: &Path) -> DwallResult<()> {
+        Self::set_lock_screen_image(image_path)
+    }
+}
+
+impl MonitorProvider for WallpaperSetter {
+    fn get_monitors(&self) -> DwallResult<HashMap<String, DisplayMonitor>> {
+        self.list_available_monitors()
+    }
+
+    fn refresh_monitors(&self) -> DwallResult<HashMap<String, DisplayMonitor>> {
+        self.monitor_provider.refresh_monitors()
+    }
+
+    fn has_configuration_changed(&self) -> DwallResult<bool> {
+        self.monitor_provider.has_configuration_changed()
+    }
+}
 
 /// Wallpaper operation errors
 #[derive(Debug, thiserror::Error)]
@@ -68,7 +95,7 @@ impl WallpaperSetter {
     }
 
     /// Sets wallpaper for a specific monitor
-    pub(crate) fn set_monitor_wallpaper(
+    pub(crate) fn set_monitor_wallpaper_internal(
         &self,
         monitor_id: &str,
         image_path: &Path,
@@ -120,19 +147,6 @@ impl WallpaperSetter {
         &self,
     ) -> DwallResult<HashMap<String, DisplayMonitor>> {
         self.monitor_provider.refresh_monitors()
-    }
-
-    /// Detects if monitor configuration has changed since last check
-    ///
-    /// This is useful for detecting when monitors are plugged/unplugged during daemon runtime.
-    /// The check is lightweight and relies on the cached monitor list comparison.
-    ///
-    /// # Returns
-    /// - `Ok(true)` if monitor configuration has changed
-    /// - `Ok(false)` if monitor configuration is unchanged
-    /// - `Err(_)` if unable to query current monitor configuration
-    pub fn is_monitor_configuration_stale(&self) -> DwallResult<bool> {
-        self.monitor_provider.has_configuration_changed()
     }
 
     /// Sets lock screen wallpaper
