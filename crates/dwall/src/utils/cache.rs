@@ -4,6 +4,7 @@ use std::thread;
 use std::time::{Duration, Instant};
 
 use crate::Position;
+use crate::domain::time::solar_calculator::SolarPosition;
 use crate::domain::visual::{DaylightState, ThresholdConfig};
 
 macro_rules! define_cache {
@@ -14,7 +15,7 @@ macro_rules! define_cache {
 
         // 2a. Generate a unified enum, variant names use UpperCamelCase ($variant)
         #[derive(Debug, Clone)]
-        pub enum CacheValue {
+        pub(crate) enum CacheValue {
             $( $variant($type), )+
         }
 
@@ -73,9 +74,10 @@ define_cache! {
     Position / position => Position,
     ThresholdConfig / threshold_config => ThresholdConfig,
     DaylightState / daylight_state => DaylightState,
+    SolarPosition / solar_position => SolarPosition,
 }
 
-pub trait Cacheable: Clone + 'static {
+pub(crate) trait Cacheable: Clone + 'static {
     fn into_value(self) -> CacheValue;
     fn from_value(v: &CacheValue) -> Option<&Self>;
 }
@@ -127,14 +129,14 @@ impl Cache {
     }
 
     /// Store a value, specifying TTL
-    pub fn set<T: Cacheable>(&self, value: T, ttl: Duration) {
+    pub(crate) fn set<T: Cacheable>(&self, value: T, ttl: Duration) {
         let cv = value.into_value();
         let entry = Entry::new(cv, ttl);
         *self.inner.lock().unwrap().slot_mut(TypeId::of::<T>()) = Some(entry);
     }
 
     /// Retrieve a value (returns None if missing or expired, with lazy deletion)
-    pub fn get<T: Cacheable>(&self) -> Option<T> {
+    pub(crate) fn get<T: Cacheable>(&self) -> Option<T> {
         let mut guard = self.inner.lock().unwrap();
         let slot = guard.slot_mut(TypeId::of::<T>());
         match slot {
