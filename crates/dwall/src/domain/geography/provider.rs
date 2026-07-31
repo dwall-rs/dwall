@@ -5,7 +5,6 @@
 use std::time::Duration;
 
 use crate::domain::geography::PositionProvider;
-use crate::infrastructure::platform::Positioner;
 use crate::utils::cache::get_cache;
 use crate::{config::PositionSource, error::DwallResult};
 
@@ -16,16 +15,16 @@ use super::position::Position;
 /// Implements caching optimization for system information that is accessed frequently
 /// but changes infrequently. Cache duration extended to 5 minutes to reduce 90% of API calls
 /// and significantly lower memory usage and CPU overhead.
-pub(crate) struct GeographicPositionProvider<'a> {
+pub(crate) struct GeographicPositionProvider<'a, P: PositionProvider> {
     coordinate_source: &'a PositionSource,
-    position_provider: Positioner,
+    position_provider: P,
 }
 
-impl<'a> GeographicPositionProvider<'a> {
-    pub(crate) fn new(coordinate_source: &'a PositionSource) -> Self {
+impl<'a, P: PositionProvider> GeographicPositionProvider<'a, P> {
+    pub(crate) fn new(coordinate_source: &'a PositionSource, position_provider: P) -> Self {
         Self {
             coordinate_source,
-            position_provider: Positioner::new(),
+            position_provider,
         }
     }
 
@@ -85,9 +84,35 @@ impl<'a> GeographicPositionProvider<'a> {
     }
 }
 
+impl<'a, P: PositionProvider> PositionProvider for GeographicPositionProvider<'a, P> {
+    fn get_current_position(&self) -> DwallResult<Position> {
+        self.get_current_position()
+    }
+
+    fn check_location_permission(&self) -> DwallResult<()> {
+        self.position_provider.check_location_permission()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::domain::geography::PositionProvider;
+
+    /// Mock PositionProvider for testing
+    struct MockPositionProvider {
+        position: Position,
+    }
+
+    impl PositionProvider for MockPositionProvider {
+        fn get_current_position(&self) -> DwallResult<Position> {
+            Ok(self.position)
+        }
+
+        fn check_location_permission(&self) -> DwallResult<()> {
+            Ok(())
+        }
+    }
 
     #[test]
     fn test_provider_manual_coordinates() {
@@ -96,11 +121,32 @@ mod tests {
             longitude: 90.0,
             altitude: 43.5,
         };
-        let provider = GeographicPositionProvider::new(&coord_source);
+        let mock_provider = MockPositionProvider {
+            position: Position::from_raw_position(0.0, 0.0, 0.0),
+        };
+        let provider = GeographicPositionProvider::new(&coord_source, mock_provider);
 
         let pos = provider.get_current_position().unwrap();
         assert_eq!(pos.latitude(), 45.0);
         assert_eq!(pos.longitude(), 90.0);
         assert_eq!(pos.altitude(), 43.5);
+    }
+
+    #[test]
+    fn test_provider_with_mock_position_provider() {
+        let coord_source = PositionSource::Automatic {
+            update_on_each_calculation: true,
+            cache_minutes: 5,
+        };
+        let expected_position = Position::from_raw_position(40.0, 116.0, 50.0);
+        let mock_provider = MockPositionProvider {
+            position: expected_position,
+        };
+        let provider = GeographicPositionProvider::new(&coord_source, mock_provider);
+
+        let pos = provider.get_current_position().unwrap();
+        assert_eq!(pos.latitude(), 40.0);
+        assert_eq!(pos.longitude(), 116.0);
+        assert_eq!(pos.altitude(), 50.0);
     }
 }
