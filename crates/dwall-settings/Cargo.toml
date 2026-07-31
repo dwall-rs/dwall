@@ -28,16 +28,6 @@ dirs = { workspace = true, default-features = false }
 serde = { workspace = true }
 serde_json = { workspace = true, default-features = false }
 thiserror = { workspace = true, default-features = false }
-windows = { version = "0.61", default-features = false, features = [
-    "Win32_System_Registry",
-    "Win32_System_Diagnostics_ToolHelp",
-    "Win32_System_ProcessStatus",
-    "Win32_Graphics_Dwm",
-    "Wdk_System_SystemServices",
-    "Win32_System_SystemInformation",
-    "Win32_Globalization",
-    "Win32_System_Threading",
-] }
 rand = { version = "0.10", default-features = false, features = ["thread_rng"] }
 toml = { version = "1", default-features = false, features = ["parse"] }
 
@@ -49,6 +39,18 @@ tauri-plugin-updater = { version = "2", default-features = false, features = [
 ] }
 tauri-plugin-dialog = "2"
 tauri-plugin-process = "2"
+
+[target.'cfg(windows)'.dependencies]
+windows = { version = "0.61", default-features = false, features = [
+    "Win32_System_Registry",
+    "Win32_System_Diagnostics_ToolHelp",
+    "Win32_System_ProcessStatus",
+    "Win32_Graphics_Dwm",
+    "Wdk_System_SystemServices",
+    "Win32_System_SystemInformation",
+    "Win32_Globalization",
+    "Win32_System_Threading",
+] }
 
 [features]
 default = []

@@ -13,8 +13,11 @@ use std::{
 use dwall::{
     ColorScheme, DWALL_CONFIG_DIR, DWALL_LOG_DIR, DisplayMonitor,
     config::{ImageFormat, Network},
-    domain::geography::check_location_permission,
-    read_config_file as dwall_read_config, write_config_file as dwall_write_config,
+    domain::geography::PositionProvider,
+    infrastructure::{
+        filesystem::{config_reader::ConfigReader, config_writer::ConfigWriter},
+        platform::Positioner,
+    },
 };
 use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Manager, ResourceId, Runtime, Url, Webview, WebviewWindow};
@@ -50,13 +53,18 @@ pub fn show_window(app: AppHandle, label: &str) -> DwallSettingsResult<()> {
 
 #[tauri::command]
 pub async fn read_config_file() -> DwallSettingsResult<dwall::Config> {
-    dwall_read_config().map_err(Into::into)
+    let config_path = DWALL_CONFIG_DIR.join("config.toml");
+    ConfigReader::read_from_path(&config_path).map_err(Into::into)
 }
 
 #[tauri::command]
 pub async fn write_config_file(config: dwall::Config) -> DwallSettingsResult<()> {
     debug!(config = ?config, "Writing config file");
-    dwall_write_config(&config).map_err(Into::into)
+    let config_path = DWALL_CONFIG_DIR.join("config.toml");
+    let writer = ConfigWriter;
+    writer
+        .write_to_path(&config_path, &config)
+        .map_err(Into::into)
 }
 
 #[tauri::command]
@@ -152,7 +160,7 @@ pub async fn cancel_theme_download_cmd(
 
 #[tauri::command]
 pub fn request_location_permission() -> DwallSettingsResult<()> {
-    check_location_permission().map_err(Into::into)
+    Positioner.check_location_permission().map_err(Into::into)
 }
 
 #[tauri::command]

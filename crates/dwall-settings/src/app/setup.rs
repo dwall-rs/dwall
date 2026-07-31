@@ -55,7 +55,10 @@ pub fn setup_app(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>>
         }
     });
 
-    let config = dwall::read_config_file()?;
+    let config_path = dwall::DWALL_CONFIG_DIR.join("config.toml");
+    let config = dwall::infrastructure::filesystem::config_reader::ConfigReader::read_from_path(
+        &config_path,
+    )?;
     let http_client = Arc::new(HttpClient::create_client(config.network())?);
 
     let theme_downloader = ThemeDownloader::new(http_client.clone());

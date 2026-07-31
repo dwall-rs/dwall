@@ -5,8 +5,8 @@
 use std::{os::windows::process::CommandExt, process::Command, time::Duration};
 
 use dwall::{
-    Config, DWALL_CONFIG_DIR, read_config_file as dwall_read_config,
-    write_config_file as dwall_write_config,
+    Config, DWALL_CONFIG_DIR, infrastructure::filesystem::config_reader::ConfigReader,
+    infrastructure::filesystem::config_writer::ConfigWriter,
 };
 use tokio::time::sleep;
 use windows::Win32::System::Threading::CREATE_NO_WINDOW;
@@ -59,7 +59,8 @@ pub fn get_applied_theme_id(monitor_id: &str) -> DwallSettingsResult<Option<Stri
     }
 
     // Read current configuration
-    match dwall_read_config() {
+    let config_path = DWALL_CONFIG_DIR.join("config.toml");
+    match ConfigReader::read_from_path(&config_path) {
         Ok(config) => {
             let monitor_themes = config.monitor_specific_wallpapers();
 
@@ -67,22 +68,24 @@ pub fn get_applied_theme_id(monitor_id: &str) -> DwallSettingsResult<Option<Stri
             // TODO: `monitor_id == "all"` is deprecated, remove in the future
             let theme_id = if monitor_id == "all" {
                 match monitor_themes {
-                    dwall::config::MonitorSpecificWallpapers::All(theme_id) => Some(theme_id),
-                    dwall::config::MonitorSpecificWallpapers::Specific(themes_map) => {
+                    dwall::config::MonitorSpecificWallpapers::All(theme_id) => {
+                        Some(theme_id.clone())
+                    }
+                    dwall::config::MonitorSpecificWallpapers::Individual(themes_map) => {
                         let mut iter = themes_map.values();
                         let first_value = iter.next();
                         if iter.all(|value| Some(value) == first_value) {
-                            first_value
+                            first_value.cloned()
                         } else {
                             None
                         }
                     }
                 }
             } else {
-                monitor_themes.get(monitor_id)
+                monitor_themes.get(monitor_id).cloned()
             };
 
-            Ok(theme_id.map(|s| s.to_string()))
+            Ok(theme_id)
         }
         Err(e) => Err(e.into()),
     }
@@ -102,7 +105,9 @@ pub async fn apply_theme(config: Config) -> DwallSettingsResult<()> {
         }
     }
 
-    dwall_write_config(&config)?;
+    let config_path = DWALL_CONFIG_DIR.join("config.toml");
+    let writer = ConfigWriter;
+    writer.write_to_path(&config_path, &config)?;
 
     // If no themes are configured, we're done
     if config.monitor_specific_wallpapers().is_empty() {
