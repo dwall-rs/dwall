@@ -9,7 +9,7 @@ use std::{
 use serde::{Deserialize, Serialize};
 use windows::Win32::Devices::Display::GUID_DEVINTERFACE_MONITOR;
 
-use crate::{error::DwallResult, utils::string::WideStringRead};
+use crate::{domain::visual::MonitorProvider, error::DwallResult, utils::string::WideStringRead};
 
 use super::device_query::query_device_friendly_name;
 use super::display_query::{query_display_paths, query_target_name};
@@ -100,9 +100,10 @@ impl DisplayMonitorProvider {
     pub fn new() -> Self {
         Default::default()
     }
+}
 
-    /// Gets all available monitors with optimized caching strategy
-    pub fn get_monitors(&self) -> DwallResult<HashMap<String, DisplayMonitor>> {
+impl MonitorProvider for DisplayMonitorProvider {
+    fn get_monitors(&self) -> DwallResult<HashMap<String, DisplayMonitor>> {
         {
             let cache = self.cache.borrow();
             if cache.is_valid() {
@@ -114,8 +115,7 @@ impl DisplayMonitorProvider {
         self.refresh_monitors()
     }
 
-    /// Forces a refresh of monitor information
-    pub(crate) fn refresh_monitors(&self) -> DwallResult<HashMap<String, DisplayMonitor>> {
+    fn refresh_monitors(&self) -> DwallResult<HashMap<String, DisplayMonitor>> {
         debug!("Refreshing monitor information");
         let monitors = fetch_system_monitors()?;
 
@@ -124,8 +124,7 @@ impl DisplayMonitorProvider {
         Ok(monitors)
     }
 
-    /// Detects if monitor configuration has changed since last check
-    pub(crate) fn has_configuration_changed(&self) -> DwallResult<bool> {
+    fn has_configuration_changed(&self) -> DwallResult<bool> {
         let current_monitors = fetch_system_monitors()?;
         let cache = self.cache.borrow();
 
@@ -149,7 +148,7 @@ thread_local! {
 }
 
 /// Queries monitor information from the system
-pub(crate) fn fetch_system_monitors() -> DwallResult<HashMap<String, DisplayMonitor>> {
+fn fetch_system_monitors() -> DwallResult<HashMap<String, DisplayMonitor>> {
     debug!("Fetching monitor information from system");
     let mut monitors = HashMap::new();
 

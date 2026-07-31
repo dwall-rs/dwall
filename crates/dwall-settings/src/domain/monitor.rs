@@ -4,7 +4,7 @@
 
 use std::collections::HashMap;
 
-use dwall::{DisplayMonitor, DisplayMonitorProvider, DwallResult};
+use dwall::{DisplayMonitor, DisplayMonitorProvider, DwallResult, domain::visual::MonitorProvider};
 
 /// Get all available monitors
 pub fn get_monitors() -> DwallResult<HashMap<String, DisplayMonitor>> {
