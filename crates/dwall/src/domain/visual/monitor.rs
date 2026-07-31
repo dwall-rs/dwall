@@ -1,6 +1,8 @@
 use std::collections::HashMap;
 
-use crate::{DisplayMonitor, DwallResult};
+#[cfg(windows)]
+use crate::DisplayMonitor;
+use crate::DwallResult;
 
 /// Trait for providing monitor/display information
 ///

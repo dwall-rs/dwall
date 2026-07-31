@@ -2,10 +2,12 @@ use crate::domain::geography::CoordinateError;
 #[cfg(windows)]
 use crate::domain::geography::GeolocationAccessError;
 use crate::domain::visual::ThemeError;
-use crate::infrastructure::display::DisplayError;
-use crate::infrastructure::display::WallpaperError;
 #[cfg(windows)]
 use crate::infrastructure::platform::RegistryError;
+#[cfg(windows)]
+use crate::infrastructure::platform::windows::display::DisplayError;
+#[cfg(windows)]
+use crate::infrastructure::platform::windows::display::WallpaperError;
 
 /// Application result type, used for unified error handling
 pub type DwallResult<T> = std::result::Result<T, DwallError>;

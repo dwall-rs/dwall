@@ -6,7 +6,7 @@ use std::{
 };
 
 use crate::{
-    DisplayMonitor, DwallResult,
+    DwallResult,
     config::ImageFormat,
     domain::{
         time::solar_calculator::SolarPosition,
@@ -15,6 +15,9 @@ use crate::{
         },
     },
 };
+
+#[cfg(windows)]
+use crate::DisplayMonitor;
 
 /// Applies wallpapers to monitors based on solar position
 pub(crate) struct WallpaperApplier<T: WallpaperProvider + MonitorProvider> {
@@ -157,7 +160,7 @@ fn find_optimal_solar_wallpaper(
     );
 
     let optimal_image_index =
-        crate::infrastructure::display::wallpaper_setter::WallpaperSetter::find_closest_image(
+        crate::infrastructure::platform::windows::display::wallpaper_setter::WallpaperSetter::find_closest_image(
             &solar_angle_configuration,
             sun_altitude_degrees,
             sun_azimuth_degrees,

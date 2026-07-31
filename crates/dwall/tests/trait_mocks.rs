@@ -15,7 +15,7 @@ use mockall::predicate::*;
 
 use dwall::domain::geography::Position;
 use dwall::domain::visual::ColorScheme;
-use dwall::infrastructure::display::monitor_manager::DisplayMonitor;
+use dwall::infrastructure::platform::windows::display::monitor_manager::DisplayMonitor;
 
 // ── Mock implementations ────────────────────────────────────────────────────
 

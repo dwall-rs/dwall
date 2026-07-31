@@ -5,9 +5,8 @@ use crate::{
     DwallResult,
     domain::visual::theme::engine::ThemeEngine,
     infrastructure::{
-        display::wallpaper_setter::WallpaperSetter,
         filesystem::{config_reader::ConfigReader, config_watcher::ConfigWatcher},
-        platform::ColorSchemeScheduler,
+        platform::{ColorSchemeScheduler, windows::display::wallpaper_setter::WallpaperSetter},
     },
     lazy::DWALL_CONFIG_DIR,
 };

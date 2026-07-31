@@ -20,7 +20,8 @@ pub use domain::geography::Position;
 pub use domain::visual::{ThemeValidator, apply_solar_theme};
 
 // Re-export infrastructure types
-pub use infrastructure::display::{DisplayMonitor, DisplayMonitorProvider};
+#[cfg(windows)]
+pub use infrastructure::platform::windows::display::{DisplayMonitor, DisplayMonitorProvider};
 
 // Backwards compatibility aliases
 pub use domain::geography::CoordinateError;
