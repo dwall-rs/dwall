@@ -1,5 +1,7 @@
 //! Color scheme application logic for automatic light/dark mode switching
 
+use std::time::Duration;
+
 use time::OffsetDateTime;
 
 use crate::{
@@ -35,6 +37,7 @@ impl<T: ColorSchemeProvider> ColorSchemeApplier<T> {
     pub(crate) fn update_color_scheme(
         &self,
         config: &Config,
+        now: &OffsetDateTime,
         geographic_position: &Position,
         solar_position: &SolarPosition,
     ) -> DwallResult<()> {
@@ -56,13 +59,8 @@ impl<T: ColorSchemeProvider> ColorSchemeApplier<T> {
         let daylight_state = match cache.get::<DaylightState>() {
             Some(ds) => ds,
             None => {
-                let current_local_time = OffsetDateTime::now_local()?;
-                let ds = DaylightState::detect(
-                    geographic_position,
-                    current_local_time.date(),
-                    &threshold_config,
-                );
-                cache.set(ds, std::time::Duration::from_hours(24));
+                let ds = DaylightState::detect(geographic_position, now.date(), &threshold_config);
+                cache.set(ds, Duration::from_hours(24));
                 ds
             }
         };
@@ -72,7 +70,7 @@ impl<T: ColorSchemeProvider> ColorSchemeApplier<T> {
             solar_position,
             &current_color_scheme,
             &threshold_config,
-            &OffsetDateTime::now_local()?,
+            now,
             &daylight_state,
         );
 
