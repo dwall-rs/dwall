@@ -1,6 +1,5 @@
 pub mod color_scheme;
 pub mod monitor;
-pub mod solar_source;
 pub mod theme;
 pub mod wallpaper;
 
