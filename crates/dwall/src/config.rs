@@ -637,6 +637,9 @@ mod tests {
     #[test]
     fn snapshot_default_config() {
         let config = Config::default();
-        insta::assert_json_snapshot!("default_config", config);
+        insta::assert_json_snapshot!("default_config", config, {
+            ".themes_directory" => "[themes_directory]",
+            ".customized_themes_directory" => "[customized_themes_directory]",
+        });
     }
 }

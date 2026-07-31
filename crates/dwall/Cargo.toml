@@ -50,7 +50,7 @@ windows = { version = "0", default-features = false, features = [
 
 [dev-dependencies]
 mockall = "0.13"
-insta = { version = "1", features = ["json"] }
+insta = { version = "1", features = ["json", "redactions"] }
 
 [features]
 default = []

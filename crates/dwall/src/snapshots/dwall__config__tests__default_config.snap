@@ -12,8 +12,8 @@ expression: config
   },
   "auto_detect_color_scheme": true,
   "lock_screen_wallpaper_enabled": true,
-  "themes_directory": "C:\\Users\\wzl03\\AppData\\Roaming\\dwall\\themes",
-  "customized_themes_directory": "C:\\Users\\wzl03\\AppData\\Roaming\\dwall\\customize",
+  "themes_directory": "[themes_directory]",
+  "customized_themes_directory": "[customized_themes_directory]",
   "monitor_specific_wallpapers": {},
   "interval": 15
 }
