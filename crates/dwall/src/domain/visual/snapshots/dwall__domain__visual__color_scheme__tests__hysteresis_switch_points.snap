@@ -1,0 +1,10 @@
+---
+source: crates/dwall/src/domain/visual/color_scheme.rs
+expression: "{\n    let mut map = std::collections::HashMap::new();\n    map.insert(\"base_threshold\".to_string(), config.base_threshold);\n    map.insert(\"light_switch_point\".to_string(), light_switch);\n    map.insert(\"dark_switch_point\".to_string(), dark_switch);\n    map.insert(\"hysteresis_band\".to_string(), config.hysteresis_band); map\n}"
+---
+{
+  "light_switch_point": -5.5,
+  "hysteresis_band": 0.5,
+  "dark_switch_point": -6.5,
+  "base_threshold": -6.0
+}

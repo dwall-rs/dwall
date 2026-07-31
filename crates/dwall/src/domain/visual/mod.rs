@@ -1,7 +1,12 @@
 pub mod color_scheme;
-pub mod theme_processor;
-pub(crate) mod wallpaper;
+pub mod monitor;
+pub mod solar_source;
+pub mod theme;
+pub mod wallpaper;
 
 // Re-export commonly used types
-pub use color_scheme::{ColorScheme, DaylightState, ThresholdConfig};
-pub use theme_processor::{ThemeError, ThemeValidator, apply_solar_theme};
+pub use color_scheme::{ColorScheme, ColorSchemeProvider, DaylightState, ThresholdConfig};
+pub use monitor::MonitorProvider;
+pub use theme::engine::apply_solar_theme;
+pub use theme::{ThemeError, ThemeValidator};
+pub use wallpaper::WallpaperProvider;
