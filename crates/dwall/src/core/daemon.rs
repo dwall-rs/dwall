@@ -3,10 +3,16 @@ use std::time::Duration;
 
 use crate::{
     DwallResult,
-    domain::visual::theme::engine::ThemeEngine,
+    domain::{geography::provider::GeographicPositionProvider, visual::theme::engine::ThemeEngine},
+    error::DwallError,
     infrastructure::{
         filesystem::{config_reader::ConfigReader, config_watcher::ConfigWatcher},
-        platform::{ColorSchemeScheduler, windows::display::wallpaper_setter::WallpaperSetter},
+        platform::{
+            ColorSchemeScheduler, Positioner,
+            windows::display::{
+                monitor_manager::DisplayMonitorProvider, wallpaper_setter::WallpaperSetter,
+            },
+        },
     },
     lazy::DWALL_CONFIG_DIR,
 };
@@ -33,10 +39,18 @@ impl DaemonApplication {
 
         loop {
             let config = ConfigReader::read_from_path(self.config_watcher.config_path())?;
-            let wallpaper_setter =
-                WallpaperSetter::new().map_err(crate::error::DwallError::WallpaperManager)?;
+            let wallpaper_setter = WallpaperSetter::new().map_err(DwallError::WallpaperManager)?;
+            let monitor_provider = DisplayMonitorProvider::new();
             let color_scheme_backend = ColorSchemeScheduler::new();
-            let theme_engine = ThemeEngine::new(&config, wallpaper_setter, color_scheme_backend);
+            let position_provider =
+                GeographicPositionProvider::new(config.position_source(), Positioner::new());
+            let theme_engine = ThemeEngine::new(
+                &config,
+                wallpaper_setter,
+                monitor_provider,
+                color_scheme_backend,
+                &position_provider,
+            );
 
             info!(
                 update_interval_seconds = config.interval(),
@@ -50,7 +64,13 @@ impl DaemonApplication {
     /// Runs the engine loop until config changes or max failures reached
     fn run_engine_loop(
         &mut self,
-        theme_engine: &ThemeEngine<'_, WallpaperSetter, ColorSchemeScheduler>,
+        theme_engine: &ThemeEngine<
+            '_,
+            WallpaperSetter,
+            DisplayMonitorProvider,
+            ColorSchemeScheduler,
+            GeographicPositionProvider<'_, Positioner>,
+        >,
         consecutive_failure_count: &mut u8,
     ) -> DwallResult<()> {
         let update_interval = Duration::from_secs(theme_engine.update_interval().into());
