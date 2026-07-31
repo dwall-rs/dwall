@@ -29,6 +29,8 @@ dirs = { workspace = true, default-features = false }
 serde = { workspace = true, default-features = false }
 serde_json = { workspace = true, default-features = false }
 thiserror = { workspace = true, default-features = false }
+
+[target.'cfg(windows)'.dependencies]
 windows = { version = "0", default-features = false, features = [
     "std",
     "Devices_Geolocation",
@@ -45,6 +47,10 @@ windows = { version = "0", default-features = false, features = [
     "Win32_Devices_DeviceAndDriverInstallation",
 ] }
 
+
+[dev-dependencies]
+mockall = "0.13"
+insta = { version = "1", features = ["json"] }
 
 [features]
 default = []
