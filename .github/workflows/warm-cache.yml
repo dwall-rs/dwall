@@ -74,21 +74,23 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-cargo-registry-
 
-      - name: Build dwall
-        run: |
-          cargo build --release -p dwall
-
       - name: Cache Rust debug dependencies
         uses: actions/cache@v5
         with:
           path: |
+            target/debug/.fingerprint
             target/debug/deps
             target/debug/build
           key: ${{ runner.os }}-rust-debug-${{ steps.rust-toolchain.outputs.cachekey }}-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: |
             ${{ runner.os }}-rust-debug-
 
+      - name: Create mock dwall.exe
+        run: |
+          New-Item -ItemType File -Path target/release/dwall.exe -Value "" -Force
+
       - name: Build caches
         run: |
           cargo fetch
           cargo build --tests
+          cargo clippy -- -D warnings
