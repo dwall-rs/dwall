@@ -9,13 +9,15 @@
 //!
 //! # Modules
 //!
-//! - `filesystem`: File system operations and directory management
-//! - `process`: Process creation, management, and termination
-//! - `registry`: Windows registry operations for auto-start and other settings
-//! - `network`: Network operations including HTTP requests and downloads
-//! - `window`: Window management and UI-related operations
+//! - `filesystem`: File system operations (pure technical)
+//! - `process`: Process management (pure technical)
+//! - `registry`: Windows registry operations
+//! - `network`: Network operations (pure technical)
+//! - `window`: Window management (pure technical)
+//! - `logging`: Log parsing utilities
 
 pub mod filesystem;
+pub mod logging;
 pub mod network;
 pub mod process;
 pub mod registry;
