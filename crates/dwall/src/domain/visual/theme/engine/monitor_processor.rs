@@ -31,7 +31,7 @@ impl MonitorProcessor {
         let mut success_count = 0;
 
         for monitor_id in monitors.keys() {
-            let theme_id = match configs.get(monitor_id) {
+            let theme_id = match configs.as_ref().and_then(|c| c.get(monitor_id)) {
                 Some(id) => id.as_ref(),
                 None => {
                     debug!(monitor_id = monitor_id, "No theme config, skipping");

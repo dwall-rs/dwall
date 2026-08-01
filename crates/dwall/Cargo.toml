@@ -29,6 +29,7 @@ dirs = { workspace = true, default-features = false }
 serde = { workspace = true, default-features = false }
 serde_json = { workspace = true, default-features = false }
 thiserror = { workspace = true, default-features = false }
+getrandom = "0.2"
 
 [target.'cfg(windows)'.dependencies]
 windows = { version = "0", default-features = false, features = [

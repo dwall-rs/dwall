@@ -161,8 +161,9 @@ where
 
     fn get_first_configured_theme(&self) -> Option<String> {
         match self.config.monitor_specific_wallpapers() {
-            MonitorSpecificWallpapers::All(theme_id) => Some(theme_id.clone()),
-            MonitorSpecificWallpapers::Individual(map) => map.values().next().cloned(),
+            Some(MonitorSpecificWallpapers::All(theme_id)) => Some(theme_id.clone()),
+            Some(MonitorSpecificWallpapers::Individual(map)) => map.values().next().cloned(),
+            None => None,
         }
     }
 }
@@ -181,7 +182,10 @@ where
     T: ColorSchemeProvider,
     P: PositionProvider,
 {
-    if configuration.monitor_specific_wallpapers().is_empty() {
+    if configuration
+        .monitor_specific_wallpapers()
+        .is_none_or(|w| w.is_empty())
+    {
         warn!(
             "No monitor-specific wallpaper configurations found, theme daemon will not be started"
         );
