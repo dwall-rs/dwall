@@ -5,7 +5,6 @@
 //! - After all themes are used, reshuffle and start a new round
 //! - State is kept in memory only (not persisted to config)
 
-use getrandom::getrandom;
 use time::Date;
 
 /// Filter available themes by user-specified pool
@@ -60,7 +59,7 @@ impl SimpleRng {
 /// Falls back to system time if entropy source is unavailable.
 fn get_random_seed() -> u64 {
     let mut buf = [0u8; 8];
-    if getrandom(&mut buf).is_ok() {
+    if getrandom::fill(&mut buf).is_ok() {
         return u64::from_ne_bytes(buf);
     }
 
