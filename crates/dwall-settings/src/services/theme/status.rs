@@ -1,7 +1,7 @@
 //! Theme status provider service
 
-use dwall::infrastructure::filesystem::config_reader::ConfigReader;
 use dwall::DWALL_CONFIG_DIR;
+use dwall::infrastructure::filesystem::config_reader::ConfigReader;
 
 use crate::error::DwallSettingsResult;
 use crate::infrastructure::process::finder::find_process_by_path;
