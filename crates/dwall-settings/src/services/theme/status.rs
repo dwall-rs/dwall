@@ -24,8 +24,10 @@ impl ThemeStatusProvider {
 
         let theme_id = if monitor_id == "all" {
             match monitor_themes {
-                dwall::config::MonitorSpecificWallpapers::All(theme_id) => Some(theme_id.clone()),
-                dwall::config::MonitorSpecificWallpapers::Individual(themes_map) => {
+                Some(dwall::config::MonitorSpecificWallpapers::All(theme_id)) => {
+                    Some(theme_id.clone())
+                }
+                Some(dwall::config::MonitorSpecificWallpapers::Individual(themes_map)) => {
                     let mut iter = themes_map.values();
                     let first_value = iter.next();
                     if iter.all(|value| Some(value) == first_value) {
@@ -34,9 +36,10 @@ impl ThemeStatusProvider {
                         None
                     }
                 }
+                None => None,
             }
         } else {
-            monitor_themes.get(monitor_id).cloned()
+            monitor_themes.and_then(|t| t.get(monitor_id).cloned())
         };
 
         Ok(theme_id)

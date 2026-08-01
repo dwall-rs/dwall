@@ -32,7 +32,10 @@ impl ThemeApplier {
         let writer = dwall::infrastructure::filesystem::config_writer::ConfigWriter;
         writer.write_to_path(&config_path, &config)?;
 
-        if config.monitor_specific_wallpapers().is_empty() {
+        if config
+            .monitor_specific_wallpapers()
+            .is_none_or(|w| w.is_empty())
+        {
             return Ok(());
         }
 

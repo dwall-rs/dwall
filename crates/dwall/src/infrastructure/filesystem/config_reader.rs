@@ -28,7 +28,7 @@ impl ConfigReader {
         let config = Config::from(raw_config);
 
         config.validate()?;
-        info!("Configuration loaded successfully");
+        info!(config = ?config, "Configuration loaded successfully");
 
         Ok(config)
     }

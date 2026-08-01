@@ -29,9 +29,11 @@ dirs = { workspace = true, default-features = false }
 serde = { workspace = true, default-features = false }
 serde_json = { workspace = true, default-features = false }
 thiserror = { workspace = true, default-features = false }
+getrandom = "0.4"
 
 [target.'cfg(windows)'.dependencies]
-windows = { version = "0", default-features = false, features = [
+# Keep version in sync with tauri
+windows = { version = "0.61", default-features = false, features = [
     "std",
     "Devices_Geolocation",
     "Win32_System_Registry",
@@ -49,7 +51,7 @@ windows = { version = "0", default-features = false, features = [
 
 
 [dev-dependencies]
-mockall = "0.13"
+mockall = "0"
 insta = { version = "1", features = ["json", "redactions"] }
 
 [features]
