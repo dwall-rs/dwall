@@ -1,6 +1,7 @@
-//! HTTP download service
+//! Theme download HTTP functionality
 //!
-//! This module provides functionality for downloading files over HTTP.
+//! This module provides HTTP download functionality specific to theme downloads.
+//! For generic HTTP downloads, use `infrastructure::network::downloader::HttpDownloader`.
 
 use std::path::Path;
 use std::sync::Arc;
@@ -8,7 +9,6 @@ use std::sync::atomic::AtomicBool;
 
 use reqwest::{Client, StatusCode};
 use tauri::Runtime;
-use tokio::fs;
 use tokio::io::AsyncWriteExt;
 
 use crate::error::DwallSettingsResult;
@@ -19,7 +19,7 @@ use super::task_manager::{DownloadProgress, DownloadTaskManager, ProgressEmitter
 /// Context for download stream processing
 struct DownloadContext<'a, R: Runtime> {
     response: reqwest::Response,
-    file: &'a mut fs::File,
+    file: &'a mut tokio::fs::File,
     downloaded_bytes: &'a mut u64,
     total_size: u64,
     theme_id: &'a str,
@@ -28,23 +28,15 @@ struct DownloadContext<'a, R: Runtime> {
     task_manager: &'a DownloadTaskManager,
 }
 
-/// Service for downloading files over HTTP
-pub(super) struct HttpDownloadService {
+/// Theme downloader with progress tracking and cancellation
+pub(super) struct ThemeHttpDownloader {
     client: Arc<Client>,
 }
 
-impl HttpDownloadService {
-    /// Create a new downloader instance
+impl ThemeHttpDownloader {
+    /// Create a new theme downloader instance
     pub(super) fn new(client: Arc<Client>) -> Self {
         Self { client }
-    }
-
-    /// Build download URL for a theme
-    pub(super) fn build_download_url(theme_id: &str) -> String {
-        format!(
-            "https://github.com/dwall-rs/dwall-assets/releases/download/themes/{}.zip",
-            theme_id.replace(' ', ".")
-        )
     }
 
     /// Download a file from a URL to a local path with progress tracking
@@ -101,11 +93,10 @@ impl HttpDownloadService {
         &self,
         file_path: &Path,
         theme_id: &str,
-    ) -> DwallSettingsResult<(fs::File, u64)> {
+    ) -> DwallSettingsResult<(tokio::fs::File, u64)> {
         let mut downloaded_bytes: u64 = 0;
         let file = if file_path.exists() {
-            // Get the size of existing file for resuming download
-            let metadata = fs::metadata(file_path).await.map_err(|e| {
+            let metadata = tokio::fs::metadata(file_path).await.map_err(|e| {
                 error!(
                     theme_id = theme_id,
                     file_path = %file_path.display(),
@@ -122,8 +113,7 @@ impl HttpDownloadService {
                 "Found existing temp file, resuming download"
             );
 
-            // Open file in append mode
-            fs::OpenOptions::new()
+            tokio::fs::OpenOptions::new()
                 .write(true)
                 .append(true)
                 .open(file_path)
@@ -138,8 +128,7 @@ impl HttpDownloadService {
                     e
                 })?
         } else {
-            // Create new file if it doesn't exist
-            fs::File::create(file_path).await.map_err(|e| {
+            tokio::fs::File::create(file_path).await.map_err(|e| {
                 error!(
                     theme_id = theme_id,
                     file_path = %file_path.display(),
@@ -201,7 +190,7 @@ impl HttpDownloadService {
         theme_id: &str,
     ) -> DwallSettingsResult<u64> {
         if let Err(e) = response.error_for_status_ref() {
-            if let StatusCode::NOT_FOUND = response.status() {
+            if response.status() == StatusCode::NOT_FOUND {
                 error!(
                     theme_id = theme_id,
                     url = %response.url(),
@@ -217,10 +206,8 @@ impl HttpDownloadService {
         let content_length = response.content_length().unwrap_or(0);
         let total_size = if downloaded_bytes > 0 && response.status() == StatusCode::PARTIAL_CONTENT
         {
-            // For resumed downloads with 206 Partial Content response
             downloaded_bytes + content_length
         } else {
-            // For new downloads or if server doesn't support range requests
             content_length
         };
 
@@ -235,7 +222,6 @@ impl HttpDownloadService {
         let mut response = context.response;
 
         while let Some(chunk) = response.chunk().await? {
-            // Check if download has been cancelled
             if context.task_manager.is_cancelled(&context.cancel_flag) {
                 info!(theme_id = context.theme_id, "Download cancelled by user");
                 return Err(DownloadError::Cancelled.into());
@@ -254,7 +240,6 @@ impl HttpDownloadService {
 
             *context.downloaded_bytes += chunk.len() as u64;
 
-            // Emit progress if emitter is provided
             if let Some(emitter) = context.progress_emitter {
                 self.emit_progress(
                     emitter,

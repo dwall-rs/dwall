@@ -1,6 +1,4 @@
-//! Network infrastructure module
-//!
-//! This module contains network-related functionality.
+//! Network infrastructure module (pure technical)
 
-pub mod client;
 pub mod download;
+pub mod http_client;

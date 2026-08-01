@@ -9,9 +9,9 @@ use tokio::fs;
 use crate::{domain::settings::Config, error::DwallSettingsResult};
 
 /// Handles file system operations for theme management
-pub(super) struct ThemeFileManager;
+pub(super) struct FileManager;
 
-impl ThemeFileManager {
+impl FileManager {
     /// Build paths for theme files
     pub(super) fn build_theme_paths(
         config: &Config,
