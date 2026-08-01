@@ -1,0 +1,19 @@
+---
+source: crates/dwall/src/config.rs
+expression: config
+---
+{
+  "title_bar_color_follows_windows_theme": false,
+  "image_format": "jpeg",
+  "position_source": {
+    "type": "AUTOMATIC",
+    "update_on_each_calculation": false,
+    "cache_minutes": 30
+  },
+  "auto_detect_color_scheme": true,
+  "lock_screen_wallpaper_enabled": true,
+  "themes_directory": "[themes_directory]",
+  "customized_themes_directory": "[customized_themes_directory]",
+  "monitor_specific_wallpapers": {},
+  "interval": 15
+}

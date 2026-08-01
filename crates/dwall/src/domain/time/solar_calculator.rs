@@ -165,7 +165,7 @@ impl SolarCalc {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub(crate) struct SolarPosition {
     altitude: f64,
     azimuth: f64,
@@ -230,5 +230,161 @@ impl SolarAngle {
 
     pub(crate) fn azimuth(&self) -> f64 {
         self.azimuth
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use time::Month;
+
+    use super::*;
+
+    // ── Solar position calculation tests ──────────────────────────────────────
+
+    /// Test solar position at noon on equinox at equator
+    /// Expected: altitude near 90°, azimuth near 180° (south)
+    #[test]
+    fn solar_position_equinox_equator_noon() {
+        let position = Position::from_raw_position(0.0, 0.0, 0.0);
+        // March equinox 2026, 12:00 UTC
+        let dt = UtcDateTime::new(2026, Month::March, 20, 12, 0, 0).unwrap();
+        let solar = SolarPosition::new(&position, &dt);
+
+        // At equator on equinox at noon, sun should be nearly overhead
+        assert!(
+            solar.altitude() > 85.0,
+            "altitude should be near 90°, got {}",
+            solar.altitude()
+        );
+        assert!(
+            solar.altitude() <= 90.0,
+            "altitude should not exceed 90°, got {}",
+            solar.altitude()
+        );
+    }
+
+    /// Test solar position at midnight at equator
+    /// Expected: altitude below 0° (sun below horizon)
+    #[test]
+    fn solar_position_equator_midnight() {
+        let position = Position::from_raw_position(0.0, 0.0, 0.0);
+        let dt = UtcDateTime::new(2026, Month::March, 20, 0, 0, 0).unwrap();
+        let solar = SolarPosition::new(&position, &dt);
+
+        assert!(
+            solar.altitude() < 0.0,
+            "altitude should be below horizon at midnight, got {}",
+            solar.altitude()
+        );
+    }
+
+    /// Test solar position at summer solstice at Arctic Circle
+    /// Expected: sun should be visible at midnight (midnight sun)
+    #[test]
+    fn solar_position_arctic_summer_solstice() {
+        let position = Position::from_raw_position(66.5, 0.0, 0.0);
+        // June solstice 2026, 00:00 UTC
+        let dt = UtcDateTime::new(2026, Month::June, 21, 0, 0, 0).unwrap();
+        let solar = SolarPosition::new(&position, &dt);
+
+        // Midnight sun: sun should still be above horizon
+        assert!(
+            solar.altitude() > 0.0,
+            "altitude should be above horizon (midnight sun), got {}",
+            solar.altitude()
+        );
+    }
+
+    /// Test solar position at winter solstice at high latitude
+    /// Expected: sun should be below horizon
+    #[test]
+    fn solar_position_high_latitude_winter() {
+        let position = Position::from_raw_position(60.0, 0.0, 0.0);
+        // December solstice 2026, 12:00 UTC
+        let dt = UtcDateTime::new(2026, Month::December, 21, 12, 0, 0).unwrap();
+        let solar = SolarPosition::new(&position, &dt);
+
+        // Winter at high latitude: sun should be low
+        assert!(
+            solar.altitude() < 10.0,
+            "altitude should be low in winter, got {}",
+            solar.altitude()
+        );
+    }
+
+    /// Test azimuth range is always [0, 360)
+    #[test]
+    fn azimuth_always_in_valid_range() {
+        let position = Position::from_raw_position(45.0, 0.0, 0.0);
+        for hour in 0..24u8 {
+            let dt = UtcDateTime::new(2026, Month::June, 21, hour, 0, 0).unwrap();
+            let solar = SolarPosition::new(&position, &dt);
+
+            assert!(
+                solar.azimuth() >= 0.0 && solar.azimuth() < 360.0,
+                "azimuth {} should be in [0, 360) at hour {}",
+                solar.azimuth(),
+                hour
+            );
+        }
+    }
+
+    /// Test altitude range is [-90, 90]
+    #[test]
+    fn altitude_always_in_valid_range() {
+        let position = Position::from_raw_position(45.0, 0.0, 0.0);
+        for hour in 0..24u8 {
+            let dt = UtcDateTime::new(2026, Month::June, 21, hour, 0, 0).unwrap();
+            let solar = SolarPosition::new(&position, &dt);
+
+            assert!(
+                solar.altitude() >= -90.0 && solar.altitude() <= 90.0,
+                "altitude {} should be in [-90, 90] at hour {}",
+                solar.altitude(),
+                hour
+            );
+        }
+    }
+
+    // ── SolarCalc internal tests ───────────────────────────────────────────────
+
+    #[test]
+    fn julian_day_known_value() {
+        // 2000-01-01 12:00:00 UTC = JD 2451545.0 (J2000.0 epoch)
+        let dt = UtcDateTime::new(2000, Month::January, 1, 12, 0, 0).unwrap();
+        let jd = SolarCalc::julian_day(&dt);
+        assert!(
+            (jd - 2451545.0).abs() < 0.001,
+            "Julian Day should be 2451545.0, got {}",
+            jd
+        );
+    }
+
+    #[test]
+    fn julian_century_at_epoch() {
+        // At J2000.0 epoch, Julian century should be 0
+        let dt = UtcDateTime::new(2000, Month::January, 1, 12, 0, 0).unwrap();
+        let t = SolarCalc::julian_century_t(&dt);
+        assert!(
+            t.abs() < 0.001,
+            "Julian century should be 0 at epoch, got {}",
+            t
+        );
+    }
+
+    // ── Snapshot tests ────────────────────────────────────────────────────────
+
+    #[test]
+    fn snapshot_solar_position_24h() {
+        let position = Position::from_raw_position(45.0, 116.0, 0.0); // Beijing
+        let mut results: Vec<(u8, f64, f64)> = Vec::new();
+
+        for hour in 0..24u8 {
+            let dt = UtcDateTime::new(2026, Month::June, 21, hour, 0, 0).unwrap();
+            let solar = SolarPosition::new(&position, &dt);
+            results.push((hour, solar.altitude(), solar.azimuth()));
+        }
+
+        insta::assert_json_snapshot!("solar_position_24h_beijing", results);
     }
 }

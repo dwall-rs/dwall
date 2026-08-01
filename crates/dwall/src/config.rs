@@ -102,7 +102,8 @@ impl PositionSource {
 #[serde(untagged)]
 pub enum MonitorSpecificWallpapers {
     All(String),
-    Specific(HashMap<String, String>),
+    #[serde(alias = "specific")]
+    Individual(HashMap<String, String>),
 }
 
 impl MonitorSpecificWallpapers {
@@ -113,14 +114,14 @@ impl MonitorSpecificWallpapers {
     pub fn is_empty(&self) -> bool {
         match self {
             MonitorSpecificWallpapers::All(_) => false,
-            MonitorSpecificWallpapers::Specific(wallpapers) => wallpapers.is_empty(),
+            MonitorSpecificWallpapers::Individual(wallpapers) => wallpapers.is_empty(),
         }
     }
 
     pub fn get(&self, monitor_id: &str) -> Option<&String> {
         match self {
             MonitorSpecificWallpapers::All(theme_id) => Some(theme_id),
-            MonitorSpecificWallpapers::Specific(wallpapers) => wallpapers.get(monitor_id),
+            MonitorSpecificWallpapers::Individual(wallpapers) => wallpapers.get(monitor_id),
         }
     }
 }
@@ -219,7 +220,7 @@ fn default_customized_themes_directory() -> PathBuf {
 }
 
 fn default_monitor_specific_wallpapers() -> MonitorSpecificWallpapers {
-    MonitorSpecificWallpapers::Specific(HashMap::new())
+    MonitorSpecificWallpapers::Individual(HashMap::new())
 }
 
 /// Custom deserializer for interval field with range validation
@@ -439,5 +440,206 @@ mod tests {
         assert!(result.is_err());
         let error = result.unwrap_err().to_string();
         assert!(error.starts_with("interval must be between 1 and 3600, got 3601"));
+    }
+
+    // ── Integration tests for serialization/deserialization ────────────────────
+
+    /// Test full config roundtrip serialization
+    #[test]
+    fn config_roundtrip_serialization() {
+        let original = Config {
+            network: Some(Network::Socks5 {
+                host: "127.0.0.1".to_string(),
+                port: 1080,
+            }),
+            title_bar_color_follows_windows_theme: true,
+            image_format: ImageFormat::Png,
+            position_source: PositionSource::Manual {
+                latitude: 45.0,
+                longitude: 116.0,
+                altitude: 100.0,
+            },
+            auto_detect_color_scheme: false,
+            lock_screen_wallpaper_enabled: false,
+            themes_directory: PathBuf::from("/tmp/themes"),
+            customized_themes_directory: PathBuf::from("/tmp/customize"),
+            monitor_specific_wallpapers: MonitorSpecificWallpapers::All("theme1".to_string()),
+            interval: 30,
+        };
+
+        let json = serde_json::to_string(&original).unwrap();
+        let deserialized: Config = serde_json::from_str(&json).unwrap();
+
+        assert_eq!(deserialized.interval, original.interval);
+        assert_eq!(deserialized.image_format, original.image_format);
+        assert_eq!(deserialized.network, original.network);
+        assert_eq!(
+            deserialized.monitor_specific_wallpapers,
+            original.monitor_specific_wallpapers
+        );
+    }
+
+    /// Test RawConfig migration from legacy github_mirror_template
+    #[test]
+    fn raw_config_migration_github_mirror() {
+        let raw = RawConfig {
+            github_mirror_template: Some("https://ghproxy.cc".to_string()),
+            network: None,
+            title_bar_color_follows_windows_theme: false,
+            image_format: ImageFormat::Jpeg,
+            position_source: PositionSource::default(),
+            auto_detect_color_scheme: true,
+            lock_screen_wallpaper_enabled: true,
+            themes_directory: PathBuf::from("/tmp/themes"),
+            customized_themes_directory: PathBuf::from("/tmp/customize"),
+            monitor_specific_wallpapers: MonitorSpecificWallpapers::Individual(
+                std::collections::HashMap::new(),
+            ),
+            interval: 15,
+        };
+
+        let config: Config = raw.into();
+        assert_eq!(
+            config.network,
+            Some(Network::GitHubMirrorTemplate(
+                "https://ghproxy.cc".to_string()
+            ))
+        );
+    }
+
+    /// Test RawConfig migration prefers network over github_mirror_template
+    #[test]
+    fn raw_config_migration_prefers_network() {
+        let raw = RawConfig {
+            github_mirror_template: Some("https://old.example.com".to_string()),
+            network: Some(Network::Socks5 {
+                host: "127.0.0.1".to_string(),
+                port: 1080,
+            }),
+            title_bar_color_follows_windows_theme: false,
+            image_format: ImageFormat::Jpeg,
+            position_source: PositionSource::default(),
+            auto_detect_color_scheme: true,
+            lock_screen_wallpaper_enabled: true,
+            themes_directory: PathBuf::from("/tmp/themes"),
+            customized_themes_directory: PathBuf::from("/tmp/customize"),
+            monitor_specific_wallpapers: MonitorSpecificWallpapers::Individual(
+                std::collections::HashMap::new(),
+            ),
+            interval: 15,
+        };
+
+        let config: Config = raw.into();
+        // network should take precedence
+        assert_eq!(
+            config.network,
+            Some(Network::Socks5 {
+                host: "127.0.0.1".to_string(),
+                port: 1080,
+            })
+        );
+    }
+
+    /// Test MonitorSpecificWallpapers serialization variants
+    #[test]
+    fn monitor_wallpapers_all_variant() {
+        let wallpapers = MonitorSpecificWallpapers::All("theme1".to_string());
+        let json = serde_json::to_string(&wallpapers).unwrap();
+        assert_eq!(json, r#""theme1""#);
+
+        let deserialized: MonitorSpecificWallpapers = serde_json::from_str(&json).unwrap();
+        assert_eq!(deserialized, wallpapers);
+    }
+
+    #[test]
+    fn monitor_wallpapers_specific_variant() {
+        let mut map = std::collections::HashMap::new();
+        map.insert("monitor1".to_string(), "theme1".to_string());
+        map.insert("monitor2".to_string(), "theme2".to_string());
+        let wallpapers = MonitorSpecificWallpapers::Individual(map);
+
+        let json = serde_json::to_string(&wallpapers).unwrap();
+        let deserialized: MonitorSpecificWallpapers = serde_json::from_str(&json).unwrap();
+        assert_eq!(deserialized, wallpapers);
+    }
+
+    /// Test PositionSource serialization
+    #[test]
+    fn position_source_automatic_variant() {
+        let source = PositionSource::Automatic {
+            update_on_each_calculation: true,
+            cache_minutes: 60,
+        };
+        let json = serde_json::to_string(&source).unwrap();
+        assert!(json.contains("\"type\":\"AUTOMATIC\""));
+
+        let deserialized: PositionSource = serde_json::from_str(&json).unwrap();
+        assert_eq!(deserialized, source);
+    }
+
+    #[test]
+    fn position_source_manual_variant() {
+        let source = PositionSource::Manual {
+            latitude: 45.0,
+            longitude: 116.0,
+            altitude: 100.0,
+        };
+        let json = serde_json::to_string(&source).unwrap();
+        assert!(json.contains("\"type\":\"MANUAL\""));
+
+        let deserialized: PositionSource = serde_json::from_str(&json).unwrap();
+        assert_eq!(deserialized, source);
+    }
+
+    /// Test interval boundary validation
+    #[test]
+    fn interval_boundary_min() {
+        let json = r#"{"interval": 1}"#;
+        let config: Config = serde_json::from_str(json).unwrap();
+        assert_eq!(config.interval, 1);
+    }
+
+    #[test]
+    fn interval_boundary_max() {
+        let json = r#"{"interval": 3600}"#;
+        let config: Config = serde_json::from_str(json).unwrap();
+        assert_eq!(config.interval, 3600);
+    }
+
+    #[test]
+    fn interval_out_of_range_zero() {
+        let json = r#"{"interval": 0}"#;
+        let result = serde_json::from_str::<Config>(json);
+        assert!(result.is_err());
+    }
+
+    /// Test backward compatibility alias for coordinate_source
+    #[test]
+    fn coordinate_source_alias() {
+        let json = r#"{"coordinate_source": {"type": "AUTOMATIC", "update_on_each_calculation": false, "cache_minutes": 30}}"#;
+        let config: Config = serde_json::from_str(json).unwrap();
+        assert!(matches!(
+            config.position_source,
+            PositionSource::Automatic { .. }
+        ));
+    }
+
+    /// Test backward compatibility alias for auto_detect_color_mode
+    #[test]
+    fn auto_detect_color_mode_alias() {
+        let json = r#"{"auto_detect_color_mode": false}"#;
+        let config: Config = serde_json::from_str(json).unwrap();
+        assert!(!config.auto_detect_color_scheme);
+    }
+
+    // ── Snapshot tests ────────────────────────────────────────────────────────
+
+    #[test]
+    fn snapshot_default_config() {
+        let config = Config::default();
+        insta::assert_json_snapshot!("default_config", config, {
+            ".themes_directory" => "[themes_directory]",
+            ".customized_themes_directory" => "[customized_themes_directory]",
+        });
     }
 }

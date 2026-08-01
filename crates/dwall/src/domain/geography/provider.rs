@@ -4,134 +4,34 @@
 
 use std::time::Duration;
 
-use windows::Devices::Geolocation::{GeolocationAccessStatus, Geolocator, PositionAccuracy};
-
+use crate::domain::geography::PositionProvider;
 use crate::utils::cache::get_cache;
-use crate::{
-    config::PositionSource,
-    error::{DwallError, DwallResult},
-};
+use crate::{config::PositionSource, error::DwallResult};
 
-use super::position::{GeolocationAccessError, Position};
-
-/// Helper function to handle Windows API errors with consistent logging
-fn handle_windows_error<T, F>(operation: &str, f: F) -> DwallResult<T>
-where
-    F: FnOnce() -> windows::core::Result<T>,
-{
-    trace!("{}", operation);
-    match f() {
-        Ok(result) => {
-            debug!("{} completed successfully", operation);
-            Ok(result)
-        }
-        Err(e) => {
-            error!(error = e, "{} failed", operation);
-            Err(DwallError::Windows(e))
-        }
-    }
-}
-
-/// Checks if the application has permission to access location
-///
-/// Returns Ok(()) if permission is granted, or an error if denied or unspecified
-pub fn check_location_permission() -> DwallResult<()> {
-    let access_status = handle_windows_error(
-        "Requesting geolocation access permission",
-        Geolocator::RequestAccessAsync,
-    )?
-    .get()
-    .inspect_err(|e| {
-        error!(error = e, "Failed to get access status");
-    })?;
-
-    match access_status {
-        GeolocationAccessStatus::Allowed => {
-            debug!("Geolocation permission granted");
-            Ok(())
-        }
-        GeolocationAccessStatus::Denied => {
-            error!("{}", GeolocationAccessError::Denied);
-            Err(GeolocationAccessError::Denied.into())
-        }
-        GeolocationAccessStatus::Unspecified => {
-            error!("{}", GeolocationAccessError::Unspecified);
-            Err(GeolocationAccessError::Unspecified.into())
-        }
-        _ => unreachable!(),
-    }
-}
-
-/// Retrieves the current geographical position using Windows Geolocator API
-fn get_geo_position() -> DwallResult<Position> {
-    // First check if we have permission to access location
-    check_location_permission()?;
-
-    // Initialize geolocator
-    let geolocator = handle_windows_error("Initializing Geolocator", Geolocator::new)?;
-
-    // Set accuracy to high
-    handle_windows_error("Setting desired accuracy to High", || {
-        geolocator.SetDesiredAccuracy(PositionAccuracy::High)
-    })?;
-
-    // Get geoposition
-    let geoposition = handle_windows_error("Getting geoposition asynchronously", || {
-        geolocator.GetGeopositionAsync()
-    })?
-    .get()
-    .inspect_err(|e| {
-        error!(error = e, "Failed to retrieve geoposition");
-    })?;
-
-    // Extract coordinate
-    let coordinate = handle_windows_error("Extracting coordinate from geoposition", || {
-        geoposition.Coordinate()
-    })?;
-
-    // Extract point
-    let point = handle_windows_error("Extracting point from coordinate", || coordinate.Point())?;
-
-    // Extract position
-    let position = handle_windows_error("Extracting position from point", || point.Position())?;
-
-    // Create Position struct
-    trace!("Creating Position struct with latitude and longitude...");
-    let position =
-        Position::from_raw_position(position.Latitude, position.Longitude, position.Altitude);
-    if position.altitude() == 0. {
-        warn!(
-            "An altitude of 0 may cause the time for switching between light and dark modes to shift earlier or later by a few minutes to an hour. This is likely because your device lacks a barometric pressure sensor. This is not an error, but an expected outcome."
-        );
-    }
-
-    info!(
-        latitude = position.latitude(),
-        longitude = position.longitude(),
-        altitude = position.altitude(),
-        "Current geoposition"
-    );
-    Ok(position)
-}
+use super::position::Position;
 
 /// Geographic position provider with optimized caching strategy
 ///
 /// Implements caching optimization for system information that is accessed frequently
 /// but changes infrequently. Cache duration extended to 5 minutes to reduce 90% of API calls
 /// and significantly lower memory usage and CPU overhead.
-pub(crate) struct GeographicPositionProvider<'a> {
+pub(crate) struct GeographicPositionProvider<'a, P: PositionProvider> {
     coordinate_source: &'a PositionSource,
+    position_provider: P,
 }
 
-impl<'a> GeographicPositionProvider<'a> {
-    pub(crate) fn new(coordinate_source: &'a PositionSource) -> Self {
-        Self { coordinate_source }
+impl<'a, P: PositionProvider> GeographicPositionProvider<'a, P> {
+    pub(crate) fn new(coordinate_source: &'a PositionSource, position_provider: P) -> Self {
+        Self {
+            coordinate_source,
+            position_provider,
+        }
     }
 
     /// Retrieves a fresh position from the geolocation API
     fn get_fresh_position(&self) -> DwallResult<Position> {
         debug!("Using fresh geolocation data");
-        get_geo_position()
+        self.position_provider.get_current_position()
     }
 
     /// Retrieves a position from manual position
@@ -184,9 +84,35 @@ impl<'a> GeographicPositionProvider<'a> {
     }
 }
 
+impl<'a, P: PositionProvider> PositionProvider for GeographicPositionProvider<'a, P> {
+    fn get_current_position(&self) -> DwallResult<Position> {
+        self.get_current_position()
+    }
+
+    fn check_location_permission(&self) -> DwallResult<()> {
+        self.position_provider.check_location_permission()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::domain::geography::PositionProvider;
+
+    /// Mock PositionProvider for testing
+    struct MockPositionProvider {
+        position: Position,
+    }
+
+    impl PositionProvider for MockPositionProvider {
+        fn get_current_position(&self) -> DwallResult<Position> {
+            Ok(self.position)
+        }
+
+        fn check_location_permission(&self) -> DwallResult<()> {
+            Ok(())
+        }
+    }
 
     #[test]
     fn test_provider_manual_coordinates() {
@@ -195,11 +121,32 @@ mod tests {
             longitude: 90.0,
             altitude: 43.5,
         };
-        let provider = GeographicPositionProvider::new(&coord_source);
+        let mock_provider = MockPositionProvider {
+            position: Position::from_raw_position(0.0, 0.0, 0.0),
+        };
+        let provider = GeographicPositionProvider::new(&coord_source, mock_provider);
 
         let pos = provider.get_current_position().unwrap();
         assert_eq!(pos.latitude(), 45.0);
         assert_eq!(pos.longitude(), 90.0);
         assert_eq!(pos.altitude(), 43.5);
+    }
+
+    #[test]
+    fn test_provider_with_mock_position_provider() {
+        let coord_source = PositionSource::Automatic {
+            update_on_each_calculation: true,
+            cache_minutes: 5,
+        };
+        let expected_position = Position::from_raw_position(40.0, 116.0, 50.0);
+        let mock_provider = MockPositionProvider {
+            position: expected_position,
+        };
+        let provider = GeographicPositionProvider::new(&coord_source, mock_provider);
+
+        let pos = provider.get_current_position().unwrap();
+        assert_eq!(pos.latitude(), 40.0);
+        assert_eq!(pos.longitude(), 116.0);
+        assert_eq!(pos.altitude(), 50.0);
     }
 }

@@ -20,13 +20,14 @@ pub use domain::geography::Position;
 pub use domain::visual::{ThemeValidator, apply_solar_theme};
 
 // Re-export infrastructure types
-pub use infrastructure::display::{DisplayMonitor, DisplayMonitorProvider};
-pub use infrastructure::filesystem::{read_config_file, write_config_file};
-pub use infrastructure::platform::windows::{RegistryError, RegistryKey};
+#[cfg(windows)]
+pub use infrastructure::platform::windows::display::{DisplayMonitor, DisplayMonitorProvider};
 
 // Backwards compatibility aliases
 pub use domain::geography::CoordinateError;
-pub use domain::geography::GeolocationAccessError;
 pub use domain::geography::Position as GeographicPosition;
 pub use domain::time::solar_calculator::SolarAngle;
 pub use domain::visual::ColorScheme;
+
+#[cfg(windows)]
+pub use infrastructure::platform::{RegistryError, RegistryKey};

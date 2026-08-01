@@ -401,9 +401,9 @@ impl OffsetDateTime {
         Ok(UtcDateTime::from_timestamp(utc_secs as u64))
     }
 
-    pub fn assume_utc(&self) -> UtcDateTime {
+    pub const fn assume_utc(&self) -> UtcDateTime {
         let local_secs = self.inner.timestamp() as i64;
-        let utc_secs = local_secs.sub(self.offset.seconds() as i64);
+        let utc_secs = local_secs - self.offset.seconds() as i64;
         UtcDateTime::from_timestamp(utc_secs as u64)
     }
 

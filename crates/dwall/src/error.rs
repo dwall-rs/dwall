@@ -1,8 +1,13 @@
-use crate::domain::geography::{CoordinateError, GeolocationAccessError};
+use crate::domain::geography::CoordinateError;
+#[cfg(windows)]
+use crate::domain::geography::GeolocationAccessError;
 use crate::domain::visual::ThemeError;
-use crate::infrastructure::display::DisplayError;
-use crate::infrastructure::display::WallpaperError;
-use crate::infrastructure::platform::windows::RegistryError;
+#[cfg(windows)]
+use crate::infrastructure::platform::RegistryError;
+#[cfg(windows)]
+use crate::infrastructure::platform::windows::display::DisplayError;
+#[cfg(windows)]
+use crate::infrastructure::platform::windows::display::WallpaperError;
 
 /// Application result type, used for unified error handling
 pub type DwallResult<T> = std::result::Result<T, DwallError>;
@@ -32,6 +37,7 @@ pub enum DwallError {
     #[error("Configuration error: {0}")]
     Config(#[from] ConfigError),
 
+    #[cfg(windows)]
     /// Registry related error
     #[error("Registry error: {0}")]
     Registry(#[from] RegistryError),

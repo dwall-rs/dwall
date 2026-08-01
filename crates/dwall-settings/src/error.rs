@@ -1,7 +1,9 @@
 use dwall::RegistryError;
 use serde::{Serialize, Serializer};
 
-use crate::infrastructure::{filesystem::DirectoryMoveError, network::download::DownloadError};
+use crate::{
+    infrastructure::filesystem::directory::DirectoryMoveError, services::thumbnail::ThumbnailError,
+};
 
 pub type DwallSettingsResult<T, E = DwallSettingsError> = std::result::Result<T, E>;
 
@@ -25,10 +27,10 @@ pub enum DwallSettingsError {
     Registry(#[from] RegistryError),
     #[error(transparent)]
     NulError(#[from] std::ffi::NulError),
-    #[error(transparent)]
-    Download(#[from] DownloadError),
     #[error("Failed to spawn daemon: {0}")]
     Daemon(String),
+    #[error(transparent)]
+    Thumbnail(#[from] ThumbnailError),
     #[error(transparent)]
     Logger(#[from] log::SetLoggerError),
     #[error(transparent)]

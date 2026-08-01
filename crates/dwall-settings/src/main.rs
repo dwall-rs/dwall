@@ -7,16 +7,16 @@ use logging::Logger;
 use tauri::{Manager, RunEvent};
 use tokio::sync::OnceCell;
 
-use crate::app::{commands, setup::setup_app};
+use crate::app::commands;
+use crate::app::setup::setup_app;
 use crate::error::DwallSettingsResult;
-use crate::infrastructure::process::kill_daemon;
+use crate::infrastructure::process::lifecycle::terminate_process;
 
 mod app;
 mod domain;
 mod error;
 mod infrastructure;
 mod services;
-mod utils;
 
 #[macro_use]
 extern crate logging;
@@ -48,47 +48,58 @@ async fn main() -> DwallSettingsResult<()> {
                 if let Err(e) = w.set_focus() {
                     error!(error = %e, "Failed to set focus on existing window");
                 }
+            } else if let Err(e) = crate::infrastructure::window::builder::build_window(
+                app,
+                "main",
+                "Dwall Settings",
+                660.0,
+                600.0,
+            ) {
+                error!(error = %e, "Failed to create new main window");
             } else {
-                match crate::infrastructure::window::create_main_window(app) {
-                    Ok(_) => debug!("New main window created"),
-                    Err(e) => error!(error = %e, "Failed to create new main window"),
-                }
+                debug!("New main window created");
             }
         }))
         .setup(setup_app)
         .invoke_handler(tauri::generate_handler![
-            commands::show_window,
-            commands::read_config_file,
-            commands::write_config_file,
-            commands::validate_theme_cmd,
-            commands::apply_theme_cmd,
-            commands::get_applied_theme_id_cmd,
-            commands::check_auto_start,
-            commands::disable_auto_start,
-            commands::enable_auto_start,
-            commands::download_theme_cmd,
-            commands::cancel_theme_download_cmd,
-            commands::request_location_permission,
-            commands::open_dir,
-            commands::open_config_dir,
-            commands::open_log_dir,
-            commands::set_titlebar_color_mode,
-            commands::move_directory_cmd,
-            commands::kill_daemon_cmd,
-            commands::get_or_save_cached_thumbnails_cmd,
-            commands::clear_thumbnail_cache_cmd,
-            commands::get_monitors_cmd,
-            commands::open_privacy_location_settings,
-            commands::check_for_updates_cmd,
-            commands::get_customized_themes_cmd,
+            commands::window::show_window,
+            commands::config::read_config_file,
+            commands::config::write_config_file,
+            commands::theme::validate_theme_cmd,
+            commands::theme::apply_theme_cmd,
+            commands::theme::get_applied_theme_id_cmd,
+            commands::system::check_auto_start,
+            commands::system::disable_auto_start,
+            commands::system::enable_auto_start,
+            commands::download::download_theme_cmd,
+            commands::download::cancel_theme_download_cmd,
+            commands::system::request_location_permission,
+            commands::window::open_dir,
+            commands::window::open_config_dir,
+            commands::window::open_log_dir,
+            commands::window::set_titlebar_color_mode,
+            commands::system::move_directory_cmd,
+            commands::system::kill_daemon_cmd,
+            commands::thumbnail::get_or_save_cached_thumbnails_cmd,
+            commands::thumbnail::clear_thumbnail_cache_cmd,
+            commands::monitor::get_monitors_cmd,
+            commands::system::open_privacy_location_settings,
+            commands::system::check_for_updates_cmd,
+            commands::theme::get_customized_themes_cmd,
         ]);
 
     if cfg!(debug_assertions) {
         builder.build(tauri::generate_context!())?.run(|_, event| {
             if let RunEvent::Exit = event {
-                match kill_daemon() {
-                    Ok(_) => debug!("Daemon process killed on exit"),
-                    Err(e) => error!(error = %e, "Failed to kill daemon process on exit"),
+                match crate::infrastructure::process::finder::find_process_by_path(
+                    DAEMON_EXE_PATH.get().unwrap(),
+                ) {
+                    Ok(Some(pid)) => match terminate_process(pid) {
+                        Ok(_) => debug!("Daemon process killed on exit"),
+                        Err(e) => error!(error = %e, "Failed to kill daemon process on exit"),
+                    },
+                    Ok(None) => debug!("No daemon process to kill on exit"),
+                    Err(e) => error!(error = %e, "Failed to find daemon process on exit"),
                 }
             }
         })

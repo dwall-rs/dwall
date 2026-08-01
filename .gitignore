@@ -3,3 +3,6 @@ dist
 .DS_Store
 *.bak
 target
+*.snap.new
+.qwen
+*.new
