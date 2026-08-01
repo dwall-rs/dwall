@@ -886,6 +886,7 @@ name = "dwall"
 version = "0.2.5"
 dependencies = [
  "dirs",
+ "getrandom 0.2.17",
  "insta",
  "log",
  "logging",
