@@ -1,15 +1,19 @@
-use std::{env, path::PathBuf, str::FromStr, sync::Arc};
+//! Application setup
+
+use std::{env, path::PathBuf, str::FromStr};
 
 use tauri::Manager;
 
 use crate::{
     DAEMON_EXE_PATH,
     infrastructure::{
-        network::{client::HttpClient, download::ThemeDownloader},
-        process::find_daemon_process,
-        window::create_main_window,
+        network::http_client::HttpClient, process::finder::find_process_by_path,
+        window::builder::build_window,
     },
-    services::{cache::ThumbnailCache, theme_service::launch_daemon},
+    services::{
+        daemon::launcher::DaemonLauncher, theme::downloader::ThemeDownloader,
+        thumbnail::ThumbnailCache,
+    },
 };
 
 pub fn setup_app(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
@@ -26,7 +30,6 @@ pub fn setup_app(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>>
     setup_updater(app)?;
 
     tokio::spawn(async move {
-        // Process launch arguments
         let args: Vec<String> = env::args().collect();
         debug!(arguments = ?args, "Launch arguments");
 
@@ -37,6 +40,7 @@ pub fn setup_app(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>>
                 panic!("Failed to parse settings exe path: {}", e);
             }
         };
+
         let daemon_exe_path = match settings_exe_path.parent() {
             Some(path) => path.join("dwall.exe"),
             None => {
@@ -44,10 +48,12 @@ pub fn setup_app(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>>
                 panic!("Failed to find parent directory of settings exe");
             }
         };
+
         if !daemon_exe_path.exists() || !daemon_exe_path.is_file() {
             error!("Daemon executable does not exist");
             panic!("Daemon executable does not exist");
         }
+
         info!(path = %daemon_exe_path.display(), "Found daemon exe");
         if let Err(e) = DAEMON_EXE_PATH.set(daemon_exe_path) {
             error!("Failed to set daemon exe path: {}", e);
@@ -59,23 +65,21 @@ pub fn setup_app(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>>
     let config = dwall::infrastructure::filesystem::config_reader::ConfigReader::read_from_path(
         &config_path,
     )?;
-    let http_client = Arc::new(HttpClient::create_client(config.network())?);
+    let http_client = HttpClient::new(config.network())?;
 
     let theme_downloader = ThemeDownloader::new(http_client.clone());
     app.manage(theme_downloader);
 
-    let theme_cache = ThumbnailCache::new(http_client);
-    app.manage(theme_cache);
+    let thumbnail_cache = ThumbnailCache::new(http_client.clone());
+    app.manage(thumbnail_cache);
 
-    create_main_window(app.app_handle())?;
+    build_window(app.app_handle(), "main", "Dwall Settings", 660.0, 600.0)?;
 
     tokio::spawn(async move { crate::app::tracker::track().await });
 
-    // If a theme is configured in the configuration file but the background process is not detected,
-    // then run the background process when this program starts.
     tokio::spawn(async move {
-        let _ = find_daemon_process()
-            .and_then(|pid| pid.map_or_else(|| launch_daemon().map(|_| ()), |_| Ok(())));
+        let _ = find_process_by_path(crate::DAEMON_EXE_PATH.get().unwrap())
+            .and_then(|pid| pid.map_or_else(|| DaemonLauncher::launch().map(|_| ()), |_| Ok(())));
     });
 
     info!("Application setup completed successfully");
@@ -86,7 +90,6 @@ pub fn setup_app(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>>
 fn setup_updater(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
     debug!("Initializing update plugin");
 
-    // Initialize update plugin
     app.handle()
         .plugin(tauri_plugin_updater::Builder::new().build())
         .map_err(|e| {

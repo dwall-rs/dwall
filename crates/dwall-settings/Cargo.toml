@@ -17,7 +17,7 @@ tauri = { version = "2", default-features = false, features = [
     "wry",
     "compression",
 ] }
-dwall = { version = "0", path = "../dwall" }
+dwall = { path = "../dwall" }
 log = { workspace = true, default-features = false, features = ["std"] }
 logging = { path = "../logging" }
 reqwest = { version = "0", default-features = false, features = ["socks"] }
