@@ -1,33 +1,41 @@
+pub mod color_scheme;
 pub mod config;
-pub mod core;
-pub mod domain;
+pub mod daemon;
 pub mod error;
-pub mod infrastructure;
 pub mod lazy;
+pub mod monitor;
+pub mod platform;
+pub mod solar;
+pub mod theme;
 pub mod utils;
+pub mod wallpaper;
+
+mod theme_engine;
 
 #[macro_use]
 extern crate logging;
 
 // Re-export core functionality
 pub use config::Config;
-pub use core::daemon::DaemonApplication;
+pub use daemon::DaemonApplication;
 pub use error::DwallResult;
 pub use lazy::{DWALL_CACHE_DIR, DWALL_CONFIG_DIR, DWALL_LOG_DIR};
 
 // Re-export domain types
-pub use domain::geography::Position;
-pub use domain::visual::{ThemeValidator, apply_solar_theme};
+pub use color_scheme::{ColorScheme, ColorSchemeProvider, DaylightState, ThresholdConfig};
+pub use monitor::MonitorProvider;
+pub use solar::{
+    CoordinateError, GeographicPositionProvider, Position, PositionProvider, SolarAngle,
+    SolarPosition,
+};
+pub use theme::{ThemeError, ThemeValidator};
+pub use wallpaper::WallpaperProvider;
 
-// Re-export infrastructure types
+// Re-export platform types
 #[cfg(windows)]
-pub use infrastructure::platform::windows::display::{DisplayMonitor, DisplayMonitorProvider};
+pub use platform::{
+    DisplayMonitor, DisplayMonitorProvider, Positioner, RegistryError, RegistryKey,
+};
 
 // Backwards compatibility aliases
-pub use domain::geography::CoordinateError;
-pub use domain::geography::Position as GeographicPosition;
-pub use domain::time::solar_calculator::SolarAngle;
-pub use domain::visual::ColorScheme;
-
-#[cfg(windows)]
-pub use infrastructure::platform::{RegistryError, RegistryKey};
+pub use solar::Position as GeographicPosition;

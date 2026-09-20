@@ -1,6 +1,8 @@
 use std::{
     collections::HashMap,
+    fs,
     path::{Path, PathBuf},
+    time::SystemTime,
 };
 
 use serde::{Deserialize, Serialize};
@@ -461,6 +463,115 @@ impl From<RawConfig> for Config {
             wallpaper_mode,
             interval: raw.interval,
         }
+    }
+}
+
+// ── Config file I/O ─────────────────────────────────────────────────────────
+
+/// Reads configuration from the filesystem.
+pub struct ConfigReader;
+
+impl ConfigReader {
+    /// Reads configuration from the specified path
+    pub fn read_from_path(config_path: &Path) -> DwallResult<Config> {
+        if !config_path.exists() {
+            warn!("Config file not found, using default configuration");
+            return Ok(Config::default());
+        }
+
+        debug!(path = %config_path.display(), "Reading configuration file");
+
+        let content = fs::read_to_string(config_path)?;
+        let raw_config: RawConfig = toml::from_str(&content).map_err(|e| {
+            error!(error = %e, "Failed to parse configuration");
+            ConfigError::Deserialization(e)
+        })?;
+        let config = Config::from(raw_config);
+
+        config.validate()?;
+        info!(config = ?config, "Configuration loaded successfully");
+
+        Ok(config)
+    }
+}
+
+/// Writes configuration to the filesystem.
+pub struct ConfigWriter;
+
+impl ConfigWriter {
+    /// Writes configuration to the specified path
+    pub fn write_to_path(&self, config_path: &Path, config: &Config) -> DwallResult<()> {
+        config.validate()?;
+
+        let toml_string = toml::to_string(config).map_err(|e| {
+            error!(error = %e, "Failed to serialize configuration");
+            ConfigError::Serialization(e)
+        })?;
+
+        info!(path = %config_path.display(), "Writing configuration file");
+        fs::write(config_path, toml_string.as_bytes())?;
+        Ok(())
+    }
+}
+
+/// Watches a configuration file for modification-time changes.
+pub(crate) struct ConfigWatcher {
+    config_path: PathBuf,
+    last_modified: Option<SystemTime>,
+}
+
+impl ConfigWatcher {
+    /// Creates a new ConfigWatcher for the specified config path
+    pub(crate) fn new(config_path: PathBuf) -> Self {
+        Self {
+            config_path,
+            last_modified: None,
+        }
+    }
+
+    /// Returns the config path being watched
+    pub(crate) fn config_path(&self) -> &PathBuf {
+        &self.config_path
+    }
+
+    fn get_file_modified_time(&self) -> DwallResult<Option<SystemTime>> {
+        if !self.config_path.exists() {
+            return Ok(None);
+        }
+
+        let metadata = fs::metadata(&self.config_path)?;
+        Ok(Some(metadata.modified()?))
+    }
+
+    /// Checks if the configuration file has changed since the last check.
+    ///
+    /// Returns `true` when the file appeared, disappeared, or its modification
+    /// time differs from the last known one.
+    pub(crate) fn has_changed(&self) -> DwallResult<bool> {
+        let current_modified = self.get_file_modified_time()?;
+
+        let has_changed = match (self.last_modified, current_modified) {
+            (None, None) => false,
+            (Some(_), None) | (None, Some(_)) => true,
+            (Some(last), Some(current)) => last != current,
+        };
+
+        if has_changed {
+            debug!(
+                path = %self.config_path.display(),
+                last_modified = ?self.last_modified,
+                current_modified = ?current_modified,
+                "Configuration file change detected"
+            );
+        }
+
+        Ok(has_changed)
+    }
+
+    /// Updates the last known modification time
+    pub(crate) fn update_modified_time(&mut self) -> DwallResult<()> {
+        self.last_modified = self.get_file_modified_time()?;
+        Ok(())
     }
 }
 
