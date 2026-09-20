@@ -29,6 +29,6 @@ log = { version = "0", default-features = false, features = ["std"] }
 panic = "abort"
 codegen-units = 1
 lto = true
-incremental = true
+incremental = false
 opt-level = "z"
 strip = true

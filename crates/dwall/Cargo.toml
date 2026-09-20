@@ -38,12 +38,9 @@ windows = { version = "0.61", default-features = false, features = [
     "Win32_System_Registry",
     "System_UserProfile",
     "Storage_Streams",
-    "Win32_UI",
     "Win32_UI_Shell",
     "Win32_UI_WindowsAndMessaging",
     "Win32_System_Com",
-    "Win32_Graphics",
-    "Win32_Graphics_Gdi",
     "Win32_Devices_Display",
     "Win32_Devices_DeviceAndDriverInstallation",
 ] }
