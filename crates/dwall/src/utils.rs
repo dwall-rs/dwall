@@ -1,8 +1,7 @@
 //! Shared utilities: wide-string conversions and a small typed value cache.
 
 use std::any::TypeId;
-use std::sync::{Arc, Mutex, OnceLock};
-use std::thread;
+use std::cell::RefCell;
 use std::time::{Duration, Instant};
 
 use std::{ffi::OsStr, os::windows::ffi::OsStrExt};
@@ -94,17 +93,6 @@ macro_rules! define_cache {
                 )+
                 unreachable!("Unregistered cache type");
             }
-
-            fn purge_expired(&mut self) -> usize {
-                let mut count = 0;
-                $(
-                    if self.$field.as_ref().is_some_and(|e| e.is_expired()) {
-                        self.$field = None;
-                        count += 1;
-                    }
-                )+
-                count
-            }
         }
 
         $(
@@ -155,56 +143,49 @@ impl Entry {
     }
 }
 
-static CACHE: OnceLock<Cache> = OnceLock::new();
+impl Inner {
+    fn set<T: Cacheable>(&mut self, value: T, ttl: Duration) {
+        *self.slot_mut(TypeId::of::<T>()) = Some(Entry::new(value.into_value(), ttl));
+    }
 
-/// Returns the process-wide cache, initializing it on first use.
-pub fn get_cache() -> &'static Cache {
-    CACHE.get_or_init(|| Cache::new(Duration::from_hours(24 * 7)))
+    /// Returns the cached value, lazily evicting it if its TTL has elapsed.
+    fn get<T: Cacheable>(&mut self) -> Option<T> {
+        let slot = self.slot_mut(TypeId::of::<T>());
+        match slot {
+            Some(entry) if entry.is_expired() => {
+                *slot = None;
+                None
+            }
+            Some(entry) => T::from_value(&entry.value).cloned(),
+            None => None,
+        }
+    }
 }
 
-/// A small typed cache with per-entry TTL and background cleanup.
-#[derive(Clone)]
-pub struct Cache {
-    inner: Arc<Mutex<Inner>>,
+thread_local! {
+    /// Per-thread typed value cache. The daemon only accesses it from its main
+    /// thread, so no synchronization is required.
+    static CACHE: RefCell<Inner> = RefCell::new(Inner::new());
+}
+
+/// Handle to the current thread's typed value cache.
+#[derive(Clone, Copy)]
+pub(crate) struct Cache;
+
+/// Returns a handle to the current thread's cache.
+pub(crate) fn get_cache() -> Cache {
+    Cache
 }
 
 impl Cache {
-    pub fn new(cleanup_interval: Duration) -> Self {
-        let inner = Arc::new(Mutex::new(Inner::new()));
-        let weak = Arc::clone(&inner);
-
-        thread::spawn(move || {
-            loop {
-                thread::sleep(cleanup_interval);
-                let removed = weak.lock().unwrap().purge_expired();
-                if removed > 0 {
-                    info!("[Cache] cleaned up {} expired entries", removed);
-                }
-            }
-        });
-
-        Cache { inner }
-    }
-
     /// Store a value, specifying TTL
     pub(crate) fn set<T: Cacheable>(&self, value: T, ttl: Duration) {
-        let cv = value.into_value();
-        let entry = Entry::new(cv, ttl);
-        *self.inner.lock().unwrap().slot_mut(TypeId::of::<T>()) = Some(entry);
+        CACHE.with(|cache| cache.borrow_mut().set(value, ttl));
     }
 
     /// Retrieve a value (returns None if missing or expired, with lazy deletion)
     pub(crate) fn get<T: Cacheable>(&self) -> Option<T> {
-        let mut guard = self.inner.lock().unwrap();
-        let slot = guard.slot_mut(TypeId::of::<T>());
-        match slot {
-            Some(e) if e.is_expired() => {
-                *slot = None;
-                None
-            }
-            Some(e) => T::from_value(&e.value).cloned(),
-            None => None,
-        }
+        CACHE.with(|cache| cache.borrow_mut().get::<T>())
     }
 }
 
