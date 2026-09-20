@@ -271,13 +271,10 @@ impl SimpleRng {
     }
 }
 
-/// Get a random seed from the OS entropy source, falling back to system time.
+/// Seed for the non-cryptographic daily shuffle. Uniqueness (not
+/// unpredictability) is all that matters here, so system time suffices and
+/// avoids pulling in an OS entropy dependency.
 fn get_random_seed() -> u64 {
-    let mut buf = [0u8; 8];
-    if getrandom::fill(&mut buf).is_ok() {
-        return u64::from_ne_bytes(buf);
-    }
-
     std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .unwrap_or_default()
