@@ -920,6 +920,7 @@ dependencies = [
  "tauri-plugin-single-instance",
  "tauri-plugin-updater",
  "thiserror 2.0.19",
+ "time 0.2.5",
  "tokio",
  "toml 1.1.4+spec-1.1.0",
  "windows 0.61.3",

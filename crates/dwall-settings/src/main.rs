@@ -7,16 +7,24 @@ use logging::Logger;
 use tauri::{Manager, RunEvent};
 use tokio::sync::OnceCell;
 
-use crate::app::commands;
-use crate::app::setup::setup_app;
 use crate::error::DwallSettingsResult;
-use crate::infrastructure::process::lifecycle::terminate_process;
+use crate::process::{find_process_by_path, terminate_process};
+use crate::setup::setup_app;
+use crate::window::build_window;
 
-mod app;
-mod domain;
+mod archive;
+mod autostart;
+mod commands;
+mod daemon;
 mod error;
-mod infrastructure;
-mod services;
+mod filesystem;
+mod network;
+mod process;
+mod setup;
+mod theme;
+mod thumbnail;
+mod tracker;
+mod window;
 
 #[macro_use]
 extern crate logging;
@@ -48,13 +56,7 @@ async fn main() -> DwallSettingsResult<()> {
                 if let Err(e) = w.set_focus() {
                     error!(error = %e, "Failed to set focus on existing window");
                 }
-            } else if let Err(e) = crate::infrastructure::window::builder::build_window(
-                app,
-                "main",
-                "Dwall Settings",
-                660.0,
-                600.0,
-            ) {
+            } else if let Err(e) = build_window(app, "main", "Dwall Settings") {
                 error!(error = %e, "Failed to create new main window");
             } else {
                 debug!("New main window created");
@@ -86,14 +88,13 @@ async fn main() -> DwallSettingsResult<()> {
             commands::system::open_privacy_location_settings,
             commands::system::check_for_updates_cmd,
             commands::theme::get_customized_themes_cmd,
+            commands::solar::get_solar_position,
         ]);
 
     if cfg!(debug_assertions) {
         builder.build(tauri::generate_context!())?.run(|_, event| {
             if let RunEvent::Exit = event {
-                match crate::infrastructure::process::finder::find_process_by_path(
-                    DAEMON_EXE_PATH.get().unwrap(),
-                ) {
+                match find_process_by_path(DAEMON_EXE_PATH.get().unwrap()) {
                     Ok(Some(pid)) => match terminate_process(pid) {
                         Ok(_) => debug!("Daemon process killed on exit"),
                         Err(e) => error!(error = %e, "Failed to kill daemon process on exit"),
