@@ -1,5 +1,6 @@
 //! Theme update engine: applies wallpapers and color scheme for a single cycle.
 
+use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
 use time::OffsetDateTime;
@@ -8,7 +9,9 @@ use crate::DwallResult;
 use crate::color_scheme::ColorSchemeApplier;
 use crate::config::{Config, MonitorSpecificWallpapers};
 use crate::monitor::MonitorProvider;
-use crate::platform::{ColorSchemeScheduler, DisplayMonitorProvider, Positioner, WallpaperSetter};
+use crate::platform::{
+    ColorSchemeScheduler, DisplayMonitor, DisplayMonitorProvider, Positioner, WallpaperSetter,
+};
 use crate::solar::{GeographicPositionProvider, Position, SolarPosition};
 use crate::theme::{ThemeError, get_theme_directory_path, load_cached_solar_angles};
 use crate::wallpaper::{WallpaperProvider, WallpaperSelector};
@@ -84,7 +87,7 @@ impl<'a> ThemeEngine<'a> {
         let solar_position = SolarPosition::new(position, &now);
         let available_monitors = self.monitor_provider.get_monitors()?;
 
-        let success_count = self.process_monitors(&solar_position)?;
+        let success_count = self.process_monitors(&available_monitors, &solar_position)?;
 
         if success_count > 0
             && let Some(theme_id) = self.get_first_configured_theme()
@@ -110,9 +113,12 @@ impl<'a> ThemeEngine<'a> {
     }
 
     /// Applies the wallpaper for every configured monitor, returning the count
-    /// of successes.
-    fn process_monitors(&self, solar_position: &SolarPosition) -> DwallResult<usize> {
-        let monitors = self.monitor_provider.get_monitors()?;
+    /// of successes. Reuses the caller's monitor snapshot instead of re-querying.
+    fn process_monitors(
+        &self,
+        monitors: &HashMap<String, DisplayMonitor>,
+        solar_position: &SolarPosition,
+    ) -> DwallResult<usize> {
         let configs = self.config.monitor_specific_wallpapers();
         let mut success_count = 0;
 
@@ -217,7 +223,7 @@ impl<'a> ThemeEngine<'a> {
         );
 
         let optimal_image_index = WallpaperSelector::find_closest_image(
-            &solar_angle_configuration,
+            solar_angle_configuration.as_slice(),
             sun_altitude_degrees,
             sun_azimuth_degrees,
         )

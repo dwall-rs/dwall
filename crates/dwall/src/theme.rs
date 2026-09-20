@@ -1,9 +1,10 @@
 //! Theme validation, selection and solar-angle loading.
 
 use std::cell::RefCell;
-use std::collections::HashMap;
+use std::collections::{HashMap, VecDeque};
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::rc::Rc;
 
 use time::Date;
 
@@ -48,19 +49,73 @@ pub(crate) fn get_theme_directory_path(
     (path, true)
 }
 
+/// Maximum number of theme solar-angle sets kept resident.
+///
+/// Random mode can cycle through an unbounded theme pool; a small LRU bounds
+/// memory without meaningfully hurting the common case of 1–3 active themes.
+const SOLAR_CACHE_CAPACITY: usize = 32;
+
+/// Bounded LRU cache of parsed `solar.json` files.
+struct SolarAngleCache {
+    entries: HashMap<PathBuf, Rc<Vec<SolarAngle>>>,
+    order: VecDeque<PathBuf>,
+}
+
+impl SolarAngleCache {
+    fn new() -> Self {
+        Self {
+            entries: HashMap::new(),
+            order: VecDeque::new(),
+        }
+    }
+
+    fn get(&mut self, key: &Path) -> Option<Rc<Vec<SolarAngle>>> {
+        let value = self.entries.get(key).cloned();
+        if value.is_some() {
+            self.touch(key);
+        }
+        value
+    }
+
+    fn insert(&mut self, key: PathBuf, value: Rc<Vec<SolarAngle>>) {
+        if self.entries.contains_key(&key) {
+            self.entries.insert(key.clone(), value);
+            self.touch(&key);
+            return;
+        }
+
+        if self.entries.len() >= SOLAR_CACHE_CAPACITY
+            && let Some(oldest) = self.order.pop_front()
+        {
+            self.entries.remove(&oldest);
+        }
+
+        self.entries.insert(key.clone(), value);
+        self.order.push_back(key);
+    }
+
+    fn touch(&mut self, key: &Path) {
+        if let Some(position) = self.order.iter().position(|k| k == key)
+            && let Some(k) = self.order.remove(position)
+        {
+            self.order.push_back(k);
+        }
+    }
+}
+
 thread_local! {
     /// Cache solar configuration to avoid repeated reads
-    static SOLAR_CACHE: RefCell<HashMap<PathBuf, Vec<SolarAngle>>> =
-        RefCell::new(HashMap::new());
+    static SOLAR_CACHE: RefCell<SolarAngleCache> = RefCell::new(SolarAngleCache::new());
 }
 
 /// Load solar configuration for a specific theme directory.
-pub(crate) fn load_cached_solar_angles(theme_directory: &Path) -> DwallResult<Vec<SolarAngle>> {
+///
+/// Returns a shared handle so callers never clone the angle list on a hit.
+pub(crate) fn load_cached_solar_angles(theme_directory: &Path) -> DwallResult<Rc<Vec<SolarAngle>>> {
     let theme_directory = theme_directory.canonicalize()?;
     debug!(path = %theme_directory.display(), "Loading solar configuration from canonical and absolute path");
 
-    if let Some(cached_angles) =
-        SOLAR_CACHE.with(|cache| cache.borrow().get(&theme_directory).cloned())
+    if let Some(cached_angles) = SOLAR_CACHE.with(|cache| cache.borrow_mut().get(&theme_directory))
     {
         debug!("Using cached solar configuration");
         return Ok(cached_angles);
@@ -99,6 +154,7 @@ pub(crate) fn load_cached_solar_angles(theme_directory: &Path) -> DwallResult<Ve
         "Successfully loaded solar configuration"
     );
 
+    let solar_angles = Rc::new(solar_angles);
     SOLAR_CACHE.with(|cache| {
         cache
             .borrow_mut()
