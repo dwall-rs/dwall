@@ -118,15 +118,36 @@ export const dict: RawDictionary = {
   },
 
   theme: {
-    label: {
-      selectMonitor: "選擇顯示器",
-    },
-
     button: {
       apply: "套用",
       cancel: "取消",
+      clearAll: "清空",
+      confirm: "確定",
       download: "下載",
+      edit: "編輯",
+      selectAll: "全選",
       stop: "停止",
+    },
+
+    hint: {
+      alreadyDownloaded: "已下載",
+      noThemesSelected: "未選擇主題（將使用所有主題）",
+    },
+
+    label: {
+      selectMonitor: "選擇顯示器",
+      selectedThemes: "已選主題",
+      wallpaperMode: "桌布模式",
+    },
+
+    mode: {
+      fixed: "固定（根據太陽位置）",
+      random: "每日隨機",
+    },
+
+    tab: {
+      fixed: "固定",
+      random: "隨機",
     },
 
     message: {

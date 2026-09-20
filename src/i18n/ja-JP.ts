@@ -133,15 +133,36 @@ export const dict: RawDictionary = {
   },
 
   theme: {
-    label: {
-      selectMonitor: "モニターを選択",
-    },
-
     button: {
       apply: "適用",
       cancel: "キャンセル",
+      clearAll: "すべてクリア",
+      confirm: "確認",
       download: "ダウンロード",
+      edit: "編集",
+      selectAll: "すべて選択",
       stop: "停止",
+    },
+
+    hint: {
+      alreadyDownloaded: "ダウンロード済み",
+      noThemesSelected: "テーマが選択されていません（すべてのテーマを使用）",
+    },
+
+    label: {
+      selectMonitor: "モニターを選択",
+      selectedThemes: "選択されたテーマ",
+      wallpaperMode: "壁紙モード",
+    },
+
+    mode: {
+      fixed: "固定（太陽位置ベース）",
+      random: "毎日ランダム",
+    },
+
+    tab: {
+      fixed: "固定",
+      random: "ランダム",
     },
 
     message: {

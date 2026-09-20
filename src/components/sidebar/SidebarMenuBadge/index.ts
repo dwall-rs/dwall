@@ -1,1 +1,0 @@
-export { SidebarMenuBadge } from "./SidebarMenuBadge";

@@ -132,12 +132,33 @@ export const dict = {
     button: {
       apply: "Apply",
       cancel: "Cancel",
+      clearAll: "Clear All",
+      confirm: "Confirm",
       download: "Download",
+      edit: "Edit",
+      selectAll: "Select All",
       stop: "Stop",
+    },
+
+    hint: {
+      alreadyDownloaded: "Downloaded",
+      noThemesSelected: "No themes selected (will use all themes)",
     },
 
     label: {
       selectMonitor: "Select Monitor",
+      selectedThemes: "Selected Themes",
+      wallpaperMode: "Wallpaper Mode",
+    },
+
+    mode: {
+      fixed: "Fixed (Solar-based)",
+      random: "Random Daily",
+    },
+
+    tab: {
+      fixed: "Fixed",
+      random: "Random",
     },
 
     message: {

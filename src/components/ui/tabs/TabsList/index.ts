@@ -1,0 +1,2 @@
+export { TabsList } from "./TabsList";
+export * from "./TabsList.types";

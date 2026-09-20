@@ -3,10 +3,10 @@
 /* Neut built-in styles (from animate.css and toast.css) */
 @import "./styles/index.css";
 
-html,
+/*html,
 body {
     overflow: hidden;
-}
+}*/
 
 * {
     user-select: none;
@@ -18,8 +18,26 @@ body {
 
 @layer base {
     :root {
+        --success: oklch(62.7% 0.194 149.214); /* 补：完成/运行 */
+        --success-foreground: 0 0% 100%;
+        --success-dim: 145 40% 92%;
+        --warning: oklch(76.9% 0.188 70.08); /* 补：待办/随机 */
+        --warning-foreground: 35 100% 12%;
+        --warning-dim: 38 60% 92%;
+
         --scrollbar-thumb: theme("colors.neutral.400");
         --scrollbar-thumb-active: theme("colors.neutral.600");
+
+        @apply bg-background text-foreground;
+    }
+
+    [data-theme="dark"] {
+        --success: oklch(52.7% 0.154 150.069);
+        --success-foreground: 142 60% 8%;
+        --success-dim: 150 40% 14%;
+        --warning: oklch(66.6% 0.179 58.318);
+        --warning-foreground: 35 90% 10%;
+        --warning-dim: 35 50% 16%;
     }
 
     @media (prefers-color-scheme: dark) {
@@ -27,6 +45,13 @@ body {
             --scrollbar-thumb: theme("colors.neutral.600");
             --scrollbar-thumb-active: theme("colors.neutral.400");
         }
+    }
+}
+
+@layer inline {
+    :root {
+        --color-success: var(--success);
+        --color-warning: var(--warning);
     }
 }
 

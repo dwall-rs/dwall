@@ -1,0 +1,47 @@
+// 职责：「统一所有显示器」开关卡——开启即锁定下方单独设置。
+import { fixedStore, toggleUnified as toggle } from "@/store/fixed.store";
+import { clsx } from "@/utils";
+import { Switch } from "~/components/ui/switch";
+import { Monitor } from "lucide-solid";
+import { ThemeCover } from "~/scene/ThemeCover";
+
+export function UnifiedCard() {
+  return (
+    <div
+      onClick={toggle}
+      class={clsx(
+        "relative mb-1.5 mt-0.5 cursor-pointer rounded-lg border p-3.25 transition-all duration-200",
+        fixedStore.allUnified
+          ? "border-primary bg-primary/8 shadow-[0_0_0_1px_hsl(var(--primary)),0_8px_24px_hsl(var(--primary)/.12)]"
+          : "border-border-2 bg-primary/8 hover:border-primary/40",
+      )}
+    >
+      <div class="flex items-center gap-2.5">
+        <div class="grid size-7.5 shrink-0 place-items-center rounded-lg bg-accent text-primary">
+          <Monitor class="size-4" />
+        </div>
+        <div class="flex-1 font-display text-[13.5px] font-bold">
+          统一所有显示器
+        </div>
+        <Switch
+          size="sm"
+          checked={fixedStore.allUnified}
+          onCheckedChange={() => toggle()}
+          onClick={(e) => e.stopPropagation()}
+        />
+      </div>
+      <div class="mt-2 text-[11px] leading-relaxed text-muted-foreground">
+        {fixedStore.allUnified
+          ? "一套主题应用于全部显示器，下方单独设置已锁定。"
+          : "关闭后可为每台显示器分别指定主题。"}
+      </div>
+      {fixedStore.allUnified && (
+        <div class="mt-2.5 flex gap-1.5">
+          <div class="h-6 w-8.5 overflow-hidden rounded-[5px]">
+            <ThemeCover themeId={fixedStore.monitorThemes.all} />
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

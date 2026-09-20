@@ -1,1 +1,0 @@
-export { AspectRatio } from "./AspectRatio";

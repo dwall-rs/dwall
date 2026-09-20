@@ -7,6 +7,18 @@ interface Socks5 {
 
 type Network = GithubMirrorTemplate | Socks5;
 
+interface FixedMode {
+  mode: "fixed";
+  monitor_specific_wallpapers: string | Record<string, string>;
+}
+
+interface RandomMode {
+  mode: "random";
+  pool: string[] | null;
+}
+
+type WallpaperMode = FixedMode | RandomMode;
+
 interface Config {
   network?: Network;
   selected_theme_id?: string;
@@ -19,6 +31,7 @@ interface Config {
   lock_screen_wallpaper_enabled: boolean;
   monitor_specific_wallpapers: string | Record<string, string>;
   title_bar_color_follows_windows_theme: boolean;
+  wallpaper_mode?: WallpaperMode;
 }
 
 interface PositionSourceAutomatic {

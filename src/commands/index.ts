@@ -4,6 +4,7 @@ export * from "./fs";
 export * from "./monitor";
 export * from "./shell";
 export * from "./system";
+export * from "./solar";
 export * from "./theme";
 export * from "./update";
 export * from "./window";

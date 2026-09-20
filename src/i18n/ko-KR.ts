@@ -130,15 +130,36 @@ export const dict: RawDictionary = {
   },
 
   theme: {
-    label: {
-      selectMonitor: "모니터 선택",
-    },
-
     button: {
       apply: "적용",
       cancel: "취소",
+      clearAll: "모두 해제",
+      confirm: "확인",
       download: "다운로드",
+      edit: "편집",
+      selectAll: "모두 선택",
       stop: "중지",
+    },
+
+    hint: {
+      alreadyDownloaded: "다운로드됨",
+      noThemesSelected: "선택된 테마 없음 (모든 테마 사용)",
+    },
+
+    label: {
+      selectMonitor: "모니터 선택",
+      selectedThemes: "선택된 테마",
+      wallpaperMode: "배경 화면 모드",
+    },
+
+    mode: {
+      fixed: "고정 (태양 위치 기반)",
+      random: "매일 랜덤",
+    },
+
+    tab: {
+      fixed: "고정",
+      random: "랜덤",
     },
 
     message: {
