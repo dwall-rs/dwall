@@ -159,8 +159,6 @@ impl Log for Logger {
 
         #[cfg(not(debug_assertions))]
         {
-            use std::io::Write;
-
             let level_str = match record.level() {
                 log::Level::Error => "ERROR",
                 log::Level::Warn => "WARN",
@@ -169,21 +167,24 @@ impl Log for Logger {
                 log::Level::Trace => "TRACE",
             };
 
-            let line = format!(
-                "{} {} [{}] {}\n",
-                timestamp,
-                level_str,
-                record.target(),
-                record.args(),
-            );
-
             match &self.output {
                 ProductionOutput::Stderr => {
-                    eprint!("{line}");
+                    let mut stderr = std::io::stderr().lock();
+                    let _ = write!(
+                        stderr,
+                        "{timestamp} {level_str} [{}] {}\n",
+                        record.target(),
+                        record.args(),
+                    );
                 }
                 ProductionOutput::File(mutex) => {
                     if let Ok(mut file) = mutex.lock() {
-                        let _ = file.write_all(line.as_bytes());
+                        let _ = write!(
+                            file,
+                            "{timestamp} {level_str} [{}] {}\n",
+                            record.target(),
+                            record.args(),
+                        );
                     }
                 }
             }
