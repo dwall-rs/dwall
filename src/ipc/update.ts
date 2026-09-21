@@ -1,14 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import { Update } from "@tauri-apps/plugin-updater";
 
-interface UpdateMetadata {
-  rid: number;
-  currentVersion: string;
-  version: string;
-  date?: string;
-  body?: string;
-  rawJson: Record<string, unknown>;
-}
+import type { Network, UpdateMetadata } from "./types";
 
 export const checkForUpdates = async (network?: Network) => {
   const metadata = await invoke<UpdateMetadata | null>(
@@ -17,5 +10,7 @@ export const checkForUpdates = async (network?: Network) => {
       network,
     },
   );
-  return metadata ? new Update(metadata) : null;
+  return metadata
+    ? new Update({ ...metadata, body: metadata.body ?? undefined, rawJson: {} })
+    : null;
 };

@@ -412,6 +412,8 @@ fn get_device_friendly_name(
 const CACHE_EXPIRY_SECONDS: u64 = 300; // 5 minutes
 
 /// Display monitor information with serialization support
+#[cfg_attr(feature = "ts", derive(ts_rs::TS))]
+#[cfg_attr(feature = "ts", ts(export))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DisplayMonitor {
     device_path: String,

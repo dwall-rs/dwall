@@ -6,6 +6,8 @@ use dwall::config::ImageFormat;
 use serde::{Deserialize, Serialize};
 
 /// Customized theme information
+#[cfg_attr(feature = "typegen", derive(ts_rs::TS))]
+#[cfg_attr(feature = "typegen", ts(export))]
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CustomizedTheme {
@@ -18,6 +20,8 @@ pub struct CustomizedTheme {
 }
 
 /// Metadata for a customized theme
+#[cfg_attr(feature = "typegen", derive(ts_rs::TS))]
+#[cfg_attr(feature = "typegen", ts(export))]
 #[derive(Debug, Serialize, Deserialize)]
 pub struct CustomizedThemeMetadata {
     pub image_format: ImageFormat,

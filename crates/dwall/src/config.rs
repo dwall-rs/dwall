@@ -20,6 +20,8 @@ const DEFAULT_AUTO_DETECT_COLOR_SCHEME: bool = true;
 const DEFAULT_LOCK_SCREEN_WALLPAPER_ENABLED: bool = true;
 const DEFAULT_TITLE_BAR_COLOR_FOLLOWS_WINDOWS_THEME: bool = false;
 
+#[cfg_attr(feature = "ts", derive(ts_rs::TS))]
+#[cfg_attr(feature = "ts", ts(export))]
 #[derive(Debug, Serialize, Deserialize, PartialEq, Default, Clone)]
 #[serde(rename_all = "lowercase")]
 pub enum ImageFormat {
@@ -46,6 +48,8 @@ impl ImageFormat {
 //     }
 // }
 
+#[cfg_attr(feature = "ts", derive(ts_rs::TS))]
+#[cfg_attr(feature = "ts", ts(export))]
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 #[serde(rename_all = "UPPERCASE", tag = "type")]
 pub enum PositionSource {
@@ -100,6 +104,8 @@ impl PositionSource {
     }
 }
 
+#[cfg_attr(feature = "ts", derive(ts_rs::TS))]
+#[cfg_attr(feature = "ts", ts(export))]
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 #[serde(untagged)]
 pub enum MonitorSpecificWallpapers {
@@ -129,6 +135,8 @@ impl MonitorSpecificWallpapers {
 }
 
 /// 壁纸切换模式
+#[cfg_attr(feature = "ts", derive(ts_rs::TS))]
+#[cfg_attr(feature = "ts", ts(export))]
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 #[serde(rename_all = "snake_case", tag = "mode")]
 pub enum WallpaperMode {
@@ -153,6 +161,8 @@ impl Default for WallpaperMode {
     }
 }
 
+#[cfg_attr(feature = "ts", derive(ts_rs::TS))]
+#[cfg_attr(feature = "ts", ts(export))]
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 #[serde(untagged)]
 pub enum Network {
@@ -160,6 +170,8 @@ pub enum Network {
     Socks5 { host: String, port: u16 },
 }
 
+#[cfg_attr(feature = "ts", derive(ts_rs::TS))]
+#[cfg_attr(feature = "ts", ts(export))]
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub struct Config {
     /// Network configuration for specifying a GitHub mirror template or SOCKS5 proxy.

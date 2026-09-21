@@ -29,6 +29,10 @@ dirs = { workspace = true, default-features = false }
 serde = { workspace = true, default-features = false }
 serde_json = { workspace = true, default-features = false }
 thiserror = { workspace = true, default-features = false }
+ts-rs = { version = "12", optional = true, default-features = false, features = [
+    "serde-compat",
+    "no-serde-warnings",
+] }
 
 [target.'cfg(windows)'.dependencies]
 # Keep version in sync with tauri
@@ -54,3 +58,4 @@ insta = { version = "1", features = ["json", "redactions"] }
 default = []
 build-script = ["tauri-winres"]
 log-max-level-info = ["logging/max-level-info"]
+ts = ["dep:ts-rs"]

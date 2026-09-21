@@ -60,9 +60,12 @@ pub async fn open_privacy_location_settings() -> DwallSettingsResult<()> {
     Ok(())
 }
 
+#[cfg_attr(feature = "typegen", derive(ts_rs::TS))]
+#[cfg_attr(feature = "typegen", ts(export))]
 #[derive(serde::Serialize, Default)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct Metadata {
+    #[cfg_attr(feature = "typegen", ts(type = "number"))]
     rid: tauri::ResourceId,
     current_version: String,
     version: String,

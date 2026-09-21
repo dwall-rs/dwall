@@ -22,6 +22,12 @@ pub async fn open_dir(dir_path: std::borrow::Cow<'_, std::path::Path>) -> DwallS
 }
 
 #[tauri::command]
+pub async fn open_url(url: String) -> DwallSettingsResult<()> {
+    open::that(url)?;
+    Ok(())
+}
+
+#[tauri::command]
 pub async fn open_config_dir() -> DwallSettingsResult<()> {
     open::that(dwall::DWALL_CONFIG_DIR.as_os_str())?;
     Ok(())

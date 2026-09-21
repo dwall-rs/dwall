@@ -1,5 +1,7 @@
 /* ===== src/domain/types.ts ===== */
 // 职责：纯类型。太阳位置由高度角+方位角组成；壁纸携带原生宽高与对应太阳位置；主题壁纸数量可变。
+import type { SolarPosition } from "@/ipc/types";
+
 export type Mode = "fixed" | "random";
 export type View = "main" | "settings";
 export type ThemeMode = "light" | "dark" | "system";
@@ -15,10 +17,7 @@ export type SceneType =
   | "earth";
 
 /** 太阳位置：高度角（地平线以上为正）与方位角（北=0 东=90 南=180 西=270）。 */
-export interface SolarPosition {
-  altitude: number;
-  azimuth: number;
-}
+export type { SolarPosition };
 
 export interface Wallpaper {
   id: string;

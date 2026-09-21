@@ -29,6 +29,10 @@ dirs = { workspace = true, default-features = false }
 serde = { workspace = true }
 serde_json = { workspace = true, default-features = false }
 thiserror = { workspace = true, default-features = false }
+ts-rs = { version = "12", optional = true, default-features = false, features = [
+    "serde-compat",
+    "no-serde-warnings",
+] }
 rand = { version = "0.10", default-features = false, features = ["thread_rng"] }
 toml = { version = "1", default-features = false, features = ["parse"] }
 
@@ -57,3 +61,4 @@ windows = { version = "0.61", default-features = false, features = [
 default = []
 devtools = ["tauri/devtools"]
 log-max-level-info = ["logging/max-level-info"]
+typegen = ["dep:ts-rs", "dwall/ts"]

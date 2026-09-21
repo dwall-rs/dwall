@@ -13,7 +13,7 @@ import {
   InputGroupInput,
   InputGroupText,
 } from "../ui/input-group";
-import { checkAutoStart, disableAutoStart, enableAutoStart } from "~/commands";
+import { checkAutoStart, disableAutoStart, enableAutoStart } from "@/ipc";
 
 export function EngineSection() {
   const [flash, setFlash] = createSignal<string | null>(null);

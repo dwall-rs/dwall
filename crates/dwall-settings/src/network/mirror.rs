@@ -66,6 +66,36 @@ impl MirrorUrlResolver {
             }
         }
     }
+
+    /// Resolve a raw GitHub file URL (e.g. a theme thumbnail) through the mirror
+    /// template. Unlike [`resolve`](Self::resolve), this is synchronous and does
+    /// not require a network round-trip.
+    pub fn resolve_raw(network: Option<&Network>, github_url: &str) -> String {
+        let Some(Network::GitHubMirrorTemplate(template)) = network else {
+            return github_url.to_owned();
+        };
+
+        let prefix = "https://github.com/";
+        if template.is_empty() || !github_url.starts_with(prefix) {
+            return github_url.to_owned();
+        }
+
+        let mut parts = github_url[prefix.len()..].split('/');
+        let (Some(owner), Some(repo)) = (parts.next(), parts.next()) else {
+            return github_url.to_owned();
+        };
+
+        let base_end = template
+            .find("<repo>")
+            .map_or(template.len(), |i| i + "<repo>".len());
+        let base = template[..base_end]
+            .replace("<owner>", owner)
+            .replace("<repo>", repo);
+
+        let raw_path = github_url.find("/raw/").map_or("", |i| &github_url[i..]);
+
+        format!("{base}{raw_path}")
+    }
 }
 
 async fn fetch_latest_release_tag(api_url: &str) -> Result<String, Box<dyn std::error::Error>> {

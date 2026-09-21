@@ -353,6 +353,8 @@ impl SolarCalc {
 }
 
 /// Apparent solar position (altitude and azimuth) at a given instant.
+#[cfg_attr(feature = "ts", derive(ts_rs::TS))]
+#[cfg_attr(feature = "ts", ts(export))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SolarPosition {
     altitude: f64,

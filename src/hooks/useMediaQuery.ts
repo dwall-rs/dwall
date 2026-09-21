@@ -1,7 +1,7 @@
 /* ===== src/hooks/useMediaQuery.ts ===== */
 // 职责：订阅一条媒体查询并返回布尔；组件据此做「无法纯 CSS 表达」的决策（如抽屉自动关闭）。
 
-import { createEffect, createSignal } from "solid-js";
+import { type Accessor, createEffect, createSignal } from "solid-js";
 
 export function useMediaQuery(query: string): Accessor<boolean> {
   const [matches, setMatches] = createSignal(

@@ -2,6 +2,11 @@
 
 import { createStore } from "solid-js/store";
 
+import { getEngineStatus, startEngine, stopEngine } from "@/ipc";
+import { logger } from "@/utils";
+
+const log = logger.child("engine");
+
 interface EngineState {
   running: boolean;
   pending: boolean; // 已点一次「终止」，等待二次确认
@@ -9,22 +14,40 @@ interface EngineState {
 }
 
 const [engineStore, setEngineStore] = createStore<EngineState>({
-  running: true,
+  running: false,
   pending: false,
   pendingTimer: undefined,
 });
 
-const toggle = () => {
+/** 与真实守护进程状态对齐 */
+const refresh = async () => {
+  try {
+    setEngineStore("running", await getEngineStatus());
+  } catch (e) {
+    log.error("Failed to query engine status", e);
+  }
+};
+
+const toggle = async () => {
   if (engineStore.running) {
     if (engineStore.pending) {
       // 二次确认 → 真正终止
       if (engineStore.pendingTimer) clearTimeout(engineStore.pendingTimer);
-      // TODO(ipc): 向引擎进程发送终止信号 / kill pid
-      setEngineStore({
-        running: false,
-        pending: false,
-        pendingTimer: undefined,
-      });
+      try {
+        await stopEngine();
+        setEngineStore({
+          running: false,
+          pending: false,
+          pendingTimer: undefined,
+        });
+      } catch (e) {
+        log.error("Failed to stop engine", e);
+        setEngineStore((prev) => ({
+          ...prev,
+          pending: false,
+          pendingTimer: undefined,
+        }));
+      }
     } else {
       // 第一次点击 → 进入待确认，2.2s 不复位则自动放弃
       const t = setTimeout(
@@ -39,9 +62,13 @@ const toggle = () => {
       setEngineStore((prev) => ({ ...prev, pending: true, pendingTimer: t }));
     }
   } else {
-    // TODO(ipc): 启动引擎进程
-    setEngineStore("running", true);
+    try {
+      await startEngine();
+      setEngineStore("running", true);
+    } catch (e) {
+      log.error("Failed to start engine", e);
+    }
   }
 };
 
-export { engineStore, toggle };
+export { engineStore, toggle, refresh };

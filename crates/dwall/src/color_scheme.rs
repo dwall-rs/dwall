@@ -24,6 +24,8 @@ pub trait ColorSchemeProvider {
     fn set_color_scheme(&self, scheme: ColorScheme) -> DwallResult<()>;
 }
 
+#[cfg_attr(feature = "ts", derive(ts_rs::TS))]
+#[cfg_attr(feature = "ts", ts(export))]
 #[derive(Debug, PartialEq, Deserialize, Copy, Clone)]
 #[serde(rename_all = "UPPERCASE")]
 pub enum ColorScheme {

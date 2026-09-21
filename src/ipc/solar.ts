@@ -1,5 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
-import type { SolarPosition } from "~/domain/types";
+
+import type { PositionSource, SolarPosition } from "./types";
 
 export const getSolarPosition = async (
   positionSource: PositionSource,

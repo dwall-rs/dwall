@@ -7,11 +7,9 @@ import type {
   PositionSource,
   PositionSourceAutomatic,
   PositionSourceManual,
-  Socks5,
 } from "@/domain/config";
-import { isSocks5 } from "@/domain/config";
-import { readConfigFile, writeConfigFile } from "~/commands";
-import { themeStore, setMode } from "./theme.store";
+import { readConfigFile, writeConfigFile } from "@/ipc";
+import { setMode, themeStore } from "./theme.store";
 
 type Status = "idle" | "loading" | "ready" | "error";
 
@@ -61,9 +59,21 @@ const patch = (p: Partial<Config>) => {
   setSettingsStore("config", (prev) => (prev ? { ...prev, ...p } : {}));
 };
 
-const setsetPositionType = (t: PositionSource["type"]) => {
+const setPositionType = (t: PositionSource["type"]) => {
   setSettingsStore("config", (prev) =>
-    prev ? { ...prev, position_source: { type: t } } : {},
+    prev
+      ? {
+          ...prev,
+          position_source:
+            t === "AUTOMATIC"
+              ? {
+                  type: "AUTOMATIC",
+                  update_on_each_calculation: false,
+                  cache_minutes: 30,
+                }
+              : { type: "MANUAL", latitude: 0, longitude: 0, altitude: 875 },
+        }
+      : {},
   );
 };
 
@@ -79,37 +89,22 @@ export type NetworkType = "none" | "mirror" | "socks5";
 
 const networkType = (): NetworkType => {
   const network = settingsStore.config?.network;
-  if (network === undefined) return "none";
+  if (network == null) return "none";
 
   return typeof network === "string" ? "mirror" : "socks5";
 };
 
-// FIXME: 修改网络不生效
 const setNetworkType = (t: NetworkType) => {
-  const cfg = settingsStore.config;
-  if (!cfg) return;
+  if (!settingsStore.config) return;
 
   setSettingsStore(
     "config",
     "network",
     t === "none"
-      ? undefined
+      ? null
       : t === "mirror"
         ? ""
         : { host: "127.0.0.1", port: 1080 },
-  );
-};
-
-const patchSocks = (p: Partial<Socks5>) => {
-  setSettingsStore("config", (prev) =>
-    prev
-      ? {
-          ...prev,
-          network_type: isSocks5(prev.network)
-            ? { ...prev.network, ...p }
-            : prev.network,
-        }
-      : {},
   );
 };
 
@@ -122,7 +117,10 @@ const setWallpaperModeType = (m: "fixed" | "random") => {
             m === "fixed"
               ? {
                   mode: "fixed",
-                  monitor_specific_wallpapers: prev.monitor_specific_wallpapers,
+                  monitor_specific_wallpapers:
+                    prev.wallpaper_mode.mode === "fixed"
+                      ? prev.wallpaper_mode.monitor_specific_wallpapers
+                      : {},
                 }
               : { mode: "random", pool: null },
         }
@@ -132,13 +130,8 @@ const setWallpaperModeType = (m: "fixed" | "random") => {
 
 const setLang = (lang: string) => setSettingsStore("lang", lang);
 
-// const setInterval = (interval: number) =>
-//   setSettingsStore("interval", interval);
-
-// const setMirror = (mirror: string) => setSettingsStore("mirror", mirror);
-
 const save = async () => {
-  if (!settingsStore.config || !settingsStore.saving) return;
+  if (!settingsStore.config || settingsStore.saving) return;
 
   setSettingsStore(
     produce((settings) => {
@@ -180,11 +173,10 @@ export {
   settingsStore,
   load,
   patch,
-  setsetPositionType,
+  setPositionType,
   patchPosition,
   networkType,
   setNetworkType,
-  patchSocks,
   setWallpaperModeType,
   setLang,
   save,

@@ -8,7 +8,7 @@ import { Preview } from "./Preview";
 import { WallpaperStrip } from "./WallpaperStrip";
 import { ApplyRow } from "./ApplyRow";
 import { createMemo, createResource, Show } from "solid-js";
-import { currentSolarPosition } from "~/commands";
+import { currentSolarPosition } from "@/ipc";
 import { settingsStore } from "~/store/settings.store";
 import { logger } from "~/utils";
 

@@ -1,1 +1,0 @@
-type ColorMode = "DARK" | "LIGHT";

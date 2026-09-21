@@ -105,6 +105,12 @@ bun run build   # release: vite build + daemon release + tauri bundle
 
 ## Frontend conventions
 
+- **Rust is the single source of truth.** All backend access goes through
+  `src/ipc/` — the only place that imports `@tauri-apps/api`. Types are
+  generated from Rust with `ts-rs` into `src/ipc/bindings/`; never edit those
+  files by hand. Regenerate with `bun run typegen` (requires the `ts` /
+  `typegen` cargo features). Business logic (solar position, wallpaper
+  matching, config migration, mirror URLs) lives in Rust, not the frontend.
 - **SolidJS**, not React. Fine-grained reactivity (`createSignal`,
   `createStore`, `<Show>`, `<For>`) — no virtual DOM, no hooks.
 - **Tailwind v4** for styling; keep class names with the component.

@@ -9,6 +9,7 @@ import {
   setNetworkType,
   settingsStore,
 } from "@/store/settings.store";
+import type { Socks5 } from "@/domain/config";
 import { SettingsGroup } from "./SettingsGroup";
 import { SettingsRow } from "./SettingsRow";
 import { createMemo, Match, Switch } from "solid-js";

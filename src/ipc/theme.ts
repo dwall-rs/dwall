@@ -1,11 +1,12 @@
 import { invoke } from "@tauri-apps/api/core";
+
 import type { ThemeID } from "~/themes";
-import type { CustomizedTheme } from "~/types";
+import type { Config, CustomizedTheme, ImageFormat } from "./types";
 
 export const validateTheme = async (
   themesDirectory: string,
   themeId: string,
-  imageFormat: CustomizedTheme["image_format"],
+  imageFormat: ImageFormat,
   isCustomized = false,
 ) =>
   invoke<void>("validate_theme_cmd", {

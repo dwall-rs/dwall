@@ -8,7 +8,7 @@
     }
   },
   "files": {
-    "includes": ["**", "!!**/*.css", "!!**/*.svg"]
+    "includes": ["**", "!!**/*.css", "!!**/*.svg", "!!src/ipc/bindings/**"]
   },
   "formatter": {
     "indentStyle": "space",

@@ -77,6 +77,7 @@ async fn main() -> DwallSettingsResult<()> {
             commands::download::cancel_theme_download_cmd,
             commands::system::request_location_permission,
             commands::window::open_dir,
+            commands::window::open_url,
             commands::window::open_config_dir,
             commands::window::open_log_dir,
             commands::window::set_titlebar_color_mode,
@@ -89,6 +90,11 @@ async fn main() -> DwallSettingsResult<()> {
             commands::system::check_for_updates_cmd,
             commands::theme::get_customized_themes_cmd,
             commands::solar::get_solar_position,
+            commands::app::get_app_info,
+            commands::engine::get_engine_status,
+            commands::engine::start_engine,
+            commands::engine::stop_engine,
+            commands::mirror::mirror_url,
         ]);
 
     if cfg!(debug_assertions) {
