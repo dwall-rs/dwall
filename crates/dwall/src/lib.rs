@@ -29,7 +29,7 @@ pub use solar::{
     SolarPosition,
 };
 pub use theme::{ThemeError, ThemeValidator};
-pub use wallpaper::WallpaperProvider;
+pub use wallpaper::{WallpaperProvider, WallpaperSelector};
 
 // Re-export platform types
 #[cfg(windows)]

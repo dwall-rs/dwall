@@ -33,10 +33,7 @@ pub enum ThemeError {
 // ── Theme directory & solar angle loading ───────────────────────────────────
 
 /// Resolves the theme directory, returning `(path, is_customized)`.
-pub(crate) fn get_theme_directory_path(
-    configuration: &Config,
-    theme_identifier: &str,
-) -> (PathBuf, bool) {
+pub fn get_theme_directory_path(configuration: &Config, theme_identifier: &str) -> (PathBuf, bool) {
     let path = configuration.themes_directory().join(theme_identifier);
     if path.exists() {
         return (path, false);
@@ -108,20 +105,9 @@ thread_local! {
     static SOLAR_CACHE: RefCell<SolarAngleCache> = RefCell::new(SolarAngleCache::new());
 }
 
-/// Load solar configuration for a specific theme directory.
-///
-/// Returns a shared handle so callers never clone the angle list on a hit.
-pub(crate) fn load_cached_solar_angles(theme_directory: &Path) -> DwallResult<Rc<Vec<SolarAngle>>> {
-    let theme_directory = theme_directory.canonicalize()?;
-    debug!(path = %theme_directory.display(), "Loading solar configuration from canonical and absolute path");
-
-    if let Some(cached_angles) = SOLAR_CACHE.with(|cache| cache.borrow_mut().get(&theme_directory))
-    {
-        debug!("Using cached solar configuration");
-        return Ok(cached_angles);
-    }
-
-    let solar_config_path = theme_directory.join(SOLAR_CONFIG_FILENAME);
+/// Reads a theme's `solar.json` without caching.
+pub fn read_solar_angles(theme_dir: &Path) -> DwallResult<Vec<SolarAngle>> {
+    let solar_config_path = theme_dir.join(SOLAR_CONFIG_FILENAME);
     if !solar_config_path.exists() {
         error!(
             solar_config_path = %solar_config_path.display(),
@@ -154,7 +140,23 @@ pub(crate) fn load_cached_solar_angles(theme_directory: &Path) -> DwallResult<Rc
         "Successfully loaded solar configuration"
     );
 
-    let solar_angles = Rc::new(solar_angles);
+    Ok(solar_angles)
+}
+
+/// Load solar configuration for a specific theme directory.
+///
+/// Returns a shared handle so callers never clone the angle list on a hit.
+pub(crate) fn load_cached_solar_angles(theme_directory: &Path) -> DwallResult<Rc<Vec<SolarAngle>>> {
+    let theme_directory = theme_directory.canonicalize()?;
+    debug!(path = %theme_directory.display(), "Loading solar configuration from canonical and absolute path");
+
+    if let Some(cached_angles) = SOLAR_CACHE.with(|cache| cache.borrow_mut().get(&theme_directory))
+    {
+        debug!("Using cached solar configuration");
+        return Ok(cached_angles);
+    }
+
+    let solar_angles = Rc::new(read_solar_angles(&theme_directory)?);
     SOLAR_CACHE.with(|cache| {
         cache
             .borrow_mut()

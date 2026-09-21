@@ -403,7 +403,9 @@ impl SolarPosition {
 }
 
 /// A solar angle entry from a theme's `solar.json`.
-#[derive(Debug, Deserialize, Clone)]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS))]
+#[cfg_attr(feature = "ts", ts(export))]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct SolarAngle {
     index: u8,
     altitude: f64,
@@ -411,15 +413,15 @@ pub struct SolarAngle {
 }
 
 impl SolarAngle {
-    pub(crate) fn index(&self) -> u8 {
+    pub fn index(&self) -> u8 {
         self.index
     }
 
-    pub(crate) fn altitude(&self) -> f64 {
+    pub fn altitude(&self) -> f64 {
         self.altitude
     }
 
-    pub(crate) fn azimuth(&self) -> f64 {
+    pub fn azimuth(&self) -> f64 {
         self.azimuth
     }
 }

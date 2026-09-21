@@ -13,3 +13,5 @@ export type { CustomizedTheme } from "./bindings/CustomizedTheme";
 export type { CustomizedThemeMetadata } from "./bindings/CustomizedThemeMetadata";
 export type { Metadata as UpdateMetadata } from "./bindings/Metadata";
 export type { AppInfo } from "./bindings/AppInfo";
+export type { CatalogTheme } from "./bindings/CatalogTheme";
+export type { SolarAngle } from "./bindings/SolarAngle";

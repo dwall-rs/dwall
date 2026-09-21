@@ -20,7 +20,7 @@ pub struct WallpaperSelector;
 
 impl WallpaperSelector {
     /// Finds the closest matching image index based on solar angles
-    pub(crate) fn find_closest_image(
+    pub fn find_closest_image(
         solar_configs: &[SolarAngle],
         current_altitude: f64,
         current_azimuth: f64,

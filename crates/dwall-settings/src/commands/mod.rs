@@ -1,6 +1,7 @@
 //! Tauri command handlers, grouped by area.
 
 pub mod app;
+pub mod catalog;
 pub mod config;
 pub mod download;
 pub mod engine;

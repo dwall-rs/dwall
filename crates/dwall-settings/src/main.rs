@@ -95,6 +95,9 @@ async fn main() -> DwallSettingsResult<()> {
             commands::engine::start_engine,
             commands::engine::stop_engine,
             commands::mirror::mirror_url,
+            commands::catalog::get_theme_catalog,
+            commands::catalog::get_theme_wallpapers,
+            commands::catalog::match_wallpaper,
         ]);
 
     if cfg!(debug_assertions) {
