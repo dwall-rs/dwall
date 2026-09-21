@@ -8,7 +8,7 @@ type BoolMap = Record<string, boolean>;
 interface FixedState {
   allUnified: boolean; // 统一所有显示器（与单独设置结构性互斥）
   curMon: string; // 当前编辑的显示器 id
-  selWallpaperId: string | null; // null = 预览当前匹配的那张
+  selIndex: number | null; // null = 预览当前匹配的那张
   monitorThemes: StrMap; // monId -> themeId
   monitorOn: BoolMap;
   applied: string[]; // 已「应用」的作用域 key 集合
@@ -17,7 +17,7 @@ interface FixedState {
 const [fixedStore, setFixedStore] = createStore<FixedState>({
   allUnified: true,
   curMon: "all",
-  selWallpaperId: null,
+  selIndex: null,
   monitorThemes: {},
   monitorOn: {},
   applied: [],
@@ -28,16 +28,16 @@ const toggleUnified = () => {
     ...s,
     allUnified: !s.allUnified,
     curMon: !s.allUnified ? "all" : s.curMon,
-    selWallpaperId: null,
+    selIndex: null,
   }));
 };
 
 const selectMon = (id: string) => {
-  setFixedStore((s) => ({ ...s, curMon: id, selWallpaperId: null }));
+  setFixedStore((s) => ({ ...s, curMon: id, selIndex: null }));
 };
 
-const selectWallpaper = (selWallpaperId: string | null) => {
-  setFixedStore("selWallpaperId", selWallpaperId);
+const selectWallpaper = (selIndex: number | null) => {
+  setFixedStore("selIndex", selIndex);
 };
 
 const setMonitorTheme = (monId: string, themeId: string) => {

@@ -13,7 +13,9 @@ use crate::platform::{
     ColorSchemeScheduler, DisplayMonitor, DisplayMonitorProvider, Positioner, WallpaperSetter,
 };
 use crate::solar::{GeographicPositionProvider, Position, SolarPosition};
-use crate::theme::{ThemeError, get_theme_directory_path, load_cached_solar_angles};
+use crate::theme::{
+    ThemeError, get_theme_directory_path, load_cached_solar_angles, wallpaper_image_path,
+};
 use crate::wallpaper::{WallpaperProvider, WallpaperSelector};
 
 /// Orchestrates the solar-based theme update cycle.
@@ -232,18 +234,8 @@ impl<'a> ThemeEngine<'a> {
             found: 0,
         })?;
 
-        let image_file_name = format!(
-            "{}.{}",
-            optimal_image_index + 1,
-            self.config.image_format().as_str()
-        );
-        let image_path = if is_customized {
-            theme_dir.join("images").join(image_file_name)
-        } else {
-            theme_dir
-                .join(self.config.image_format().as_str())
-                .join(image_file_name)
-        };
+        let image_path =
+            wallpaper_image_path(self.config, theme_dir, optimal_image_index, is_customized);
 
         if !image_path.exists() {
             return Err(ThemeError::WallpaperImageMissing {

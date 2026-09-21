@@ -105,6 +105,23 @@ thread_local! {
     static SOLAR_CACHE: RefCell<SolarAngleCache> = RefCell::new(SolarAngleCache::new());
 }
 
+/// Builds the on-disk path of a theme's wallpaper image for the given index.
+pub fn wallpaper_image_path(
+    config: &Config,
+    theme_dir: &Path,
+    index: u8,
+    is_customized: bool,
+) -> PathBuf {
+    let file_name = format!("{}.{}", index + 1, config.image_format().as_str());
+    if is_customized {
+        theme_dir.join("images").join(file_name)
+    } else {
+        theme_dir
+            .join(config.image_format().as_str())
+            .join(file_name)
+    }
+}
+
 /// Reads a theme's `solar.json` without caching.
 pub fn read_solar_angles(theme_dir: &Path) -> DwallResult<Vec<SolarAngle>> {
     let solar_config_path = theme_dir.join(SOLAR_CONFIG_FILENAME);

@@ -1,73 +1,93 @@
-/* ===== src/components/stage/FixedStage.tsx ===== */
-// 职责：固定模式舞台编排——在此计算当前太阳位置与匹配壁纸，传给三个纯展示子件。
-import { fixedStore, selectWallpaper } from "@/store/fixed.store";
-import { themeById } from "@/domain/themes";
-import { nearestWallpaper } from "@/domain/solar";
-import { SunPathPanel } from "./SunPathPanel";
-import { Preview } from "./Preview";
-import { WallpaperStrip } from "./WallpaperStrip";
-import { ApplyRow } from "./ApplyRow";
+/* ===== src/stage/FixedStage.tsx ===== */
+// 职责：固定模式舞台编排——加载当前主题的壁纸（真实太阳角 + 图片）与当前太阳位置，传给纯展示子件。
 import { createMemo, createResource, Show } from "solid-js";
-import { currentSolarPosition } from "@/ipc";
-import { settingsStore } from "~/store/settings.store";
-import { logger } from "~/utils";
-
-const log = logger.child("FixedStage");
+import type { Wallpaper } from "@/domain/types";
+import { themeById } from "@/domain/themes";
+import {
+  currentSolarPosition,
+  getThemeWallpaperPath,
+  getThemeWallpapers,
+  matchWallpaper,
+} from "@/ipc";
+import { catalogStore } from "@/store/catalog.store";
+import { fixedStore, selectWallpaper } from "@/store/fixed.store";
+import { settingsStore } from "@/store/settings.store";
+import { ApplyRow } from "./ApplyRow";
+import { Preview } from "./Preview";
+import { SunPathPanel } from "./SunPathPanel";
+import { WallpaperStrip } from "./WallpaperStrip";
 
 export function FixedStage() {
   const scopeKey = createMemo(() =>
     fixedStore.allUnified ? "all" : fixedStore.curMon,
   );
-  const theme = createMemo(() =>
-    themeById(fixedStore.monitorThemes[scopeKey()]),
+  const themeId = createMemo(
+    () =>
+      fixedStore.monitorThemes[scopeKey()] ?? catalogStore.themes[0]?.id ?? "",
   );
-  const [current] = createResource(
-    () => settingsStore.config?.position_source,
-    async (ps) => {
-      const current = await currentSolarPosition(ps);
-      log.debug("current solar position", current);
-      console.log("current solar position", current);
+  const theme = createMemo(() => themeById(themeId()));
 
-      return {
-        solarPosition: current,
-        matched: nearestWallpaper(theme().wallpapers, current),
-      };
+  const [wallpapers] = createResource(
+    themeId,
+    async (id): Promise<Wallpaper[]> => {
+      if (!id) return [];
+      const angles = await getThemeWallpapers(id);
+      return Promise.all(
+        angles.map(async (a) => ({
+          index: a.index,
+          solar: { altitude: a.altitude, azimuth: a.azimuth },
+          path: await getThemeWallpaperPath(id, a.index),
+        })),
+      );
     },
   );
 
+  const [current] = createResource(
+    () => settingsStore.config?.position_source,
+    (ps) => currentSolarPosition(ps),
+  );
+
+  const [matchedIndex] = createResource(
+    () => {
+      const cur = current();
+      const id = themeId();
+      return id && cur ? { id, cur } : null;
+    },
+    async ({ id, cur }) => await matchWallpaper(id, cur.altitude, cur.azimuth),
+  );
+
   const active = createMemo(() => {
-    const cur = current();
-    if (!cur) return null;
-    const { matched } = cur;
-    return (
-      theme().wallpapers.find(
-        (w) => w.id === (fixedStore.selWallpaperId ?? matched.id),
-      ) ?? matched
-    );
+    const list = wallpapers() ?? [];
+    const idx = fixedStore.selIndex ?? matchedIndex();
+    return list.find((w) => w.index === idx) ?? list[0] ?? null;
   });
 
   return (
-    <Show when={current.state === "ready"}>
+    <Show when={current.state === "ready" && wallpapers.state === "ready"}>
       <SunPathPanel
-        theme={theme()}
-        current={current()!.solarPosition}
-        matchedId={active()!.id}
-        selId={fixedStore.selWallpaperId}
-        onSelect={(id) => selectWallpaper(id)}
+        wallpapers={wallpapers() ?? []}
+        current={current()!}
+        matchedIndex={matchedIndex() ?? null}
+        selIndex={fixedStore.selIndex}
+        onSelect={selectWallpaper}
       />
-      <Preview
-        type={theme().type}
-        wallpaper={active()!}
-        isMatched={active()!.id === current()!.matched.id}
-      />
+      <Show when={active()}>
+        {(wp) => (
+          <Preview wallpaper={wp()} isMatched={wp().index === matchedIndex()} />
+        )}
+      </Show>
       <WallpaperStrip
-        theme={theme()}
-        current={current()!.solarPosition}
-        matchedId={active()!.id}
-        selId={fixedStore.selWallpaperId}
+        wallpapers={wallpapers() ?? []}
+        matchedIndex={matchedIndex() ?? null}
+        selIndex={fixedStore.selIndex}
         onSelect={selectWallpaper}
       />
       <ApplyRow />
+      <Show when={theme().id === "default"}>
+        <p class="text-center font-mono text-[11px] text-muted-foreground">
+          未选择主题
+        </p>
+      </Show>
     </Show>
   );
 }

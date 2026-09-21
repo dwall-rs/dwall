@@ -10,6 +10,10 @@ export const getThemeCatalog = async () =>
 export const getThemeWallpapers = async (themeId: string) =>
   invoke<SolarAngle[]>("get_theme_wallpapers", { themeId });
 
+/** On-disk path of a theme wallpaper image, or null when missing */
+export const getThemeWallpaperPath = async (themeId: string, index: number) =>
+  invoke<string | null>("get_theme_wallpaper_path", { themeId, index });
+
 /** Index of the wallpaper matching the given solar position, or null */
 export const matchWallpaper = async (
   themeId: string,

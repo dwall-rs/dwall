@@ -1,5 +1,5 @@
 // 职责：装饰性日轨丝带——真椭圆；底部预留标签条带防重叠；地平线标注置于中段空位。
-import type { SolarPosition, Theme } from "@/domain/types";
+import type { SolarPosition, Wallpaper } from "@/domain/types";
 import { clsx } from "@/utils";
 import { createMemo, createSignal, For } from "solid-js";
 import { themeStore } from "~/store/theme.store";
@@ -18,21 +18,21 @@ const band = (alt: number) =>
   alt < 0 ? "bg-muted-foreground" : alt < 20 ? "bg-(--warning)" : "bg-primary";
 
 interface Props {
-  theme: Theme;
+  wallpapers: Wallpaper[];
   current: SolarPosition;
-  matchedId: string;
-  selId: string | null;
-  onSelect: (id: string) => void;
+  matchedIndex: number | null;
+  selIndex: number | null;
+  onSelect: (index: number | null) => void;
 }
 
 export function SunPathPanel(props: Props) {
-  const [hover, setHover] = createSignal<string | null>(null);
+  const [hover, setHover] = createSignal<number | null>(null);
 
   const cx = createMemo(() => Xaz(props.current.azimuth)),
     cy = createMemo(() => Yp(props.current.altitude));
 
   const matched = createMemo(() =>
-    props.theme.wallpapers.find((w) => w.id === props.matchedId),
+    props.wallpapers.find((w) => w.index === props.matchedIndex),
   );
 
   const path = createMemo(() => {
@@ -133,17 +133,17 @@ export function SunPathPanel(props: Props) {
           )}
         </svg>
 
-        <For each={props.theme.wallpapers}>
+        <For each={props.wallpapers}>
           {(wp) => {
-            const sel = createMemo(() => wp.id === props.selId),
-              mat = createMemo(() => wp.id === props.matchedId),
-              hov = createMemo(() => wp.id === hover());
+            const sel = createMemo(() => wp.index === props.selIndex),
+              mat = createMemo(() => wp.index === props.matchedIndex),
+              hov = createMemo(() => wp.index === hover());
             return (
               <button
                 type="button"
                 title={`高度 ${wp.solar.altitude}° · 方位 ${wp.solar.azimuth}°`}
-                onClick={() => props.onSelect(wp.id)}
-                onMouseEnter={() => setHover(wp.id)}
+                onClick={() => props.onSelect(wp.index)}
+                onMouseEnter={() => setHover(wp.index)}
                 onMouseLeave={() => setHover(null)}
                 style={{
                   left: `${Xaz(wp.solar.azimuth)}%`,

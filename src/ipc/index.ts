@@ -1,5 +1,6 @@
 export * from "./types";
 export * from "./app";
+export * from "./asset";
 export * from "./autostart";
 export * from "./catalog";
 export * from "./config";
