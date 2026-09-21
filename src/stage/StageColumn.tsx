@@ -2,7 +2,7 @@
 // 职责：中栏容器——标题随模式 + 渲染对应舞台面板。
 import { uiStore } from "@/store/ui.store";
 import { fixedStore } from "@/store/fixed.store";
-import { INITIAL_MONITORS } from "@/domain/monitors";
+import { monitorById } from "@/domain/monitors";
 import { themeById } from "@/domain/themes";
 import { FixedStage } from "./FixedStage";
 import { RandomStage } from "./RandomStage";
@@ -12,9 +12,7 @@ export function StageColumn() {
   const scopeKey = createMemo(() =>
     fixedStore.allUnified ? "all" : fixedStore.curMon,
   );
-  const mon = createMemo(
-    () => INITIAL_MONITORS.find((m) => m.id === scopeKey())!,
-  );
+  const mon = createMemo(() => monitorById(scopeKey()));
   const themeName = createMemo(
     () => themeById(fixedStore.monitorThemes[scopeKey()]).name,
   );
@@ -24,7 +22,7 @@ export function StageColumn() {
       <Show when={uiStore.mode === "fixed"}>
         <div class="flex items-center gap-2.5 text-[12.5px] text-muted-foreground">
           <span class="font-display text-[14px] font-bold text-foreground">
-            {mon().name}
+            {mon()?.name ?? scopeKey()}
           </span>
           <span>›</span>
           <span class="font-display font-semibold text-primary">

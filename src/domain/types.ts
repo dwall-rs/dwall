@@ -36,9 +36,6 @@ export interface Theme {
 export interface Monitor {
   id: string;
   name: string;
-  res: string;
-  theme: string;
-  on: boolean;
 }
 
 export function eqArr(a: readonly string[], b: readonly string[]): boolean {

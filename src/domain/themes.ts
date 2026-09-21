@@ -63,10 +63,11 @@ function toTheme(id: string, name: string): Theme {
 export const themeList = (): Theme[] =>
   catalogStore.themes.map((t) => toTheme(t.id, t.name));
 
-/** 按 id 取主题；目录中不存在时回退为以该 id 命名的占位主题。 */
-export const themeById = (id: string): Theme => {
-  const found = catalogStore.themes.find((t) => t.id === id);
-  return found ? toTheme(found.id, found.name) : toTheme(id, id);
+/** 按 id 取主题；id 为空或目录中不存在时回退到第一个目录主题。 */
+export const themeById = (id: string | undefined): Theme => {
+  const found = id ? catalogStore.themes.find((t) => t.id === id) : undefined;
+  const theme = found ?? catalogStore.themes[0];
+  return theme ? toTheme(theme.id, theme.name) : toTheme("default", "—");
 };
 
 /** 主题代表缩略（展示占位：取最接近正午的一张壁纸）。 */

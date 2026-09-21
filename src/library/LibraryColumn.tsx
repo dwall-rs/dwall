@@ -1,7 +1,7 @@
 // 职责：右栏容器；补 h-full 以在抽屉形态下撑满高度。其余不变。
 import { uiStore } from "@/store/ui.store";
 import { fixedStore } from "@/store/fixed.store";
-import { INITIAL_MONITORS } from "@/domain/monitors";
+import { monitorById } from "@/domain/monitors";
 import { themeList } from "@/domain/themes";
 import { ThemeTile } from "./ThemeTile";
 import { Search } from "lucide-solid";
@@ -20,7 +20,7 @@ export function LibraryColumn() {
   const scopeName = createMemo(() =>
     fixedStore.allUnified
       ? "所有显示器"
-      : INITIAL_MONITORS.find((m) => m.id === fixedStore.curMon)!.name,
+      : (monitorById(fixedStore.curMon)?.name ?? fixedStore.curMon),
   );
 
   return (

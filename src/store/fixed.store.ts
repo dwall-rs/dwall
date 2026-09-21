@@ -1,15 +1,9 @@
 // 职责：固定模式——统一/单独互斥、当前显示器、查看时段、每显示器主题、逐条「应用/停止」。
 //       固定模式无全局脏态：提交粒度是「一套」，靠 applied 集合表达。
-import { INITIAL_MONITORS } from "@/domain/monitors";
 import { createStore } from "solid-js/store";
 
 type StrMap = Record<string, string>;
 type BoolMap = Record<string, boolean>;
-
-const initThemes = (): StrMap =>
-  Object.fromEntries(INITIAL_MONITORS.map((m) => [m.id, m.theme]));
-const initOn = (): BoolMap =>
-  Object.fromEntries(INITIAL_MONITORS.map((m) => [m.id, m.on]));
 
 interface FixedState {
   allUnified: boolean; // 统一所有显示器（与单独设置结构性互斥）
@@ -24,8 +18,8 @@ const [fixedStore, setFixedStore] = createStore<FixedState>({
   allUnified: true,
   curMon: "all",
   selWallpaperId: null,
-  monitorThemes: initThemes(),
-  monitorOn: initOn(),
+  monitorThemes: {},
+  monitorOn: {},
   applied: [],
 });
 
@@ -52,7 +46,7 @@ const setMonitorTheme = (monId: string, themeId: string) => {
 };
 
 const toggleMonitorOn = (monId: string) => {
-  setFixedStore("monitorOn", (s) => ({ ...s, [monId]: !s[monId] }));
+  setFixedStore("monitorOn", (s) => ({ ...s, [monId]: !(s[monId] ?? true) }));
 };
 
 const toggleApply = (scopeKey: string) => {

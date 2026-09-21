@@ -6,7 +6,7 @@ import {
   toggleMonitorOn as toggleOn,
   selectMon,
 } from "@/store/fixed.store";
-import { INITIAL_MONITORS } from "@/domain/monitors";
+import { monitorById } from "@/domain/monitors";
 import { themeById } from "@/domain/themes";
 import { clsx } from "@/utils";
 import { ThemeCover } from "~/scene/ThemeCover";
@@ -16,7 +16,7 @@ interface Props {
 }
 
 export function MonitorCard({ id }: Props) {
-  const mon = INITIAL_MONITORS.find((m) => m.id === id)!;
+  const mon = monitorById(id);
   const sel = !fixedStore.allUnified && fixedStore.curMon === id;
 
   return (
@@ -38,18 +38,17 @@ export function MonitorCard({ id }: Props) {
       </div>
       <div class="min-w-0 flex-1">
         <div class="truncate font-display text-[13.5px] font-bold">
-          {mon.name}
+          {mon?.name ?? id}
         </div>
         <div class="mt-0.75 flex items-center gap-1.5 font-mono text-[11px] text-muted-foreground">
           <span class="text-foreground/80">
             {themeById(fixedStore.monitorThemes[id]).name}
           </span>
-          · {mon.res}
         </div>
       </div>
       <Switch
         size="sm"
-        checked={fixedStore.monitorOn[id]}
+        checked={fixedStore.monitorOn[id] ?? true}
         onCheckedChange={() => toggleOn(id)}
         onClick={(e) => e.stopPropagation()}
       />
