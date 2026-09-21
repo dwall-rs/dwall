@@ -8,7 +8,7 @@ import { MQ_XL } from "@/lib/layout";
 import { themeById } from "@/domain/themes";
 import { clsx } from "@/utils";
 import { Check } from "lucide-solid";
-import { ThemeCover } from "~/scene/ThemeCover";
+import { ThemeThumbnail } from "~/scene/ThemeThumbnail";
 
 interface Props {
   id: string;
@@ -45,7 +45,7 @@ export function ThemeTile({ id, index }: Props) {
         on && uiStore.mode === "random" && "border-warning",
       )}
     >
-      <ThemeCover
+      <ThemeThumbnail
         themeId={id}
         class="transition-transform duration-500 group-hover:scale-105"
       />

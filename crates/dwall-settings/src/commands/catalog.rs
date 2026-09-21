@@ -3,7 +3,7 @@
 use std::path::PathBuf;
 
 use dwall::config::ConfigReader;
-use dwall::theme::{get_theme_directory_path, read_solar_angles, wallpaper_image_path};
+use dwall::theme::{get_theme_directory_path, read_solar_angles};
 use dwall::wallpaper::WallpaperSelector;
 use dwall::{DWALL_CONFIG_DIR, SolarAngle};
 use serde::Serialize;
@@ -83,21 +83,6 @@ fn installed_solar_angles(theme_id: &str) -> DwallSettingsResult<Vec<SolarAngle>
 #[tauri::command]
 pub fn get_theme_wallpapers(theme_id: String) -> DwallSettingsResult<Vec<SolarAngle>> {
     installed_solar_angles(&theme_id)
-}
-
-/// On-disk path of a theme wallpaper image, or `None` when it is missing.
-#[tauri::command]
-pub fn get_theme_wallpaper_path(
-    theme_id: String,
-    index: u8,
-) -> DwallSettingsResult<Option<String>> {
-    let config = ConfigReader::read_from_path(&DWALL_CONFIG_DIR.join("config.toml"))?;
-    let (dir, is_customized) = get_theme_directory_path(&config, &theme_id);
-    if !dir.is_dir() {
-        return Ok(None);
-    }
-    let path = wallpaper_image_path(&config, &dir, index, is_customized);
-    Ok(path.exists().then(|| path.display().to_string()))
 }
 
 /// Index of the wallpaper whose target solar angle is closest to the given position.

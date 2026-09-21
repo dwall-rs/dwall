@@ -4,7 +4,7 @@ import { randomStore, toggle } from "@/store/random.store";
 import { themeById } from "@/domain/themes";
 import { clsx } from "@/utils";
 import { createMemo } from "solid-js";
-import { ThemeCover } from "~/scene/ThemeCover";
+import { ThemeThumbnail } from "~/scene/ThemeThumbnail";
 
 interface Props {
   id: string;
@@ -19,7 +19,7 @@ export function ThemeCheckItem({ id }: Props) {
       class="flex cursor-pointer items-center gap-2.5 rounded-[7px] p-2 transition-all duration-200 hover:translate-x-0.5 hover:bg-secondary"
     >
       <div class="h-7 w-10 shrink-0 overflow-hidden rounded-md shadow-[0_2px_6px_rgba(0,0,0,.4)]">
-        <ThemeCover themeId={id} />
+        <ThemeThumbnail themeId={id} />
       </div>
       <div
         class={clsx(

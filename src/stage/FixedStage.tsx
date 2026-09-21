@@ -1,11 +1,10 @@
 /* ===== src/stage/FixedStage.tsx ===== */
-// 职责：固定模式舞台编排——加载当前主题的壁纸（真实太阳角 + 图片）与当前太阳位置，传给纯展示子件。
+// 职责：固定模式舞台编排——加载当前主题的壁纸太阳角与当前太阳位置，传给纯展示子件。
 import { createMemo, createResource, Show } from "solid-js";
 import type { Wallpaper } from "@/domain/types";
 import { themeById } from "@/domain/themes";
 import {
   currentSolarPosition,
-  getThemeWallpaperPath,
   getThemeWallpapers,
   matchWallpaper,
 } from "@/ipc";
@@ -32,13 +31,10 @@ export function FixedStage() {
     async (id): Promise<Wallpaper[]> => {
       if (!id) return [];
       const angles = await getThemeWallpapers(id);
-      return Promise.all(
-        angles.map(async (a) => ({
-          index: a.index,
-          solar: { altitude: a.altitude, azimuth: a.azimuth },
-          path: await getThemeWallpaperPath(id, a.index),
-        })),
-      );
+      return angles.map((a) => ({
+        index: a.index,
+        solar: { altitude: a.altitude, azimuth: a.azimuth },
+      }));
     },
   );
 
@@ -73,10 +69,15 @@ export function FixedStage() {
       />
       <Show when={active()}>
         {(wp) => (
-          <Preview wallpaper={wp()} isMatched={wp().index === matchedIndex()} />
+          <Preview
+            themeId={themeId()}
+            wallpaper={wp()}
+            isMatched={wp().index === matchedIndex()}
+          />
         )}
       </Show>
       <WallpaperStrip
+        themeId={themeId()}
         wallpapers={wallpapers() ?? []}
         matchedIndex={matchedIndex() ?? null}
         selIndex={fixedStore.selIndex}

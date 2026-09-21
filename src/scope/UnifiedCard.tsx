@@ -3,7 +3,7 @@ import { fixedStore, toggleUnified as toggle } from "@/store/fixed.store";
 import { clsx } from "@/utils";
 import { Switch } from "~/components/ui/switch";
 import { Monitor } from "lucide-solid";
-import { ThemeCover } from "~/scene/ThemeCover";
+import { ThemeThumbnail } from "~/scene/ThemeThumbnail";
 
 export function UnifiedCard() {
   return (
@@ -38,7 +38,7 @@ export function UnifiedCard() {
       {fixedStore.allUnified && (
         <div class="mt-2.5 flex gap-1.5">
           <div class="h-6 w-8.5 overflow-hidden rounded-[5px]">
-            <ThemeCover themeId={fixedStore.monitorThemes.all} />
+            <ThemeThumbnail themeId={fixedStore.monitorThemes.all} />
           </div>
         </div>
       )}

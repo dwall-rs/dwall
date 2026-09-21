@@ -1,10 +1,11 @@
 /* ===== src/stage/WallpaperStrip.tsx ===== */
-// 职责：壁纸条——数量可变、定宽；标注各自太阳位置；选中/匹配高亮。
+// 职责：壁纸条——数量可变、定宽；以缩略图展示，标注各自太阳位置；选中/匹配高亮。
 import type { Wallpaper } from "@/domain/types";
-import { WallpaperImage } from "@/scene/WallpaperImage";
+import { ThemeThumbnail } from "@/scene/ThemeThumbnail";
 import { clsx } from "@/utils";
 
 interface Props {
+  themeId: string;
   wallpapers: Wallpaper[];
   matchedIndex: number | null;
   selIndex: number | null;
@@ -51,7 +52,7 @@ export function WallpaperStrip(props: Props) {
                   : "border-border hover:border-border-2",
               )}
             >
-              <WallpaperImage path={wp.path} />
+              <ThemeThumbnail themeId={props.themeId} index={wp.index} />
               {matched && (
                 <span class="absolute left-1 top-1 rounded bg-success px-1 font-mono text-[9px] leading-4 text-success-foreground">
                   匹配

@@ -2,7 +2,7 @@
 // 职责：候选池拼贴墙——仅预览池内容，明确标注「非抽中结果」。
 import { randomStore } from "@/store/random.store";
 import { themeList } from "@/domain/themes";
-import { ThemeCover } from "~/scene/ThemeCover";
+import { ThemeThumbnail } from "~/scene/ThemeThumbnail";
 
 const LAYOUT = ["big", "", "tall", "", "", "", "tall", "", "big", ""];
 
@@ -16,7 +16,7 @@ export function PoolCollage() {
         <div
           class={`relative overflow-hidden ${LAYOUT[i] === "big" ? "col-span-2 row-span-2" : LAYOUT[i] === "tall" ? "row-span-2" : ""}`}
         >
-          <ThemeCover
+          <ThemeThumbnail
             themeId={t.id}
             class="saturate-[.92] transition-transform duration-500 hover:scale-105"
           />

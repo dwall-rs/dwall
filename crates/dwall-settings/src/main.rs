@@ -97,7 +97,6 @@ async fn main() -> DwallSettingsResult<()> {
             commands::mirror::mirror_url,
             commands::catalog::get_theme_catalog,
             commands::catalog::get_theme_wallpapers,
-            commands::catalog::get_theme_wallpaper_path,
             commands::catalog::match_wallpaper,
         ]);
 

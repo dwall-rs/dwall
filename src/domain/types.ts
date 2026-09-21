@@ -15,11 +15,10 @@ export interface Theme {
   name: string;
 }
 
-/** 壁纸：目标太阳角 + 本地图片路径（未安装则为 null）。 */
+/** 壁纸：目标太阳角（图片以缩略图展示，由主题目录提供）。 */
 export interface Wallpaper {
   index: number;
   solar: SolarPosition;
-  path: string | null;
 }
 
 export interface Monitor {
