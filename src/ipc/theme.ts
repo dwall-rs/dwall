@@ -1,6 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
 
-import type { ThemeID } from "~/themes";
 import type { Config, CustomizedTheme, ImageFormat } from "./types";
 
 export const validateTheme = async (
@@ -20,7 +19,7 @@ export const applyTheme = async (config: Config) =>
   invoke<void>("apply_theme_cmd", { config });
 
 export const getAppliedThemeID = async (monitorId: string) =>
-  invoke<ThemeID | null>("get_applied_theme_id_cmd", { monitorId });
+  invoke<string | null>("get_applied_theme_id_cmd", { monitorId });
 
 export const downloadThemeAndExtract = async (
   config: Config,

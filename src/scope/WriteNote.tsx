@@ -1,7 +1,7 @@
 /* ===== src/components/scope/WriteNote.tsx ===== */
 // 职责：随机模式归属/状态条——三态：空集(rose) / 脏态(warning) / 正常(muted)。
 import { randomStore, isDirty } from "@/store/random.store";
-import { THEMES } from "@/domain/themes";
+import { themeList } from "@/domain/themes";
 import { clsx } from "@/utils";
 import { createMemo } from "solid-js";
 
@@ -13,7 +13,7 @@ export function WriteNote() {
     empty()
       ? "候选池为空，引擎将无壁纸可抽，请至少保留一套。"
       : dirty()
-        ? `候选池 ${randomStore.selected.length} 套 · 已排除 ${THEMES.length - randomStore.selected.length} · 未保存`
+        ? `候选池 ${randomStore.selected.length} 套 · 已排除 ${themeList().length - randomStore.selected.length} · 未保存`
         : `候选池 ${randomStore.selected.length} 套 · 取消勾选即从每日洗牌中排除`,
   );
   return (

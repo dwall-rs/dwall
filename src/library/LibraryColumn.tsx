@@ -2,7 +2,7 @@
 import { uiStore } from "@/store/ui.store";
 import { fixedStore } from "@/store/fixed.store";
 import { INITIAL_MONITORS } from "@/domain/monitors";
-import { THEMES } from "@/domain/themes";
+import { themeList } from "@/domain/themes";
 import { ThemeTile } from "./ThemeTile";
 import { Search } from "lucide-solid";
 import { createMemo, createSignal, For } from "solid-js";
@@ -15,7 +15,7 @@ import {
 export function LibraryColumn() {
   const [q, setQ] = createSignal("");
   const list = createMemo(() =>
-    THEMES.filter((t) => t.name.toLowerCase().includes(q().toLowerCase())),
+    themeList().filter((t) => t.name.toLowerCase().includes(q().toLowerCase())),
   );
   const scopeName = createMemo(() =>
     fixedStore.allUnified

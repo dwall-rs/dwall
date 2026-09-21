@@ -1,16 +1,15 @@
 /* ===== src/components/stage/PoolCollage.tsx ===== */
 // 职责：候选池拼贴墙——仅预览池内容，明确标注「非抽中结果」。
 import { randomStore } from "@/store/random.store";
-import { themeCover, THEMES } from "@/domain/themes";
+import { themeCover, themeList } from "@/domain/themes";
 import { Scene } from "~/scene/Scene";
 
 const LAYOUT = ["big", "", "tall", "", "", "", "tall", "", "big", ""];
 
 export function PoolCollage() {
-  const pool = THEMES.filter((t) => randomStore.selected.includes(t.id)).slice(
-    0,
-    10,
-  );
+  const pool = themeList()
+    .filter((t) => randomStore.selected.includes(t.id))
+    .slice(0, 10);
   return (
     <div class="relative grid min-h-0 flex-1 grid-cols-4 auto-rows-fr gap-[3px] overflow-hidden rounded-[18px] border border-border-2 bg-black shadow-[0_24px_60px_rgba(0,0,0,.45)]">
       {pool.map((t, i) => {

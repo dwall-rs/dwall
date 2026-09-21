@@ -1,5 +1,4 @@
 // 职责：随机模式——候选池勾选 + 整份 profile 的三帧保存。dirty 由 selector 派生，不存 state。
-import { THEMES } from "@/domain/themes";
 import { createStore } from "solid-js/store";
 
 interface RandomState {
@@ -9,14 +8,16 @@ interface RandomState {
   savedAt: number | null;
 }
 
-const ALL_IDS = THEMES.map((t) => t.id);
-
 const [randomStore, setRandomStore] = createStore<RandomState>({
-  selected: [...ALL_IDS], // 默认全选
-  saved: [...ALL_IDS],
+  selected: [],
+  saved: [],
   saving: false,
   savedAt: null,
 });
+
+/** 用完整主题列表初始化候选池（主题目录加载后调用）。 */
+const selectAll = (ids: string[]) =>
+  setRandomStore({ selected: [...ids], saved: [...ids] });
 
 const toggle = (id: string) =>
   setRandomStore("selected", (s) => ({
@@ -47,4 +48,4 @@ const isDirty = (s: RandomState): boolean => {
   return false;
 };
 
-export { randomStore, toggle, save, discard, isDirty };
+export { randomStore, selectAll, toggle, save, discard, isDirty };

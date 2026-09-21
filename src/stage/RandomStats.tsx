@@ -1,7 +1,7 @@
 /* ===== src/components/stage/RandomStats.tsx ===== */
 // 职责：随机模式只读摘要数字——候选池/范围/目标/周期。
 import { randomStore } from "@/store/random.store";
-import { THEMES } from "@/domain/themes";
+import { themeList } from "@/domain/themes";
 import { clsx } from "@/utils";
 import { createMemo } from "solid-js";
 
@@ -16,7 +16,11 @@ export function RandomStats() {
         cls={empty() ? "text-destructive" : "text-warning"}
       />
       <Stat
-        value={n() === THEMES.length ? "全部" : `排除 ${THEMES.length - n()}`}
+        value={
+          n() === themeList().length
+            ? "全部"
+            : `排除 ${themeList().length - n()}`
+        }
         label="范围"
         small
         cls={empty() ? "text-destructive" : ""}

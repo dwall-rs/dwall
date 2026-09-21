@@ -1,5 +1,5 @@
 // 职责：随机模式作用域面板——归属条 + 搜索 + 候选勾选列表（无 Radio，默认全选）。
-import { THEMES } from "@/domain/themes";
+import { themeList } from "@/domain/themes";
 import { WriteNote } from "./WriteNote";
 import { ThemeCheckItem } from "./ThemeCheckItem";
 import { Search } from "lucide-solid";
@@ -8,7 +8,7 @@ import { createMemo, createSignal } from "solid-js";
 export function RandomScope() {
   const [q, setQ] = createSignal("");
   const list = createMemo(() =>
-    THEMES.filter((t) => t.name.toLowerCase().includes(q().toLowerCase())),
+    themeList().filter((t) => t.name.toLowerCase().includes(q().toLowerCase())),
   );
   return (
     <>

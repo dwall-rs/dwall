@@ -2,7 +2,7 @@
 // 职责：左栏容器——标题随模式 + 渲染对应作用域面板。
 import { uiStore } from "@/store/ui.store";
 import { randomStore } from "@/store/random.store";
-import { THEMES } from "@/domain/themes";
+import { themeList } from "@/domain/themes";
 import { FixedScope } from "./FixedScope";
 import { RandomScope } from "./RandomScope";
 import { Show } from "solid-js";
@@ -17,7 +17,7 @@ export function ScopeColumn() {
 
         <Show when={uiStore.mode === "random"}>
           <span class="font-mono text-[11px] text-muted-foreground">
-            已选 {randomStore.selected.length}/{THEMES.length}
+            已选 {randomStore.selected.length}/{themeList().length}
           </span>
         </Show>
       </div>
