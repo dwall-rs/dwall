@@ -64,7 +64,11 @@ impl ThumbnailCache {
         if let Some(metadata) = cell.get() {
             debug!(path = %metadata.path.display(), "Found the cached image");
 
-            if metadata.path.exists() {
+            let size = tokio::fs::metadata(&metadata.path)
+                .await
+                .map(|m| m.len())
+                .unwrap_or(0);
+            if size > 0 {
                 if let Err(e) = Storage::update_file_access_time(&metadata.path) {
                     warn!(path = %metadata.path.display(), error = %e, "Failed to update file access time");
                 }
@@ -73,7 +77,7 @@ impl ThumbnailCache {
 
             warn!(
                 path = %metadata.path.display(),
-                "Cached file does not exist, will re-download"
+                "Cached file is missing or empty, will re-download"
             );
         }
 
@@ -106,14 +110,34 @@ impl ThumbnailCache {
         initialize_cache().await?;
         Storage::ensure_directories(image_path.parent().unwrap()).await?;
 
-        let path = if image_path.exists() {
+        let cached_size = tokio::fs::metadata(&image_path)
+            .await
+            .map(|m| m.len())
+            .unwrap_or(0);
+
+        let path = if cached_size > 0 {
             debug!(image_path = %image_path.display(), "Image already cached");
             image_path
         } else {
+            // 清掉可能残留的空/损坏文件，避免被误判为已缓存
+            if image_path.exists() {
+                let _ = tokio::fs::remove_file(&image_path).await;
+            }
+
             debug!(url = cache_key.url, image_path = %image_path.display(), "Downloading image from URL");
-            self.http_client
+            let written = self
+                .http_client
                 .download_file(&cache_key.url, &image_path, 0, None, None)
                 .await?;
+
+            if written == 0 {
+                let _ = tokio::fs::remove_file(&image_path).await;
+                return Err(crate::error::DwallSettingsError::Other(format!(
+                    "Empty response downloading {}",
+                    cache_key.url
+                )));
+            }
+
             image_path
         };
 

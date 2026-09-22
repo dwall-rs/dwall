@@ -53,21 +53,13 @@ impl HttpClient {
         cancel_flag: Option<&Arc<std::sync::atomic::AtomicBool>>,
         progress_callback: Option<Arc<dyn Fn(u64, u64) + Send + Sync>>,
     ) -> DwallSettingsResult<u64> {
-        let mut file = if downloaded_bytes > 0 {
-            tokio::fs::OpenOptions::new()
-                .write(true)
-                .append(true)
-                .open(target_path)
-                .await?
-        } else {
-            tokio::fs::File::create(target_path).await?
-        };
-
         let mut request = self.client.get(url);
         if downloaded_bytes > 0 {
             request = request.header("Range", format!("bytes={downloaded_bytes}-"));
         }
 
+        // 先完成请求与状态校验，再创建目标文件：失败时不在磁盘上留下空文件
+        // （否则空文件会被缓存逻辑误判为「已下载」）。
         let response = request.send().await?;
         response.error_for_status_ref()?;
 
@@ -81,6 +73,16 @@ impl HttpClient {
                 "Download cancelled".to_string(),
             ));
         }
+
+        let mut file = if downloaded_bytes > 0 {
+            tokio::fs::OpenOptions::new()
+                .write(true)
+                .append(true)
+                .open(target_path)
+                .await?
+        } else {
+            tokio::fs::File::create(target_path).await?
+        };
 
         file.write_all(&bytes).await?;
 
