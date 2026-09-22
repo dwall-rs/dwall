@@ -5,7 +5,7 @@ import { t } from "@/i18n";
 import { engineStore } from "@/store/engine.store";
 import { settingsStore } from "@/store/settings.store";
 import { uiStore } from "@/store/ui.store";
-import { clsx } from "@/utils";
+import { clsx, formatAngle } from "@/utils";
 
 export function EngineStatus() {
   const [sp] = createResource(
@@ -13,42 +13,40 @@ export function EngineStatus() {
     (ps) => currentSolarPosition(ps),
   );
 
-  if (!engineStore.running)
-    return (
-      <div class="flex items-center gap-2 text-[12.5px] text-muted-foreground">
-        <span class="size-2 rounded-full bg-muted-foreground" />
-        {t("app.engine.notRunning")}
-      </div>
-    );
-
   return (
-    <div class="flex items-center gap-2 text-[12.5px] text-muted-foreground">
-      <span
-        class={clsx(
-          "size-2 rounded-full text-current animate-pulse-ring",
-          uiStore.mode === "random"
-            ? "bg-warning text-warning"
-            : "bg-success text-success",
-        )}
-      />
-      {uiStore.mode === "fixed" ? (
-        <>
+    <Show
+      when={engineStore.running}
+      fallback={
+        <div class="flex items-center gap-2 text-[12.5px] text-muted-foreground">
+          <span class="size-2 rounded-full bg-muted-foreground" />
+          {t("app.engine.notRunning")}
+        </div>
+      }
+    >
+      <div class="flex items-center gap-2 text-[12.5px] text-muted-foreground">
+        <span
+          class={clsx(
+            "size-2 rounded-full text-current animate-pulse-ring",
+            uiStore.mode === "random"
+              ? "bg-warning text-warning"
+              : "bg-success text-success",
+          )}
+        />
+        <Show when={uiStore.mode === "fixed"} fallback={t("app.engine.daily")}>
           {t("app.engine.running")}{" "}
           <span class="inline-flex items-center gap-1 font-display font-semibold text-foreground">
             <Show when={sp()} fallback="—">
               {(p) => (
                 <>
                   {p().altitude < 0 ? "☾" : "☀"} {t("app.engine.altitude")}
-                  {p().altitude}° · {t("app.engine.azimuth")}
-                  {p().azimuth}°
+                  {formatAngle(p().altitude)}° · {t("app.engine.azimuth")}
+                  {formatAngle(p().azimuth)}°
                 </>
               )}
             </Show>
           </span>
-        </>
-      ) : (
-        t("app.engine.daily")
-      )}
-    </div>
+        </Show>
+      </div>
+    </Show>
   );
 }
