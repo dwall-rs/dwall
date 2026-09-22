@@ -12,7 +12,9 @@ export function MainView() {
   return (
     <div
       class={clsx(
-        "grid h-full",
+        "grid h-full overflow-hidden",
+        // 单行，且行高严格等于容器高度：内容超高时收缩而不是撑破视口
+        "grid-rows-[minmax(0,1fr)]",
         // 最小档：两栏（库为抽屉，脱离流）；标准/宽屏：三栏
         "grid-cols-[220px_minmax(0,1fr)]",
         "xl:grid-cols-[240px_minmax(0,1fr)_320px]",

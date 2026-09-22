@@ -20,7 +20,8 @@ const band = (alt: number) =>
 interface Props {
   wallpapers: Wallpaper[];
   current: SolarPosition;
-  matchedIndex: number | null;
+  /** 匹配到的太阳角条目在数组中的位置（非图片序号） */
+  matchedEntry: number | null;
   selIndex: number | null;
   onSelect: (index: number | null) => void;
 }
@@ -32,7 +33,9 @@ export function SunPathPanel(props: Props) {
     cy = createMemo(() => Yp(props.current.altitude));
 
   const matched = createMemo(() =>
-    props.wallpapers.find((w) => w.index === props.matchedIndex),
+    props.matchedEntry != null
+      ? props.wallpapers[props.matchedEntry]
+      : undefined,
   );
 
   const path = createMemo(() => {
@@ -48,7 +51,7 @@ export function SunPathPanel(props: Props) {
   });
 
   return (
-    <div class="mx-auto w-full max-w-155">
+    <div class="mx-auto w-full max-w-155 shrink-0">
       <div class="relative h-28 shrink-0 overflow-hidden rounded-xl border border-border bg-card shadow-[0_1px_2px_rgba(0,0,0,.05),0_6px_18px_rgba(0,0,0,.06)]">
         <div
           class={clsx(
@@ -134,16 +137,16 @@ export function SunPathPanel(props: Props) {
         </svg>
 
         <For each={props.wallpapers}>
-          {(wp) => {
+          {(wp, i) => {
             const sel = createMemo(() => wp.index === props.selIndex),
-              mat = createMemo(() => wp.index === props.matchedIndex),
-              hov = createMemo(() => wp.index === hover());
+              mat = createMemo(() => i() === props.matchedEntry),
+              hov = createMemo(() => i() === hover());
             return (
               <button
                 type="button"
                 title={`高度 ${wp.solar.altitude}° · 方位 ${wp.solar.azimuth}°`}
                 onClick={() => props.onSelect(wp.index)}
-                onMouseEnter={() => setHover(wp.index)}
+                onMouseEnter={() => setHover(i())}
                 onMouseLeave={() => setHover(null)}
                 style={{
                   left: `${Xaz(wp.solar.azimuth)}%`,

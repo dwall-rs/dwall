@@ -85,15 +85,19 @@ pub fn get_theme_wallpapers(theme_id: String) -> DwallSettingsResult<Vec<SolarAn
     installed_solar_angles(&theme_id)
 }
 
-/// Index of the wallpaper whose target solar angle is closest to the given position.
+/// Position (in the theme's `solar.json` array) of the entry whose target solar
+/// angle is closest to the given position.
+///
+/// A theme may reuse one image for several sun positions, so the closest
+/// *entry* — not just its image index — is what the UI needs to highlight.
 #[tauri::command]
 pub fn match_wallpaper(
     theme_id: String,
     altitude: f64,
     azimuth: f64,
-) -> DwallSettingsResult<Option<u8>> {
+) -> DwallSettingsResult<Option<usize>> {
     let angles = installed_solar_angles(&theme_id)?;
-    Ok(WallpaperSelector::find_closest_image(
+    Ok(WallpaperSelector::find_closest_entry(
         &angles, altitude, azimuth,
     ))
 }

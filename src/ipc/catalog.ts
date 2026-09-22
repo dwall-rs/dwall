@@ -10,7 +10,11 @@ export const getThemeCatalog = async () =>
 export const getThemeWallpapers = async (themeId: string) =>
   invoke<SolarAngle[]>("get_theme_wallpapers", { themeId });
 
-/** Index of the wallpaper matching the given solar position, or null */
+/**
+ * Position (in the theme's solar-angle list) of the entry closest to the given
+ * solar position, or null. A theme may reuse one image for several positions,
+ * so this identifies the exact matched entry, not just its image index.
+ */
 export const matchWallpaper = async (
   themeId: string,
   altitude: number,

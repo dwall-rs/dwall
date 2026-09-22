@@ -25,9 +25,23 @@ impl WallpaperSelector {
         current_altitude: f64,
         current_azimuth: f64,
     ) -> Option<u8> {
+        Self::find_closest_entry(solar_configs, current_altitude, current_azimuth)
+            .map(|entry| solar_configs[entry].index())
+    }
+
+    /// Finds the position of the solar-angle entry closest to the given position.
+    ///
+    /// A theme may reuse one image for several sun positions, so callers that
+    /// need to highlight the matched point (rather than the image) use this.
+    pub fn find_closest_entry(
+        solar_configs: &[SolarAngle],
+        current_altitude: f64,
+        current_azimuth: f64,
+    ) -> Option<usize> {
         solar_configs
             .iter()
-            .min_by(|a, b| {
+            .enumerate()
+            .min_by(|(_, a), (_, b)| {
                 solar_distance(a.altitude(), a.azimuth(), current_altitude, current_azimuth)
                     .partial_cmp(&solar_distance(
                         b.altitude(),
@@ -37,7 +51,7 @@ impl WallpaperSelector {
                     ))
                     .unwrap()
             })
-            .map(|sa| sa.index())
+            .map(|(entry, _)| entry)
     }
 }
 

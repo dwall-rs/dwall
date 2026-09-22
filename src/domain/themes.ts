@@ -7,11 +7,19 @@ import type { Theme } from "./types";
 export const themeList = (): Theme[] =>
   catalogStore.themes.map((t) => ({ id: t.id, name: t.name }));
 
-/** 按 id 取主题；id 为空或目录中不存在时回退到第一个目录主题。 */
+/**
+ * 按 id 取主题：
+ * - 目录中存在 → 返回目录项；
+ * - id 有值但不在目录中 → 以 id 作为名称（可能是自定义/已安装主题）；
+ * - id 为空 → 回退到目录首个主题。
+ */
 export const themeById = (id: string | undefined): Theme => {
-  const found = id ? catalogStore.themes.find((t) => t.id === id) : undefined;
-  const theme = found ?? catalogStore.themes[0];
-  return theme
-    ? { id: theme.id, name: theme.name }
+  if (id) {
+    const found = catalogStore.themes.find((t) => t.id === id);
+    return found ? { id: found.id, name: found.name } : { id, name: id };
+  }
+  const first = catalogStore.themes[0];
+  return first
+    ? { id: first.id, name: first.name }
     : { id: "default", name: "—" };
 };
