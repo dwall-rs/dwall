@@ -7,8 +7,9 @@ import type {
   PositionSource,
   PositionSourceAutomatic,
   PositionSourceManual,
+  WallpaperMode,
 } from "@/domain/config";
-import { readConfigFile, writeConfigFile } from "@/ipc";
+import { applyTheme, readConfigFile, writeConfigFile } from "@/ipc";
 import { setMode, themeStore } from "./theme.store";
 
 type Status = "idle" | "loading" | "ready" | "error";
@@ -158,6 +159,31 @@ const save = async () => {
   }
 };
 
+/**
+ * 写入 wallpaper_mode 并应用到引擎（写配置文件 + 重启守护进程）。
+ * 固定/随机模式的「应用/保存」都走这里。
+ */
+const applyWallpaperMode = async (mode: WallpaperMode) => {
+  const config = settingsStore.config;
+  if (!config) return;
+
+  const next: Config = { ...config, wallpaper_mode: mode };
+  setSettingsStore("config", next);
+
+  try {
+    await applyTheme(next);
+    setSettingsStore(
+      produce((s) => {
+        s.saved = { ...next } as Config;
+        s.saveError = null;
+      }),
+    );
+  } catch (e) {
+    setSettingsStore("saveError", String(e));
+    throw e;
+  }
+};
+
 const discard = () =>
   setSettingsStore((s) =>
     s.saved ? { config: { ...s.saved }, saveError: null } : {},
@@ -180,6 +206,7 @@ export {
   setWallpaperModeType,
   setLang,
   save,
+  applyWallpaperMode,
   discard,
   isConfigDirty,
 };

@@ -1,17 +1,19 @@
-// 职责：固定模式——统一/单独互斥、当前显示器、查看时段、每显示器主题、逐条「应用/停止」。
-//       固定模式无全局脏态：提交粒度是「一套」，靠 applied 集合表达。
+// 职责：固定模式——统一/单独互斥、当前显示器、每显示器主题草稿、逐条「应用/停止」。
+//       配置是唯一真值源：应用 = 把草稿写进 config.wallpaper_mode 并重启引擎。
 import { createStore } from "solid-js/store";
 
+import type { Config, WallpaperMode } from "@/domain/config";
+import { configuredThemeId } from "@/domain/config";
+import { catalogStore } from "./catalog.store";
+import { applyWallpaperMode, settingsStore } from "./settings.store";
+
 type StrMap = Record<string, string>;
-type BoolMap = Record<string, boolean>;
 
 interface FixedState {
   allUnified: boolean; // 统一所有显示器（与单独设置结构性互斥）
   curMon: string; // 当前编辑的显示器 id
   selIndex: number | null; // null = 预览当前匹配的那张
-  monitorThemes: StrMap; // monId -> themeId
-  monitorOn: BoolMap;
-  applied: string[]; // 已「应用」的作用域 key 集合
+  monitorThemes: StrMap; // 草稿：monId -> themeId（"all" 表示统一）
 }
 
 const [fixedStore, setFixedStore] = createStore<FixedState>({
@@ -19,9 +21,82 @@ const [fixedStore, setFixedStore] = createStore<FixedState>({
   curMon: "all",
   selIndex: null,
   monitorThemes: {},
-  monitorOn: {},
-  applied: [],
 });
+
+/** 当前作用域 key。 */
+const scopeKey = (): string =>
+  fixedStore.allUnified ? "all" : fixedStore.curMon;
+
+/** 用配置初始化草稿（配置与显示器加载后调用）。 */
+const syncFromConfig = (config: Config | null) => {
+  const mode = config?.wallpaper_mode;
+  if (mode?.mode !== "fixed") return;
+
+  const m = mode.monitor_specific_wallpapers;
+  if (typeof m === "string") {
+    setFixedStore({
+      allUnified: true,
+      curMon: "all",
+      monitorThemes: { all: m },
+    });
+  } else {
+    setFixedStore({
+      allUnified: false,
+      curMon: catalogStore.monitors[0]?.device_path ?? "all",
+      monitorThemes: { ...m },
+    });
+  }
+};
+
+/** 当前作用域生效的主题（草稿 → 配置 → 目录首个）。 */
+const currentThemeId = (): string | undefined =>
+  fixedStore.monitorThemes[scopeKey()] ??
+  configuredThemeId(settingsStore.config, scopeKey()) ??
+  catalogStore.themes[0]?.id;
+
+/** 该作用域是否已写入配置且与当前选择一致。 */
+const isApplied = (key: string): boolean => {
+  const mode = settingsStore.config?.wallpaper_mode;
+  if (mode?.mode !== "fixed") return false;
+  const theme =
+    fixedStore.monitorThemes[key] ??
+    configuredThemeId(settingsStore.config, key);
+  if (!theme) return false;
+  const m = mode.monitor_specific_wallpapers;
+  return typeof m === "string" ? m === theme : m[key] === theme;
+};
+
+/** 应用/停止该作用域（写配置并重启引擎）。 */
+const toggleApply = async (key: string) => {
+  const config = settingsStore.config;
+  if (!config) return;
+  const theme = fixedStore.monitorThemes[key] ?? configuredThemeId(config, key);
+  if (!theme) return;
+
+  const mode = config.wallpaper_mode;
+  const fixedMap =
+    mode?.mode === "fixed" &&
+    typeof mode.monitor_specific_wallpapers === "object"
+      ? { ...mode.monitor_specific_wallpapers }
+      : {};
+
+  let nextMode: WallpaperMode;
+  if (fixedStore.allUnified) {
+    nextMode = {
+      mode: "fixed",
+      monitor_specific_wallpapers: isApplied(key) ? {} : theme,
+    };
+  } else {
+    if (isApplied(key)) {
+      delete fixedMap[key];
+    } else {
+      fixedMap[key] = theme;
+    }
+    nextMode = { mode: "fixed", monitor_specific_wallpapers: fixedMap };
+  }
+
+  await applyWallpaperMode(nextMode);
+};
 
 const toggleUnified = () => {
   setFixedStore((s) => ({
@@ -45,23 +120,15 @@ const setMonitorTheme = (monId: string, themeId: string) => {
   selectWallpaper(null);
 };
 
-const toggleMonitorOn = (monId: string) => {
-  setFixedStore("monitorOn", (s) => ({ ...s, [monId]: !(s[monId] ?? true) }));
-};
-
-const toggleApply = (scopeKey: string) => {
-  // TODO(ipc): 把「该作用域 + 当前主题」写配置并通知引擎（逐条提交，自动生效）
-  setFixedStore("applied", (s) =>
-    s.includes(scopeKey) ? s.filter((k) => k !== scopeKey) : [...s, scopeKey],
-  );
-};
-
 export {
   fixedStore,
+  scopeKey,
+  currentThemeId,
+  isApplied,
+  toggleApply,
   toggleUnified,
   selectMon,
   selectWallpaper,
   setMonitorTheme,
-  toggleMonitorOn,
-  toggleApply,
+  syncFromConfig,
 };

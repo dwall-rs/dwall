@@ -3,7 +3,8 @@
 import { Switch } from "@/components/ui/switch";
 import {
   fixedStore,
-  toggleMonitorOn as toggleOn,
+  isApplied,
+  toggleApply,
   selectMon,
 } from "@/store/fixed.store";
 import { monitorById } from "@/domain/monitors";
@@ -48,8 +49,8 @@ export function MonitorCard({ id }: Props) {
       </div>
       <Switch
         size="sm"
-        checked={fixedStore.monitorOn[id] ?? true}
-        onCheckedChange={() => toggleOn(id)}
+        checked={isApplied(id)}
+        onCheckedChange={() => void toggleApply(id)}
         onClick={(e) => e.stopPropagation()}
       />
     </div>

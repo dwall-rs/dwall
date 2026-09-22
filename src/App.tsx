@@ -3,15 +3,23 @@ import { AppShell } from "@/layout/AppShell";
 import { onMount } from "solid-js";
 import { catalogStore, load as loadCatalog } from "./store/catalog.store";
 import { refresh as refreshEngine } from "./store/engine.store";
-import { selectAll } from "./store/random.store";
-import { load } from "./store/settings.store";
+import { syncFromConfig as syncFixed } from "./store/fixed.store";
+import { syncFromConfig as syncRandom } from "./store/random.store";
+import { load as loadSettings, settingsStore } from "./store/settings.store";
+import { setMode } from "./store/ui.store";
 
 export default function App() {
   onMount(async () => {
-    load();
     refreshEngine();
-    await loadCatalog();
-    selectAll(catalogStore.themes.map((t) => t.id));
+    await Promise.all([loadSettings(), loadCatalog()]);
+
+    const config = settingsStore.config;
+    syncFixed(config);
+    syncRandom(
+      config,
+      catalogStore.themes.map((t) => t.id),
+    );
+    if (config?.wallpaper_mode?.mode === "random") setMode("random");
   });
   return <AppShell />;
 }
