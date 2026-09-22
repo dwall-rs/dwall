@@ -9,6 +9,8 @@ import type {
   PositionSourceManual,
   WallpaperMode,
 } from "@/domain/config";
+import type { Socks5 } from "@/domain/config";
+import { isSocks5 } from "@/domain/config";
 import { applyTheme, readConfigFile, writeConfigFile } from "@/ipc";
 import { setMode, themeStore } from "./theme.store";
 
@@ -109,6 +111,14 @@ const setNetworkType = (t: NetworkType) => {
   );
 };
 
+const patchSocks5 = (p: Partial<Socks5>) => {
+  setSettingsStore("config", (prev) =>
+    prev && isSocks5(prev.network)
+      ? { ...prev, network: { ...prev.network, ...p } }
+      : {},
+  );
+};
+
 const setWallpaperModeType = (m: "fixed" | "random") => {
   setSettingsStore("config", (prev) =>
     prev
@@ -203,6 +213,7 @@ export {
   patchPosition,
   networkType,
   setNetworkType,
+  patchSocks5,
   setWallpaperModeType,
   setLang,
   save,

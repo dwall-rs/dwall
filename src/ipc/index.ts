@@ -4,6 +4,7 @@ export * from "./asset";
 export * from "./autostart";
 export * from "./catalog";
 export * from "./config";
+export * from "./dialog";
 export * from "./engine";
 export * from "./fs";
 export * from "./mirror";

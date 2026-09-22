@@ -1,15 +1,18 @@
 /* ===== src/components/settings/PathsSection.tsx ===== */
-// 职责：目录与下载源分组——主题目录 + 镜像模板（行内保存）。
+// 职责：目录与下载源分组——主题目录（选择/迁移）+ 网络（镜像模板 / SOCKS5）。
 import { Button } from "@/components/ui/button";
 import {
   type NetworkType,
   networkType,
   patch,
+  patchSocks5,
   save,
   setNetworkType,
   settingsStore,
 } from "@/store/settings.store";
-import type { Socks5 } from "@/domain/config";
+import { isSocks5 } from "@/domain/config";
+import { moveDirectory, pickDirectory } from "@/ipc";
+import { logger } from "@/utils";
 import { SettingsGroup } from "./SettingsGroup";
 import { SettingsRow } from "./SettingsRow";
 import { createMemo, Match, Switch } from "solid-js";
@@ -24,8 +27,30 @@ import { Tabs, TabsList, TabsTrigger } from "../ui/tabs";
 import { Field, FieldGroup, FieldLabel } from "../ui/field";
 import { Input } from "../ui/input";
 
+const log = logger.child("paths");
+
 export function PathsSection() {
   const network = createMemo(networkType);
+  const socks = createMemo(() => {
+    const n = settingsStore.config?.network;
+    return isSocks5(n) ? n : { host: "", port: 1080 };
+  });
+
+  const chooseDir = async () => {
+    const dir = await pickDirectory();
+    if (!dir) return;
+
+    const current = settingsStore.config?.themes_directory;
+    try {
+      if (current && current !== dir) {
+        await moveDirectory(current, dir);
+      }
+      patch({ themes_directory: dir });
+      await save();
+    } catch (e) {
+      log.error("Failed to move themes directory", e);
+    }
+  };
 
   return (
     <SettingsGroup
@@ -37,7 +62,7 @@ export function PathsSection() {
         <SettingsRow
           stacked
           label="主题目录"
-          desc="本地主题与缩略图的存放位置。"
+          desc="本地主题与缩略图的存放位置。切换目录会把现有主题迁移过去。"
           control={
             <div class="flex justify-between gap-2">
               <div class="flex flex-1 items-center gap-2 overflow-hidden rounded-lg border border-border-2 bg-secondary px-3 py-2.25 font-mono text-[12px] text-muted-foreground">
@@ -51,6 +76,8 @@ export function PathsSection() {
                   variant="outline"
                   size="sm"
                   class="shadow-[inset_0_0_0_1px_hsl(var(--border-2))]"
+                  disabled={settingsStore.saving}
+                  onClick={() => void chooseDir()}
                 >
                   <FolderOpen class="size-3.5" />
                   选择目录
@@ -101,14 +128,14 @@ export function PathsSection() {
               control={
                 <InputGroup>
                   <InputGroupInput
-                    value={settingsStore.config!.network as string}
+                    value={settingsStore.config?.network as string}
                     onChange={(v) => patch({ network: v })}
                     placeholder="https://mirror.example.com/{repo}"
                     class="font-mono text-[12px]"
                   />
                   <InputGroupAddon align="inline-end">
                     <InputGroupButton
-                      disabled={!settingsStore.config?.network}
+                      disabled={settingsStore.saving}
                       icon={
                         settingsStore.saving ? (
                           <LoaderCircle class="size-3.75 animate-spin" />
@@ -116,7 +143,7 @@ export function PathsSection() {
                           <Save class="size-3.75" />
                         )
                       }
-                      onClick={() => save()}
+                      onClick={() => void save()}
                     />
                   </InputGroupAddon>
                 </InputGroup>
@@ -128,26 +155,36 @@ export function PathsSection() {
               stacked
               label="SOCKS5"
               control={
-                <FieldGroup class="grid grid-cols-2">
-                  <Field>
-                    <FieldLabel>地址</FieldLabel>
-                    <Input
-                      defaultValue={
-                        (settingsStore.config!.network as Socks5).host
-                      }
-                    />
-                  </Field>
-
-                  <Field>
-                    <FieldLabel>端口</FieldLabel>
-                    <Input
-                      type="number"
-                      defaultValue={
-                        (settingsStore.config!.network as Socks5).port
-                      }
-                    />
-                  </Field>
-                </FieldGroup>
+                <div class="flex items-end gap-3">
+                  <FieldGroup class="grid flex-1 grid-cols-2 gap-3">
+                    <Field>
+                      <FieldLabel>地址</FieldLabel>
+                      <Input
+                        value={socks().host}
+                        onChange={(v) => patchSocks5({ host: v })}
+                        placeholder="127.0.0.1"
+                        class="font-mono text-[12px]"
+                      />
+                    </Field>
+                    <Field>
+                      <FieldLabel>端口</FieldLabel>
+                      <Input
+                        type="number"
+                        value={socks().port}
+                        onChange={(v) => patchSocks5({ port: v })}
+                        class="font-mono text-[12px]"
+                      />
+                    </Field>
+                  </FieldGroup>
+                  <Button
+                    size="sm"
+                    disabled={settingsStore.saving}
+                    onClick={() => void save()}
+                  >
+                    <Save class="size-3.5" />
+                    保存
+                  </Button>
+                </div>
               }
             />
           </Match>

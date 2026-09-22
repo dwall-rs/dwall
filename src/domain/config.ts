@@ -22,7 +22,7 @@ export interface Socks5 {
   port: number;
 }
 
-export const isSocks5 = (n: Network | undefined): n is Socks5 =>
+export const isSocks5 = (n: Network | null | undefined): n is Socks5 =>
   !!n && typeof n === "object" && "host" in n;
 
 /**
