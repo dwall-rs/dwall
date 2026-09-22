@@ -1,7 +1,7 @@
 /* ===== src/scene/ThemeThumbnail.tsx ===== */
 // 职责：主题缩略图（经镜像与本地缓存），按壁纸序号取。所有缩略展示统一走它。
 //       注意：只加载缩略图（体积小），绝不加载原始壁纸大图。
-import { createResource } from "solid-js";
+import { createResource, type JSXElement } from "solid-js";
 import { getOrSaveCachedThumbnails, mirrorUrl } from "@/ipc";
 import { catalogStore } from "@/store/catalog.store";
 import { settingsStore } from "@/store/settings.store";
@@ -12,6 +12,7 @@ interface Props {
   index?: number;
   fit?: "cover" | "contain";
   class?: string;
+  fallback?: JSXElement;
 }
 
 export function ThemeThumbnail(props: Props) {
@@ -29,6 +30,11 @@ export function ThemeThumbnail(props: Props) {
     },
   );
   return (
-    <WallpaperImage path={src() ?? null} fit={props.fit} class={props.class} />
+    <WallpaperImage
+      path={src() ?? null}
+      fit={props.fit}
+      class={props.class}
+      fallback={props.fallback}
+    />
   );
 }

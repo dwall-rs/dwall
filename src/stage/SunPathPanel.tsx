@@ -1,7 +1,7 @@
 // 职责：装饰性日轨丝带——真椭圆；底部预留标签条带防重叠；地平线标注置于中段空位。
 import type { SolarPosition, Wallpaper } from "@/domain/types";
 import { t } from "@/i18n";
-import { clsx } from "@/utils";
+import { clsx, formatAngle } from "@/utils";
 import { createMemo, createSignal, For, Show } from "solid-js";
 import { themeStore } from "~/store/theme.store";
 
@@ -147,7 +147,7 @@ export function SunPathPanel(props: Props) {
             return (
               <button
                 type="button"
-                title={`${t("stage.altitude")} ${wp.solar.altitude}° · ${t("stage.azimuth")} ${wp.solar.azimuth}°`}
+                title={`${t("stage.altitude")} ${formatAngle(wp.solar.altitude)}° · ${t("stage.azimuth")} ${formatAngle(wp.solar.azimuth)}°`}
                 onClick={() => props.onSelect(wp.index)}
                 onMouseEnter={() => setHover(i())}
                 onMouseLeave={() => setHover(null)}
@@ -206,8 +206,9 @@ export function SunPathPanel(props: Props) {
           </span>
         ))}
         <span class="absolute right-2 top-1.5 font-mono text-[9px] text-muted-foreground">
-          {props.current.altitude < 0 ? "☾" : "☀"} {props.current.altitude}° ·{" "}
-          {props.current.azimuth}°
+          {props.current.altitude < 0 ? "☾" : "☀"}{" "}
+          {formatAngle(props.current.altitude)}° ·{" "}
+          {formatAngle(props.current.azimuth)}°
         </span>
       </div>
     </div>

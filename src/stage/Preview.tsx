@@ -3,6 +3,7 @@
 import type { Wallpaper } from "@/domain/types";
 import { t } from "@/i18n";
 import { ThemeThumbnail } from "@/scene/ThemeThumbnail";
+import { formatAngle } from "@/utils";
 
 interface Props {
   themeId: string;
@@ -22,8 +23,8 @@ export function Preview(props: Props) {
       </div>
       <div class="absolute left-4 top-4 flex items-center gap-2 rounded-[11px] border border-white/15 bg-black/50 px-3.25 py-2 text-white backdrop-blur-md">
         <span class="font-mono text-[11px] text-white/70">
-          {t("stage.altitude")} {props.wallpaper.solar.altitude}° ·{" "}
-          {t("stage.azimuth")} {props.wallpaper.solar.azimuth}°
+          {t("stage.altitude")} {formatAngle(props.wallpaper.solar.altitude)}° ·{" "}
+          {t("stage.azimuth")} {formatAngle(props.wallpaper.solar.azimuth)}°
         </span>
         <span class="font-mono text-[11px] text-white/50">
           #{props.wallpaper.index + 1}

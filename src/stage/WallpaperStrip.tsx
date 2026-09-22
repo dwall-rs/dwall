@@ -1,9 +1,9 @@
 /* ===== src/stage/WallpaperStrip.tsx ===== */
-// 职责：壁纸条——数量可变、定宽；以缩略图展示，标注各自太阳位置；选中/匹配高亮。
+// 职责：壁纸条——数量可变、定宽；以缩略图展示，标注各自太阳位置；匹配项醒目标记，点击选中/取消。
 import type { Wallpaper } from "@/domain/types";
 import { t } from "@/i18n";
 import { ThemeThumbnail } from "@/scene/ThemeThumbnail";
-import { clsx } from "@/utils";
+import { clsx, formatAngle } from "@/utils";
 
 interface Props {
   themeId: string;
@@ -25,42 +25,31 @@ export function WallpaperStrip(props: Props) {
         </span>
       </div>
       <div class="flex gap-[7px] overflow-x-auto pb-1.5">
-        {/* 「回到当前匹配」快捷项 */}
-        <button
-          type="button"
-          onClick={() => props.onSelect(null)}
-          class={clsx(
-            "flex h-[64px] shrink-0 items-center gap-2 rounded-lg border px-3 font-mono text-[11px] transition-all animate-rise",
-            props.selIndex === null
-              ? "border-primary bg-primary/10 text-primary"
-              : "border-border text-muted-foreground hover:border-border-2",
-          )}
-        >
-          <span class="size-1.5 rounded-full bg-success animate-bdot" />
-          {t("stage.matched")}
-        </button>
         {props.wallpapers.map((wp, i) => {
           const sel = wp.index === props.selIndex;
           const matched = wp.index === props.matchedIndex;
           return (
             <div
-              onClick={() => props.onSelect(wp.index)}
+              onClick={() => props.onSelect(sel ? null : wp.index)}
               style={{ width: "104px", "animation-delay": `${i * 40}ms` }}
               class={clsx(
                 "group relative h-[64px] shrink-0 cursor-pointer overflow-hidden rounded-lg border transition-all duration-200 animate-rise hover:-translate-y-0.5",
                 sel
                   ? "border-primary shadow-[0_0_0_2px_hsl(var(--primary)/.34)]"
-                  : "border-border hover:border-border-2",
+                  : matched
+                    ? "border-success shadow-[0_0_0_2px_hsl(var(--success)/.35)]"
+                    : "border-border hover:border-border-2",
               )}
             >
               <ThemeThumbnail themeId={props.themeId} index={wp.index} />
               {matched && (
-                <span class="absolute left-1 top-1 rounded bg-success px-1 font-mono text-[9px] leading-4 text-success-foreground">
+                <span class="absolute inset-x-0 top-0 flex items-center justify-center gap-1 bg-success py-0.5 font-mono text-[9px] font-bold tracking-wide text-success-foreground">
                   {t("stage.match")}
                 </span>
               )}
               <div class="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent py-0.5 text-center font-mono text-[8.5px] text-white">
-                {wp.solar.altitude}° · {wp.solar.azimuth}°
+                {formatAngle(wp.solar.altitude)}° ·{" "}
+                {formatAngle(wp.solar.azimuth)}°
               </div>
             </div>
           );

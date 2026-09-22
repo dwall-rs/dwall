@@ -48,11 +48,14 @@ const syncFromConfig = (config: Config | null) => {
   }
 };
 
-/** 当前作用域生效的主题（草稿 → 配置 → 目录首个）。 */
-const currentThemeId = (): string | undefined =>
-  fixedStore.monitorThemes[scopeKey()] ??
-  configuredThemeId(settingsStore.config, scopeKey()) ??
+/** 某显示器当前生效的主题（草稿 → 配置 → 目录首个）。 */
+const themeForMon = (monId: string): string | undefined =>
+  fixedStore.monitorThemes[monId] ??
+  configuredThemeId(settingsStore.config, monId) ??
   catalogStore.themes[0]?.id;
+
+/** 当前作用域生效的主题（草稿 → 配置 → 目录首个）。 */
+const currentThemeId = (): string | undefined => themeForMon(scopeKey());
 
 /** 该作用域是否已写入配置且与当前选择一致。 */
 const isApplied = (key: string): boolean => {
@@ -123,6 +126,7 @@ const setMonitorTheme = (monId: string, themeId: string) => {
 export {
   fixedStore,
   scopeKey,
+  themeForMon,
   currentThemeId,
   isApplied,
   toggleApply,

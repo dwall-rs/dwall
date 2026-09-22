@@ -4,6 +4,7 @@ import { Switch } from "@/components/ui/switch";
 import {
   fixedStore,
   isApplied,
+  themeForMon,
   toggleApply,
   selectMon,
 } from "@/store/fixed.store";
@@ -11,14 +12,18 @@ import { monitorById } from "@/domain/monitors";
 import { themeById } from "@/domain/themes";
 import { clsx } from "@/utils";
 import { ThemeThumbnail } from "~/scene/ThemeThumbnail";
+import { Monitor } from "lucide-solid";
+import { createMemo } from "solid-js";
 
 interface Props {
   id: string;
 }
 
 export function MonitorCard({ id }: Props) {
-  const mon = monitorById(id);
+  const mon = createMemo(() => monitorById(id));
   const sel = !fixedStore.allUnified && fixedStore.curMon === id;
+  const themeId = createMemo(() => themeForMon(id));
+  const theme = createMemo(() => themeById(themeId()));
 
   return (
     <div
@@ -35,16 +40,21 @@ export function MonitorCard({ id }: Props) {
         <span class="absolute bottom-2.5 left-0 top-2.5 w-0.75 rounded-sm bg-primary" />
       )}
       <div class="h-9.5 w-13.5 shrink-0 overflow-hidden rounded-[7px] shadow-[0_2px_8px_rgba(0,0,0,.45)]">
-        <ThemeThumbnail themeId={fixedStore.monitorThemes[id]} />
+        <ThemeThumbnail
+          themeId={themeId() ?? ""}
+          fallback={
+            <div class="grid h-full w-full place-items-center bg-card">
+              <Monitor class="size-4 text-muted-foreground" />
+            </div>
+          }
+        />
       </div>
       <div class="min-w-0 flex-1">
         <div class="truncate font-display text-[13.5px] font-bold">
-          {mon?.name ?? id}
+          {mon()?.name ?? id}
         </div>
         <div class="mt-0.75 flex items-center gap-1.5 font-mono text-[11px] text-muted-foreground">
-          <span class="text-foreground/80">
-            {themeById(fixedStore.monitorThemes[id]).name}
-          </span>
+          <span class="text-foreground/80">{theme().name}</span>
         </div>
       </div>
       <Switch
