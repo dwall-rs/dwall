@@ -21,7 +21,9 @@ interface Props {
 
 export function MonitorCard({ id }: Props) {
   const mon = createMemo(() => monitorById(id));
-  const sel = !fixedStore.allUnified && fixedStore.curMon === id;
+  const sel = createMemo(
+    () => !fixedStore.allUnified && fixedStore.curMon === id,
+  );
   const themeId = createMemo(() => themeForMon(id));
   const theme = createMemo(() => themeById(themeId()));
 
@@ -30,13 +32,13 @@ export function MonitorCard({ id }: Props) {
       onClick={() => !fixedStore.allUnified && selectMon(id)}
       class={clsx(
         "relative mb-2 flex cursor-pointer items-center gap-2.75 rounded-lg border p-2.75 transition-all duration-200",
-        sel
+        sel()
           ? "border-border-2 bg-secondary"
           : "border-transparent hover:translate-x-0.5 hover:bg-secondary",
         fixedStore.allUnified && "pointer-events-none opacity-40 saturate-50",
       )}
     >
-      {sel && (
+      {sel() && (
         <span class="absolute bottom-2.5 left-0 top-2.5 w-0.75 rounded-sm bg-primary" />
       )}
       <div class="h-9.5 w-13.5 shrink-0 overflow-hidden rounded-[7px] shadow-[0_2px_8px_rgba(0,0,0,.45)]">

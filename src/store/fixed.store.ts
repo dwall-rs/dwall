@@ -105,7 +105,10 @@ const toggleUnified = () => {
   setFixedStore((s) => ({
     ...s,
     allUnified: !s.allUnified,
-    curMon: !s.allUnified ? "all" : s.curMon,
+    // 关闭统一时选中第一台显示器，避免作用域停留在伪显示器 "all"。
+    curMon: s.allUnified
+      ? (catalogStore.monitors[0]?.device_path ?? "all")
+      : "all",
     selIndex: null,
   }));
 };

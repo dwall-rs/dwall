@@ -19,17 +19,17 @@ export function ThemeTile({ id, index }: Props) {
   const isXl = useMediaQuery(MQ_XL);
 
   const t = themeById(id);
-  const scopeKey = fixedStore.allUnified ? "all" : fixedStore.curMon;
-  const on =
+  const scopeKey = () => (fixedStore.allUnified ? "all" : fixedStore.curMon);
+  const on = () =>
     uiStore.mode === "fixed"
-      ? fixedStore.monitorThemes[scopeKey] === id
+      ? fixedStore.monitorThemes[scopeKey()] === id
       : randomStore.selected.includes(id);
 
   const onClick = () => {
     if (uiStore.mode === "fixed") {
-      setMonitorTheme(scopeKey, id);
+      setMonitorTheme(scopeKey(), id);
       // 最小档：指定后收起抽屉，用户立刻看到日轨/预览更新；随机模式保持展开以便连续勾选
-      if (!isXl) setLibOpen(false);
+      if (!isXl()) setLibOpen(false);
     } else {
       toggle(id);
     }
@@ -41,8 +41,8 @@ export function ThemeTile({ id, index }: Props) {
       style={{ "animation-delay": `${index * 40}ms` }}
       class={clsx(
         "group relative aspect-[16/10] cursor-pointer overflow-hidden rounded-lg border transition-all duration-200 animate-rise hover:-translate-y-1 hover:scale-[1.02] hover:border-border-2 hover:shadow-[0_12px_26px_rgba(0,0,0,.5)]",
-        on && uiStore.mode === "fixed" && "border-primary",
-        on && uiStore.mode === "random" && "border-warning",
+        on() && uiStore.mode === "fixed" && "border-primary",
+        on() && uiStore.mode === "random" && "border-warning",
       )}
     >
       <ThemeThumbnail
@@ -55,7 +55,7 @@ export function ThemeTile({ id, index }: Props) {
       <span
         class={clsx(
           "absolute right-1.5 top-1.5 grid size-5 place-items-center rounded-md transition-all duration-200",
-          on ? "scale-100 opacity-100" : "scale-50 opacity-0",
+          on() ? "scale-100 opacity-100" : "scale-50 opacity-0",
           uiStore.mode === "fixed"
             ? "bg-primary text-primary-foreground"
             : "bg-warning text-warning-foreground",
