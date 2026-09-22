@@ -2,6 +2,7 @@
 // 职责：固定模式作用域面板——统一卡 + 分隔 + 单独显示器列表。
 import { fixedStore } from "@/store/fixed.store";
 import { monitorList } from "@/domain/monitors";
+import { t } from "@/i18n";
 import { UnifiedCard } from "./UnifiedCard";
 import { MonitorCard } from "./MonitorCard";
 import { clsx } from "@/utils";
@@ -16,7 +17,7 @@ export function FixedScope() {
           fixedStore.allUnified && "opacity-40",
         )}
       >
-        单独设置
+        {t("scope.individual")}
         <span class="h-px flex-1 bg-border" />
       </div>
       {monitorList()

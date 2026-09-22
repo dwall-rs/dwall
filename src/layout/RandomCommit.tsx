@@ -1,12 +1,13 @@
-// 职责：随机模式提交视图——脏态旗 + 保存/放弃 + 三帧（写入中→已保存）。绑定 Ctrl/⌘+S 不在此（在 GlobalHotkeys）。
+// 职责：随机模式提交视图——脏态旗 + 保存/放弃 + 三帧（写入中→已保存）。
 import { Button } from "@/components/ui/button";
+import { t } from "@/i18n";
 import { randomStore, isDirty, save, discard } from "@/store/random.store";
 import { clsx } from "@/utils";
 import { Check, LoaderCircle, Save } from "lucide-solid";
 import { createMemo } from "solid-js";
 
-function fmt(t: number) {
-  const d = new Date(t);
+function fmt(timestamp: number) {
+  const d = new Date(timestamp);
   return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
 }
 
@@ -23,18 +24,18 @@ export function RandomCommit() {
         )}
       >
         <span class="size-1.75 rounded-full bg-warning animate-bdot" />
-        未保存的更改
+        {t("commit.unsaved")}
       </span>
       {!dirty() && (
         <span class="flex items-center gap-1.5 font-mono text-[12px] text-muted-foreground">
           <Check class="size-3.25 text-success" />
           {randomStore.savedAt
-            ? `已保存 ${fmt(randomStore.savedAt)}`
-            : "已保存"}
+            ? t("commit.savedAt", { time: fmt(randomStore.savedAt) })
+            : t("commit.saved")}
         </span>
       )}
       <Button variant="ghost" size="sm" disabled={!dirty()} onClick={discard}>
-        放弃
+        {t("commit.discard")}
       </Button>
       <Button
         size="sm"
@@ -52,12 +53,12 @@ export function RandomCommit() {
         {randomStore.saving ? (
           <>
             <LoaderCircle class="size-3.5 animate-spin" />
-            写入中…
+            {t("commit.saving")}
           </>
         ) : (
           <>
             <Save class="size-3.5" />
-            保存配置
+            {t("commit.save")}
           </>
         )}
       </Button>

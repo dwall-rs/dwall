@@ -3,25 +3,26 @@ import { SettingsGroup } from "./SettingsGroup";
 import { SettingsRow } from "./SettingsRow";
 import { ThemeSegmented } from "./ThemeSegmented";
 import { LanguageRow } from "./LanguageRow";
+import { t } from "@/i18n";
 import { Sparkles } from "lucide-solid";
 
 export function AppearanceSection() {
   return (
     <SettingsGroup
       icon={<Sparkles class="size-3.25" />}
-      title="外观与语言"
+      title={t("settings.appearance.title")}
       delay={20}
     >
       <div class="overflow-hidden rounded-[15px] border border-border bg-card shadow-[0_1px_2px_rgba(0,0,0,.05),0_8px_24px_rgba(0,0,0,.06)]">
         <SettingsRow
-          label="外观 / Appearance"
-          desc="选择亮色、暗色，或跟随系统。跟随系统会实时监听系统外观变化自动切换。"
+          label={t("settings.appearance.appearanceLabel")}
+          desc={t("settings.appearance.appearanceDesc")}
           control={<ThemeSegmented />}
         />
         {/*<SemanticSwatches />*/}
         <SettingsRow
-          label="语言 / Language"
-          desc="界面语言，切换后立即生效。"
+          label={t("settings.appearance.languageLabel")}
+          desc={t("settings.appearance.languageDesc")}
           control={<LanguageRow />}
         />
       </div>

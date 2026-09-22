@@ -1,11 +1,16 @@
-/* ===== src/components/layout/ThemeCycleButton.tsx ===== */
+/* ===== src/layout/ThemeCycleButton.tsx ===== */
 // 职责：顶栏一键循环外观（亮→暗→系统）；图标随解析结果，title 显示用户意图。
 import { themeStore, cycle } from "@/store/theme.store";
 import { useResolvedTheme } from "@/hooks/useResolvedTheme";
+import { t } from "@/i18n";
 import { Button } from "~/components/ui/button";
 import { Moon, Sun } from "lucide-solid";
 
-const LABEL = { light: "亮色", dark: "暗色", system: "跟随系统" } as const;
+const MODE_KEY = {
+  light: "app.appearance.light",
+  dark: "app.appearance.dark",
+  system: "app.appearance.system",
+} as const;
 
 export function ThemeCycleButton() {
   const resolved = useResolvedTheme();
@@ -14,7 +19,7 @@ export function ThemeCycleButton() {
   return (
     <Button
       onClick={cycle}
-      title={`外观：${LABEL[themeStore.mode]}（当前 ${resolved === "dark" ? "暗" : "亮"}）`}
+      title={`${t("app.appearance.title")}: ${t(MODE_KEY[themeStore.mode])}`}
     >
       <Icon class="size-4" />
     </Button>

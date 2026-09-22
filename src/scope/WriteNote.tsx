@@ -2,6 +2,7 @@
 // 职责：随机模式归属/状态条——三态：空集(rose) / 脏态(warning) / 正常(muted)。
 import { randomStore, isDirty } from "@/store/random.store";
 import { themeList } from "@/domain/themes";
+import { t } from "@/i18n";
 import { clsx } from "@/utils";
 import { createMemo } from "solid-js";
 
@@ -11,10 +12,13 @@ export function WriteNote() {
   const empty = createMemo(() => n() === 0);
   const text = createMemo(() =>
     empty()
-      ? "候选池为空，引擎将无壁纸可抽，请至少保留一套。"
+      ? t("scope.randomEmpty")
       : dirty()
-        ? `候选池 ${randomStore.selected.length} 套 · 已排除 ${themeList().length - randomStore.selected.length} · 未保存`
-        : `候选池 ${randomStore.selected.length} 套 · 取消勾选即从每日洗牌中排除`,
+        ? t("scope.randomDirty", {
+            n: randomStore.selected.length,
+            excluded: themeList().length - randomStore.selected.length,
+          })
+        : t("scope.randomNormal", { n: randomStore.selected.length }),
   );
   return (
     <div

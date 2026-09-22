@@ -1,5 +1,6 @@
 // 职责：装饰性日轨丝带——真椭圆；底部预留标签条带防重叠；地平线标注置于中段空位。
 import type { SolarPosition, Wallpaper } from "@/domain/types";
+import { t } from "@/i18n";
 import { clsx } from "@/utils";
 import { createMemo, createSignal, For } from "solid-js";
 import { themeStore } from "~/store/theme.store";
@@ -66,7 +67,7 @@ export function SunPathPanel(props: Props) {
           viewBox="0 0 100 100"
           preserveAspectRatio="none"
           class="absolute inset-0 h-full w-full"
-          aria-label="太阳路径"
+          aria-label={t("stage.sunPath")}
         >
           <defs>
             <linearGradient id="spArc" x1="0" y1="0" x2="1" y2="0">
@@ -144,7 +145,7 @@ export function SunPathPanel(props: Props) {
             return (
               <button
                 type="button"
-                title={`高度 ${wp.solar.altitude}° · 方位 ${wp.solar.azimuth}°`}
+                title={`${t("stage.altitude")} ${wp.solar.altitude}° · ${t("stage.azimuth")} ${wp.solar.azimuth}°`}
                 onClick={() => props.onSelect(wp.index)}
                 onMouseEnter={() => setHover(i())}
                 onMouseLeave={() => setHover(null)}
@@ -182,24 +183,24 @@ export function SunPathPanel(props: Props) {
           class="absolute left-1/2 -translate-x-1/2 -translate-y-1/2 rounded bg-card/70 px-1 font-mono text-[8px] text-muted-foreground"
           style={{ top: `${HOR}%` }}
         >
-          0° 地平线
+          {t("stage.horizon")}
         </span>
         <span
           class="absolute left-2 -translate-y-1/2 font-mono text-[8px] text-muted-foreground"
           style={{ top: `${Y_BOT}%` }}
         >
-          −20°
+          {t("stage.minus20")}
         </span>
         {[
-          { az: 90, t: "东·90°" },
-          { az: 180, t: "南·180°" },
-          { az: 270, t: "西·270°" },
+          { az: 90, label: t("stage.east") },
+          { az: 180, label: t("stage.south") },
+          { az: 270, label: t("stage.west") },
         ].map((m) => (
           <span
             class="absolute bottom-1 -translate-x-1/2 font-mono text-[9px] text-muted-foreground"
             style={{ left: `${Xaz(m.az)}%` }}
           >
-            {m.t}
+            {m.label}
           </span>
         ))}
         <span class="absolute right-2 top-1.5 font-mono text-[9px] text-muted-foreground">

@@ -1,14 +1,19 @@
 // 职责：外观三档 segmented（亮/暗/系统）；读写 theme.store，pill 用等宽网格定位。
 import { themeStore, setMode } from "@/store/theme.store";
 import type { ThemeMode } from "@/domain/types";
+import { t } from "@/i18n";
 import { Monitor, Moon, Sun } from "lucide-solid";
 import { Tabs, TabsList, TabsTrigger } from "../ui/tabs";
 import { For } from "solid-js";
 
-const ITEMS: { value: ThemeMode; label: string; Icon: typeof Sun }[] = [
-  { value: "light", label: "亮", Icon: Sun },
-  { value: "dark", label: "暗", Icon: Moon },
-  { value: "system", label: "系统", Icon: Monitor },
+const ITEMS: {
+  value: ThemeMode;
+  key: "app.appearance.light" | "app.appearance.dark" | "app.appearance.system";
+  Icon: typeof Sun;
+}[] = [
+  { value: "light", key: "app.appearance.light", Icon: Sun },
+  { value: "dark", key: "app.appearance.dark", Icon: Moon },
+  { value: "system", key: "app.appearance.system", Icon: Monitor },
 ];
 
 export function ThemeSegmented() {
@@ -29,7 +34,7 @@ export function ThemeSegmented() {
             {(it) => (
               <TabsTrigger value={it.value} onClick={() => setMode(it.value)}>
                 <it.Icon class="size-3.5" />
-                {it.label}
+                {t(it.key)}
               </TabsTrigger>
             )}
           </For>

@@ -1,5 +1,6 @@
 // 职责：顶栏右侧按钮排布；新增「主题库抽屉」开关，仅在最小档（<xl）可见。
 import { uiStore, toggleLib } from "@/store/ui.store";
+import { t } from "@/i18n";
 import { EngineButton } from "./EngineButton";
 import { ThemeCycleButton } from "./ThemeCycleButton";
 import { SettingsButton } from "./SettingsButton";
@@ -12,7 +13,9 @@ export function RightCluster() {
       {/* 最小档：主题库收为抽屉，用此按钮展开/收起；xl+ 隐藏（库已内联） */}
       <Button
         onClick={toggleLib}
-        title={uiStore.libOpen ? "收起主题库" : "展开主题库"}
+        title={
+          uiStore.libOpen ? t("library.toggleOpen") : t("library.toggleClosed")
+        }
         class="xl:hidden"
       >
         <PanelRight class="size-4" />

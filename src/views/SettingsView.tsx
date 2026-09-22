@@ -4,6 +4,7 @@ import { AppearanceSection } from "@/components/settings/AppearanceSection";
 import { EngineSection } from "@/components/settings/EngineSection";
 import { PathsSection } from "@/components/settings/PathsSection";
 import { AboutSection } from "@/components/settings/AboutSection";
+import { t } from "@/i18n";
 import { createMemo, Show } from "solid-js";
 import {
   discard,
@@ -21,16 +22,18 @@ export function SettingsView() {
     <div class="mx-auto max-w-190 px-7 pb-16 pt-8">
       <div class="mb-1.5 flex items-center gap-3">
         <h2 class="font-display text-[26px] font-extrabold tracking-tight">
-          设置
+          {t("settings.title")}
         </h2>
         <span class="font-mono text-[12px] text-muted-foreground">
-          preferences
+          {t("settings.subtitle")}
         </span>
 
         <Show when={settingsStore.status === "ready"}>
           <div class="ml-auto flex items-center gap-2">
             <Show when={settingsStore.saveError}>
-              <span class="text-[12px] text-destructive">保存失败</span>
+              <span class="text-[12px] text-destructive">
+                {t("settings.saveFailed")}
+              </span>
             </Show>
 
             <span
@@ -40,7 +43,7 @@ export function SettingsView() {
               )}
             >
               <span class="size-1.5 rounded-full bg-warning animate-bdot" />
-              未保存
+              {t("settings.unsaved")}
             </span>
             <Button
               variant="ghost"
@@ -48,7 +51,7 @@ export function SettingsView() {
               disabled={!dirty}
               onClick={discard}
             >
-              放弃
+              {t("settings.discard")}
             </Button>
             <Button
               size="sm"
@@ -63,19 +66,19 @@ export function SettingsView() {
                 fallback={
                   <>
                     <Save class="size-3.5" />
-                    保存配置
+                    {t("settings.save")}
                   </>
                 }
               >
                 <Loader2 class="size-3.5 animate-spin" />
-                写入中…
+                {t("settings.saving")}
               </Show>
             </Button>
           </div>
         </Show>
       </div>
       <p class="mb-7 max-w-145 text-[13px] leading-relaxed text-muted-foreground">
-        偏好控制引擎进程与太阳角匹配的行为。开关即时写入配置；带保存图标的字段需手动确认。
+        {t("settings.intro")}
       </p>
       <AppearanceSection />
       <EngineSection />

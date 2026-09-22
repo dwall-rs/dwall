@@ -3,6 +3,7 @@ import { uiStore } from "@/store/ui.store";
 import { fixedStore } from "@/store/fixed.store";
 import { monitorById } from "@/domain/monitors";
 import { themeList } from "@/domain/themes";
+import { t } from "@/i18n";
 import { ThemeTile } from "./ThemeTile";
 import { Search } from "lucide-solid";
 import { createMemo, createSignal, For } from "solid-js";
@@ -15,11 +16,13 @@ import {
 export function LibraryColumn() {
   const [q, setQ] = createSignal("");
   const list = createMemo(() =>
-    themeList().filter((t) => t.name.toLowerCase().includes(q().toLowerCase())),
+    themeList().filter((theme) =>
+      theme.name.toLowerCase().includes(q().toLowerCase()),
+    ),
   );
   const scopeName = createMemo(() =>
     fixedStore.allUnified
-      ? "所有显示器"
+      ? t("scope.allMonitors")
       : (monitorById(fixedStore.curMon)?.name ?? fixedStore.curMon),
   );
 
@@ -27,19 +30,19 @@ export function LibraryColumn() {
     <div class="col-lib flex h-full min-h-0 flex-col border-l border-border">
       <div class="flex items-baseline justify-between px-4.5 pb-2.5 pt-4">
         <span class="font-display text-[11px] font-bold uppercase tracking-[1.4px] text-muted-foreground">
-          主题库
+          {t("library.title")}
         </span>
         <span class="hidden font-mono text-[11px] text-muted-foreground min-[1150px]:block">
           {uiStore.mode === "fixed"
-            ? `点击指定给${scopeName()}`
-            : "点击加入 / 移出候选池"}
+            ? t("library.hintFixed", { name: scopeName() })
+            : t("library.hintRandom")}
         </span>
       </div>
       <div class="px-3.5 pb-2.5">
         <InputGroup>
           <InputGroupInput
             class="text-xs placeholder:text-xs"
-            placeholder="搜索主题…"
+            placeholder={t("library.search")}
             value={q()}
             onChange={(v) => setQ(v)}
           />
@@ -51,7 +54,7 @@ export function LibraryColumn() {
       <div class="scrollbar-thin min-h-0 flex-1 overflow-y-auto px-3.5 pb-4.5">
         <div class="grid grid-cols-2 gap-2.25 pt-0.5">
           <For each={list()}>
-            {(t, i) => <ThemeTile id={t.id} index={i()} />}
+            {(theme, i) => <ThemeTile id={theme.id} index={i()} />}
           </For>
         </div>
       </div>

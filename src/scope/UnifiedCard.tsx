@@ -1,5 +1,6 @@
 // 职责：「统一所有显示器」开关卡——开启即锁定下方单独设置。
 import { fixedStore, toggleUnified as toggle } from "@/store/fixed.store";
+import { t } from "@/i18n";
 import { clsx } from "@/utils";
 import { Switch } from "~/components/ui/switch";
 import { Monitor } from "lucide-solid";
@@ -21,7 +22,7 @@ export function UnifiedCard() {
           <Monitor class="size-4" />
         </div>
         <div class="flex-1 font-display text-[13.5px] font-bold">
-          统一所有显示器
+          {t("scope.unified")}
         </div>
         <Switch
           size="sm"
@@ -31,9 +32,7 @@ export function UnifiedCard() {
         />
       </div>
       <div class="mt-2 text-[11px] leading-relaxed text-muted-foreground">
-        {fixedStore.allUnified
-          ? "一套主题应用于全部显示器，下方单独设置已锁定。"
-          : "关闭后可为每台显示器分别指定主题。"}
+        {fixedStore.allUnified ? t("scope.unifiedOn") : t("scope.unifiedOff")}
       </div>
       {fixedStore.allUnified && (
         <div class="mt-2.5 flex gap-1.5">

@@ -11,6 +11,7 @@ import {
   settingsStore,
 } from "@/store/settings.store";
 import { isSocks5 } from "@/domain/config";
+import { t } from "@/i18n";
 import { moveDirectory, pickDirectory } from "@/ipc";
 import { logger } from "@/utils";
 import { SettingsGroup } from "./SettingsGroup";
@@ -55,14 +56,14 @@ export function PathsSection() {
   return (
     <SettingsGroup
       icon={<Folder class="size-3.25" />}
-      title="目录与下载源"
+      title={t("settings.paths.title")}
       delay={140}
     >
       <div class="overflow-hidden rounded-[15px] border border-border bg-card shadow-[0_1px_2px_rgba(0,0,0,.05),0_8px_24px_rgba(0,0,0,.06)]">
         <SettingsRow
           stacked
-          label="主题目录"
-          desc="本地主题与缩略图的存放位置。切换目录会把现有主题迁移过去。"
+          label={t("settings.paths.themesDir")}
+          desc={t("settings.paths.themesDirDesc")}
           control={
             <div class="flex justify-between gap-2">
               <div class="flex flex-1 items-center gap-2 overflow-hidden rounded-lg border border-border-2 bg-secondary px-3 py-2.25 font-mono text-[12px] text-muted-foreground">
@@ -80,7 +81,7 @@ export function PathsSection() {
                   onClick={() => void chooseDir()}
                 >
                   <FolderOpen class="size-3.5" />
-                  选择目录
+                  {t("settings.paths.selectDir")}
                 </Button>
               </div>
             </div>
@@ -88,13 +89,8 @@ export function PathsSection() {
         />
 
         <SettingsRow
-          label="网络设置"
-          desc={
-            <>
-              下载主题或者加载缩略图失败时可能需要配置网络，包括 Github
-              镜像模板和 SOCKS5 代理。
-            </>
-          }
+          label={t("settings.paths.network")}
+          desc={t("settings.paths.networkDesc")}
           control={
             <Tabs
               value={network()}
@@ -103,9 +99,15 @@ export function PathsSection() {
               }}
             >
               <TabsList>
-                <TabsTrigger value="none">关闭</TabsTrigger>
-                <TabsTrigger value="mirror">镜像</TabsTrigger>
-                <TabsTrigger value="socks5">SOCKS5</TabsTrigger>
+                <TabsTrigger value="none">
+                  {t("settings.paths.none")}
+                </TabsTrigger>
+                <TabsTrigger value="mirror">
+                  {t("settings.paths.mirror")}
+                </TabsTrigger>
+                <TabsTrigger value="socks5">
+                  {t("settings.paths.socks5")}
+                </TabsTrigger>
               </TabsList>
             </Tabs>
           }
@@ -115,13 +117,12 @@ export function PathsSection() {
           <Match when={network() === "mirror"}>
             <SettingsRow
               stacked
-              label="Github 镜像模板"
+              label={t("settings.paths.mirrorTemplate")}
               desc={
                 <>
-                  镜像模板用于加速下载。部分国家或地区因网络限制访问 Github
-                  可能失败，需配置镜像模板。点此查看可用模板：
+                  {t("settings.paths.mirrorDesc")}{" "}
                   <span class="cursor-pointer text-primary underline">
-                    查看模板列表 ↗
+                    {t("settings.paths.viewTemplates")}
                   </span>
                 </>
               }
@@ -158,7 +159,7 @@ export function PathsSection() {
                 <div class="flex items-end gap-3">
                   <FieldGroup class="grid flex-1 grid-cols-2 gap-3">
                     <Field>
-                      <FieldLabel>地址</FieldLabel>
+                      <FieldLabel>{t("settings.paths.address")}</FieldLabel>
                       <Input
                         value={socks().host}
                         onChange={(v) => patchSocks5({ host: v })}
@@ -167,7 +168,7 @@ export function PathsSection() {
                       />
                     </Field>
                     <Field>
-                      <FieldLabel>端口</FieldLabel>
+                      <FieldLabel>{t("settings.paths.port")}</FieldLabel>
                       <Input
                         type="number"
                         value={socks().port}
@@ -182,7 +183,7 @@ export function PathsSection() {
                     onClick={() => void save()}
                   >
                     <Save class="size-3.5" />
-                    保存
+                    {t("settings.paths.save")}
                   </Button>
                 </div>
               }

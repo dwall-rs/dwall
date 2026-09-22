@@ -23,7 +23,6 @@ interface SettingsState {
   config: Config | null;
   saved: Config | null;
   saving: boolean;
-  lang: string;
 }
 
 const [settingsStore, setSettingsStore] = createStore<SettingsState>({
@@ -33,7 +32,6 @@ const [settingsStore, setSettingsStore] = createStore<SettingsState>({
   config: null,
   saved: null,
   saving: false,
-  lang: "English",
 });
 
 const load = async () => {
@@ -139,8 +137,6 @@ const setWallpaperModeType = (m: "fixed" | "random") => {
   );
 };
 
-const setLang = (lang: string) => setSettingsStore("lang", lang);
-
 const save = async () => {
   if (!settingsStore.config || settingsStore.saving) return;
 
@@ -215,7 +211,6 @@ export {
   setNetworkType,
   patchSocks5,
   setWallpaperModeType,
-  setLang,
   save,
   applyWallpaperMode,
   discard,

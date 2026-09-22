@@ -3,6 +3,7 @@
 import { ChevronRight, Code, FileText } from "lucide-solid";
 import { createResource, type JSXElement } from "solid-js";
 import { getAppInfo, openLogDir, openUrl } from "@/ipc";
+import { t } from "@/i18n";
 import Logo from "@/assets/dwall.svg";
 import { SettingsGroup } from "./SettingsGroup";
 
@@ -14,7 +15,7 @@ export function AboutSection() {
   return (
     <SettingsGroup
       icon={<FileText class="size-3.25" />}
-      title="关于"
+      title={t("settings.about.title")}
       delay={200}
     >
       <div class="grid grid-cols-[1.5fr_1fr] gap-3">
@@ -24,19 +25,19 @@ export function AboutSection() {
             {info()?.version ?? "…"}
           </div>
           <div class="font-mono text-[11px] text-muted-foreground">
-            Dwall · 太阳位置驱动
+            {t("settings.about.tagline")}
           </div>
         </div>
         <LinkRow
           icon={<Code class="size-3.5" />}
-          title="源代码"
-          sub="github.com"
+          title={t("settings.about.sourceCode")}
+          sub={t("settings.about.sourceSub")}
           onClick={() => void openUrl(SOURCE_URL)}
         />
         <LinkRow
           icon={<FileText class="size-3.5" />}
-          title="日志目录"
-          sub="打开文件夹"
+          title={t("settings.about.logDir")}
+          sub={t("settings.about.logDirSub")}
           onClick={() => void openLogDir()}
         />
       </div>

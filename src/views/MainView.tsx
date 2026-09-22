@@ -3,6 +3,7 @@
 import { uiStore, setLibOpen } from "@/store/ui.store";
 import { StageColumn } from "@/stage/StageColumn";
 import { LibraryColumn } from "@/library/LibraryColumn";
+import { t } from "@/i18n";
 import { clsx } from "@/utils";
 import { ScopeColumn } from "~/scope/ScopeColumn";
 import { Show } from "solid-js";
@@ -26,7 +27,10 @@ export function MainView() {
 
       {/* 最小档 backdrop：点击收起抽屉；xl+ 不渲染交互 */}
       <Show when={uiStore.libOpen}>
-        <Button aria-label="收起主题库" onClick={() => setLibOpen(false)} />
+        <Button
+          aria-label={t("library.toggleOpen")}
+          onClick={() => setLibOpen(false)}
+        />
       </Show>
 
       {/* 主题库：最小档=右侧抽屉，xl+=内联第三栏（同一实例） */}

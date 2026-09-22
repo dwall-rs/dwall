@@ -3,6 +3,7 @@
 import { fixedStore, isApplied } from "@/store/fixed.store";
 import { monitorById } from "@/domain/monitors";
 import { themeById } from "@/domain/themes";
+import { t } from "@/i18n";
 import { clsx } from "@/utils";
 
 export function FixedCommit() {
@@ -22,8 +23,10 @@ export function FixedCommit() {
         )}
       >
         {applied()
-          ? `已应用 ${themeById(fixedStore.monitorThemes[scopeKey()]).name}`
-          : "未应用"}
+          ? t("commit.applied", {
+              theme: themeById(fixedStore.monitorThemes[scopeKey()]).name,
+            })
+          : t("commit.notApplied")}
       </span>
     </div>
   );

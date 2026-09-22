@@ -1,5 +1,6 @@
 // 职责：随机模式作用域面板——归属条 + 搜索 + 候选勾选列表（无 Radio，默认全选）。
 import { themeList } from "@/domain/themes";
+import { t } from "@/i18n";
 import { WriteNote } from "./WriteNote";
 import { ThemeCheckItem } from "./ThemeCheckItem";
 import { Search } from "lucide-solid";
@@ -18,7 +19,7 @@ export function RandomScope() {
         <input
           value={q()}
           onChange={(e) => setQ(e.target.value)}
-          placeholder="搜索主题…"
+          placeholder={t("scope.searchThemes")}
           class="w-full rounded-lg border border-border-2 bg-secondary py-2.25 pl-8 pr-3 text-[12.5px] text-foreground outline-none transition-colors focus:border-ring"
         />
       </div>

@@ -11,6 +11,7 @@ import {
 } from "@/store/settings.store";
 import { SettingsGroup } from "./SettingsGroup";
 import { SettingsRow } from "./SettingsRow";
+import { t } from "@/i18n";
 import { createMemo, createResource, createSignal, Show } from "solid-js";
 import { LoaderCircle, Save, Sun } from "lucide-solid";
 import {
@@ -45,14 +46,14 @@ export function EngineSection() {
   return (
     <SettingsGroup
       icon={<Sun class="size-3.25" />}
-      title="引擎与太阳角匹配"
+      title={t("settings.engine.title")}
       delay={80}
     >
       <div class="overflow-hidden rounded-[15px] border border-border bg-card shadow-[0_1px_2px_rgba(0,0,0,.05),0_8px_24px_rgba(0,0,0,.06)]">
         <SettingsRow
-          label="开机启动"
+          label={t("settings.engine.launchAtStartup")}
           okShow={flash() === "startup"}
-          desc="仅启动后台引擎进程，不打开图形界面，几乎不占内存。"
+          desc={t("settings.engine.launchAtStartupDesc")}
           control={
             <Switch
               checked={autoStart()}
@@ -68,14 +69,9 @@ export function EngineSection() {
           }
         />
         <SettingsRow
-          label="检查间隔"
+          label={t("settings.engine.interval")}
           okShow={flash() === "interval"}
-          desc={
-            <>
-              引擎每隔 <span class="text-(--warning)">N 秒</span>
-              重算一次太阳高度角，命中对应时段的壁纸。固定模式无固定切换时间，全靠此轮询驱动。
-            </>
-          }
+          desc={t("settings.engine.intervalDesc")}
           control={
             <InputGroup class="w-32">
               <InputGroupInput
@@ -107,9 +103,9 @@ export function EngineSection() {
           }
         />
         <SettingsRow
-          label="自动获取坐标"
+          label={t("settings.engine.autoCoords")}
           okShow={flash() === "coord"}
-          desc="经纬度用于计算太阳高度角以匹配壁纸。关闭后可手动填写坐标。"
+          desc={t("settings.engine.autoCoordsDesc")}
           control={
             <Switch
               checked={
@@ -125,14 +121,14 @@ export function EngineSection() {
         <Show when={settingsStore.config?.position_source.type === "MANUAL"}>
           <SettingsRow
             stacked
-            label="手动坐标"
+            label={t("settings.engine.manualCoords")}
             okShow={flash() === "manual"}
-            desc="纬度 -90~90、经度 -180~180、海拔（米）。"
+            desc={t("settings.engine.manualCoordsDesc")}
             control={
               <div class="flex items-end gap-3">
                 <FieldGroup class="grid flex-1 grid-cols-3 gap-3">
                   <Field>
-                    <FieldLabel>纬度</FieldLabel>
+                    <FieldLabel>{t("settings.engine.latitude")}</FieldLabel>
                     <Input
                       type="number"
                       value={manual().latitude}
@@ -140,7 +136,7 @@ export function EngineSection() {
                     />
                   </Field>
                   <Field>
-                    <FieldLabel>经度</FieldLabel>
+                    <FieldLabel>{t("settings.engine.longitude")}</FieldLabel>
                     <Input
                       type="number"
                       value={manual().longitude}
@@ -148,7 +144,7 @@ export function EngineSection() {
                     />
                   </Field>
                   <Field>
-                    <FieldLabel>海拔</FieldLabel>
+                    <FieldLabel>{t("settings.engine.altitude")}</FieldLabel>
                     <Input
                       type="number"
                       value={manual().altitude}
@@ -162,16 +158,16 @@ export function EngineSection() {
                   onClick={() => void ok("manual")}
                 >
                   <Save class="size-3.5" />
-                  保存
+                  {t("settings.engine.save")}
                 </Button>
               </div>
             }
           />
         </Show>
         <SettingsRow
-          label="同时设置锁屏壁纸"
+          label={t("settings.engine.lockScreen")}
           okShow={flash() === "lock"}
-          desc="若不希望锁屏与桌面同步更换，请关闭此项。"
+          desc={t("settings.engine.lockScreenDesc")}
           control={
             <Switch
               checked={settingsStore.config?.lock_screen_wallpaper_enabled}

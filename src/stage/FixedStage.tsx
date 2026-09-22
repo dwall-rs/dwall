@@ -9,6 +9,7 @@ import {
   getThemeWallpapers,
   matchWallpaper,
 } from "@/ipc";
+import { t } from "@/i18n";
 import { catalogStore } from "@/store/catalog.store";
 import { fixedStore, selectWallpaper } from "@/store/fixed.store";
 import { settingsStore } from "@/store/settings.store";
@@ -111,7 +112,7 @@ export function FixedStage() {
                 {theme().name}
               </div>
               <div class="font-mono text-[11.5px] text-muted-foreground">
-                该主题尚未安装或无壁纸
+                {t("stage.notInstalled")}
               </div>
             </div>
           </div>

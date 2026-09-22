@@ -2,6 +2,7 @@
 // 职责：随机模式只读摘要数字——候选池/范围/目标/周期。
 import { randomStore } from "@/store/random.store";
 import { themeList } from "@/domain/themes";
+import { t } from "@/i18n";
 import { clsx } from "@/utils";
 import { createMemo } from "solid-js";
 
@@ -12,21 +13,21 @@ export function RandomStats() {
     <div class="flex flex-wrap gap-[30px]">
       <Stat
         value={String(n)}
-        label="候选池 / 套"
+        label={t("stage.stats.pool")}
         cls={empty() ? "text-destructive" : "text-warning"}
       />
       <Stat
         value={
           n() === themeList().length
-            ? "全部"
-            : `排除 ${themeList().length - n()}`
+            ? t("stage.stats.all")
+            : t("stage.stats.exclude", { n: themeList().length - n() })
         }
-        label="范围"
+        label={t("stage.stats.range")}
         small
         cls={empty() ? "text-destructive" : ""}
       />
-      <Stat value="ALL" label="目标显示器" cls="text-primary" />
-      <Stat value="24h" label="切换周期" small />
+      <Stat value="ALL" label={t("stage.stats.target")} cls="text-primary" />
+      <Stat value="24h" label={t("stage.stats.period")} small />
     </div>
   );
 }

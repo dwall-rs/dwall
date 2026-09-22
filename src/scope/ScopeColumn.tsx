@@ -3,6 +3,7 @@
 import { uiStore } from "@/store/ui.store";
 import { randomStore } from "@/store/random.store";
 import { themeList } from "@/domain/themes";
+import { t } from "@/i18n";
 import { FixedScope } from "./FixedScope";
 import { RandomScope } from "./RandomScope";
 import { Show } from "solid-js";
@@ -12,12 +13,15 @@ export function ScopeColumn() {
     <div class="col-scope flex min-h-0 flex-col border-r border-border">
       <div class="flex items-baseline justify-between px-4.5 pb-2.5 pt-4">
         <span class="font-display text-[11px] font-bold uppercase tracking-[1.4px] text-muted-foreground">
-          {uiStore.mode === "fixed" ? "作用域 · 显示器" : "候选池"}
+          {t(uiStore.mode === "fixed" ? "scope.monitors" : "scope.pool")}
         </span>
 
         <Show when={uiStore.mode === "random"}>
           <span class="font-mono text-[11px] text-muted-foreground">
-            已选 {randomStore.selected.length}/{themeList().length}
+            {t("scope.selectedCount", {
+              n: randomStore.selected.length,
+              total: themeList().length,
+            })}
           </span>
         </Show>
       </div>
