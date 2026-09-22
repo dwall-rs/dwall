@@ -2,7 +2,7 @@
 import type { SolarPosition, Wallpaper } from "@/domain/types";
 import { t } from "@/i18n";
 import { clsx } from "@/utils";
-import { createMemo, createSignal, For } from "solid-js";
+import { createMemo, createSignal, For, Show } from "solid-js";
 import { themeStore } from "~/store/theme.store";
 
 // 垂直轴：单一线性比例；Y_BOT=84 给底部标签留出条带，地下最深 −20°
@@ -123,18 +123,20 @@ export function SunPathPanel(props: Props) {
             stop-opacity=".5"
             vector-effect="non-scaling-stroke"
           />
-          {matched && (
-            <line
-              x1={cx()}
-              y1={cy()}
-              x2={Xaz(matched()!.solar.azimuth)}
-              y2={Yp(matched()!.solar.altitude)}
-              stroke="var(--success)"
-              stop-opacity=".55"
-              stroke-dasharray="3 4"
-              vector-effect="non-scaling-stroke"
-            />
-          )}
+          <Show when={matched()}>
+            {(m) => (
+              <line
+                x1={cx()}
+                y1={cy()}
+                x2={Xaz(m().solar.azimuth)}
+                y2={Yp(m().solar.altitude)}
+                stroke="var(--success)"
+                stop-opacity=".55"
+                stroke-dasharray="3 4"
+                vector-effect="non-scaling-stroke"
+              />
+            )}
+          </Show>
         </svg>
 
         <For each={props.wallpapers}>
