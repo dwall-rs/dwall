@@ -9,6 +9,7 @@ export * from "./engine";
 export * from "./fs";
 export * from "./mirror";
 export * from "./monitor";
+export * from "./process";
 export * from "./shell";
 export * from "./system";
 export * from "./solar";

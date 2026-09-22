@@ -3,6 +3,8 @@ import { Update } from "@tauri-apps/plugin-updater";
 
 import type { Network, UpdateMetadata } from "./types";
 
+export type { Update } from "@tauri-apps/plugin-updater";
+
 export const checkForUpdates = async (network?: Network) => {
   const metadata = await invoke<UpdateMetadata | null>(
     "check_for_updates_cmd",

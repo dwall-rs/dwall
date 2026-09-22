@@ -6,6 +6,7 @@ import { getAppInfo, openLogDir, openUrl } from "@/ipc";
 import { t } from "@/i18n";
 import Logo from "@/assets/dwall.svg";
 import { SettingsGroup } from "./SettingsGroup";
+import { UpdateCheck } from "./UpdateCheck";
 
 const SOURCE_URL = "https://github.com/dwall-rs/dwall";
 
@@ -27,6 +28,7 @@ export function AboutSection() {
           <div class="font-mono text-[11px] text-muted-foreground">
             {t("settings.about.tagline")}
           </div>
+          <UpdateCheck />
         </div>
         <LinkRow
           icon={<Code class="size-3.5" />}
