@@ -75,6 +75,7 @@ export const dict = {
       exclude: "Exclude {{ n }}",
       target: "Target monitors",
       period: "Cycle",
+      today: "Today's theme",
       targetValue: "ALL",
       periodValue: "24h",
     },

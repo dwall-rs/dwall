@@ -74,6 +74,7 @@ export const dict: RawDictionary = {
       exclude: "排除 {{ n }}",
       target: "目标显示器",
       period: "切换周期",
+      today: "今日主题",
       targetValue: "全部",
       periodValue: "24 小时",
     },

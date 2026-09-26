@@ -5,6 +5,7 @@ pub mod error;
 pub mod lazy;
 pub mod monitor;
 pub mod platform;
+pub mod random_state;
 pub mod solar;
 pub mod theme;
 pub mod theme_manifest;

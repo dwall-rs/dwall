@@ -140,6 +140,14 @@ impl DaemonApplication {
         if let Some(theme_id) = state.selector.select_next(&themes_to_select) {
             state.selector.mark_applied(today);
             state.current_theme = Some(theme_id.clone());
+
+            if let Err(e) = crate::random_state::write(&crate::random_state::RandomSelection::new(
+                today,
+                theme_id.clone(),
+            )) {
+                warn!(error = %e, "Failed to persist random selection");
+            }
+
             info!(theme_id = %theme_id, "Random theme selected for today");
         }
 

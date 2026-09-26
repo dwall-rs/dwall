@@ -7,6 +7,7 @@ pub mod download;
 pub mod engine;
 pub mod mirror;
 pub mod monitor;
+pub mod random;
 pub mod solar;
 pub mod system;
 pub mod theme;
