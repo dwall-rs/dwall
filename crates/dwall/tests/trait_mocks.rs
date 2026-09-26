@@ -6,23 +6,23 @@
 use std::collections::HashMap;
 use std::path::Path;
 
-use dwall::domain::geography::PositionProvider;
-use dwall::domain::visual::ColorSchemeProvider;
-use dwall::domain::visual::MonitorProvider;
-use dwall::domain::visual::WallpaperProvider;
+use dwall::color_scheme::ColorSchemeProvider;
+use dwall::monitor::MonitorProvider;
+use dwall::solar::PositionProvider;
+use dwall::wallpaper::WallpaperProvider;
 use mockall::Sequence;
 use mockall::predicate::*;
 
-use dwall::domain::geography::Position;
-use dwall::domain::visual::ColorScheme;
-use dwall::infrastructure::platform::windows::display::monitor_manager::DisplayMonitor;
+use dwall::color_scheme::ColorScheme;
+use dwall::platform::DisplayMonitor;
+use dwall::solar::Position;
 
 // ── Mock implementations ────────────────────────────────────────────────────
 
 mockall::mock! {
     pub PositionProvider {}
 
-    impl dwall::domain::geography::PositionProvider for PositionProvider {
+    impl dwall::solar::PositionProvider for PositionProvider {
         fn get_current_position(&self) -> dwall::error::DwallResult<Position>;
         fn check_location_permission(&self) -> dwall::error::DwallResult<()>;
     }
@@ -31,7 +31,7 @@ mockall::mock! {
 mockall::mock! {
     pub MonitorProvider {}
 
-    impl dwall::domain::visual::MonitorProvider for MonitorProvider {
+    impl dwall::monitor::MonitorProvider for MonitorProvider {
         fn get_monitors(&self) -> dwall::error::DwallResult<HashMap<String, DisplayMonitor>>;
         fn refresh_monitors(&self) -> dwall::error::DwallResult<HashMap<String, DisplayMonitor>>;
         fn has_configuration_changed(&self) -> dwall::error::DwallResult<bool>;
@@ -41,7 +41,7 @@ mockall::mock! {
 mockall::mock! {
     pub WallpaperSetter {}
 
-    impl dwall::domain::visual::WallpaperProvider for WallpaperSetter {
+    impl dwall::wallpaper::WallpaperProvider for WallpaperSetter {
         fn set_monitor_wallpaper(&self, monitor_id: &str, image_path: &Path) -> dwall::error::DwallResult<()>;
         fn set_lock_screen_image(&self, image_path: &Path) -> dwall::error::DwallResult<()>;
     }
@@ -50,7 +50,7 @@ mockall::mock! {
 mockall::mock! {
     pub ColorSchemeBackend {}
 
-    impl dwall::domain::visual::ColorSchemeProvider for ColorSchemeBackend {
+    impl dwall::color_scheme::ColorSchemeProvider for ColorSchemeBackend {
         fn get_current_scheme(&self) -> dwall::error::DwallResult<ColorScheme>;
         fn set_color_scheme(&self, scheme: ColorScheme) -> dwall::error::DwallResult<()>;
     }
@@ -79,7 +79,7 @@ fn mock_position_provider_can_return_errors() {
 
     mock.expect_get_current_position().times(1).returning(|| {
         Err(dwall::error::DwallError::GeolocationAccess(
-            dwall::domain::geography::GeolocationAccessError::Denied,
+            dwall::solar::GeolocationAccessError::Denied,
         ))
     });
 

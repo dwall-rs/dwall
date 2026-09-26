@@ -1,168 +1,186 @@
 export const dict = {
   common: {
-    message: {
-      githubStar:
-        "If this application has helped you, please consider giving this project a star on GitHub:",
+    loading: "Loading",
+  },
 
-      locationPermission:
-        "Location permission is not enabled. Please manually enable location or set coordinates manually.\n\nDo you want to set coordinates manually?\nClick 'Yes' to set coordinates manually, click 'No' to enable location.",
-
-      updateAvailable:
-        "New version {{ version }} detected, current version is {{ currentVersion }}. Please click the upgrade button in the lower left corner to download and install.",
+  app: {
+    mode: {
+      fixed: "Fixed",
+      random: "Random",
     },
+    engine: {
+      notRunning: "Engine not running",
+      running: "Running · now",
+      daily: "Running · daily shuffle",
+      start: "Start engine",
+      stop: "Stop engine",
+      confirmStop: "Confirm stop?",
+      altitude: "alt",
+      azimuth: "az",
+    },
+    appearance: {
+      light: "Light",
+      dark: "Dark",
+      system: "System",
+      title: "Appearance",
+    },
+  },
+
+  library: {
+    title: "Themes",
+    toggleOpen: "Collapse theme library",
+    toggleClosed: "Expand theme library",
+    hintFixed: "Click to assign to {{ name }}",
+    hintRandom: "Click to add / remove from the pool",
+    search: "Search themes…",
+  },
+
+  scope: {
+    monitors: "Scope · Monitors",
+    allMonitors: "All monitors",
+    selectAll: "Select all",
+    clearAll: "Clear",
+    individual: "Per monitor",
+    unified: "Unify all monitors",
+    unifiedOn:
+      "One theme applied to all monitors; per-monitor settings below are locked.",
+    unifiedOff: "Turn off to assign a theme to each monitor.",
+    randomEmpty:
+      "The pool is empty — the engine has no wallpaper to pick. Keep at least one.",
+    randomDirty: "Pool {{ n }} themes · {{ excluded }} excluded · unsaved",
+    randomNormal:
+      "Pool {{ n }} themes · uncheck to exclude from the daily shuffle",
+  },
+
+  stage: {
+    notInstalled: "This theme is not installed or has no wallpapers",
+    applyTo: "Write this theme to {{ name }}",
+    stop: "Stop",
+    apply: "Apply this theme",
+    altitude: "alt",
+    azimuth: "az",
+    matched: "Matched",
+    match: "Match",
+    stripTitle: "Wallpapers · matched by sun position",
+    stripHint: "Click to preview the wallpaper at that sun position",
+    sunPath: "Sun path",
+    horizon: "0° horizon",
+    east: "E·90°",
+    south: "S·180°",
+    west: "W·270°",
+    randomIntro:
+      "Every day one theme is shuffled out of the pool and applied to all monitors. The editor only picks the pool; which theme is drawn is decided by the engine at runtime.",
+    stats: {
+      pool: "Pool / themes",
+      range: "Range",
+      all: "All",
+      exclude: "Exclude {{ n }}",
+      target: "Target monitors",
+      period: "Cycle",
+      today: "Today's theme",
+      targetValue: "ALL",
+      periodValue: "24h",
+    },
+    collageTitle: "Pool collage",
+    collageNote:
+      "{{ n }} themes in the daily shuffle · pool preview only, not the drawn result",
+    emptyTitle: "Pool is empty",
+    emptyDesc:
+      "All themes are excluded. Keep at least one theme so the daily shuffle has wallpapers.",
+  },
+
+  commit: {
+    applied: "Applied {{ theme }}",
+    notApplied: "Not applied",
+    unsaved: "Unsaved changes",
+    saved: "Saved",
+    savedAt: "Saved {{ time }}",
+    discard: "Discard",
+    saving: "Saving…",
+    save: "Save",
   },
 
   settings: {
-    unit: {
-      hour: "h",
-      second: "s",
-      minute: "m",
+    title: "Settings",
+    subtitle: "preferences",
+    unsaved: "Unsaved",
+    saveFailed: "Save failed",
+    discard: "Discard",
+    save: "Save configuration",
+    saving: "Saving…",
+    intro:
+      "Preferences control how the engine matches sun angles. Toggles are written immediately; fields with a save icon need confirmation.",
+
+    appearance: {
+      title: "Appearance & language",
+      appearanceLabel: "Appearance",
+      appearanceDesc:
+        "Choose light, dark, or follow the system. Following the system switches automatically.",
+      languageLabel: "Language",
+      languageDesc: "Interface language; takes effect immediately.",
     },
 
-    button: {
-      openLogDirectory: "Open Log Directory",
-      selectDirectory: "Select Directory",
+    engine: {
+      title: "Engine & sun matching",
+      launchAtStartup: "Launch at startup",
+      launchAtStartupDesc:
+        "Starts only the background engine, no window, and uses almost no memory.",
+      interval: "Check interval",
+      secondsUnit: "s",
+      intervalDesc:
+        "The engine recomputes the sun altitude every N seconds and picks the wallpaper for that time.",
+      autoCoords: "Automatically retrieve coordinates",
+      autoCoordsDesc:
+        "Coordinates are used to compute the sun altitude. Turn off to enter them manually.",
+      manualCoords: "Manual coordinates",
+      manualCoordsDesc: "Latitude -90~90, longitude -180~180, altitude (m).",
+      latitude: "Latitude",
+      longitude: "Longitude",
+      altitude: "Altitude",
+      save: "Save",
+      lockScreen: "Set lock screen wallpaper too",
+      lockScreenDesc: "Turn off to keep the lock screen unchanged.",
     },
 
-    label: {
-      automaticallyRetrieveCoordinates: "Automatically Retrieve Coordinates",
-      retrieveCoordinatesInterval: "Coordinates Retrieval Interval",
-      automaticallySwitchModes: "Automatically Switch to Dark or Light Mode",
-      checkInterval: "Check Interval",
+    paths: {
+      title: "Directories & download",
+      themesDir: "Themes directory",
+      themesDirDesc:
+        "Where local themes and thumbnails are stored. Changing it moves the existing themes.",
+      selectDir: "Select directory",
+      openDir: "Open folder",
       network: "Network",
-      useSocks5: "Use SOCKS5 Proxy",
+      networkDesc:
+        "Downloading themes or loading thumbnails may need a GitHub mirror template or a SOCKS5 proxy.",
+      none: "Off",
+      mirror: "Mirror",
       socks5: "SOCKS5",
-      githubMirrorTemplate: "Github Mirror Template",
-      launchAtStartup: "Launch at Startup",
-      setLockScreenWallpaperSimultaneously:
-        "Set Lock Screen Wallpaper Simultaneously",
-      sourceCode: "Source Code",
-      themesDirectory: "Themes Directory",
-      customizedThemesDirectory: "Customized Themes Directory",
-      version: "Version",
-      language: "Language",
-      titleBarColorFollowsWindowsTheme: "Title Bar Color Follows Windows Theme",
+      mirrorTemplate: "GitHub mirror template",
+      mirrorDesc:
+        "The mirror template speeds up downloads. In some regions GitHub is restricted. View available templates:",
+      viewTemplates: "View template list ↗",
+      address: "Host",
+      port: "Port",
+      save: "Save",
     },
 
-    help: {
-      automaticallySwitchModes:
-        "If you do not want to automatically switch between light and dark modes, please disable this option.",
-      retrieveCoordinatesInterval:
-        "The interval for retrieving coordinates, in minutes, should be greater than the detection interval. If your computer is always at a fixed location, you can set it to more than 24 hours. If you frequently travel with your computer, it is recommended to set it to less than 1 hour.",
-      socks5:
-        "Only enter the SOCKS5 proxy address and port number. If you do not have a valid SOCKS5 proxy server, please use the GitHub mirror template.",
-      githubMirror:
-        "Github mirror template is used to accelerate downloads. In some countries and regions, due to network restrictions, accessing Github may fail, resulting in download failures. You need to set up a Github mirror template to properly load thumbnails and download themes. Click this button to view available Github mirror templates:",
-      launchAtStartup:
-        "Autostart will only launch the background process, not the graphical program, and will not consume much memory.",
-      manuallySetCoordinates:
-        "When manually setting coordinates, you must use the WGS84 coordinate system (the international standard, users in China should take note). Otherwise, coordinate offset issues may occur, leading to inaccurate wallpaper alignment.",
-      setLockScreenWallpaperSimultaneously:
-        "If you do not want to set the lock screen wallpaper simultaneously, please disable this option.",
-      updatedFailed:
-        "Unable to complete the hot update. Please click the download button behind this message to manually download the new version: ",
-      titleBarColorFollowsWindowsTheme:
-        "If enabled, the title bar color will follow the Windows theme, which is useful when you have set a theme color.",
-      customizedThemesDirectory:
-        "Creating custom themes is not a simple skill. If you are familiar with astronomical algorithms, you can manually create them based on the built-in theme structure; otherwise, please use this application to create themes: ",
-    },
-
-    placeholder: {
-      latitude: "Enter latitude",
-      longitude: "Enter longitude",
-    },
-
-    tooltip: {
-      openThemesDirectory: "Click it to open the themes directory.",
-      openCustomizedThemesDirectory:
-        "Click it to open the customized themes directory.",
-      checkForNewVersion: "Click it to check for new version",
-    },
-
-    message: {
-      changeThemesDirectory: "Change the themes directory to: {{ directory }}?",
-      changeCustomizedThemesDirectory:
-        "Change the customized themes directory to: {{ directory }}?",
-      checkIntervalUpdated:
-        "Check interval has been updated to: {{ interval }} seconds",
-      disableStartupFailed: "Failed to disable startup: \n{{ error }}",
-      githubMirrorTemplateUpdated:
-        "Github mirror template has been updated to: ",
-      invalidNumber: "Please enter a valid number.",
-      manualCoordinatesSaved:
-        "Coordinates saved, next you can choose the theme you want to apply.",
-      numberTooLarge: "Please enter a number less than {{ max }}.",
-      numberTooSmall: "Please enter a number greater than {{ min }}.",
-      SaveManualCoordinatesFailed: "Failed to save coordinates: \n{{ error }}",
-      startupFailed: "Failed to enable startup: \n{{ error }}",
-      switchAutoModesFailed:
-        "Failed to switch auto light/dark mode: \n{{ error }}",
-      switchToManualCoordinatesFailed:
-        "Failed to switch to manual coordinates: \n{{ error }}",
-      movedThemesDirectory:
-        "The themes directory has been moved to: {{ directory }}",
-      movedCustomizedThemesDirectory:
-        "The customized themes directory has been moved to: {{ directory }}",
-      isLatestVersion: "You are already using the latest version.",
-      checkIntervalUpdateFailed:
-        "Failed to update check interval: \n{{ error }}",
-      saveRetrieveCoordinatesIntervalFailed:
-        "Failed to save retrieve coordinates interval: \n{{ error }}",
-      socks5UpdateFailed: "Failed to update socks5 settings: \n{{ error }}",
-      clearNetworkFailed: "Failed to clear network settings: \n{{ error }}",
-      titleBarColorFollowsWindowsTheme:
-        "Failed to enable title bar color to follow Windows theme:\n{{ error }}",
-    },
-
-    ask: {
-      titleBarColorFollowsWindowsTheme:
-        "After changing 'Title bar color follows Windows theme', you need to restart this application for it to take effect. Do you want to restart now?",
-    },
-  },
-
-  sidebar: {
-    tooltip: {
-      newVersionAvailable:
-        "A new version is available! Click this button to update.",
-      settings: "Settings",
-    },
-  },
-
-  theme: {
-    button: {
-      apply: "Apply",
-      cancel: "Cancel",
-      download: "Download",
-      stop: "Stop",
-    },
-
-    label: {
-      selectMonitor: "Select Monitor",
-    },
-
-    message: {
-      applyThemeFailed: "Failed to apply theme: \n{{ error }}",
-      downloadCancelled: "Download cancelled",
-      downloadFailed: "Failed to download theme: \n{{ error }}",
-      fileSizeWarning:
-        "Unable to calculate download progress due to failure in getting file size. Please switch to a Github mirror template that supports forwarding response headers",
-    },
-
-    title: {
-      downloadFailed: "Download Failed",
-    },
-  },
-
-  update: {
-    button: {
-      install: "Install",
-    },
-    title: {
-      downloadingNewVersion: "Downloading New Version {{ version }}",
-      newVersionDownloaded: "New Version {{version}} Downloaded",
-    },
-    message: {
-      updateFailed: "Failed to update: \n{{ error }}",
+    about: {
+      title: "About",
+      tagline: "Dwall · solar-driven",
+      logoAlt: "Dwall logo",
+      sourceCode: "Source code",
+      sourceSub: "github.com",
+      logDir: "Log directory",
+      logDirSub: "Open folder",
+      checkUpdate: "Check for updates",
+      checking: "Checking…",
+      upToDate: "Up to date",
+      available: "{{ version }} available",
+      download: "Download & install",
+      downloading: "Downloading…",
+      ready: "Restart to finish",
+      failed: "Update check failed",
+      retry: "Retry",
     },
   },
 };

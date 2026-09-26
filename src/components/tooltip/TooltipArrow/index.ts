@@ -1,1 +1,0 @@
-export { TooltipArrow } from "./TooltipArrow";

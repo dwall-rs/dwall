@@ -1,6 +1,6 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-use dwall::core::daemon::DaemonApplication;
+use dwall::DaemonApplication;
 use logging::Logger;
 
 fn main() -> dwall::DwallResult<()> {

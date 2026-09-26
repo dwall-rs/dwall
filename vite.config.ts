@@ -5,7 +5,7 @@ import path from "node:path";
 
 const host = process.env.TAURI_DEV_HOST;
 
-const pathSrc = path.resolve(__dirname, "src");
+const pathSrc = path.resolve(import.meta.dirname, "src");
 
 // https://vitejs.dev/config/
 export default defineConfig({
@@ -14,6 +14,7 @@ export default defineConfig({
   resolve: {
     alias: {
       "~/": `${pathSrc}/`,
+      "@/": `${pathSrc}/`,
     },
   },
 

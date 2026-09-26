@@ -2,171 +2,187 @@ import type { RawDictionary } from ".";
 
 export const dict: RawDictionary = {
   common: {
-    message: {
-      githubStar:
-        "このアプリがお役に立ちましたら、GitHubでこのプロジェクトにStarをお願いします：",
+    loading: "読み込み中",
+  },
 
-      locationPermission:
-        "位置情報の許可が有効になっていません。手動で位置情報を有効にするか、手動で座標を設定してください。\n\n手動で座標を設定しますか？\n「はい」をクリックすると手動で座標を設定し、「いいえ」をクリックすると位置情報を有効にします。",
-
-      updateAvailable:
-        "新しいバージョン {{ version }} が検出されました。現在のバージョンは {{ currentVersion }} です。左下隅のアップグレードボタンをクリックしてダウンロードとインストールを行ってください。",
+  app: {
+    mode: {
+      fixed: "固定",
+      random: "ランダム",
     },
+    engine: {
+      notRunning: "エンジン停止中",
+      running: "実行中 · 現在",
+      daily: "実行中 · 毎日シャッフル",
+      start: "エンジンを起動",
+      stop: "エンジンを停止",
+      confirmStop: "停止しますか？",
+      altitude: "高度",
+      azimuth: "方位",
+    },
+    appearance: {
+      light: "ライト",
+      dark: "ダーク",
+      system: "システム",
+      title: "外観",
+    },
+  },
+
+  library: {
+    title: "テーマライブラリ",
+    toggleOpen: "テーマライブラリを閉じる",
+    toggleClosed: "テーマライブラリを開く",
+    hintFixed: "クリックして{{ name }}に割り当て",
+    hintRandom: "クリックしてプールに追加/削除",
+    search: "テーマを検索…",
+  },
+
+  scope: {
+    monitors: "スコープ · モニター",
+    allMonitors: "すべてのモニター",
+    selectAll: "すべて選択",
+    clearAll: "選択を解除",
+    individual: "個別設定",
+    unified: "すべてのモニターを統一",
+    unifiedOn:
+      "1つのテーマを全モニターに適用します。下の個別設定はロックされます。",
+    unifiedOff: "オフにするとモニターごとにテーマを指定できます。",
+    randomEmpty:
+      "候補プールが空です。エンジンが選べる壁紙がありません。少なくとも1つ残してください。",
+    randomDirty: "候補プール {{ n }} 件 · {{ excluded }} 件除外 · 未保存",
+    randomNormal:
+      "候補プール {{ n }} 件 · チェックを外すと毎日のシャッフルから除外",
+  },
+
+  stage: {
+    notInstalled: "このテーマは未インストールか壁紙がありません",
+    applyTo: "このテーマを{{ name }}に書き込み",
+    stop: "停止",
+    apply: "このテーマを適用",
+    altitude: "高度",
+    azimuth: "方位",
+    matched: "現在一致",
+    match: "一致",
+    stripTitle: "収録壁紙 · 太陽位置で一致",
+    stripHint: "クリックしてその太陽位置の壁紙をプレビュー",
+    sunPath: "太陽の軌道",
+    horizon: "0° 地平線",
+    east: "東·90°",
+    south: "南·180°",
+    west: "西·270°",
+    randomIntro:
+      "毎日候補プールから1つのテーマをシャッフルして全モニターに適用します。エディターはプールを選ぶだけで、どのテーマが選ばれるかは実行時にエンジンが決定します。",
+    stats: {
+      pool: "候補プール / 件",
+      range: "範囲",
+      all: "すべて",
+      exclude: "{{ n }} 件除外",
+      target: "対象モニター",
+      period: "切替周期",
+      today: "今日のテーマ",
+      targetValue: "すべて",
+      periodValue: "24 時間",
+    },
+    collageTitle: "候補プールのコラージュ",
+    collageNote:
+      "{{ n }} 件が毎日シャッフルに参加 · プールのプレビューのみ、抽選結果ではありません",
+    emptyTitle: "候補プールが空です",
+    emptyDesc:
+      "すべてのテーマを除外しました。毎日のシャッフル用に少なくとも1つ残してください。",
+  },
+
+  commit: {
+    applied: "適用済み {{ theme }}",
+    notApplied: "未適用",
+    unsaved: "未保存の変更",
+    saved: "保存済み",
+    savedAt: "保存済み {{ time }}",
+    discard: "破棄",
+    saving: "保存中…",
+    save: "設定を保存",
   },
 
   settings: {
-    unit: {
-      hour: "時間",
-      second: "秒",
-      minute: "分",
+    title: "設定",
+    subtitle: "preferences",
+    unsaved: "未保存",
+    saveFailed: "保存に失敗",
+    discard: "破棄",
+    save: "設定を保存",
+    saving: "保存中…",
+    intro:
+      "設定はエンジンの太陽角マッチング動作を制御します。トグルは即時保存され、保存アイコン付きの項目は手動確認が必要です。",
+
+    appearance: {
+      title: "外観と言語",
+      appearanceLabel: "外観",
+      appearanceDesc:
+        "ライト、ダーク、またはシステムに従う。システムに従うと自動で切り替わります。",
+      languageLabel: "言語",
+      languageDesc: "UIの言語。切り替えると即時反映されます。",
     },
 
-    button: {
-      openLogDirectory: "ログディレクトリを開く",
-      selectDirectory: "ディレクトリを選択",
+    engine: {
+      title: "エンジンと太陽角マッチング",
+      launchAtStartup: "スタートアップで起動",
+      launchAtStartupDesc:
+        "バックグラウンドのエンジンのみを起動し、ウィンドウを開かず、メモリをほとんど消費しません。",
+      interval: "チェック間隔",
+      secondsUnit: "秒",
+      intervalDesc:
+        "エンジンは N 秒ごとに太陽高度を再計算し、その時刻の壁紙を選びます。",
+      autoCoords: "座標を自動取得",
+      autoCoordsDesc:
+        "緯度経度は太陽高度の計算に使われます。オフにすると手動で入力できます。",
+      manualCoords: "手動座標",
+      manualCoordsDesc: "緯度 -90~90、経度 -180~180、高度（m）。",
+      latitude: "緯度",
+      longitude: "経度",
+      altitude: "高度",
+      save: "保存",
+      lockScreen: "ロック画面の壁紙も設定",
+      lockScreenDesc: "ロック画面を変更したくない場合はオフにしてください。",
     },
 
-    label: {
-      automaticallyRetrieveCoordinates: "座標を自動取得",
-      automaticallySwitchModes: "ダークモードまたはライトモードに自動切替",
-      retrieveCoordinatesInterval: "座標取得間隔",
-      checkInterval: "チェック間隔",
+    paths: {
+      title: "ディレクトリとダウンロード",
+      themesDir: "テーマディレクトリ",
+      themesDirDesc:
+        "ローカルテーマとサムネイルの保存場所。変更すると既存テーマが移動します。",
+      selectDir: "ディレクトリを選択",
+      openDir: "フォルダを開く",
       network: "ネットワーク",
-      useSocks5: "SOCKS5プロキシを使用する",
+      networkDesc:
+        "テーマのダウンロードやサムネイルの読み込みには GitHub ミラーテンプレートや SOCKS5 プロキシが必要な場合があります。",
+      none: "オフ",
+      mirror: "ミラー",
       socks5: "SOCKS5",
-      githubMirrorTemplate: "Github ミラーテンプレート",
-      launchAtStartup: "起動時に起動",
-      setLockScreenWallpaperSimultaneously: "ロック画面の壁紙も同時に設定",
+      mirrorTemplate: "GitHub ミラーテンプレート",
+      mirrorDesc:
+        "ミラーテンプレートはダウンロードを高速化します。一部地域では GitHub が制限されています。利用可能なテンプレート:",
+      viewTemplates: "テンプレート一覧を見る ↗",
+      address: "ホスト",
+      port: "ポート",
+      save: "保存",
+    },
+
+    about: {
+      title: "このアプリについて",
+      tagline: "Dwall · 太陽位置駆動",
+      logoAlt: "Dwall ロゴ",
       sourceCode: "ソースコード",
-      themesDirectory: "テーマディレクトリ",
-      customizedThemesDirectory: "カスタマイズされたテーマディレクトリ",
-      version: "バージョン",
-      language: "言語",
-      titleBarColorFollowsWindowsTheme:
-        "タイトルバーの色はWindowsテーマに従います",
-    },
-
-    help: {
-      automaticallySwitchModes:
-        "ライト/ダークモードを自動的に切り替えたくない場合は、このオプションを無効にしてください。",
-      githubMirror:
-        "Githubミラーテンプレートはダウンロードを高速化するために使用されます。国や地域によってはネットワーク制限のためGithubへのアクセスに失敗し、ダウンロードが失敗することがあります。サムネイルを正しく読み込み、テーマをダウンロードするには、Githubミラーテンプレートを設定する必要があります。このボタンをクリックすると、利用可能なGithubミラーテンプレートを表示できます：",
-      socks5:
-        "SOCKS5プロキシのアドレスとポート番号のみを入力してください。有効なSOCKS5プロキシサーバーがない場合は、GitHubミラーテンプレートを使用してください。",
-      launchAtStartup:
-        "自動起動はバックグラウンドプロセスのみを起動し、グラフィカルプログラムは起動しません。また、メモリをあまり消費しません。",
-      manuallySetCoordinates:
-        "手動で座標を設定する際は、WGS84座標系（国際標準、中国のユーザーは注意してください）を使用する必要があります。そうしないと、座標オフセットの問題が発生し、壁紙の位置合わせが不正確になる可能性があります。",
-      setLockScreenWallpaperSimultaneously:
-        "ロック画面の壁紙も同時に設定したくない場合は、このオプションを無効にしてください。",
-      updatedFailed:
-        "ホットアップデートを完了できませんでした。このメッセージの後ろにあるダウンロードボタンをクリックして、新しいバージョンを手動でダウンロードしてください：",
-      retrieveCoordinatesInterval:
-        "座標を取得する間隔（単位：分）は、検出間隔よりも大きい値に設定してください。PCの設置場所が固定されている場合は24時間以上、頻繁に持ち運び出張される場合は1時間以内を推奨します。",
-      titleBarColorFollowsWindowsTheme:
-        "有効にすると、タイトルバーの色がWindowsテーマに従います。これは、テーマカラーを設定している場合に便利です。",
-      customizedThemesDirectory:
-        "カスタムテーマの作成は簡単なスキルではありません。天文学アルゴリズムに精通している場合は、組み込みのテーマ構造に基づいて手動で作成できます。それ以外の場合は、このアプリケーションを使用してテーマを作成してください：",
-    },
-
-    placeholder: {
-      latitude: "緯度を入力",
-      longitude: "経度を入力",
-    },
-
-    tooltip: {
-      openThemesDirectory: "クリックしてテーマディレクトリを開きます。",
-      openCustomizedThemesDirectory:
-        "クリックしてカスタマイズされたテーマディレクトリを開きます。",
-      checkForNewVersion: "クリックして新バージョンを確認",
-    },
-
-    message: {
-      changeThemesDirectory:
-        "テーマディレクトリを {{ directory }} に変更しますか？",
-      changeCustomizedThemesDirectory:
-        "カスタマイズされたテーマディレクトリを {{ directory }} に変更しますか？",
-      checkIntervalUpdated: "チェック間隔が {{ interval }} 秒に更新されました",
-      disableStartupFailed:
-        "起動時の自動起動の無効化に失敗しました：\n{{ error }}",
-      githubMirrorTemplateUpdated:
-        "Githubミラーテンプレートが {{ template }} に更新されました",
-      invalidNumber: "有効な数値を入力してください。",
-      manualCoordinatesSaved:
-        "座標が保存されました。次に適用するテーマを選択できます。",
-      numberTooLarge: "{{ max }} より小さい数値を入力してください。",
-      numberTooSmall: "{{ min }} より大きい数値を入力してください。",
-      SaveManualCoordinatesFailed: "座標の保存に失敗しました：\n{{ error }}",
-      startupFailed: "起動時の自動起動の有効化に失敗しました：\n{{ error }}",
-      switchAutoModesFailed:
-        "自動ライト/ダークモードの切り替えに失敗しました：\n{{ error }}",
-      switchToManualCoordinatesFailed:
-        "手動座標への切り替えに失敗しました：\n{{ error }}",
-      movedThemesDirectory:
-        "テーマディレクトリが {{ directory }} に移動されました",
-      movedCustomizedThemesDirectory:
-        "カスタマイズされたテーマディレクトリは {{ directory }} に移動されました。",
-      isLatestVersion: "最新バージョンを使用しています。",
-      checkIntervalUpdateFailed:
-        "更新チェック間隔の更新に失敗しました：\n{{ error }}",
-      saveRetrieveCoordinatesIntervalFailed:
-        "座標取得間隔の保存に失敗しました：\n{{ error }}",
-      socks5UpdateFailed: "SOCKS5設定の更新に失敗しました：\n{{ error }}",
-      clearNetworkFailed:
-        "ネットワーク設定のクリアに失敗しました：\n{{ error }}",
-      titleBarColorFollowsWindowsTheme:
-        "タイトルバーの色をWindowsテーマに従うように設定できませんでした：\n{{ error }}",
-    },
-
-    ask: {
-      titleBarColorFollowsWindowsTheme:
-        "「タイトルバーの色をWindowsテーマに従う」に変更した後、このアプリを再起動する必要があります。今すぐ再起動しますか？",
-    },
-  },
-
-  sidebar: {
-    tooltip: {
-      newVersionAvailable:
-        "新しいバージョンが利用可能です！このボタンをクリックして更新してください。",
-      settings: "設定",
-    },
-  },
-
-  theme: {
-    label: {
-      selectMonitor: "モニターを選択",
-    },
-
-    button: {
-      apply: "適用",
-      cancel: "キャンセル",
-      download: "ダウンロード",
-      stop: "停止",
-    },
-
-    message: {
-      applyThemeFailed: "テーマの適用に失敗しました：\n{{ error }}",
-      downloadCancelled: "ダウンロードがキャンセルされました",
-      downloadFailed: "テーマのダウンロードに失敗しました：\n{{ error }}",
-      fileSizeWarning:
-        "ファイルサイズを取得できないため、ダウンロードの進行状況を計算できません。レスポンスヘッダの転送をサポートするGithubミラーテンプレートに切り替えてください",
-    },
-
-    title: {
-      downloadFailed: "ダウンロード失敗",
-    },
-  },
-
-  update: {
-    button: {
-      install: "インストール",
-    },
-    title: {
-      downloadingNewVersion: "新しいバージョン {{ version }} をダウンロード中",
-      newVersionDownloaded: "新バージョン {{version}} ダウンロード済",
-    },
-    message: {
-      updateFailed: "更新に失敗しました：\n{{ error }}",
+      sourceSub: "github.com",
+      logDir: "ログディレクトリ",
+      logDirSub: "フォルダーを開く",
+      checkUpdate: "アップデートを確認",
+      checking: "確認中…",
+      upToDate: "最新版です",
+      available: "{{ version }} に更新できます",
+      download: "ダウンロードしてインストール",
+      downloading: "ダウンロード中…",
+      ready: "再起動して完了",
+      failed: "更新の確認に失敗しました",
+      retry: "再試行",
     },
   },
 };

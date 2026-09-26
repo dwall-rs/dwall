@@ -1,1 +1,0 @@
-export { SidebarGroupContent } from "./SidebarGroupContent";

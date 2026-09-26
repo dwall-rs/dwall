@@ -1,1 +1,0 @@
-export { DialogHeader } from "./DialogHeader";

@@ -1,6 +1,8 @@
 use std::{
     collections::HashMap,
+    fs,
     path::{Path, PathBuf},
+    time::SystemTime,
 };
 
 use serde::{Deserialize, Serialize};
@@ -18,6 +20,8 @@ const DEFAULT_AUTO_DETECT_COLOR_SCHEME: bool = true;
 const DEFAULT_LOCK_SCREEN_WALLPAPER_ENABLED: bool = true;
 const DEFAULT_TITLE_BAR_COLOR_FOLLOWS_WINDOWS_THEME: bool = false;
 
+#[cfg_attr(feature = "ts", derive(ts_rs::TS))]
+#[cfg_attr(feature = "ts", ts(export))]
 #[derive(Debug, Serialize, Deserialize, PartialEq, Default, Clone)]
 #[serde(rename_all = "lowercase")]
 pub enum ImageFormat {
@@ -44,6 +48,8 @@ impl ImageFormat {
 //     }
 // }
 
+#[cfg_attr(feature = "ts", derive(ts_rs::TS))]
+#[cfg_attr(feature = "ts", ts(export))]
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 #[serde(rename_all = "UPPERCASE", tag = "type")]
 pub enum PositionSource {
@@ -98,6 +104,8 @@ impl PositionSource {
     }
 }
 
+#[cfg_attr(feature = "ts", derive(ts_rs::TS))]
+#[cfg_attr(feature = "ts", ts(export))]
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 #[serde(untagged)]
 pub enum MonitorSpecificWallpapers {
@@ -126,6 +134,35 @@ impl MonitorSpecificWallpapers {
     }
 }
 
+/// 壁纸切换模式
+#[cfg_attr(feature = "ts", derive(ts_rs::TS))]
+#[cfg_attr(feature = "ts", ts(export))]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
+#[serde(rename_all = "snake_case", tag = "mode")]
+pub enum WallpaperMode {
+    /// 固定主题模式：用户为显示器配置主题，根据太阳位置切换壁纸
+    Fixed {
+        #[serde(default = "default_monitor_specific_wallpapers")]
+        monitor_specific_wallpapers: MonitorSpecificWallpapers,
+    },
+    /// 随机主题模式：每天随机选择一套主题，所有显示器统一
+    Random {
+        /// 随机池（None 表示使用所有可用主题）
+        #[serde(default)]
+        pool: Option<Vec<String>>,
+    },
+}
+
+impl Default for WallpaperMode {
+    fn default() -> Self {
+        WallpaperMode::Fixed {
+            monitor_specific_wallpapers: MonitorSpecificWallpapers::Individual(HashMap::new()),
+        }
+    }
+}
+
+#[cfg_attr(feature = "ts", derive(ts_rs::TS))]
+#[cfg_attr(feature = "ts", ts(export))]
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 #[serde(untagged)]
 pub enum Network {
@@ -133,6 +170,8 @@ pub enum Network {
     Socks5 { host: String, port: u16 },
 }
 
+#[cfg_attr(feature = "ts", derive(ts_rs::TS))]
+#[cfg_attr(feature = "ts", ts(export))]
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub struct Config {
     /// Network configuration for specifying a GitHub mirror template or SOCKS5 proxy.
@@ -170,9 +209,9 @@ pub struct Config {
     #[serde(default = "default_customized_themes_directory")]
     customized_themes_directory: PathBuf,
 
-    /// Wallpapers specific to each monitor, using monitor ID as key
-    #[serde(default = "default_monitor_specific_wallpapers")]
-    monitor_specific_wallpapers: MonitorSpecificWallpapers,
+    /// Wallpaper mode (Fixed or Random)
+    #[serde(default)]
+    wallpaper_mode: WallpaperMode,
 
     /// Time interval for detecting solar altitude angle and azimuth angle
     /// Measured in seconds, range: `[MIN_INTERVAL_SECONDS, MAX_INTERVAL_SECONDS]`
@@ -312,9 +351,24 @@ impl Config {
         &self.position_source
     }
 
-    /// Returns the monitor-specific wallpapers map
-    pub fn monitor_specific_wallpapers(&self) -> &MonitorSpecificWallpapers {
-        &self.monitor_specific_wallpapers
+    /// Returns the wallpaper mode
+    pub fn wallpaper_mode(&self) -> &WallpaperMode {
+        &self.wallpaper_mode
+    }
+
+    /// Returns the monitor-specific wallpapers map (only for Fixed mode)
+    pub fn monitor_specific_wallpapers(&self) -> Option<&MonitorSpecificWallpapers> {
+        match &self.wallpaper_mode {
+            WallpaperMode::Fixed {
+                monitor_specific_wallpapers,
+            } => Some(monitor_specific_wallpapers),
+            WallpaperMode::Random { .. } => None,
+        }
+    }
+
+    /// Set the wallpaper mode
+    pub fn set_wallpaper_mode(&mut self, mode: WallpaperMode) {
+        self.wallpaper_mode = mode;
     }
 }
 
@@ -329,7 +383,7 @@ impl Default for Config {
             themes_directory: default_themes_directory(),
             customized_themes_directory: default_customized_themes_directory(),
             lock_screen_wallpaper_enabled: default_lock_screen_wallpaper_enabled(),
-            monitor_specific_wallpapers: default_monitor_specific_wallpapers(),
+            wallpaper_mode: Default::default(),
             // On the equator, an azimuth change of 0.1 degrees takes
             // approximately 12 seconds, and an altitude change of 0.1
             // degrees takes about 24 seconds.
@@ -383,6 +437,10 @@ pub struct RawConfig {
     #[serde(default = "default_monitor_specific_wallpapers")]
     monitor_specific_wallpapers: MonitorSpecificWallpapers,
 
+    /// Wallpaper mode (new field for migration)
+    #[serde(default)]
+    wallpaper_mode: Option<WallpaperMode>,
+
     /// Time interval for detecting solar altitude angle and azimuth angle
     /// Measured in seconds, range: `[MIN_INTERVAL_SECONDS, MAX_INTERVAL_SECONDS]`
     #[serde(
@@ -400,6 +458,11 @@ impl From<RawConfig> for Config {
                 .map(Network::GitHubMirrorTemplate)
         });
 
+        // Migrate wallpaper_mode: if absent, wrap monitor_specific_wallpapers in Fixed mode
+        let wallpaper_mode = raw.wallpaper_mode.unwrap_or(WallpaperMode::Fixed {
+            monitor_specific_wallpapers: raw.monitor_specific_wallpapers,
+        });
+
         Config {
             title_bar_color_follows_windows_theme: raw.title_bar_color_follows_windows_theme,
             network,
@@ -409,9 +472,118 @@ impl From<RawConfig> for Config {
             lock_screen_wallpaper_enabled: raw.lock_screen_wallpaper_enabled,
             themes_directory: raw.themes_directory,
             customized_themes_directory: raw.customized_themes_directory,
-            monitor_specific_wallpapers: raw.monitor_specific_wallpapers,
+            wallpaper_mode,
             interval: raw.interval,
         }
+    }
+}
+
+// ── Config file I/O ─────────────────────────────────────────────────────────
+
+/// Reads configuration from the filesystem.
+pub struct ConfigReader;
+
+impl ConfigReader {
+    /// Reads configuration from the specified path
+    pub fn read_from_path(config_path: &Path) -> DwallResult<Config> {
+        if !config_path.exists() {
+            warn!("Config file not found, using default configuration");
+            return Ok(Config::default());
+        }
+
+        debug!(path = %config_path.display(), "Reading configuration file");
+
+        let content = fs::read_to_string(config_path)?;
+        let raw_config: RawConfig = toml::from_str(&content).map_err(|e| {
+            error!(error = %e, "Failed to parse configuration");
+            ConfigError::Deserialization(e)
+        })?;
+        let config = Config::from(raw_config);
+
+        config.validate()?;
+        info!(config = ?config, "Configuration loaded successfully");
+
+        Ok(config)
+    }
+}
+
+/// Writes configuration to the filesystem.
+pub struct ConfigWriter;
+
+impl ConfigWriter {
+    /// Writes configuration to the specified path
+    pub fn write_to_path(&self, config_path: &Path, config: &Config) -> DwallResult<()> {
+        config.validate()?;
+
+        let toml_string = toml::to_string(config).map_err(|e| {
+            error!(error = %e, "Failed to serialize configuration");
+            ConfigError::Serialization(e)
+        })?;
+
+        info!(path = %config_path.display(), "Writing configuration file");
+        fs::write(config_path, toml_string.as_bytes())?;
+        Ok(())
+    }
+}
+
+/// Watches a configuration file for modification-time changes.
+pub(crate) struct ConfigWatcher {
+    config_path: PathBuf,
+    last_modified: Option<SystemTime>,
+}
+
+impl ConfigWatcher {
+    /// Creates a new ConfigWatcher for the specified config path
+    pub(crate) fn new(config_path: PathBuf) -> Self {
+        Self {
+            config_path,
+            last_modified: None,
+        }
+    }
+
+    /// Returns the config path being watched
+    pub(crate) fn config_path(&self) -> &PathBuf {
+        &self.config_path
+    }
+
+    fn get_file_modified_time(&self) -> DwallResult<Option<SystemTime>> {
+        if !self.config_path.exists() {
+            return Ok(None);
+        }
+
+        let metadata = fs::metadata(&self.config_path)?;
+        Ok(Some(metadata.modified()?))
+    }
+
+    /// Checks if the configuration file has changed since the last check.
+    ///
+    /// Returns `true` when the file appeared, disappeared, or its modification
+    /// time differs from the last known one.
+    pub(crate) fn has_changed(&self) -> DwallResult<bool> {
+        let current_modified = self.get_file_modified_time()?;
+
+        let has_changed = match (self.last_modified, current_modified) {
+            (None, None) => false,
+            (Some(_), None) | (None, Some(_)) => true,
+            (Some(last), Some(current)) => last != current,
+        };
+
+        if has_changed {
+            debug!(
+                path = %self.config_path.display(),
+                last_modified = ?self.last_modified,
+                current_modified = ?current_modified,
+                "Configuration file change detected"
+            );
+        }
+
+        Ok(has_changed)
+    }
+
+    /// Updates the last known modification time
+    pub(crate) fn update_modified_time(&mut self) -> DwallResult<()> {
+        self.last_modified = self.get_file_modified_time()?;
+        Ok(())
     }
 }
 
@@ -463,7 +635,9 @@ mod tests {
             lock_screen_wallpaper_enabled: false,
             themes_directory: PathBuf::from("/tmp/themes"),
             customized_themes_directory: PathBuf::from("/tmp/customize"),
-            monitor_specific_wallpapers: MonitorSpecificWallpapers::All("theme1".to_string()),
+            wallpaper_mode: WallpaperMode::Fixed {
+                monitor_specific_wallpapers: MonitorSpecificWallpapers::All("theme1".to_string()),
+            },
             interval: 30,
         };
 
@@ -473,10 +647,7 @@ mod tests {
         assert_eq!(deserialized.interval, original.interval);
         assert_eq!(deserialized.image_format, original.image_format);
         assert_eq!(deserialized.network, original.network);
-        assert_eq!(
-            deserialized.monitor_specific_wallpapers,
-            original.monitor_specific_wallpapers
-        );
+        assert_eq!(deserialized.wallpaper_mode, original.wallpaper_mode);
     }
 
     /// Test RawConfig migration from legacy github_mirror_template
@@ -495,6 +666,7 @@ mod tests {
             monitor_specific_wallpapers: MonitorSpecificWallpapers::Individual(
                 std::collections::HashMap::new(),
             ),
+            wallpaper_mode: None,
             interval: 15,
         };
 
@@ -526,6 +698,7 @@ mod tests {
             monitor_specific_wallpapers: MonitorSpecificWallpapers::Individual(
                 std::collections::HashMap::new(),
             ),
+            wallpaper_mode: None,
             interval: 15,
         };
 
@@ -537,6 +710,37 @@ mod tests {
                 host: "127.0.0.1".to_string(),
                 port: 1080,
             })
+        );
+    }
+
+    /// Test RawConfig migration wraps monitor_specific_wallpapers in Fixed mode
+    #[test]
+    fn raw_config_migration_wallpaper_mode() {
+        let mut map = std::collections::HashMap::new();
+        map.insert("monitor1".to_string(), "theme1".to_string());
+
+        let raw = RawConfig {
+            github_mirror_template: None,
+            network: None,
+            title_bar_color_follows_windows_theme: false,
+            image_format: ImageFormat::Jpeg,
+            position_source: PositionSource::default(),
+            auto_detect_color_scheme: true,
+            lock_screen_wallpaper_enabled: true,
+            themes_directory: PathBuf::from("/tmp/themes"),
+            customized_themes_directory: PathBuf::from("/tmp/customize"),
+            monitor_specific_wallpapers: MonitorSpecificWallpapers::Individual(map.clone()),
+            wallpaper_mode: None, // Old config without wallpaper_mode
+            interval: 15,
+        };
+
+        let config: Config = raw.into();
+        // Should be migrated to Fixed mode
+        assert_eq!(
+            config.wallpaper_mode,
+            WallpaperMode::Fixed {
+                monitor_specific_wallpapers: MonitorSpecificWallpapers::Individual(map)
+            }
         );
     }
 
@@ -630,6 +834,99 @@ mod tests {
         let json = r#"{"auto_detect_color_mode": false}"#;
         let config: Config = serde_json::from_str(json).unwrap();
         assert!(!config.auto_detect_color_scheme);
+    }
+
+    /// Test WallpaperMode::Fixed serialization
+    #[test]
+    fn wallpaper_mode_fixed_serialization() {
+        let mode = WallpaperMode::Fixed {
+            monitor_specific_wallpapers: MonitorSpecificWallpapers::All("theme1".to_string()),
+        };
+        let json = serde_json::to_string(&mode).unwrap();
+        assert!(json.contains(r#""mode":"fixed""#));
+        assert!(json.contains("theme1"));
+    }
+
+    /// Test WallpaperMode::Random serialization
+    #[test]
+    fn wallpaper_mode_random_serialization() {
+        let mode = WallpaperMode::Random {
+            pool: Some(vec!["theme1".to_string(), "theme2".to_string()]),
+        };
+        let json = serde_json::to_string(&mode).unwrap();
+        assert!(json.contains(r#""mode":"random""#));
+        assert!(json.contains("theme1"));
+    }
+
+    /// Test WallpaperMode::Random with null pool
+    #[test]
+    fn wallpaper_mode_random_null_pool() {
+        let json = r#"{"mode":"random","pool":null}"#;
+        let mode: WallpaperMode = serde_json::from_str(json).unwrap();
+        assert!(matches!(mode, WallpaperMode::Random { pool: None }));
+    }
+
+    /// Test WallpaperMode default is Fixed
+    #[test]
+    fn wallpaper_mode_default_is_fixed() {
+        let mode = WallpaperMode::default();
+        assert!(matches!(mode, WallpaperMode::Fixed { .. }));
+    }
+
+    /// Test old config without wallpaper_mode migrates to Fixed
+    #[test]
+    fn old_config_migrates_to_fixed_mode() {
+        // Old config format: no wallpaper_mode field
+        let json = r#"{"monitor_specific_wallpapers": "theme1"}"#;
+        let raw: RawConfig = serde_json::from_str(json).unwrap();
+        let config: Config = raw.into();
+
+        assert!(matches!(
+            config.wallpaper_mode(),
+            WallpaperMode::Fixed { .. }
+        ));
+    }
+
+    /// Test new config with wallpaper_mode is preserved
+    #[test]
+    fn new_config_preserves_wallpaper_mode() {
+        let json = r#"{
+            "wallpaper_mode": {
+                "mode": "random",
+                "pool": ["theme1", "theme2"]
+            }
+        }"#;
+        let raw: RawConfig = serde_json::from_str(json).unwrap();
+        let config: Config = raw.into();
+
+        match config.wallpaper_mode() {
+            WallpaperMode::Random { pool } => {
+                assert_eq!(pool.as_ref().unwrap().len(), 2);
+            }
+            _ => panic!("Expected Random mode"),
+        }
+    }
+
+    /// Test monitor_specific_wallpapers() returns None for Random mode
+    #[test]
+    fn monitor_specific_wallpapers_none_for_random_mode() {
+        let config = Config {
+            wallpaper_mode: WallpaperMode::Random { pool: None },
+            ..Config::default()
+        };
+        assert!(config.monitor_specific_wallpapers().is_none());
+    }
+
+    /// Test monitor_specific_wallpapers() returns Some for Fixed mode
+    #[test]
+    fn monitor_specific_wallpapers_some_for_fixed_mode() {
+        let config = Config {
+            wallpaper_mode: WallpaperMode::Fixed {
+                monitor_specific_wallpapers: MonitorSpecificWallpapers::All("theme1".to_string()),
+            },
+            ..Config::default()
+        };
+        assert!(config.monitor_specific_wallpapers().is_some());
     }
 
     // ── Snapshot tests ────────────────────────────────────────────────────────

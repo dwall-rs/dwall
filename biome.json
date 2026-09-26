@@ -8,7 +8,7 @@
     }
   },
   "files": {
-    "includes": ["**", "!!**/*.css"]
+    "includes": ["**", "!!**/*.css", "!!**/*.svg", "!!src/ipc/bindings/**"]
   },
   "formatter": {
     "indentStyle": "space",
@@ -31,7 +31,8 @@
       "a11y": {
         "useKeyWithClickEvents": "off",
         "useSemanticElements": "off",
-        "noStaticElementInteractions": "off"
+        "noStaticElementInteractions": "off",
+        "noNoninteractiveElementToInteractiveRole": "off"
       },
       "performance": {
         "noDelete": "off"

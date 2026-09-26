@@ -29,30 +29,33 @@ dirs = { workspace = true, default-features = false }
 serde = { workspace = true, default-features = false }
 serde_json = { workspace = true, default-features = false }
 thiserror = { workspace = true, default-features = false }
+ts-rs = { version = "12", optional = true, default-features = false, features = [
+    "serde-compat",
+    "no-serde-warnings",
+] }
 
 [target.'cfg(windows)'.dependencies]
-windows = { version = "0", default-features = false, features = [
+# Keep version in sync with tauri
+windows = { version = "0.61", default-features = false, features = [
     "std",
     "Devices_Geolocation",
     "Win32_System_Registry",
     "System_UserProfile",
     "Storage_Streams",
-    "Win32_UI",
     "Win32_UI_Shell",
     "Win32_UI_WindowsAndMessaging",
     "Win32_System_Com",
-    "Win32_Graphics",
-    "Win32_Graphics_Gdi",
     "Win32_Devices_Display",
     "Win32_Devices_DeviceAndDriverInstallation",
 ] }
 
 
 [dev-dependencies]
-mockall = "0.13"
+mockall = "0"
 insta = { version = "1", features = ["json", "redactions"] }
 
 [features]
 default = []
 build-script = ["tauri-winres"]
 log-max-level-info = ["logging/max-level-info"]
+ts = ["dep:ts-rs"]

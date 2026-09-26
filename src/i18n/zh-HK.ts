@@ -2,156 +2,181 @@ import type { RawDictionary } from ".";
 
 export const dict: RawDictionary = {
   common: {
-    message: {
-      githubStar: "如果本應用對你有幫助，請喺 GitHub 上俾本項目點個 Star：",
+    loading: "載入中",
+  },
 
-      locationPermission:
-        "位置權限未開啟。請手動開啟位置或手動設定坐標。\n\n是否要手動設定坐標？\n撳「是」手動設定坐標，撳「否」開啟位置權限。",
-
-      updateAvailable:
-        "偵測到新版本 {{ version }}，當前版本為 {{ currentVersion }}。請撳左下角嘅升級按鈕下載並安裝。",
+  app: {
+    mode: {
+      fixed: "固定",
+      random: "隨機",
     },
+    engine: {
+      notRunning: "引擎未運行",
+      running: "運行中 · 當前",
+      daily: "運行中 · 每日洗牌",
+      start: "啟動引擎",
+      stop: "終止引擎",
+      confirmStop: "確認終止？",
+      altitude: "高度",
+      azimuth: "方位",
+    },
+    appearance: {
+      light: "亮色",
+      dark: "暗色",
+      system: "跟隨系統",
+      title: "外觀",
+    },
+  },
+
+  library: {
+    title: "主題庫",
+    toggleOpen: "收起主題庫",
+    toggleClosed: "展開主題庫",
+    hintFixed: "點擊指定給{{ name }}",
+    hintRandom: "點擊加入 / 移出候選池",
+    search: "搜尋主題…",
+  },
+
+  scope: {
+    monitors: "作用域 · 顯示器",
+    allMonitors: "所有顯示器",
+    selectAll: "全選",
+    clearAll: "取消全選",
+    individual: "單獨設定",
+    unified: "統一所有顯示器",
+    unifiedOn: "一套主題套用於全部顯示器，下方單獨設定已鎖定。",
+    unifiedOff: "關閉後可為每台顯示器分別指定主題。",
+    randomEmpty: "候選池為空，引擎將無壁紙可抽，請至少保留一套。",
+    randomDirty: "候選池 {{ n }} 套 · 已排除 {{ excluded }} · 未儲存",
+    randomNormal: "候選池 {{ n }} 套 · 取消勾選即從每日洗牌中排除",
+  },
+
+  stage: {
+    notInstalled: "該主題尚未安裝或無壁紙",
+    applyTo: "將這套主題寫入設定到{{ name }}",
+    stop: "停止",
+    apply: "套用此套",
+    altitude: "高度",
+    azimuth: "方位",
+    matched: "當前匹配",
+    match: "匹配",
+    stripTitle: "套內壁紙 · 按太陽位置匹配",
+    stripHint: "點擊預覽該太陽位置下的壁紙",
+    sunPath: "太陽路徑",
+    horizon: "0° 地平線",
+    east: "東·90°",
+    south: "南·180°",
+    west: "西·270°",
+    randomIntro:
+      "每天從候選池洗牌抽取一套，同時套用到所有顯示器。編輯器只負責選定池子，抽中哪套由引擎在運行時決定。",
+    stats: {
+      pool: "候選池 / 套",
+      range: "範圍",
+      all: "全部",
+      exclude: "排除 {{ n }}",
+      target: "目標顯示器",
+      period: "切換週期",
+      today: "今日主題",
+      targetValue: "全部",
+      periodValue: "24 小時",
+    },
+    collageTitle: "候選池拼貼",
+    collageNote: "{{ n }} 套參與每日洗牌 · 僅預覽池內容，非抽中結果",
+    emptyTitle: "候選池為空",
+    emptyDesc: "你已排除全部主題。請至少保留一套，讓每日洗牌有壁紙可抽。",
+  },
+
+  commit: {
+    applied: "已套用 {{ theme }}",
+    notApplied: "未套用",
+    unsaved: "未儲存的變更",
+    saved: "已儲存",
+    savedAt: "已儲存 {{ time }}",
+    discard: "放棄",
+    saving: "寫入中…",
+    save: "儲存設定",
   },
 
   settings: {
-    unit: {
-      hour: "小時",
-      second: "秒",
-      minute: "分",
+    title: "設定",
+    subtitle: "preferences",
+    unsaved: "未儲存",
+    saveFailed: "儲存失敗",
+    discard: "放棄",
+    save: "儲存設定",
+    saving: "寫入中…",
+    intro:
+      "偏好控制引擎程序與太陽角匹配的行為。開關即時寫入設定；帶儲存圖示的欄位需手動確認。",
+
+    appearance: {
+      title: "外觀與語言",
+      appearanceLabel: "外觀 / Appearance",
+      appearanceDesc:
+        "選擇亮色、暗色，或跟隨系統。跟隨系統會即時監聽系統外觀變化自動切換。",
+      languageLabel: "語言 / Language",
+      languageDesc: "介面語言，切換後立即生效。",
     },
 
-    button: {
-      openLogDirectory: "打開日誌目錄",
-      selectDirectory: "選擇目錄",
+    engine: {
+      title: "引擎與太陽角匹配",
+      launchAtStartup: "開機啟動",
+      launchAtStartupDesc:
+        "僅啟動背景引擎程序，不開啟圖形介面，幾乎不佔記憶體。",
+      interval: "檢查間隔",
+      secondsUnit: "秒",
+      intervalDesc:
+        "引擎每隔 N 秒重算一次太陽高度角，命中對應時段的壁紙。固定模式無固定切換時間，全靠此輪詢驅動。",
+      autoCoords: "自動取得座標",
+      autoCoordsDesc:
+        "經緯度用於計算太陽高度角以匹配壁紙。關閉後可手動填寫座標。",
+      manualCoords: "手動座標",
+      manualCoordsDesc: "緯度 -90~90、經度 -180~180、海拔（米）。",
+      latitude: "緯度",
+      longitude: "經度",
+      altitude: "海拔",
+      save: "儲存",
+      lockScreen: "同時設定鎖定畫面壁紙",
+      lockScreenDesc: "若不希望鎖定畫面與桌面同步更換，請關閉此項。",
     },
 
-    label: {
-      automaticallyRetrieveCoordinates: "自動獲取坐標",
-      automaticallySwitchModes: "自動切換深色或淺色模式",
-      retrieveCoordinatesInterval: "座標獲取間隔",
-      checkInterval: "檢查間隔",
-      network: "網絡",
-      useSocks5: "使用 SOCKS5 代理",
+    paths: {
+      title: "目錄與下載來源",
+      themesDir: "主題目錄",
+      themesDirDesc: "本地主題與縮圖的存放位置。切換目錄會把現有主題遷移過去。",
+      selectDir: "選擇目錄",
+      openDir: "開啟目錄",
+      network: "網絡設定",
+      networkDesc:
+        "下載主題或載入縮圖失敗時可能需要設定網絡，包括 Github 鏡像模板和 SOCKS5 代理。",
+      none: "關閉",
+      mirror: "鏡像",
       socks5: "SOCKS5",
-      githubMirrorTemplate: "Github 鏡像模板",
-      launchAtStartup: "開機自啟",
-      setLockScreenWallpaperSimultaneously: "同時設定鎖定畫面壁紙",
-      sourceCode: "源代碼",
-      themesDirectory: "主題目錄",
-      customizedThemesDirectory: "自訂主題目錄",
-      version: "版本",
-      language: "語言",
-      titleBarColorFollowsWindowsTheme: "標題欄顏色跟隨 Windows 主題",
+      mirrorTemplate: "Github 鏡像模板",
+      mirrorDesc:
+        "鏡像模板用於加速下載。部分國家或地區因網絡限制存取 Github 可能失敗，需設定鏡像模板。點此查看可用模板：",
+      viewTemplates: "查看模板列表 ↗",
+      address: "位址",
+      port: "連接埠",
+      save: "儲存",
     },
 
-    help: {
-      automaticallySwitchModes:
-        "如果你唔希望自動切換淺色/深色模式，請停用此選項。",
-      githubMirror:
-        "Github 鏡像模板用於加速下載。喺某啲國家同地區，由於網絡限制，訪問 Github 可能會失敗，導致下載失敗。你需要設定 Github 鏡像模板先可以正常載入縮圖同下載主題。撳此按鈕可查看可用嘅 Github 鏡像模板：",
-      socks5:
-        "僅需輸入SOCKS5代理地址和端口號。如果你沒有有效的SOCKS5代理伺服器，請使用GitHub鏡像模板。",
-      launchAtStartup:
-        "開機自啟只會啟動背景進程，唔會啟動圖形介面程式，且唔會佔用過多記憶體。",
-      manuallySetCoordinates:
-        "手動設定坐標時，必須使用 WGS84 坐標系（國際標準，中國用戶請注意）。否則可能出現坐標偏移問題，導致壁紙對齊唔準確。",
-      setLockScreenWallpaperSimultaneously:
-        "如果你唔希望同時設定鎖定畫面壁紙，請停用此選項。",
-      updatedFailed: "無法完成熱更新，請撳本訊息後面嘅下載按鈕手動下載新版本：",
-      retrieveCoordinatesInterval:
-        "獲取坐標嘅時間間隔（單位：分鐘），呢個值必須大過檢測時間間隔。若果你嘅電腦位置固定，可以將間隔設為24小時或更長；若果你經常帶住電腦出差，建議設為1小時以內。",
-      titleBarColorFollowsWindowsTheme:
-        "如果啟用，標題欄顏色將跟隨 Windows 主題，這在你設定了主題色時很有用。",
-      customizedThemesDirectory:
-        "自訂主題並非一項簡單的技能。如果你熟悉天文算法，可以根據內置的主題結構手動製作；否則，請使用此應用程式製作主題：",
-    },
-
-    placeholder: {
-      latitude: "輸入緯度",
-      longitude: "輸入經度",
-    },
-
-    tooltip: {
-      openThemesDirectory: "撳此打開主題目錄。",
-      openCustomizedThemesDirectory: "撳此打開自訂主題目錄。",
-      checkForNewVersion: "撳此檢查新版本",
-    },
-
-    message: {
-      changeThemesDirectory: "將主題目錄更改為：{{ directory }}？",
-      changeCustomizedThemesDirectory:
-        "是否將自訂主題目錄更改為：{{ directory }}？",
-      checkIntervalUpdated: "檢查間隔已更新為：{{ interval }} 秒",
-      disableStartupFailed: "停用開機自啟失敗：\n{{ error }}",
-      githubMirrorTemplateUpdated: "Github 鏡像模板已更新為：{{ template }}",
-      invalidNumber: "請輸入有效嘅數字。",
-      manualCoordinatesSaved: "坐標已保存，接下來你可以選擇要套用嘅主題。",
-      numberTooLarge: "請輸入小於 {{ max }} 嘅數字。",
-      numberTooSmall: "請輸入大於 {{ min }} 嘅數字。",
-      SaveManualCoordinatesFailed: "保存坐標失敗：\n{{ error }}",
-      startupFailed: "啟用開機自啟失敗：\n{{ error }}",
-      switchAutoModesFailed: "切換自動淺色/深色模式失敗：\n{{ error }}",
-      switchToManualCoordinatesFailed: "切換到手動坐標失敗：\n{{ error }}",
-      movedThemesDirectory: "主題目錄已移動到：{{ directory }}",
-      movedCustomizedThemesDirectory: "自訂主題目錄已移動到：{{ directory }}。",
-      isLatestVersion: "你已在使用最新版本。",
-      checkIntervalUpdateFailed: "更新檢查間隔失敗：\n{{ error }}",
-      saveRetrieveCoordinatesIntervalFailed:
-        "儲存座標檢索間隔失敗：\n{{ error }}",
-      socks5UpdateFailed: "更新SOCKS5設定失敗：\n{{ error }}",
-      clearNetworkFailed: "清除網絡設定失敗：\n{{ error }}",
-      titleBarColorFollowsWindowsTheme:
-        "開啟標題欄顏色將跟隨 Windows 主題失敗：\n{{ error }}",
-    },
-
-    ask: {
-      titleBarColorFollowsWindowsTheme:
-        "修改「標題欄顏色將跟隨 Windows 主題」後需要重新啟動本應用程式才能生效，是否立即重新啟動？",
-    },
-  },
-
-  sidebar: {
-    tooltip: {
-      newVersionAvailable: "有新版本可用！撳此按鈕進行更新。",
-      settings: "設定",
-    },
-  },
-
-  theme: {
-    label: {
-      selectMonitor: "選擇顯示器",
-    },
-
-    button: {
-      apply: "套用",
-      cancel: "取消",
-      download: "下載",
-      stop: "停止",
-    },
-
-    message: {
-      applyThemeFailed: "套用主題失敗：\n{{ error }}",
-      downloadCancelled: "下載已取消",
-      downloadFailed: "下載主題失敗：\n{{ error }}",
-      fileSizeWarning:
-        "由於無法獲取檔案大小，無法計算下載進度。請切換到支援轉發回應標頭嘅 Github 鏡像模板",
-    },
-
-    title: {
-      downloadFailed: "下載失敗",
-    },
-  },
-
-  update: {
-    button: {
-      install: "安装",
-    },
-    title: {
-      downloadingNewVersion: "正在下載新版本 {{ version }}",
-      newVersionDownloaded: "新版本 {{version}} 已下載",
-    },
-    message: {
-      updateFailed: "更新失敗：\n{{ error }}",
+    about: {
+      title: "關於",
+      tagline: "Dwall · 太陽位置驅動",
+      logoAlt: "Dwall 標誌",
+      sourceCode: "原始碼",
+      sourceSub: "github.com",
+      logDir: "日誌目錄",
+      logDirSub: "開啟資料夾",
+      checkUpdate: "檢查更新",
+      checking: "檢查中…",
+      upToDate: "已是最新版本",
+      available: "可更新至 {{ version }}",
+      download: "下載並安裝",
+      downloading: "下載中…",
+      ready: "重啟以完成更新",
+      failed: "檢查更新失敗",
+      retry: "重試",
     },
   },
 };

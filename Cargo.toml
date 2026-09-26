@@ -16,7 +16,7 @@ license = "AGPL-3.0"
 edition = "2024"
 
 [workspace.dependencies]
-dirs = { version = "6", default-features = false }
+dirs = { version = "7", default-features = false }
 thiserror = { version = "2", default-features = false }
 serde = { version = "1", default-features = false, features = [
     "std",
@@ -29,6 +29,6 @@ log = { version = "0", default-features = false, features = ["std"] }
 panic = "abort"
 codegen-units = 1
 lto = true
-incremental = true
+incremental = false
 opt-level = "z"
 strip = true
