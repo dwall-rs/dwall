@@ -3,7 +3,7 @@ on:
   workflow_dispatch:
     inputs:
       bump_type:
-        description: "Version bump type"
+        description: "Version bump type (prerelease only increments the pre-release number; alpha/beta only)"
         required: true
         default: "patch"
         type: choice
@@ -11,6 +11,16 @@ on:
           - patch
           - minor
           - major
+          - prerelease
+      release_channel:
+        description: "Release channel (alpha/beta are published as pre-releases)"
+        required: true
+        default: "stable"
+        type: choice
+        options:
+          - stable
+          - alpha
+          - beta
 
 env:
   CARGO_TERM_COLOR: always
@@ -71,12 +81,27 @@ jobs:
           git config --global user.email 'github-actions[bot]@users.noreply.github.com'
 
       - name: Bump version
+        env:
+          BUMP_TYPE: ${{ github.event.inputs.bump_type }}
+          RELEASE_CHANNEL: ${{ github.event.inputs.release_channel }}
         run: |
-          npm version ${{ github.event.inputs.bump_type }} --no-git-tag-version
+          if [ "$RELEASE_CHANNEL" = "stable" ]; then
+            if [ "$BUMP_TYPE" = "prerelease" ]; then
+              echo "::error::bump_type 'prerelease' requires the alpha or beta channel"
+              exit 1
+            fi
+            npm version "$BUMP_TYPE" --no-git-tag-version
+          elif [ "$BUMP_TYPE" = "prerelease" ]; then
+            # 仅递增预发布号：0.2.0-alpha.1 → 0.2.0-alpha.2（不动基础版本）
+            npm version prerelease --preid "$RELEASE_CHANNEL" --no-git-tag-version
+          else
+            # 提升基础版本并进入预发布：0.2.0 → 0.2.1-alpha.0
+            npm version "pre$BUMP_TYPE" --preid "$RELEASE_CHANNEL" --no-git-tag-version
+          fi
           VERSION=$(node -p "require('./package.json').version")
           sed -i "s/^version = \".*\"/version = \"$VERSION\"/" Cargo.toml
           echo "VERSION=$VERSION" >> $GITHUB_ENV
-          echo "Bumping version to: $VERSION"
+          echo "Bumping version to: $VERSION (channel: $RELEASE_CHANNEL)"
 
       - name: Create and push release branch
         run: |
@@ -174,6 +199,7 @@ jobs:
         uses: actions/github-script@v7
         env:
           changelog: ${{ steps.final_changelog.outputs.changelog }}
+          PRERELEASE: ${{ github.event.inputs.release_channel != 'stable' }}
         with:
           retries: 3
           retry-exempt-status-codes: 400,401,403,404,422
@@ -185,7 +211,7 @@ jobs:
               name: `v${process.env.VERSION}`,
               body: process.env.changelog,
               draft: true,
-              prerelease: false
+              prerelease: process.env.PRERELEASE === 'true'
             })
             return data.id
 
@@ -394,6 +420,7 @@ jobs:
           echo "**Version:** ${{ needs.create-release.outputs.package_version }}" >> $GITHUB_STEP_SUMMARY
           echo "**Triggered by:** ${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
           echo "**Bump type:** ${{ github.event.inputs.bump_type }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Release channel:** ${{ github.event.inputs.release_channel }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
 
           if [[ "${{ needs.publish-release.result }}" == "success" ]]; then
