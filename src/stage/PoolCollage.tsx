@@ -1,19 +1,24 @@
 /* ===== src/stage/PoolCollage.tsx ===== */
-// 职责：候选池拼贴墙——仅预览池内容，明确标注「非抽中结果」。
+// 职责：候选池拼贴墙——仅预览池内容（最多铺 10 格），明确标注「非抽中结果」。
 import { randomStore } from "@/store/random.store";
 import { themeList } from "@/domain/themes";
 import { t } from "@/i18n";
+import { createMemo } from "solid-js";
 import { ThemeThumbnail } from "~/scene/ThemeThumbnail";
 
 const LAYOUT = ["big", "", "tall", "", "", "", "tall", "", "big", ""];
+const MAX_TILES = 10;
 
 export function PoolCollage() {
-  const pool = themeList()
-    .filter((theme) => randomStore.selected.includes(theme.id))
-    .slice(0, 10);
+  const pool = createMemo(() =>
+    themeList().filter((theme) => randomStore.selected.includes(theme.id)),
+  );
+  // 拼贴墙最多铺 MAX_TILES 格；计数仍用候选池实际套数。
+  const tiles = createMemo(() => pool().slice(0, MAX_TILES));
+
   return (
     <div class="relative grid min-h-0 flex-1 grid-cols-4 auto-rows-fr gap-[3px] overflow-hidden rounded-[18px] border border-border-2 bg-black shadow-[0_24px_60px_rgba(0,0,0,.45)]">
-      {pool.map((theme, i) => (
+      {tiles().map((theme, i) => (
         <div
           class={`relative overflow-hidden ${LAYOUT[i] === "big" ? "col-span-2 row-span-2" : LAYOUT[i] === "tall" ? "row-span-2" : ""}`}
         >
@@ -29,7 +34,7 @@ export function PoolCollage() {
           {t("stage.collageTitle")}
         </div>
         <div class="mt-[3px] font-mono text-[11px] text-white/70">
-          {t("stage.collageNote", { n: pool.length })}
+          {t("stage.collageNote", { n: pool().length })}
         </div>
       </div>
     </div>
