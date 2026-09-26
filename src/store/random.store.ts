@@ -34,9 +34,9 @@ const syncFromConfig = (config: Config | null, allIds: string[]) => {
 };
 
 const toggle = (id: string) =>
-  setRandomStore("selected", (s) => ({
-    selected: s.includes(id) ? s.filter((x) => x !== id) : [...s, id],
-  }));
+  setRandomStore("selected", (s) =>
+    s.includes(id) ? s.filter((x) => x !== id) : [...s, id],
+  );
 
 const save = async () => {
   if (randomStore.selected.length === 0 || randomStore.saving) return;

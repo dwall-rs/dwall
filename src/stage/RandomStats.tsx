@@ -12,7 +12,7 @@ export function RandomStats() {
   return (
     <div class="flex flex-wrap gap-[30px]">
       <Stat
-        value={String(n)}
+        value={String(n())}
         label={t("stage.stats.pool")}
         cls={empty() ? "text-destructive" : "text-warning"}
       />
