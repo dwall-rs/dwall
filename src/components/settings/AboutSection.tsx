@@ -28,7 +28,7 @@ export function AboutSection() {
       delay={200}
     >
       <div class="grid grid-cols-[1.5fr_1fr] gap-3">
-        <div class="relative row-span-2 flex flex-col gap-2.5 overflow-hidden rounded-[15px] border border-border bg-gradient-to-br from-primary/10 to-card p-5 shadow-[0_1px_2px_rgba(0,0,0,.05),0_8px_24px_rgba(0,0,0,.06)]">
+        <div class="relative row-span-2 flex flex-col gap-2.5 overflow-hidden rounded-[15px] border border-border bg-linear-to-br from-primary/10 to-card p-5 shadow-[0_1px_2px_rgba(0,0,0,.05),0_8px_24px_rgba(0,0,0,.06)]">
           <img src={Logo} alt={t("settings.about.logoAlt")} class="size-8.5" />
           <div class="font-display text-[34px] font-extrabold leading-none tracking-tight">
             {info()?.version ?? "…"}
