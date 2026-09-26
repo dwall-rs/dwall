@@ -4,7 +4,7 @@
 use std::thread::sleep;
 use std::time::Duration;
 
-use time::OffsetDateTime;
+use time::{Date, OffsetDateTime};
 
 use crate::DwallResult;
 use crate::config::{
@@ -14,7 +14,7 @@ use crate::error::DwallError;
 use crate::lazy::DWALL_CONFIG_DIR;
 use crate::platform::{ColorSchemeScheduler, DisplayMonitorProvider, Positioner, WallpaperSetter};
 use crate::solar::GeographicPositionProvider;
-use crate::theme::{DailyRandomThemeSelector, filter_themes_by_pool};
+use crate::theme::{DailyRandomThemeSelector, filter_themes_by_pool, is_theme_directory};
 use crate::theme_engine::ThemeEngine;
 
 const MAX_CONSECUTIVE_FAILURE_THRESHOLD: u8 = 3;
@@ -82,63 +82,94 @@ impl DaemonApplication {
         }
     }
 
-    /// Handle Random wallpaper mode: select theme if needed
+    /// Handle Random wallpaper mode: select today's theme and always carry it in
+    /// the (in-memory) config so the engine can apply it.
     fn handle_random_mode(&mut self, config: &mut Config) -> DwallResult<()> {
         let today = OffsetDateTime::now_local()?.date();
 
         let needs_switch = self
             .random_state
             .as_ref()
-            .map(|s| s.selector.needs_switch(&today))
+            .map(|state| state.selector.needs_switch(&today))
             .unwrap_or(true);
 
         if needs_switch {
-            let available = self.list_available_themes(config)?;
+            self.select_random_theme(config, &today)?;
+        }
 
-            if !available.is_empty() {
-                let pool = match config.wallpaper_mode() {
-                    WallpaperMode::Random { pool } => pool.as_ref(),
-                    _ => None,
-                };
-
-                let themes_to_select = filter_themes_by_pool(&available, pool);
-
-                if !themes_to_select.is_empty() {
-                    let state = self.random_state.get_or_insert_with(|| RandomModeState {
-                        selector: DailyRandomThemeSelector::new(),
-                        current_theme: None,
-                    });
-
-                    if let Some(theme_id) = state.selector.select_next(&themes_to_select) {
-                        state.selector.mark_applied(&today);
-                        state.current_theme = Some(theme_id.clone());
-
-                        // Update config: all monitors use the same theme
-                        config.set_wallpaper_mode(WallpaperMode::Fixed {
-                            monitor_specific_wallpapers: MonitorSpecificWallpapers::All(
-                                theme_id.clone(),
-                            ),
-                        });
-
-                        info!(theme_id = %theme_id, "Random theme selected for today");
-                    }
-                }
-            }
+        // Always re-apply today's selection. A same-day config reload (e.g. saving
+        // any setting) re-reads `Random` from disk; without this, the engine would
+        // see no `monitor_specific_wallpapers` and stop applying anything.
+        if let Some(theme_id) = self
+            .random_state
+            .as_ref()
+            .and_then(|state| state.current_theme.clone())
+        {
+            config.set_wallpaper_mode(WallpaperMode::Fixed {
+                monitor_specific_wallpapers: MonitorSpecificWallpapers::All(theme_id),
+            });
         }
 
         Ok(())
     }
 
-    /// List available themes from the themes directory
-    fn list_available_themes(&self, config: &Config) -> DwallResult<Vec<String>> {
-        let themes_dir = config.themes_directory();
-        let mut themes = Vec::new();
+    /// Draw today's theme from the candidate pool (once per day).
+    fn select_random_theme(&mut self, config: &Config, today: &Date) -> DwallResult<()> {
+        let available = self.list_available_themes(config)?;
+        if available.is_empty() {
+            warn!("Random mode: no themes available to select");
+            return Ok(());
+        }
 
-        if let Ok(entries) = std::fs::read_dir(themes_dir) {
+        let pool = match config.wallpaper_mode() {
+            WallpaperMode::Random { pool } => pool.as_ref(),
+            _ => None,
+        };
+
+        let themes_to_select = filter_themes_by_pool(&available, pool);
+        if themes_to_select.is_empty() {
+            warn!("Random mode: candidate pool is empty; nothing to apply");
+            return Ok(());
+        }
+
+        let state = self.random_state.get_or_insert_with(|| RandomModeState {
+            selector: DailyRandomThemeSelector::new(),
+            current_theme: None,
+        });
+
+        if let Some(theme_id) = state.selector.select_next(&themes_to_select) {
+            state.selector.mark_applied(today);
+            state.current_theme = Some(theme_id.clone());
+            info!(theme_id = %theme_id, "Random theme selected for today");
+        }
+
+        Ok(())
+    }
+
+    /// List installed themes (bundled + custom) that look like valid themes.
+    fn list_available_themes(&self, config: &Config) -> DwallResult<Vec<String>> {
+        let mut themes: Vec<String> = Vec::new();
+
+        for directory in [
+            config.themes_directory(),
+            config.customized_themes_directory(),
+        ] {
+            let Ok(entries) = std::fs::read_dir(directory) else {
+                continue;
+            };
+
             for entry in entries.flatten() {
-                if let Ok(file_type) = entry.file_type()
-                    && file_type.is_dir()
-                    && let Some(name) = entry.file_name().to_str()
+                if !entry.file_type().map(|kind| kind.is_dir()).unwrap_or(false) {
+                    continue;
+                }
+
+                let path = entry.path();
+                if !is_theme_directory(&path) {
+                    continue;
+                }
+
+                if let Some(name) = entry.file_name().to_str()
+                    && !themes.iter().any(|existing| existing == name)
                 {
                     themes.push(name.to_string());
                 }

@@ -69,7 +69,7 @@ export function PoolCollage() {
     const tiles = pool();
     const rand = makeRng(seedOf(tiles.map((theme) => theme.id)));
     return {
-      rows: Math.ceil(tiles.length / COLS),
+      rows: Math.max(1, Math.ceil(tiles.length / COLS)),
       widths: rowWidths(tiles.length, rand).flat(),
       themes: shuffled(tiles, rand),
     };

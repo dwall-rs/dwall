@@ -61,6 +61,11 @@ pub fn get_theme_directory_path(configuration: &Config, theme_identifier: &str) 
     (path, true)
 }
 
+/// Whether a directory looks like a valid theme (has `solar.json` or `theme.toml`).
+pub fn is_theme_directory(theme_dir: &Path) -> bool {
+    theme_dir.join(SOLAR_CONFIG_FILENAME).is_file() || ThemeManifest::exists(theme_dir)
+}
+
 /// Maximum number of theme solar-angle sets kept resident.
 ///
 /// Random mode can cycle through an unbounded theme pool; a small LRU bounds

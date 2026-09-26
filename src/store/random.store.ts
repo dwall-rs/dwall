@@ -24,7 +24,8 @@ const syncFromConfig = (config: Config | null, allIds: string[]) => {
     config?.wallpaper_mode?.mode === "random"
       ? config.wallpaper_mode.pool
       : null;
-  const selected = pool && pool.length > 0 ? pool : allIds;
+  // 配置里的池是真值源；剔除已不在目录中的（已卸载）主题 id。
+  const selected = pool ? pool.filter((id) => allIds.includes(id)) : allIds;
   setRandomStore({
     selected: [...selected],
     saved: [...selected],
@@ -59,12 +60,11 @@ const save = async () => {
 
 const discard = () => setRandomStore("selected", [...randomStore.saved]);
 
-/** 派生：是否存在未保存改动。组件用 useRandomStore(isDirty)。 */
+/** 派生：是否存在未保存改动（按集合比较，忽略顺序）。 */
 const isDirty = (s: RandomState): boolean => {
   if (s.selected.length !== s.saved.length) return true;
-  for (let i = 0; i < s.selected.length; i++)
-    if (s.selected[i] !== s.saved[i]) return true;
-  return false;
+  const saved = new Set(s.saved);
+  return s.selected.some((id) => !saved.has(id));
 };
 
 export { randomStore, syncFromConfig, toggle, save, discard, isDirty };
