@@ -9,6 +9,7 @@ use std::rc::Rc;
 use time::Date;
 
 use crate::config::{Config, ImageFormat};
+use crate::theme_manifest::ThemeManifest;
 use crate::{DwallResult, SolarAngle};
 
 // ── Errors ──────────────────────────────────────────────────────────────────
@@ -28,6 +29,20 @@ pub enum ThemeError {
     WallpaperImageMissing { path: String },
     #[error("No monitor-specific wallpaper configurations found")]
     MonitorWallpaperConfigurationMissing,
+    #[error("Theme manifest 'theme.toml' is missing in theme directory")]
+    ThemeManifestMissing,
+    #[error("Failed to parse theme manifest: {0}")]
+    ThemeManifestParse(String),
+    #[error("Unsupported theme schema version {0}; supported: 1")]
+    UnsupportedThemeSchema(u32),
+    #[error("Theme has no solar frames")]
+    NoSolarFrames,
+    #[error("Theme frame index {0} is out of range (max 255)")]
+    FrameIndexOutOfRange(usize),
+    #[error("Solar altitude {0} is out of range [-90, 90]")]
+    InvalidAltitude(f64),
+    #[error("Solar azimuth {0} is out of range [0, 360)")]
+    InvalidAzimuth(f64),
 }
 
 // ── Theme directory & solar angle loading ───────────────────────────────────
@@ -52,9 +67,17 @@ pub fn get_theme_directory_path(configuration: &Config, theme_identifier: &str) 
 /// memory without meaningfully hurting the common case of 1–3 active themes.
 const SOLAR_CACHE_CAPACITY: usize = 32;
 
-/// Bounded LRU cache of parsed `solar.json` files.
+/// Parsed theme data: the solar frames plus, for `theme.toml` themes, the image
+/// format declared by the manifest. Legacy `solar.json` themes fall back to the
+/// global config's image format (`None`).
+pub(crate) struct ThemeData {
+    pub(crate) angles: Rc<Vec<SolarAngle>>,
+    pub(crate) image_format: Option<ImageFormat>,
+}
+
+/// Bounded LRU cache of parsed theme data.
 struct SolarAngleCache {
-    entries: HashMap<PathBuf, Rc<Vec<SolarAngle>>>,
+    entries: HashMap<PathBuf, Rc<ThemeData>>,
     order: VecDeque<PathBuf>,
 }
 
@@ -66,7 +89,7 @@ impl SolarAngleCache {
         }
     }
 
-    fn get(&mut self, key: &Path) -> Option<Rc<Vec<SolarAngle>>> {
+    fn get(&mut self, key: &Path) -> Option<Rc<ThemeData>> {
         let value = self.entries.get(key).cloned();
         if value.is_some() {
             self.touch(key);
@@ -74,7 +97,7 @@ impl SolarAngleCache {
         value
     }
 
-    fn insert(&mut self, key: PathBuf, value: Rc<Vec<SolarAngle>>) {
+    fn insert(&mut self, key: PathBuf, value: Rc<ThemeData>) {
         if self.entries.contains_key(&key) {
             self.entries.insert(key.clone(), value);
             self.touch(&key);
@@ -107,23 +130,43 @@ thread_local! {
 
 /// Builds the on-disk path of a theme's wallpaper image for the given index.
 pub fn wallpaper_image_path(
-    config: &Config,
     theme_dir: &Path,
     index: u8,
+    image_format: &ImageFormat,
     is_customized: bool,
 ) -> PathBuf {
-    let file_name = format!("{}.{}", index + 1, config.image_format().as_str());
+    let file_name = format!("{}.{}", index + 1, image_format.as_str());
     if is_customized {
         theme_dir.join("images").join(file_name)
     } else {
-        theme_dir
-            .join(config.image_format().as_str())
-            .join(file_name)
+        theme_dir.join(image_format.as_str()).join(file_name)
     }
 }
 
-/// Reads a theme's `solar.json` without caching.
+/// Reads a theme's frames — from `theme.toml` when present (custom themes),
+/// otherwise the legacy `solar.json` — without caching.
 pub fn read_solar_angles(theme_dir: &Path) -> DwallResult<Vec<SolarAngle>> {
+    Ok(read_theme_data(theme_dir)?.angles.as_ref().clone())
+}
+
+/// Reads a theme's frames and image format without caching.
+fn read_theme_data(theme_dir: &Path) -> DwallResult<ThemeData> {
+    if ThemeManifest::exists(theme_dir) {
+        let manifest = ThemeManifest::read(theme_dir)?;
+        Ok(ThemeData {
+            angles: Rc::new(manifest.solar_angles()?),
+            image_format: Some(manifest.image_format().clone()),
+        })
+    } else {
+        Ok(ThemeData {
+            angles: Rc::new(read_solar_json(theme_dir)?),
+            image_format: None,
+        })
+    }
+}
+
+/// Reads a legacy theme's `solar.json`.
+fn read_solar_json(theme_dir: &Path) -> DwallResult<Vec<SolarAngle>> {
     let solar_config_path = theme_dir.join(SOLAR_CONFIG_FILENAME);
     if !solar_config_path.exists() {
         error!(
@@ -160,27 +203,26 @@ pub fn read_solar_angles(theme_dir: &Path) -> DwallResult<Vec<SolarAngle>> {
     Ok(solar_angles)
 }
 
-/// Load solar configuration for a specific theme directory.
+/// Load theme data (frames + image format) for a specific theme directory.
 ///
 /// Returns a shared handle so callers never clone the angle list on a hit.
-pub(crate) fn load_cached_solar_angles(theme_directory: &Path) -> DwallResult<Rc<Vec<SolarAngle>>> {
+pub(crate) fn load_cached_theme_data(theme_directory: &Path) -> DwallResult<Rc<ThemeData>> {
     let theme_directory = theme_directory.canonicalize()?;
-    debug!(path = %theme_directory.display(), "Loading solar configuration from canonical and absolute path");
+    debug!(path = %theme_directory.display(), "Loading theme data from canonical and absolute path");
 
-    if let Some(cached_angles) = SOLAR_CACHE.with(|cache| cache.borrow_mut().get(&theme_directory))
-    {
-        debug!("Using cached solar configuration");
-        return Ok(cached_angles);
+    if let Some(cached) = SOLAR_CACHE.with(|cache| cache.borrow_mut().get(&theme_directory)) {
+        debug!("Using cached theme data");
+        return Ok(cached);
     }
 
-    let solar_angles = Rc::new(read_solar_angles(&theme_directory)?);
+    let data = Rc::new(read_theme_data(&theme_directory)?);
     SOLAR_CACHE.with(|cache| {
         cache
             .borrow_mut()
-            .insert(theme_directory.to_path_buf(), solar_angles.clone());
+            .insert(theme_directory.to_path_buf(), data.clone());
     });
 
-    Ok(solar_angles)
+    Ok(data)
 }
 
 // ── Validation ──────────────────────────────────────────────────────────────
@@ -217,8 +259,28 @@ impl ThemeValidator {
             return Err(ThemeError::ThemeDirectoryNotFound(theme_identifier.to_string()).into());
         }
 
-        let solar_angle_configuration = load_cached_solar_angles(&theme_directory_path)?;
-        let expected_image_indices: Vec<u8> = solar_angle_configuration
+        let theme_data = load_cached_theme_data(&theme_directory_path)?;
+
+        // Manifest themes: enforce the documented angle ranges (solar.json is trusted).
+        if theme_data.image_format.is_some() {
+            for angle in theme_data.angles.iter() {
+                if !(-90.0..=90.0).contains(&angle.altitude()) {
+                    return Err(ThemeError::InvalidAltitude(angle.altitude()).into());
+                }
+                if !(0.0..360.0).contains(&angle.azimuth()) {
+                    return Err(ThemeError::InvalidAzimuth(angle.azimuth()).into());
+                }
+            }
+        }
+
+        // Custom themes carry their own image format; legacy themes use the config's.
+        let effective_format = theme_data
+            .image_format
+            .clone()
+            .unwrap_or_else(|| image_format.clone());
+
+        let expected_image_indices: Vec<u8> = theme_data
+            .angles
             .iter()
             .map(|angle| angle.index())
             .collect();
@@ -227,7 +289,7 @@ impl ThemeValidator {
             &theme_directory_path,
             &expected_image_indices,
             is_customized,
-            image_format.as_str(),
+            effective_format.as_str(),
         ) {
             warn!(
                 theme_id = theme_identifier,
@@ -243,7 +305,7 @@ impl ThemeValidator {
 
         info!(
             theme_id = theme_identifier,
-            solar_angles_count = solar_angle_configuration.len(),
+            solar_angles_count = theme_data.angles.len(),
             is_customized = is_customized,
             "Solar theme validation completed successfully"
         );

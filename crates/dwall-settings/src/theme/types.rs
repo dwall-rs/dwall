@@ -27,5 +27,5 @@ pub struct CustomizedThemeMetadata {
     pub image_format: ImageFormat,
     pub theme_name: String,
     pub author: String,
-    pub version: u16,
+    pub version: u32,
 }

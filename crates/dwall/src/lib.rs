@@ -7,6 +7,7 @@ pub mod monitor;
 pub mod platform;
 pub mod solar;
 pub mod theme;
+pub mod theme_manifest;
 pub mod utils;
 pub mod wallpaper;
 

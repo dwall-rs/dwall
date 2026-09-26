@@ -402,7 +402,7 @@ impl SolarPosition {
     }
 }
 
-/// A solar angle entry from a theme's `solar.json`.
+/// A solar angle entry from a theme's `solar.json` or `theme.toml`.
 #[cfg_attr(feature = "ts", derive(ts_rs::TS))]
 #[cfg_attr(feature = "ts", ts(export))]
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -413,6 +413,14 @@ pub struct SolarAngle {
 }
 
 impl SolarAngle {
+    pub(crate) fn new(index: u8, altitude: f64, azimuth: f64) -> Self {
+        Self {
+            index,
+            altitude,
+            azimuth,
+        }
+    }
+
     pub fn index(&self) -> u8 {
         self.index
     }

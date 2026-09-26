@@ -22,6 +22,8 @@ export function ThemeThumbnail(props: Props) {
       const theme = catalogStore.themes.find((t) => t.id === id);
       const url = theme?.thumbnails[index];
       if (!url) return null;
+      // 自定义主题：缩略图为本地路径，直接走 asset 协议，无需镜像与缓存。
+      if (theme?.source === "custom") return url;
       const mirrored = await mirrorUrl(
         url,
         settingsStore.config?.network ?? undefined,

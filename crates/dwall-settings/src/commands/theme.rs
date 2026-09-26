@@ -51,47 +51,53 @@ pub async fn get_customized_themes_cmd(
         .into_iter()
         .filter(|p| p.components().next_back() != Some(Component::Normal(OsStr::new("backup"))))
     {
-        let metadata_file = subdir.join("metadata.toml");
-        let metadata_content = std::fs::read_to_string(&metadata_file)
-            .inspect_err(|e| error!(error = ?e, "Failed to read metadata.toml"))?;
-        let metadata: CustomizedThemeMetadata = toml::from_str(&metadata_content)
-            .inspect_err(|e| error!(error = ?e, "Failed to parse metadata"))?;
+        // The directory name is the theme id the daemon resolves against.
+        let Some(id) = subdir
+            .file_name()
+            .and_then(|name| name.to_str())
+            .map(str::to_owned)
+        else {
+            warn!(directory = %subdir.display(), "Skipping custom theme with non-UTF-8 name");
+            continue;
+        };
 
-        let images = find_files_in_dir(&subdir.join("images"), metadata.image_format.as_str())
+        let manifest = match dwall::theme_manifest::ThemeManifest::read(&subdir) {
+            Ok(manifest) => manifest,
+            Err(e) => {
+                warn!(theme_id = %id, error = %e, "Skipping invalid custom theme");
+                continue;
+            }
+        };
+
+        let image_format = manifest.image_format().clone();
+        let images = find_files_in_dir(&subdir.join("images"), image_format.as_str())
             .await
             .inspect_err(|e| error!(error = ?e, "Failed to find images in directory"))?;
         debug!(images = images.len(), "Found images");
 
-        let thumbnails = find_files_in_dir(&subdir.join("thumbnails"), "avif")
+        // Thumbnails are optional: use them when present, else fall back to images.
+        let mut thumbnails = find_files_in_dir(&subdir.join("thumbnails"), image_format.as_str())
             .await
-            .inspect_err(|e| error!(error = ?e, "Failed to find avif files in directory"))
-            .ok();
-        debug!(
-            thumbnails = thumbnails.as_deref().map_or(0, |t| t.len()),
-            "Found thumbnails"
-        );
-
-        if let Some(thumbnails) = &thumbnails
-            && images.len() != thumbnails.len()
-        {
-            error!(
-                images = images.len(),
-                thumbnails = thumbnails.len(),
-                "Invalid subject: number of images and thumbnails are not equal"
-            );
-            continue;
+            .unwrap_or_default();
+        if thumbnails.is_empty() {
+            thumbnails = find_files_in_dir(&subdir.join("thumbnails"), "webp")
+                .await
+                .unwrap_or_default();
+        }
+        if thumbnails.is_empty() {
+            thumbnails = images;
         }
 
         themes.push(CustomizedTheme {
-            id: format!(
-                "{}-{}-v{}",
-                metadata.theme_name.replace(" ", "-"),
-                metadata.author,
-                metadata.version
-            ),
+            id,
             directory: subdir,
-            thumbnails: thumbnails.unwrap_or(images),
-            metadata,
+            thumbnails,
+            metadata: CustomizedThemeMetadata {
+                image_format,
+                theme_name: manifest.theme.name.clone(),
+                author: manifest.theme.author.clone(),
+                version: manifest.theme.version,
+            },
         });
     }
 

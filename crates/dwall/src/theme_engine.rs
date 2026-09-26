@@ -14,7 +14,7 @@ use crate::platform::{
 };
 use crate::solar::{GeographicPositionProvider, Position, SolarPosition};
 use crate::theme::{
-    ThemeError, get_theme_directory_path, load_cached_solar_angles, wallpaper_image_path,
+    ThemeError, get_theme_directory_path, load_cached_theme_data, wallpaper_image_path,
 };
 use crate::wallpaper::{WallpaperProvider, WallpaperSelector};
 
@@ -213,7 +213,7 @@ impl<'a> ThemeEngine<'a> {
         is_customized: bool,
         theme_id: &str,
     ) -> DwallResult<PathBuf> {
-        let solar_angle_configuration = load_cached_solar_angles(theme_dir)?;
+        let theme_data = load_cached_theme_data(theme_dir)?;
         let sun_altitude_degrees = solar_position.altitude();
         let sun_azimuth_degrees = solar_position.azimuth();
 
@@ -225,17 +225,23 @@ impl<'a> ThemeEngine<'a> {
         );
 
         let optimal_image_index = WallpaperSelector::find_closest_image(
-            solar_angle_configuration.as_slice(),
+            theme_data.angles.as_slice(),
             sun_altitude_degrees,
             sun_azimuth_degrees,
         )
         .ok_or(ThemeError::ImageSolarConfigurationMismatch {
-            expected: solar_angle_configuration.len(),
+            expected: theme_data.angles.len(),
             found: 0,
         })?;
 
+        // Custom themes declare their own image format; legacy themes use the config's.
+        let image_format = theme_data
+            .image_format
+            .clone()
+            .unwrap_or_else(|| self.config.image_format().clone());
+
         let image_path =
-            wallpaper_image_path(self.config, theme_dir, optimal_image_index, is_customized);
+            wallpaper_image_path(theme_dir, optimal_image_index, &image_format, is_customized);
 
         if !image_path.exists() {
             return Err(ThemeError::WallpaperImageMissing {

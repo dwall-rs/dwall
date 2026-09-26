@@ -1,9 +1,10 @@
 //! Theme catalog and wallpaper matching commands.
 
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
-use dwall::config::ConfigReader;
+use dwall::config::{ConfigReader, ImageFormat};
 use dwall::theme::{get_theme_directory_path, read_solar_angles};
+use dwall::theme_manifest::ThemeManifest;
 use dwall::wallpaper::WallpaperSelector;
 use dwall::{DWALL_CONFIG_DIR, SolarAngle};
 use serde::Serialize;
@@ -33,7 +34,7 @@ const THEME_CATALOG: &[(&str, u32)] = &[
     ("Ventura Graphic", 5),
 ];
 
-/// A theme available for download.
+/// A theme available for download (built-in) or already installed (custom).
 #[cfg_attr(feature = "typegen", derive(ts_rs::TS))]
 #[cfg_attr(feature = "typegen", ts(export))]
 #[derive(Debug, Serialize)]
@@ -41,13 +42,17 @@ const THEME_CATALOG: &[(&str, u32)] = &[
 pub struct CatalogTheme {
     pub id: String,
     pub name: String,
+    /// `"catalog"` (downloadable, remote thumbnails) or `"custom"` (installed
+    /// under the customized themes directory, local thumbnail paths).
+    pub source: String,
+    /// Remote URLs for catalog themes; absolute local paths for custom themes.
     pub thumbnails: Vec<String>,
 }
 
-/// List the themes available for download.
+/// List the themes available for download, plus the installed custom themes.
 #[tauri::command]
 pub fn get_theme_catalog() -> Vec<CatalogTheme> {
-    THEME_CATALOG
+    let mut themes: Vec<CatalogTheme> = THEME_CATALOG
         .iter()
         .map(|&(name, count)| {
             let folder = name.replace(' ', "");
@@ -57,10 +62,77 @@ pub fn get_theme_catalog() -> Vec<CatalogTheme> {
             CatalogTheme {
                 id: name.to_string(),
                 name: name.to_string(),
+                source: "catalog".to_string(),
                 thumbnails,
             }
         })
+        .collect();
+
+    themes.extend(custom_catalog_themes());
+    themes
+}
+
+/// Installed custom themes (`theme.toml`, schema 1) as catalog entries.
+fn custom_catalog_themes() -> Vec<CatalogTheme> {
+    let Ok(config) = ConfigReader::read_from_path(&DWALL_CONFIG_DIR.join("config.toml")) else {
+        return Vec::new();
+    };
+    let Ok(entries) = std::fs::read_dir(config.customized_themes_directory()) else {
+        return Vec::new();
+    };
+
+    entries
+        .flatten()
+        .filter(|entry| entry.file_type().map(|t| t.is_dir()).unwrap_or(false))
+        .filter_map(|entry| {
+            let dir = entry.path();
+            let id = dir.file_name()?.to_str()?.to_owned();
+            if id == "backup" {
+                return None;
+            }
+            let manifest = ThemeManifest::read(&dir).ok()?;
+            Some(CatalogTheme {
+                id,
+                name: manifest.theme.name.clone(),
+                source: "custom".to_string(),
+                thumbnails: local_thumbnails(&dir, manifest.image_format()),
+            })
+        })
         .collect()
+}
+
+/// Local thumbnail paths for a custom theme, ordered by image index.
+///
+/// Prefers `thumbnails/`, falling back to `images/`; files are `<index + 1>.<ext>`.
+fn local_thumbnails(theme_dir: &Path, image_format: &ImageFormat) -> Vec<String> {
+    for subdir in ["thumbnails", "images"] {
+        let dir = theme_dir.join(subdir);
+        let Ok(entries) = std::fs::read_dir(&dir) else {
+            continue;
+        };
+
+        let mut files: Vec<(u64, PathBuf)> = entries
+            .flatten()
+            .filter_map(|entry| {
+                let path = entry.path();
+                let extension = path.extension()?.to_str()?;
+                if !path.is_file() || !extension.eq_ignore_ascii_case(image_format.as_str()) {
+                    return None;
+                }
+                let index = path.file_stem()?.to_str()?.parse::<u64>().ok()?;
+                Some((index, path))
+            })
+            .collect();
+
+        if !files.is_empty() {
+            files.sort_by_key(|(index, _)| *index);
+            return files
+                .into_iter()
+                .map(|(_, path)| path.to_string_lossy().into_owned())
+                .collect();
+        }
+    }
+    Vec::new()
 }
 
 fn resolve_theme_dir(theme_id: &str) -> DwallSettingsResult<PathBuf> {
