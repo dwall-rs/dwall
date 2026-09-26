@@ -2,7 +2,7 @@
 import { uiStore, toggleLib } from "@/store/ui.store";
 import { t } from "@/i18n";
 import { EngineButton } from "./EngineButton";
-import { ThemeCycleButton } from "./ThemeCycleButton";
+import { ThemeToggleButton } from "./ThemeToggleButton";
 import { SettingsButton } from "./SettingsButton";
 import { PanelRight } from "lucide-solid";
 import { Button } from "@/components/ui/button";
@@ -22,7 +22,7 @@ export function RightCluster() {
       </Button>
       <EngineButton />
       <span class="h-5.5 w-px bg-border-2" />
-      <ThemeCycleButton />
+      <ThemeToggleButton />
       <SettingsButton />
     </div>
   );

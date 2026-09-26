@@ -1,27 +1,27 @@
-/* ===== src/layout/ThemeCycleButton.tsx ===== */
-// 职责：顶栏一键循环外观（亮→暗→系统）；图标随解析结果，title 显示用户意图。
-import { themeStore, cycle } from "@/store/theme.store";
-import { useResolvedTheme } from "@/hooks/useResolvedTheme";
+/* ===== src/layout/ThemeToggleButton.tsx ===== */
+// 职责：顶栏一键切换外观（亮 ⇄ 暗）；以当前解析结果取反，避免三态循环的空点击。
+import { themeStore, toggle } from "@/store/theme.store";
 import { t } from "@/i18n";
 import { Button } from "~/components/ui/button";
 import { Moon, Sun } from "lucide-solid";
+import { Show } from "solid-js";
 
-const MODE_KEY = {
-  light: "app.appearance.light",
-  dark: "app.appearance.dark",
-  system: "app.appearance.system",
-} as const;
-
-export function ThemeCycleButton() {
-  const resolved = useResolvedTheme();
-  const Icon = resolved === "dark" ? Moon : Sun;
-
+export function ThemeToggleButton() {
   return (
     <Button
-      onClick={cycle}
-      title={`${t("app.appearance.title")}: ${t(MODE_KEY[themeStore.mode])}`}
+      onClick={toggle}
+      title={`${t("app.appearance.title")}: ${t(
+        themeStore.resolved === "dark"
+          ? "app.appearance.dark"
+          : "app.appearance.light",
+      )}`}
     >
-      <Icon class="size-4" />
+      <Show
+        when={themeStore.resolved === "dark"}
+        fallback={<Sun class="size-4" />}
+      >
+        <Moon class="size-4" />
+      </Show>
     </Button>
   );
 }

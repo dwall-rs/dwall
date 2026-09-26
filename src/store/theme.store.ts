@@ -4,7 +4,6 @@ import type { ResolvedTheme, ThemeMode } from "@/domain/types";
 import { createStore } from "solid-js/store";
 
 const STORAGE_KEY = "theme-mode";
-const ORDER: ThemeMode[] = ["light", "dark", "system"];
 
 function readStoredMode(): ThemeMode {
   if (typeof window === "undefined") return "system";
@@ -39,13 +38,11 @@ const setMode = (mode: ThemeMode) => {
   setThemeStore({ mode, resolved: computeResolved(mode) });
 };
 
-const cycle = () => {
-  const next = ORDER[(ORDER.indexOf(themeStore.mode) + 1) % ORDER.length];
-  setMode(next);
-};
+/** 亮 ⇄ 暗：以当前解析结果取反，mode 为 system 时也能一次切到相反外观。 */
+const toggle = () => setMode(themeStore.resolved === "dark" ? "light" : "dark");
 
 /** 由 useThemeEngine 在监听到系统变化时回写，供图标等读取。 */
 const setResolved = (resolved: ResolvedTheme) =>
   setThemeStore("resolved", resolved);
 
-export { themeStore, setMode, cycle, setResolved };
+export { themeStore, setMode, toggle, setResolved };
