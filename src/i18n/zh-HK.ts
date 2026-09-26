@@ -40,13 +40,10 @@ export const dict: RawDictionary = {
   scope: {
     monitors: "作用域 · 顯示器",
     allMonitors: "所有顯示器",
-    pool: "候選池",
-    selectedCount: "已選 {{ n }}/{{ total }}",
     individual: "單獨設定",
     unified: "統一所有顯示器",
     unifiedOn: "一套主題套用於全部顯示器，下方單獨設定已鎖定。",
     unifiedOff: "關閉後可為每台顯示器分別指定主題。",
-    searchThemes: "搜尋主題…",
     randomEmpty: "候選池為空，引擎將無壁紙可抽，請至少保留一套。",
     randomDirty: "候選池 {{ n }} 套 · 已排除 {{ excluded }} · 未儲存",
     randomNormal: "候選池 {{ n }} 套 · 取消勾選即從每日洗牌中排除",

@@ -1,5 +1,5 @@
-/* ===== src/components/scope/WriteNote.tsx ===== */
-// 职责：随机模式归属/状态条——三态：空集(rose) / 脏态(warning) / 正常(muted)。
+/* ===== src/stage/WriteNote.tsx ===== */
+// 职责：随机模式候选池状态条——三态：空集(destructive) / 脏态(warning) / 正常(muted)。
 import { randomStore, isDirty } from "@/store/random.store";
 import { themeList } from "@/domain/themes";
 import { t } from "@/i18n";
@@ -23,7 +23,7 @@ export function WriteNote() {
   return (
     <div
       class={clsx(
-        "mx-1.5 mb-3 mt-0.5 flex items-start gap-2 rounded-[7px] border p-[10px_12px] text-[11.5px] leading-relaxed transition-all duration-300",
+        "flex items-start gap-2 rounded-[7px] border p-[10px_12px] text-[11.5px] leading-relaxed transition-all duration-300",
         empty()
           ? "border-destructive/30 bg-destructive-dim text-destructive"
           : dirty()

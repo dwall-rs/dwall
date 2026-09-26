@@ -40,14 +40,11 @@ export const dict: RawDictionary = {
   scope: {
     monitors: "スコープ · モニター",
     allMonitors: "すべてのモニター",
-    pool: "候補プール",
-    selectedCount: "選択中 {{ n }}/{{ total }}",
     individual: "個別設定",
     unified: "すべてのモニターを統一",
     unifiedOn:
       "1つのテーマを全モニターに適用します。下の個別設定はロックされます。",
     unifiedOff: "オフにするとモニターごとにテーマを指定できます。",
-    searchThemes: "テーマを検索…",
     randomEmpty:
       "候補プールが空です。エンジンが選べる壁紙がありません。少なくとも1つ残してください。",
     randomDirty: "候補プール {{ n }} 件 · {{ excluded }} 件除外 · 未保存",

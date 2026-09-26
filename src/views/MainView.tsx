@@ -1,5 +1,6 @@
 /* ===== src/components/views/MainView.tsx ===== */
 // 职责：主视图网格分档 + 主题库抽屉形态切换；backdrop 仅在最小档且展开时存在。
+//       固定模式：显示器作用域 + 舞台（+ 主题库）；随机模式无左栏（池在主题库中编辑）。
 import { uiStore, setLibOpen } from "@/store/ui.store";
 import { StageColumn } from "@/stage/StageColumn";
 import { LibraryColumn } from "@/library/LibraryColumn";
@@ -9,6 +10,8 @@ import { ScopeColumn } from "~/scope/ScopeColumn";
 import { Show } from "solid-js";
 
 export function MainView() {
+  const fixed = () => uiStore.mode === "fixed";
+
   return (
     <div
       class={clsx(
@@ -17,13 +20,14 @@ export function MainView() {
         "relative grid h-full overflow-hidden",
         // 单行，且行高严格等于容器高度：内容超高时收缩而不是撑破视口
         "grid-rows-[minmax(0,1fr)]",
-        // 最小档：两栏（库为抽屉，脱离流）；标准/宽屏：三栏
-        "grid-cols-[220px_minmax(0,1fr)]",
-        "xl:grid-cols-[240px_minmax(0,1fr)_320px]",
-        "2xl:grid-cols-[266px_minmax(0,1fr)_372px]",
+        fixed()
+          ? "grid-cols-[220px_minmax(0,1fr)] xl:grid-cols-[240px_minmax(0,1fr)_320px] 2xl:grid-cols-[266px_minmax(0,1fr)_372px]"
+          : "grid-cols-[minmax(0,1fr)] xl:grid-cols-[minmax(0,1fr)_320px] 2xl:grid-cols-[minmax(0,1fr)_372px]",
       )}
     >
-      <ScopeColumn />
+      <Show when={fixed()}>
+        <ScopeColumn />
+      </Show>
       <StageColumn />
 
       {/* 最小档 backdrop：点击收起抽屉；xl+ 库为内联栏，无需遮罩 */}

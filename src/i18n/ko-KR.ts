@@ -40,14 +40,11 @@ export const dict: RawDictionary = {
   scope: {
     monitors: "범위 · 모니터",
     allMonitors: "모든 모니터",
-    pool: "후보 풀",
-    selectedCount: "선택됨 {{ n }}/{{ total }}",
     individual: "개별 설정",
     unified: "모든 모니터 통일",
     unifiedOn:
       "하나의 테마를 모든 모니터에 적용하며 아래 개별 설정은 잠깁니다.",
     unifiedOff: "끄면 모니터마다 테마를 지정할 수 있습니다.",
-    searchThemes: "테마 검색…",
     randomEmpty:
       "후보 풀이 비어 있어 엔진이 고를 배경이 없습니다. 최소 하나는 남겨 두세요.",
     randomDirty: "후보 풀 {{ n }}개 · {{ excluded }}개 제외 · 저장 안 됨",

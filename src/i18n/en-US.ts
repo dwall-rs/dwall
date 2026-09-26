@@ -38,14 +38,11 @@ export const dict = {
   scope: {
     monitors: "Scope · Monitors",
     allMonitors: "All monitors",
-    pool: "Candidate pool",
-    selectedCount: "Selected {{ n }}/{{ total }}",
     individual: "Per monitor",
     unified: "Unify all monitors",
     unifiedOn:
       "One theme applied to all monitors; per-monitor settings below are locked.",
     unifiedOff: "Turn off to assign a theme to each monitor.",
-    searchThemes: "Search themes…",
     randomEmpty:
       "The pool is empty — the engine has no wallpaper to pick. Keep at least one.",
     randomDirty: "Pool {{ n }} themes · {{ excluded }} excluded · unsaved",
