@@ -149,6 +149,7 @@ export const dict: RawDictionary = {
       themesDirDesc:
         "로컬 테마와 썸네일 저장 위치. 변경하면 기존 테마가 이동합니다.",
       selectDir: "디렉터리 선택",
+      openDir: "폴더 열기",
       network: "네트워크",
       networkDesc:
         "테마 다운로드나 썸네일 로딩에는 GitHub 미러 템플릿 또는 SOCKS5 프록시가 필요할 수 있습니다.",

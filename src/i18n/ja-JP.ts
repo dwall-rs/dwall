@@ -150,6 +150,7 @@ export const dict: RawDictionary = {
       themesDirDesc:
         "ローカルテーマとサムネイルの保存場所。変更すると既存テーマが移動します。",
       selectDir: "ディレクトリを選択",
+      openDir: "フォルダを開く",
       network: "ネットワーク",
       networkDesc:
         "テーマのダウンロードやサムネイルの読み込みには GitHub ミラーテンプレートや SOCKS5 プロキシが必要な場合があります。",

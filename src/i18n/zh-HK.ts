@@ -144,6 +144,7 @@ export const dict: RawDictionary = {
       themesDir: "主題目錄",
       themesDirDesc: "本地主題與縮圖的存放位置。切換目錄會把現有主題遷移過去。",
       selectDir: "選擇目錄",
+      openDir: "開啟目錄",
       network: "網絡設定",
       networkDesc:
         "下載主題或載入縮圖失敗時可能需要設定網絡，包括 Github 鏡像模板和 SOCKS5 代理。",

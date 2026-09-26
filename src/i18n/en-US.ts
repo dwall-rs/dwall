@@ -148,6 +148,7 @@ export const dict = {
       themesDirDesc:
         "Where local themes and thumbnails are stored. Changing it moves the existing themes.",
       selectDir: "Select directory",
+      openDir: "Open folder",
       network: "Network",
       networkDesc:
         "Downloading themes or loading thumbnails may need a GitHub mirror template or a SOCKS5 proxy.",

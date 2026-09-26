@@ -12,12 +12,18 @@ import {
 } from "@/store/settings.store";
 import { isSocks5 } from "@/domain/config";
 import { t } from "@/i18n";
-import { moveDirectory, pickDirectory } from "@/ipc";
+import { moveDirectory, openDir, pickDirectory } from "@/ipc";
 import { logger } from "@/utils";
 import { SettingsGroup } from "./SettingsGroup";
 import { SettingsRow } from "./SettingsRow";
 import { createMemo, Match, Switch } from "solid-js";
-import { Folder, FolderOpen, LoaderCircle, Save } from "lucide-solid";
+import {
+  ExternalLink,
+  Folder,
+  FolderOpen,
+  LoaderCircle,
+  Save,
+} from "lucide-solid";
 import {
   InputGroup,
   InputGroupAddon,
@@ -72,7 +78,20 @@ export function PathsSection() {
                   {settingsStore.config?.themes_directory}
                 </span>
               </div>
-              <div class="flex items-center justify-between gap-4.5">
+              <div class="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  class="shadow-[inset_0_0_0_1px_var(--border-2)]"
+                  disabled={!settingsStore.config?.themes_directory}
+                  onClick={() => {
+                    const dir = settingsStore.config?.themes_directory;
+                    if (dir) void openDir(dir);
+                  }}
+                >
+                  <ExternalLink class="size-3.5" />
+                  {t("settings.paths.openDir")}
+                </Button>
                 <Button
                   variant="outline"
                   size="sm"
