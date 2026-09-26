@@ -25,7 +25,7 @@ export function ScopeColumn() {
           </span>
         </Show>
       </div>
-      <div class="scrollbar-thin min-h-0 flex-1 overflow-y-auto px-3 pb-4.5 pt-1">
+      <div class="min-h-0 flex-1 overflow-y-auto px-3 pb-4.5 pt-1">
         {uiStore.mode === "fixed" ? <FixedScope /> : <RandomScope />}
       </div>
     </div>

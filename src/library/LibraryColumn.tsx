@@ -51,7 +51,7 @@ export function LibraryColumn() {
           </InputGroupAddon>
         </InputGroup>
       </div>
-      <div class="scrollbar-thin min-h-0 flex-1 overflow-y-auto px-3.5 pb-4.5">
+      <div class="min-h-0 flex-1 overflow-y-auto px-3.5 pb-4.5">
         <div class="grid grid-cols-2 gap-2.25 pt-0.5">
           <For each={list()}>
             {(theme, i) => <ThemeTile id={theme.id} index={i()} />}
