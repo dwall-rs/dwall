@@ -53,3 +53,9 @@ export type ResolvedProps<TProps, TDefault extends ValidComponent> = (
     ? Omit<TProps, "as"> & ComponentProps<TComp> & { as?: ValidComponent }
     : TProps & { as?: ValidComponent }
   : never;
+
+export type HTMLAttributes<T extends ValidComponent> = Omit<
+  ComponentProps<T>,
+  keyof BaseProps
+> &
+  BaseProps;
