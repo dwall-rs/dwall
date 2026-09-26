@@ -1,5 +1,6 @@
 import { createSignal, createMemo, createUniqueId, type JSX } from "solid-js";
 import { createStore, produce } from "solid-js/store";
+import { useScrollLock } from "~/hooks/useScrollLock";
 import { SelectContext } from "./Select.context";
 import type {
   SelectContextValue,
@@ -49,6 +50,13 @@ export function Select<T extends SelectOptionValue = string>(
     props.open !== undefined ? props.open : internalOpen(),
   );
   const disabled = createMemo(() => !!props.disabled);
+  const lockScroll = createMemo(() => props.lockScroll ?? true);
+
+  // 打开期间默认锁定页面滚动：锁住文档滚动并拦截浮层之外的滚轮/触摸，
+  // 面板自身仍可滚动。传 lockScroll={false} 可关闭该行为。
+  useScrollLock(() => open() && lockScroll(), {
+    allowedSelector: '[data-slot="select-content"]',
+  });
 
   const setOpen = (next: boolean) => {
     if (props.open === undefined) setInternalOpen(next);

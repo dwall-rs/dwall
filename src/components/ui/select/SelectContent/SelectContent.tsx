@@ -1,6 +1,7 @@
 import { onCleanup, splitProps, createMemo, createEffect } from "solid-js";
 import { Portal } from "solid-js/web";
 import { useSelectContent } from "./useSelectContent";
+import { ScrollArrows } from "~/components/ui/scroll-arrows";
 import type { SelectContentProps } from "./SelectContent.types";
 import { clsx } from "~/utils";
 
@@ -152,6 +153,7 @@ export function SelectContent(props: SelectContentProps) {
           }}
           class={clsx(
             "min-w-36",
+            "no-scrollbar [&::-webkit-scrollbar]:hidden",
             "rounded-lg bg-popover text-popover-foreground shadow-md ring-1 ring-foreground/10 duration-100",
             // 只保留入场动画，没有退场动画：关闭瞬间外层直接 visibility:hidden，
             // data-state 也立即切回 closed，没有退场动画阶段，自然不会出现
@@ -165,6 +167,11 @@ export function SelectContent(props: SelectContentProps) {
         >
           {local.children}
         </div>
+        <ScrollArrows
+          target={contentElement}
+          upClass="rounded-t-lg"
+          downClass="rounded-b-lg"
+        />
       </div>
     </Portal>
   );
