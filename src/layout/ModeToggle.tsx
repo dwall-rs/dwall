@@ -12,7 +12,7 @@ const ITEMS: { value: Mode; key: "app.mode.fixed" | "app.mode.random" }[] = [
 
 export function ModeToggle() {
   return (
-    <Tabs defaultValue={uiStore.mode}>
+    <Tabs value={uiStore.mode}>
       <TabsList>
         <For each={ITEMS}>
           {({ value, key }) => (
