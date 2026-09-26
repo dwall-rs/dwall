@@ -1,9 +1,10 @@
 /* ===== src/stage/PoolCollage.tsx ===== */
-// 职责：候选池拼贴墙——池变化时随机重排、铺满整个区域；标注「非抽中结果」。
+// 职责：候选池拼贴墙——池变化时随机重排、铺满整个区域；醒目徽章显示「今日主题」。
 import { randomStore } from "@/store/random.store";
-import { themeList } from "@/domain/themes";
+import { themeList, themeById } from "@/domain/themes";
 import { t } from "@/i18n";
-import { createMemo } from "solid-js";
+import { getRandomSelection } from "@/ipc";
+import { createMemo, createResource, Show } from "solid-js";
 import { ThemeThumbnail } from "~/scene/ThemeThumbnail";
 
 const COLS = 4;
@@ -64,6 +65,7 @@ export function PoolCollage() {
   const pool = createMemo(() =>
     themeList().filter((theme) => randomStore.selected.includes(theme.id)),
   );
+  const [selection] = createResource(getRandomSelection);
 
   const layout = createMemo(() => {
     const tiles = pool();
@@ -94,6 +96,22 @@ export function PoolCollage() {
         </div>
       ))}
       <div class="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/72 via-transparent to-transparent" />
+
+      {/* 今日主题徽章 */}
+      <Show when={selection()}>
+        {(sel) => (
+          <div class="pointer-events-none absolute left-[18px] top-4 flex items-center gap-2 rounded-full border border-primary/40 bg-black/65 px-3.5 py-1.5 shadow-[0_8px_24px_rgba(0,0,0,.5)] backdrop-blur-md">
+            <span class="size-1.5 rounded-full bg-success animate-bdot" />
+            <span class="font-mono text-[10px] tracking-wide text-white/65">
+              {t("stage.stats.today")}
+            </span>
+            <span class="font-display text-[13px] font-bold text-white">
+              {themeById(sel().themeId).name}
+            </span>
+          </div>
+        )}
+      </Show>
+
       <div class="pointer-events-none absolute bottom-4 left-[18px] right-[18px] text-white">
         <div class="font-display text-[15px] font-bold">
           {t("stage.collageTitle")}

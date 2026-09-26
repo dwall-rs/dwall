@@ -38,6 +38,8 @@ export const dict = {
   scope: {
     monitors: "Scope · Monitors",
     allMonitors: "All monitors",
+    selectAll: "Select all",
+    clearAll: "Clear",
     individual: "Per monitor",
     unified: "Unify all monitors",
     unifiedOn:

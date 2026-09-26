@@ -1,9 +1,8 @@
-// 职责：随机模式提交视图——脏态旗 + 保存/放弃 + 三帧（写入中→已保存）。
-import { Button } from "@/components/ui/button";
+// 职责：随机模式提交状态——顶栏只显示「未保存/已保存」；保存动作在舞台的提交行。
 import { t } from "@/i18n";
-import { randomStore, isDirty, save, discard } from "@/store/random.store";
+import { randomStore, isDirty } from "@/store/random.store";
 import { clsx } from "@/utils";
-import { Check, LoaderCircle, Save } from "lucide-solid";
+import { Check } from "lucide-solid";
 import { createMemo } from "solid-js";
 
 function fmt(timestamp: number) {
@@ -34,34 +33,6 @@ export function RandomCommit() {
             : t("commit.saved")}
         </span>
       )}
-      <Button variant="ghost" size="sm" disabled={!dirty()} onClick={discard}>
-        {t("commit.discard")}
-      </Button>
-      <Button
-        size="sm"
-        disabled={
-          !dirty() || randomStore.saving || randomStore.selected.length === 0
-        }
-        onClick={save}
-        class={clsx(
-          dirty() &&
-            randomStore.selected.length > 0 &&
-            !randomStore.saving &&
-            "animate-breathe",
-        )}
-      >
-        {randomStore.saving ? (
-          <>
-            <LoaderCircle class="size-3.5 animate-spin" />
-            {t("commit.saving")}
-          </>
-        ) : (
-          <>
-            <Save class="size-3.5" />
-            {t("commit.save")}
-          </>
-        )}
-      </Button>
     </div>
   );
 }

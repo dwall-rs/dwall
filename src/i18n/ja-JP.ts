@@ -40,6 +40,8 @@ export const dict: RawDictionary = {
   scope: {
     monitors: "スコープ · モニター",
     allMonitors: "すべてのモニター",
+    selectAll: "すべて選択",
+    clearAll: "選択を解除",
     individual: "個別設定",
     unified: "すべてのモニターを統一",
     unifiedOn:

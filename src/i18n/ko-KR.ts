@@ -40,6 +40,8 @@ export const dict: RawDictionary = {
   scope: {
     monitors: "범위 · 모니터",
     allMonitors: "모든 모니터",
+    selectAll: "전체 선택",
+    clearAll: "전체 해제",
     individual: "개별 설정",
     unified: "모든 모니터 통일",
     unifiedOn:

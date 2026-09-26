@@ -1,29 +1,16 @@
 /* ===== src/components/stage/RandomStats.tsx ===== */
-// 职责：随机模式只读摘要——今日主题/候选池/范围/目标/周期。
+// 职责：随机模式只读摘要数字——候选池/范围/目标/周期。
 import { randomStore } from "@/store/random.store";
-import { themeList, themeById } from "@/domain/themes";
+import { themeList } from "@/domain/themes";
 import { t } from "@/i18n";
-import { getRandomSelection } from "@/ipc";
 import { clsx } from "@/utils";
-import { createMemo, createResource, Show } from "solid-js";
+import { createMemo } from "solid-js";
 
 export function RandomStats() {
   const n = createMemo(() => randomStore.selected.length);
   const empty = createMemo(() => n() === 0);
-  const [selection] = createResource(getRandomSelection);
-
   return (
     <div class="flex flex-wrap gap-[30px]">
-      <Show when={selection()}>
-        {(sel) => (
-          <Stat
-            value={themeById(sel().themeId).name}
-            label={t("stage.stats.today")}
-            small
-            cls="text-primary"
-          />
-        )}
-      </Show>
       <Stat
         value={String(n())}
         label={t("stage.stats.pool")}

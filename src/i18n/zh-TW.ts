@@ -40,6 +40,8 @@ export const dict: RawDictionary = {
   scope: {
     monitors: "作用域 · 顯示器",
     allMonitors: "所有顯示器",
+    selectAll: "全選",
+    clearAll: "取消全選",
     individual: "個別設定",
     unified: "統一所有顯示器",
     unifiedOn: "一套主題套用於全部顯示器，下方個別設定已鎖定。",
