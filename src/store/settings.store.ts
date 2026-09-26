@@ -12,6 +12,7 @@ import type {
 import type { Socks5 } from "@/domain/config";
 import { isSocks5 } from "@/domain/config";
 import { applyTheme, readConfigFile, writeConfigFile } from "@/ipc";
+import { refresh as refreshEngine } from "./engine.store";
 import { setMode, themeStore } from "./theme.store";
 
 type Status = "idle" | "loading" | "ready" | "error";
@@ -178,6 +179,8 @@ const applyWallpaperMode = async (mode: WallpaperMode) => {
 
   try {
     await applyTheme(next);
+    // 应用/停止会启动或终止守护进程，立即同步引擎状态。
+    void refreshEngine();
     setSettingsStore(
       produce((s) => {
         s.saved = { ...next } as Config;

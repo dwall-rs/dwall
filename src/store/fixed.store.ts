@@ -5,6 +5,7 @@ import { createStore } from "solid-js/store";
 import type { Config, WallpaperMode } from "@/domain/config";
 import { configuredThemeId } from "@/domain/config";
 import { catalogStore } from "./catalog.store";
+import { engineStore } from "./engine.store";
 import { applyWallpaperMode, settingsStore } from "./settings.store";
 
 type StrMap = Record<string, string>;
@@ -57,8 +58,8 @@ const themeForMon = (monId: string): string | undefined =>
 /** 当前作用域生效的主题（草稿 → 配置 → 目录首个）。 */
 const currentThemeId = (): string | undefined => themeForMon(scopeKey());
 
-/** 该作用域是否已写入配置且与当前选择一致。 */
-const isApplied = (key: string): boolean => {
+/** 该作用域是否已写入配置（与引擎是否运行无关）。 */
+const isConfigured = (key: string): boolean => {
   const mode = settingsStore.config?.wallpaper_mode;
   if (mode?.mode !== "fixed") return false;
   const theme =
@@ -68,6 +69,10 @@ const isApplied = (key: string): boolean => {
   const m = mode.monitor_specific_wallpapers;
   return typeof m === "string" ? m === theme : m[key] === theme;
 };
+
+/** 该作用域当前是否真正生效：已写入配置且引擎在运行。 */
+const isApplied = (key: string): boolean =>
+  engineStore.running && isConfigured(key);
 
 /** 应用/停止该作用域（写配置并重启引擎）。 */
 const toggleApply = async (key: string) => {
