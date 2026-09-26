@@ -6,7 +6,7 @@ import { Body } from "~/views/Body";
 export function AppShell() {
   useThemeEngine();
   return (
-    <div class="relative z-10 flex h-screen flex-col">
+    <div class="relative z-10 flex h-screen flex-col overflow-hidden">
       <GlobalBar />
       <Body />
     </div>

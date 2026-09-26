@@ -7,13 +7,14 @@ import { t } from "@/i18n";
 import { clsx } from "@/utils";
 import { ScopeColumn } from "~/scope/ScopeColumn";
 import { Show } from "solid-js";
-import { Button } from "~/components/ui/button";
 
 export function MainView() {
   return (
     <div
       class={clsx(
-        "grid h-full overflow-hidden",
+        // relative：让抽屉的定位祖先就是本网格，从而被下面的 overflow-hidden 正确裁剪，
+        // 否则 translate-x-full 的抽屉会溢出视口产生横向滚动条。
+        "relative grid h-full overflow-hidden",
         // 单行，且行高严格等于容器高度：内容超高时收缩而不是撑破视口
         "grid-rows-[minmax(0,1fr)]",
         // 最小档：两栏（库为抽屉，脱离流）；标准/宽屏：三栏
@@ -25,11 +26,13 @@ export function MainView() {
       <ScopeColumn />
       <StageColumn />
 
-      {/* 最小档 backdrop：点击收起抽屉；xl+ 不渲染交互 */}
+      {/* 最小档 backdrop：点击收起抽屉；xl+ 库为内联栏，无需遮罩 */}
       <Show when={uiStore.libOpen}>
-        <Button
+        <button
+          type="button"
           aria-label={t("library.toggleOpen")}
           onClick={() => setLibOpen(false)}
+          class="absolute inset-0 z-20 cursor-default xl:hidden"
         />
       </Show>
 
@@ -46,3 +49,4 @@ export function MainView() {
     </div>
   );
 }
+

@@ -3,10 +3,11 @@
 /* Neut built-in styles (from animate.css and toast.css) */
 @import "./styles/index.css";
 
-/*html,
+/* 应用为整屏外壳，滚动由内部容器负责；禁用页面级滚动避免横向滚动条 */
+html,
 body {
     overflow: hidden;
-}*/
+}
 
 * {
     user-select: none;
