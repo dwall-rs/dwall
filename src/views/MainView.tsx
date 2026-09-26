@@ -49,4 +49,3 @@ export function MainView() {
     </div>
   );
 }
-
