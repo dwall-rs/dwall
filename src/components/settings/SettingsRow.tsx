@@ -1,8 +1,15 @@
-// 职责：设置行容器；非堆叠布局加 flex-wrap，窄幅时控件自动换行到标签下方。
-
+// 职责：设置行——基于 Field 提供 label/description 语义与水平/垂直布局。
+//       注意：不解构 props（Solid 中解构会丢失响应性，语言切换等无法更新）。
 import type { JSXElement } from "solid-js";
-import { clsx } from "@/utils";
+import { Show } from "solid-js";
 import { Check } from "lucide-solid";
+import {
+  Field,
+  FieldContent,
+  FieldDescription,
+  FieldTitle,
+} from "@/components/ui/field";
+import { clsx } from "@/utils";
 
 interface Props {
   label: string;
@@ -12,34 +19,32 @@ interface Props {
   stacked?: boolean;
 }
 
-export function SettingsRow({ label, desc, okShow, control, stacked }: Props) {
+export function SettingsRow(props: Props) {
   return (
-    <div
+    <Field
+      orientation={props.stacked ? "vertical" : "horizontal"}
       class={clsx(
-        "flex gap-4.5 border-b border-border p-[16px_18px] transition-colors last:border-b-0 hover:bg-foreground/2",
-        stacked ? "flex-col items-stretch" : "flex-wrap gap-y-3",
+        "border-b border-border p-[16px_18px] transition-colors last:border-b-0 hover:bg-foreground/2",
+        !props.stacked && "flex-wrap gap-y-3",
       )}
     >
-      <div class="min-w-0 flex-1">
-        <div class="flex items-center gap-2 font-display text-[14.5px] font-bold">
-          {label}
+      <FieldContent class="gap-1">
+        <FieldTitle class="text-[14.5px] font-bold!">
+          {props.label}
           <Check
             class={clsx(
               "size-3.5 text-success transition-all duration-300",
-              okShow ? "scale-100 opacity-100" : "scale-50 opacity-0",
+              props.okShow ? "scale-100 opacity-100" : "scale-50 opacity-0",
             )}
           />
-        </div>
-        {desc && (
-          <div class="mt-1.25 max-w-110 text-[12px] leading-relaxed text-muted-foreground">
-            {desc}
-          </div>
-        )}
-      </div>
-      {!stacked && (
-        <div class="flex shrink-0 items-center gap-2">{control}</div>
-      )}
-      {stacked && <div class="mt-1">{control}</div>}
-    </div>
+        </FieldTitle>
+        <Show when={props.desc}>
+          <FieldDescription class="max-w-110 text-[12px] leading-relaxed">
+            {props.desc}
+          </FieldDescription>
+        </Show>
+      </FieldContent>
+      <div class="shrink-0">{props.control}</div>
+    </Field>
   );
 }
