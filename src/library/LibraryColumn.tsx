@@ -44,7 +44,7 @@ export function LibraryColumn() {
             class="text-xs placeholder:text-xs"
             placeholder={t("library.search")}
             value={q()}
-            onChange={(v) => setQ(v)}
+            onInput={(v) => setQ(v)}
           />
           <InputGroupAddon>
             <Search class="size-3.5" />

@@ -18,7 +18,7 @@ export function RandomScope() {
         <Search class="absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
         <input
           value={q()}
-          onChange={(e) => setQ(e.target.value)}
+          onInput={(e) => setQ(e.currentTarget.value)}
           placeholder={t("scope.searchThemes")}
           class="w-full rounded-lg border border-border-2 bg-secondary py-2.25 pl-8 pr-3 text-[12.5px] text-foreground outline-none transition-colors focus:border-ring"
         />
