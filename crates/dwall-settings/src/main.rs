@@ -90,6 +90,7 @@ async fn main() -> DwallSettingsResult<()> {
             commands::system::check_for_updates_cmd,
             commands::theme::get_customized_themes_cmd,
             commands::solar::get_solar_position,
+            commands::solar::get_solar_path,
             commands::app::get_app_info,
             commands::engine::get_engine_status,
             commands::engine::start_engine,

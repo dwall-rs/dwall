@@ -12,3 +12,10 @@ export const currentSolarPosition = async (
   positionSource: PositionSource,
 ): Promise<SolarPosition> =>
   getSolarPosition(positionSource, Math.floor(Date.now() / 1000));
+
+/** Apparent solar positions sampled over a full day, centred on `timestamp`. */
+export const getSolarPath = async (
+  positionSource: PositionSource,
+  timestamp: number,
+): Promise<SolarPosition[]> =>
+  invoke("get_solar_path", { positionSource, timestamp });
