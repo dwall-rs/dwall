@@ -1,4 +1,8 @@
 export const dict = {
+  common: {
+    loading: "Loading",
+  },
+
   app: {
     mode: {
       fixed: "Fixed",
@@ -62,7 +66,6 @@ export const dict = {
     stripHint: "Click to preview the wallpaper at that sun position",
     sunPath: "Sun path",
     horizon: "0° horizon",
-    minus20: "−20°",
     east: "E·90°",
     south: "S·180°",
     west: "W·270°",
@@ -75,6 +78,8 @@ export const dict = {
       exclude: "Exclude {{ n }}",
       target: "Target monitors",
       period: "Cycle",
+      targetValue: "ALL",
+      periodValue: "24h",
     },
     collageTitle: "Pool collage",
     collageNote:
@@ -121,6 +126,7 @@ export const dict = {
       launchAtStartupDesc:
         "Starts only the background engine, no window, and uses almost no memory.",
       interval: "Check interval",
+      secondsUnit: "s",
       intervalDesc:
         "The engine recomputes the sun altitude every N seconds and picks the wallpaper for that time.",
       autoCoords: "Automatically retrieve coordinates",
@@ -160,6 +166,7 @@ export const dict = {
     about: {
       title: "About",
       tagline: "Dwall · solar-driven",
+      logoAlt: "Dwall logo",
       sourceCode: "Source code",
       sourceSub: "github.com",
       logDir: "Log directory",

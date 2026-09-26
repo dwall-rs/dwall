@@ -1,6 +1,10 @@
 import type { RawDictionary } from ".";
 
 export const dict: RawDictionary = {
+  common: {
+    loading: "불러오는 중",
+  },
+
   app: {
     mode: {
       fixed: "고정",
@@ -63,7 +67,6 @@ export const dict: RawDictionary = {
     stripHint: "클릭하여 해당 태양 위치의 배경 미리보기",
     sunPath: "태양 경로",
     horizon: "0° 지평선",
-    minus20: "−20°",
     east: "동·90°",
     south: "남·180°",
     west: "서·270°",
@@ -76,6 +79,8 @@ export const dict: RawDictionary = {
       exclude: "{{ n }}개 제외",
       target: "대상 모니터",
       period: "전환 주기",
+      targetValue: "전체",
+      periodValue: "24시간",
     },
     collageTitle: "후보 풀 콜라주",
     collageNote:
@@ -122,6 +127,7 @@ export const dict: RawDictionary = {
       launchAtStartupDesc:
         "백그라운드 엔진만 실행하며 창을 열지 않고 메모리를 거의 쓰지 않습니다.",
       interval: "확인 간격",
+      secondsUnit: "초",
       intervalDesc:
         "엔진은 N초마다 태양 고도를 다시 계산하여 해당 시간의 배경을 고릅니다.",
       autoCoords: "좌표 자동 가져오기",
@@ -161,6 +167,7 @@ export const dict: RawDictionary = {
     about: {
       title: "정보",
       tagline: "Dwall · 태양 위치 기반",
+      logoAlt: "Dwall 로고",
       sourceCode: "소스 코드",
       sourceSub: "github.com",
       logDir: "로그 디렉터리",

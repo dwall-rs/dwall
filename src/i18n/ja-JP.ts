@@ -1,6 +1,10 @@
 import type { RawDictionary } from ".";
 
 export const dict: RawDictionary = {
+  common: {
+    loading: "読み込み中",
+  },
+
   app: {
     mode: {
       fixed: "固定",
@@ -64,7 +68,6 @@ export const dict: RawDictionary = {
     stripHint: "クリックしてその太陽位置の壁紙をプレビュー",
     sunPath: "太陽の軌道",
     horizon: "0° 地平線",
-    minus20: "−20°",
     east: "東·90°",
     south: "南·180°",
     west: "西·270°",
@@ -77,6 +80,8 @@ export const dict: RawDictionary = {
       exclude: "{{ n }} 件除外",
       target: "対象モニター",
       period: "切替周期",
+      targetValue: "すべて",
+      periodValue: "24 時間",
     },
     collageTitle: "候補プールのコラージュ",
     collageNote:
@@ -123,6 +128,7 @@ export const dict: RawDictionary = {
       launchAtStartupDesc:
         "バックグラウンドのエンジンのみを起動し、ウィンドウを開かず、メモリをほとんど消費しません。",
       interval: "チェック間隔",
+      secondsUnit: "秒",
       intervalDesc:
         "エンジンは N 秒ごとに太陽高度を再計算し、その時刻の壁紙を選びます。",
       autoCoords: "座標を自動取得",
@@ -162,6 +168,7 @@ export const dict: RawDictionary = {
     about: {
       title: "このアプリについて",
       tagline: "Dwall · 太陽位置駆動",
+      logoAlt: "Dwall ロゴ",
       sourceCode: "ソースコード",
       sourceSub: "github.com",
       logDir: "ログディレクトリ",

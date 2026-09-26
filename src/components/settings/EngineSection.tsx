@@ -83,7 +83,9 @@ export function EngineSection() {
                 }}
               />
               <InputGroupAddon align="inline-end">
-                <InputGroupText>s</InputGroupText>
+                <InputGroupText>
+                  {t("settings.engine.secondsUnit")}
+                </InputGroupText>
               </InputGroupAddon>
               <InputGroupAddon align="inline-end">
                 <InputGroupButton

@@ -1,6 +1,10 @@
 import type { RawDictionary } from ".";
 
 export const dict: RawDictionary = {
+  common: {
+    loading: "加载中",
+  },
+
   app: {
     mode: {
       fixed: "固定",
@@ -61,7 +65,6 @@ export const dict: RawDictionary = {
     stripHint: "点击预览该太阳位置下的壁纸",
     sunPath: "太阳路径",
     horizon: "0° 地平线",
-    minus20: "−20°",
     east: "东·90°",
     south: "南·180°",
     west: "西·270°",
@@ -74,6 +77,8 @@ export const dict: RawDictionary = {
       exclude: "排除 {{ n }}",
       target: "目标显示器",
       period: "切换周期",
+      targetValue: "全部",
+      periodValue: "24 小时",
     },
     collageTitle: "候选池拼贴",
     collageNote: "{{ n }} 套参与每日洗牌 · 仅预览池内容，非抽中结果",
@@ -117,6 +122,7 @@ export const dict: RawDictionary = {
       launchAtStartup: "开机启动",
       launchAtStartupDesc: "仅启动后台引擎进程，不打开图形界面，几乎不占内存。",
       interval: "检查间隔",
+      secondsUnit: "秒",
       intervalDesc:
         "引擎每隔 N 秒重算一次太阳高度角，命中对应时段的壁纸。固定模式无固定切换时间，全靠此轮询驱动。",
       autoCoords: "自动获取坐标",
@@ -156,6 +162,7 @@ export const dict: RawDictionary = {
     about: {
       title: "关于",
       tagline: "Dwall · 太阳位置驱动",
+      logoAlt: "Dwall 徽标",
       sourceCode: "源代码",
       sourceSub: "github.com",
       logDir: "日志目录",

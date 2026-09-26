@@ -1,6 +1,10 @@
 import type { RawDictionary } from ".";
 
 export const dict: RawDictionary = {
+  common: {
+    loading: "載入中",
+  },
+
   app: {
     mode: {
       fixed: "固定",
@@ -61,7 +65,6 @@ export const dict: RawDictionary = {
     stripHint: "點擊預覽該太陽位置下的壁紙",
     sunPath: "太陽路徑",
     horizon: "0° 地平線",
-    minus20: "−20°",
     east: "東·90°",
     south: "南·180°",
     west: "西·270°",
@@ -74,6 +77,8 @@ export const dict: RawDictionary = {
       exclude: "排除 {{ n }}",
       target: "目標顯示器",
       period: "切換週期",
+      targetValue: "全部",
+      periodValue: "24 小時",
     },
     collageTitle: "候選池拼貼",
     collageNote: "{{ n }} 套參與每日洗牌 · 僅預覽池內容，非抽中結果",
@@ -118,6 +123,7 @@ export const dict: RawDictionary = {
       launchAtStartupDesc:
         "僅啟動背景引擎程序，不開啟圖形介面，幾乎不佔記憶體。",
       interval: "檢查間隔",
+      secondsUnit: "秒",
       intervalDesc:
         "引擎每隔 N 秒重算一次太陽高度角，命中對應時段的壁紙。固定模式無固定切換時間，全靠此輪詢驅動。",
       autoCoords: "自動取得座標",
@@ -156,6 +162,7 @@ export const dict: RawDictionary = {
     about: {
       title: "關於",
       tagline: "Dwall · 太陽位置驅動",
+      logoAlt: "Dwall 標誌",
       sourceCode: "原始碼",
       sourceSub: "github.com",
       logDir: "日誌目錄",

@@ -26,17 +26,20 @@ export function RandomStats() {
         small
         cls={empty() ? "text-destructive" : ""}
       />
-      <Stat value="ALL" label={t("stage.stats.target")} cls="text-primary" />
-      <Stat value="24h" label={t("stage.stats.period")} small />
+      <Stat
+        value={t("stage.stats.targetValue")}
+        label={t("stage.stats.target")}
+        cls="text-primary"
+      />
+      <Stat
+        value={t("stage.stats.periodValue")}
+        label={t("stage.stats.period")}
+        small
+      />
     </div>
   );
 }
-function Stat({
-  value,
-  label,
-  cls,
-  small,
-}: {
+function Stat(props: {
   value: string;
   label: string;
   cls?: string;
@@ -47,14 +50,14 @@ function Stat({
       <div
         class={clsx(
           "font-display font-extrabold leading-none tracking-tight",
-          small ? "text-[24px]" : "text-[40px]",
-          cls,
+          props.small ? "text-[24px]" : "text-[40px]",
+          props.cls,
         )}
       >
-        {value}
+        {props.value}
       </div>
       <div class="mt-1.5 font-mono text-[11px] tracking-wide text-muted-foreground">
-        {label}
+        {props.label}
       </div>
     </div>
   );

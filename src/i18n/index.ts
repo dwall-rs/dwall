@@ -21,6 +21,16 @@ export const LANGUAGES = {
   "ko-KR": "한국어",
 } as const satisfies Record<Locale, string>;
 
+/** 语言 → 字体/行高方案（对应 styles/i18n.css 的 [data-lang] 规则）。 */
+const DATA_LANG = {
+  "en-US": "en",
+  "zh-CN": "zh-hans",
+  "zh-HK": "zh-hant",
+  "zh-TW": "zh-hant",
+  "ja-JP": "ja",
+  "ko-KR": "ko",
+} as const satisfies Record<Locale, string>;
+
 const dictionaries: Record<Locale, RawDictionary> = {
   "en-US": enUS.dict,
   "zh-CN": zhCN.dict,
@@ -53,8 +63,12 @@ const dict = createMemo(() => i18n.flatten(dictionaries[locale()]));
 export const t = i18n.translator(dict, i18n.resolveTemplate);
 
 createEffect(() => {
-  localStorage.setItem("locale", locale());
-  document.documentElement.lang = locale();
+  const current = locale();
+  localStorage.setItem("locale", current);
+  const el = document.documentElement;
+  el.lang = current;
+  // 激活 styles/i18n.css 的 [data-lang] 字体/行高/书写方向规则
+  el.setAttribute("data-lang", DATA_LANG[current]);
 });
 
 export { locale, setLocale };
