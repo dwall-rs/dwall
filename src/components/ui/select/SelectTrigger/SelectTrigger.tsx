@@ -1,47 +1,34 @@
-import { splitProps } from "solid-js";
+import type { ValidComponent } from "solid-js";
 import { Dynamic } from "solid-js/web";
 import { useSelectTrigger } from "./useSelectTrigger";
 import type { SelectTriggerProps } from "./SelectTrigger.types";
-import { Button } from "../../button";
+import { clsx, mergeRefs } from "~/utils";
+import { Button } from "~/components/ui/button";
+import { ChevronDown } from "lucide-solid";
 
-function mergeRefs(
-  ...refs: Array<Element | ((el: Element) => void) | undefined>
-) {
-  return (el: Element) => {
-    for (const ref of refs) {
-      if (typeof ref === "function") ref(el);
-    }
-  };
-}
-
-export function SelectTrigger(props: SelectTriggerProps) {
+export const SelectTrigger = <
+  T extends ValidComponent = typeof Button<"button">,
+>(
+  props: SelectTriggerProps<T>,
+) => {
   const { ctx, isDisabled, attachListeners } = useSelectTrigger(() => props);
-  const tag = () => props.as ?? Button;
-
-  const [local, rest] = splitProps(props, [
-    "as",
-    "class",
-    "disabled",
-    "ref",
-    "children",
-  ]);
 
   return (
     <Dynamic
-      component={tag()}
-      ref={mergeRefs(ctx.setReference, local.ref, attachListeners)}
-      type={tag() === "button" ? "button" : undefined}
-      disabled={tag() === "button" ? isDisabled() : undefined}
+      {...props}
+      disabled={isDisabled()}
+      icon={<ChevronDown />}
+      iconPosition="right"
+      component={(props.component as ValidComponent) ?? Button<"button">}
+      variant={props.variant ?? "outline"}
+      ref={mergeRefs(ctx.setReference, props.ref, attachListeners)}
       role="combobox"
       aria-haspopup="listbox"
       aria-expanded={ctx.open()}
       aria-controls={ctx.open() ? ctx.contentId : undefined}
       data-state={ctx.open() ? "open" : "closed"}
       data-disabled={isDisabled() ? "" : undefined}
-      class={local.class}
-      {...rest}
-    >
-      {local.children}
-    </Dynamic>
+      class={clsx("justify-between", props.class)}
+    />
   );
-}
+};

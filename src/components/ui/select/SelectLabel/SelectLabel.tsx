@@ -1,15 +1,14 @@
-import type { ParentProps } from "solid-js";
+import { Label, type LabelProps } from "~/components/ui/label";
+import { clsx } from "~/utils";
 
-export interface SelectLabelProps extends ParentProps {
-  class?: string;
-}
-
-export function SelectLabel(props: SelectLabelProps) {
+export function SelectLabel(props: LabelProps) {
   return (
-    <div
-      class={`px-2 py-1.5 text-xs font-medium text-neutral-500 ${props.class ?? ""}`}
-    >
-      {props.children}
-    </div>
+    <Label
+      {...props}
+      class={clsx(
+        "px-2 py-1.5 text-xs font-medium text-neutral-500",
+        props.class,
+      )}
+    />
   );
 }

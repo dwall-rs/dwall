@@ -1,4 +1,4 @@
-import { Button } from "~/components/ui/button";
+import { Button } from "~/components/ui/button/Button";
 import type { InputGroupButtonProps } from "./InputGroupButton.types";
 import { createMemo, mergeProps, splitProps } from "solid-js";
 import { clsx } from "~/utils";

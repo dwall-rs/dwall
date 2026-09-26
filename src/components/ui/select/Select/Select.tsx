@@ -4,12 +4,16 @@ import { SelectContext } from "./Select.context";
 import type {
   SelectContextValue,
   SelectItemMeta,
+  SelectOptionValue,
   SelectProps,
 } from "./Select.types";
 
 /**
  * Select 根组件：不渲染任何 DOM，只负责状态管理 + 提供 context。
  * 真正的展示交给 <SelectTrigger>/<SelectValue>/<SelectContent>/<SelectItem>。
+ *
+ * 泛型 T 约束为 string | number，用于约束 value / defaultValue /
+ * onValueChange / SelectItem.value 的类型。
  *
  * @example
  * ```tsx
@@ -23,14 +27,18 @@ import type {
  * </Select>
  * ```
  */
-export function Select(props: SelectProps): JSX.Element {
-  const [internalValue, setInternalValue] = createSignal(props.defaultValue);
+export function Select<T extends SelectOptionValue = string>(
+  props: SelectProps<T>,
+): JSX.Element {
+  const [internalValue, setInternalValue] = createSignal<T | undefined>(
+    props.defaultValue,
+  );
   const value = createMemo(() =>
     props.value !== undefined ? props.value : internalValue(),
   );
 
-  const setValue = (v: string) => {
-    if (props.value === undefined) setInternalValue(v);
+  const setValue = (v: T) => {
+    if (props.value === undefined) setInternalValue(() => v);
     props.onValueChange?.(v);
   };
 
@@ -49,11 +57,13 @@ export function Select(props: SelectProps): JSX.Element {
 
   const [reference, setReference] = createSignal<Element>();
   const [floating, setFloating] = createSignal<HTMLElement>();
-  const [activeValue, setActiveValue] = createSignal<string>();
-  const [items, setItems] = createStore<SelectItemMeta[]>([]);
+  const [activeValue, setActiveValue] = createSignal<T>();
+  const [items, setItems] = createStore<SelectItemMeta<SelectOptionValue>[]>(
+    [],
+  );
   const contentId = `select-content-${createUniqueId()}`;
 
-  const registerItem = (item: SelectItemMeta) => {
+  const registerItem = (item: SelectItemMeta<SelectOptionValue>) => {
     setItems(produce((list) => list.push(item)));
     return () =>
       setItems(
@@ -71,14 +81,14 @@ export function Select(props: SelectProps): JSX.Element {
     (reference() as HTMLElement | undefined)?.focus?.();
   };
 
-  const selectValue = (v: string) => {
-    setValue(v);
+  const selectValue = (v: SelectOptionValue) => {
+    setValue(v as T);
     closeAndFocusTrigger();
   };
 
   const ctx: SelectContextValue = {
-    value,
-    setValue,
+    value: value as SelectContextValue["value"],
+    setValue: setValue as SelectContextValue["setValue"],
     open,
     setOpen,
     disabled,
@@ -91,8 +101,8 @@ export function Select(props: SelectProps): JSX.Element {
       return items;
     },
     registerItem,
-    activeValue,
-    setActiveValue,
+    activeValue: activeValue as SelectContextValue["activeValue"],
+    setActiveValue: setActiveValue as SelectContextValue["setActiveValue"],
     selectValue,
     close,
   };

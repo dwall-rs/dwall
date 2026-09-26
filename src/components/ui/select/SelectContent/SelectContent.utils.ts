@@ -7,8 +7,9 @@ import {
   containingBlockOffset,
   type Middleware,
   type Placement,
-} from "@/lib";
-import { getViewportBoundary } from "@/lib/positioner/utils/dom";
+} from "~/lib";
+import { getViewportBoundary } from "~/lib/positioner/utils/dom";
+import type { SelectOptionValue } from "../Select/Select.types";
 
 /** 让浮层宽度和 trigger 对齐——不改坐标，只把 reference 宽度透传给上层当 style.width 用 */
 function matchReferenceWidth(): Middleware {
@@ -25,28 +26,9 @@ function matchReferenceWidth(): Middleware {
  * shadcn Select 重新打开时的经典效果，和 offset+flip+shift 是完全不同的定位
  * 策略，所以单独写一个 middleware，而不是复用 shift/flip。
  *
- * 用 offsetTop/offsetHeight（不是 getBoundingClientRect）取选项在面板内的位置：
- * 这两个值不受当前 scrollTop 影响，是纯布局坐标——前提是传进来的滚动元素本身
- * 是 position:relative（在 SelectContent.tsx 里设置），这让它天然成为内部
- * 所有子元素的 offsetParent，不会被中间那层 <li role="group"> 这类未定位的
- * 包裹元素干扰。
- *
- * 注意这里特意接收一个独立的 getScrollElement，而不是直接用 state.elements.floating：
- * SelectContent 拆成了"定位层"（外层，position:fixed，负责 translate(x,y)）
- * 和"样式/滚动层"（内层，overflow:auto，真正会滚动的是它）两层——state.elements.floating
- * 指向的是外层，它自己不滚动，scrollTop/scrollHeight 要操作的必须是内层。
- *
- * 如果面板放在理想位置会超出视口，会被夹回视口内，同时换算出一个 scrollTop，
- * 让选中项在被夹住的面板里依然尽量贴着 trigger——放不下才退而求其次贴边显示。
- */
-/**
- * "选中项对齐"：让已选中的那一项精确覆盖在 trigger 上方，这是原生 <select>/
- * shadcn Select 重新打开时的经典效果，和 offset+flip+shift 是完全不同的定位
- * 策略，所以单独写一个 middleware，而不是复用 shift/flip。
- *
  * 核心思路是把"面板高度、面板位置、列表滚动量"三者一起算，而不是先假设一个
- * 面板高度、算完位置再回头夹 scrollTop——后者会有遗留问题（面板和 trigger
- * 之间留一截空隙、或者选中项因为 scrollTop 静默越界被推到面板边缘）。
+ * 面板高度、算完位置再回头夹 scrollTop——后者试过两版都有遗留问题（面板和
+ * trigger 之间留一截空隙、或者选中项因为 scrollTop 静默越界被推到面板边缘）。
  *
  * 具体算法：选中项"理应"贴着 trigger 垂直居中。以这个位置为基准，
  * 分别看"上方"和"下方"能展开多少：
@@ -61,13 +43,9 @@ function matchReferenceWidth(): Middleware {
  * 对列表两端的项（第一项/最后一项）会自动退化成正确的行为：比如选中第一项，
  * "上方还有多少内容"是 0，上方展开量恒为 0，面板顶部直接落在选中项该在的
  * 位置，不会凭空往上多留空间。
- *
- * 面板高度通过 middlewareData.itemAlign.panelHeight 传出去，createSelectMiddleware
- * 里"有选中值"这个分支特意没有再叠加 size 中间件——两边各算一套高度，只要
- * 稍有不一致，CSS max-height 和这里的定位假设就会对不上，重新引入同一类问题。
  */
 function alignSelectedItem(
-  getValue: () => string | undefined,
+  getValue: () => SelectOptionValue | null | undefined,
   getScrollElement: () => HTMLElement | undefined,
 ): Middleware {
   return {
@@ -75,10 +53,10 @@ function alignSelectedItem(
     fn(state) {
       const value = getValue();
       const scrollEl = getScrollElement();
-      if (value === undefined || !scrollEl) return {};
+      if (value == null || !scrollEl) return {};
 
       const itemEl = scrollEl.querySelector<HTMLElement>(
-        `[data-value="${CSS.escape(value)}"]`,
+        `[data-value="${CSS.escape(String(value))}"]`,
       );
       if (!itemEl) return {};
 
@@ -103,7 +81,20 @@ function alignSelectedItem(
       const expandBelow = Math.max(0, Math.min(contentBelow, spaceBelow));
 
       const panelTop = idealItemTop - expandAbove;
-      const panelHeight = expandAbove + itemHeight + expandBelow;
+      // panelHeight 最终会作为 CSS max-height 写到 scrollEl 上。scrollEl
+      // 有 border（类名里带 border），而 Tailwind preflight 会把 box-sizing
+      // 设为 border-box，此时 max-height 约束的是 border-box 高度；但
+      // scrollHeight 只包含内容 + padding、不包含 border。直接拿
+      // scrollHeight 当 max-height 会让 clientHeight 比 scrollHeight 少
+      // 一个上下 border 的宽度，列表本来刚好能放下时也会多出 1~2px 的
+      // overflow，从而被 overflow:auto 画出一条纵向滚动条。这里把 border
+      // 宽度补回去，保证 border-box 的 max-height 能完整容纳所有内容。
+      const scrollStyle = getComputedStyle(scrollEl);
+      const borderTop = Number.parseFloat(scrollStyle.borderTopWidth) || 0;
+      const borderBottom =
+        Number.parseFloat(scrollStyle.borderBottomWidth) || 0;
+      const panelHeight =
+        expandAbove + itemHeight + expandBelow + borderTop + borderBottom;
       const scrollTop = contentAbove - expandAbove;
 
       // scrollTop 是纯 DOM 副作用，不影响坐标计算本身，这里直接设置是安全的。
@@ -121,7 +112,7 @@ function alignSelectedItem(
 export interface BuildSelectMiddlewareOptions {
   /** 当前是否已经有选中值——决定走"选中项对齐"还是普通的贴边下拉 */
   hasValue: boolean;
-  selectedValue: () => string | undefined;
+  selectedValue: () => SelectOptionValue | null | undefined;
   /** 真正会滚动、承载选项列表的那个元素（内层），不是外层的定位容器 */
   scrollElement: () => HTMLElement | undefined;
   placement: Placement;
@@ -155,17 +146,15 @@ export interface BuildSelectMiddlewareOptions {
 export function createSelectMiddleware(
   options: BuildSelectMiddlewareOptions,
 ): Middleware[] {
-  const sizeMiddleware = size({
-    padding: options.collisionPadding,
-    apply({ availableHeight }) {
-      options.onAvailableHeightChange(availableHeight);
-    },
-  });
-
   if (options.hasValue) {
     return [
       matchReferenceWidth(),
-      sizeMiddleware,
+      // 注意这里没有 size 中间件：alignSelectedItem 自己已经把面板高度、
+      // 位置、滚动量一起算好了（见它的注释），面板高度是通过
+      // middlewareData.itemAlign.panelHeight 传出去的，不需要 size 再用
+      // "只看视口空间、不看内容长度"那套算法独立算一遍——两边算出来的值
+      // 一旦不一致，CSS max-height 和定位计算假设的面板高度就会对不上，
+      // 重新引入"选中项没对齐"这类问题（这正是这次要修的 bug 的根源）。
       alignSelectedItem(options.selectedValue, options.scrollElement),
       shift({
         padding: options.collisionPadding,
@@ -182,7 +171,12 @@ export function createSelectMiddleware(
     flip(),
     shift({ padding: options.collisionPadding }),
     matchReferenceWidth(),
-    sizeMiddleware,
+    size({
+      padding: options.collisionPadding,
+      apply({ availableHeight }) {
+        options.onAvailableHeightChange(availableHeight);
+      },
+    }),
     hide(),
     containingBlockOffset(),
   ];

@@ -1,4 +1,4 @@
-import { Input } from "~/components/ui/input/Input";
+import { Input } from "~/components/ui/input";
 import type { InputGroupInputProps } from "./InputGroupInput.types";
 import { splitProps } from "solid-js";
 import { clsx } from "~/utils";

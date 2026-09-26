@@ -1,6 +1,7 @@
 import { onMount, onCleanup, createMemo } from "solid-js";
 import { useSelectContext } from "../Select/Select.context";
 import type { SelectItemProps } from "./SelectItem.types";
+import type { SelectOptionValue } from "../Select/Select.types";
 
 export interface UseSelectItemResult {
   ctx: ReturnType<typeof useSelectContext>;
@@ -11,15 +12,15 @@ export interface UseSelectItemResult {
   onMouseEnter: () => void;
 }
 
-export function useSelectItem(
-  props: () => SelectItemProps,
+export function useSelectItem<T extends SelectOptionValue = SelectOptionValue>(
+  props: () => SelectItemProps<T>,
 ): UseSelectItemResult {
   const ctx = useSelectContext("SelectItem");
 
   const label = () => {
     const p = props();
     if (p.label) return p.label;
-    return typeof p.children === "string" ? p.children : p.value;
+    return typeof p.children === "string" ? p.children : String(p.value);
   };
 
   onMount(() => {

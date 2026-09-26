@@ -16,7 +16,5 @@ export type { SelectItemProps } from "./SelectItem";
 export { SelectGroup } from "./SelectGroup";
 
 export { SelectLabel } from "./SelectLabel";
-export type { SelectLabelProps } from "./SelectLabel";
 
 export { SelectSeparator } from "./SelectSeparator";
-export type { SelectSeparatorProps } from "./SelectSeparator";

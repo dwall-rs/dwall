@@ -1,5 +1,5 @@
 import type { ParentProps } from "solid-js";
-import type { Placement } from "@/lib";
+import type { Placement } from "~/lib";
 
 export interface SelectContentProps extends ParentProps {
   /**

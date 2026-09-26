@@ -1,4 +1,4 @@
-import { onCleanup } from "solid-js";
+import { onCleanup, type ValidComponent } from "solid-js";
 import { useSelectContext } from "../Select/Select.context";
 import type { SelectTriggerProps } from "./SelectTrigger.types";
 
@@ -14,8 +14,8 @@ export interface UseSelectTriggerResult {
   attachListeners: (el: Element) => void;
 }
 
-export function useSelectTrigger(
-  props: () => SelectTriggerProps,
+export function useSelectTrigger<T extends ValidComponent>(
+  props: () => SelectTriggerProps<T>,
 ): UseSelectTriggerResult {
   const ctx = useSelectContext("SelectTrigger");
 

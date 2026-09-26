@@ -1,10 +1,8 @@
 import { Show, splitProps, onCleanup } from "solid-js";
 import { useSelectItem } from "./useSelectItem";
 import type { SelectItemProps } from "./SelectItem.types";
-
-function cn(...classes: Array<string | false | undefined | null>): string {
-  return classes.filter(Boolean).join(" ");
-}
+import { clsx } from "~/utils";
+import { Check } from "lucide-solid";
 
 export function SelectItem(props: SelectItemProps) {
   const { isSelected, isActive, select, onMouseEnter } = useSelectItem(
@@ -21,7 +19,7 @@ export function SelectItem(props: SelectItemProps) {
 
   // click/mouseenter 走 addEventListener（不是 JSX onClick），和 SelectTrigger
   // 是同一套约定，不占用 onXxx prop 名，调用方自己传的 onClick 不会被覆盖。
-  const attachListeners = (el: HTMLLIElement) => {
+  const attachListeners = (el: HTMLDivElement) => {
     const handleClick = () => select();
     const handleMouseEnter = () => onMouseEnter();
     el.addEventListener("click", handleClick);
@@ -33,42 +31,27 @@ export function SelectItem(props: SelectItemProps) {
   };
 
   return (
-    <li
+    <div
       ref={attachListeners}
       role="option"
-      tabIndex={-1}
-      data-value={local.value}
+      tabIndex={isSelected() ? 0 : -1}
+      data-value={String(local.value)}
       aria-selected={isSelected()}
       aria-disabled={local.disabled}
-      class={cn(
-        "relative flex cursor-pointer select-none items-center rounded-sm py-1.5 pl-8 pr-2 text-sm outline-none",
+      class={clsx(
+        "relative flex cursor-pointer select-none items-center rounded-sm py-1.5 pl-2 pr-6 text-sm outline-none",
         isActive() && "bg-neutral-100 dark:bg-neutral-800",
         local.disabled && "pointer-events-none opacity-50",
         local.class,
       )}
       {...rest}
     >
-      <span class="absolute left-2 flex h-3.5 w-3.5 items-center justify-center">
+      {local.children ?? local.label ?? local.value}
+      <span class="absolute right-2 flex h-3.5 w-3.5 items-center justify-center">
         <Show when={isSelected()}>
-          <svg
-            width="14"
-            height="14"
-            viewBox="0 0 24 24"
-            fill="none"
-            aria-hidden="true"
-          >
-            <title>selected</title>
-            <path
-              d="M20 6L9 17l-5-5"
-              stroke="currentColor"
-              stroke-width="2.5"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            />
-          </svg>
+          <Check size={14} />
         </Show>
       </span>
-      {local.children ?? local.label ?? local.value}
-    </li>
+    </div>
   );
 }

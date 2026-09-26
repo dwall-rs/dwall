@@ -1,5 +1,5 @@
 import { createSignal, createMemo, createEffect, onCleanup } from "solid-js";
-import { createPositioner, type Positioner } from "@/lib";
+import { createPositioner, type Positioner } from "~/lib";
 import { useSelectContext } from "../Select/Select.context";
 import { createSelectMiddleware } from "./SelectContent.utils";
 import type { SelectContentProps } from "./SelectContent.types";
@@ -16,7 +16,11 @@ export interface UseSelectContentResult {
   maxHeight: () => number | undefined;
   /** 综合了 open 状态 + hide 中间件的 referenceHidden 判断 */
   isVisible: () => boolean;
-  /** 代表"DOM 里要不要还留着这个节点"，展示层应该用它控制 <Show> */
+  /**
+   * 兼容字段：SelectContent 现在关闭时不再卸载 Portal（为了保住 ctx.items 的
+   * 注册信息），因此 mounted 已不再被展示层用来控制 <Show>。该值目前等价于
+   * isVisible，保留只是为了不破坏已导出的 useSelectContent 返回类型。
+   */
   mounted: () => boolean;
   /** 驱动 data-state 的状态，打开时比 isVisible 晚一帧，给"选中项对齐"这类
    * 需要先读到子元素（选项）才能算准位置的定位策略留出时间。 */
@@ -32,7 +36,7 @@ export function useSelectContent(
   const [contentElement, setContentElement] = createSignal<HTMLElement>();
   const [fallbackMaxHeight, setFallbackMaxHeight] = createSignal<number>();
 
-  const hasValue = createMemo(() => ctx.value() !== undefined);
+  const hasValue = createMemo(() => ctx.value() != null);
 
   const pos = createPositioner(ctx.reference, ctx.floating, {
     placement: () => props().placement ?? "bottom-start",
@@ -64,6 +68,16 @@ export function useSelectContent(
     () => ctx.open() && !pos.middlewareData().hide?.referenceHidden,
   );
 
+  // SelectContent 关闭时也不会卸载（为了保住 ctx.items 的注册信息），因此
+  // createPositioner 不会像 Tooltip/Popover 那样在每次打开时重新创建并自动
+  // 算一次位置。这里在每次打开时显式重新计算一次，修复“触发器第一次打开后
+  // 因外部布局变化移动了位置，第二次打开时面板还停留在旧坐标”的问题。
+  createEffect(() => {
+    if (ctx.open()) {
+      pos.update();
+    }
+  });
+
   // --- 打开时延迟一帧再触发动画 class ---
   // "选中项对齐"策略要读子元素（SelectItem 渲染出来的 <li data-value>）才能
   // 算出正确的位置，如果动画在这次定位算完之前就开始播放，面板会在动画播到
@@ -82,11 +96,10 @@ export function useSelectContent(
     }
   });
 
-  // 没有退场动画（见 SelectContent.tsx 里的说明），mounted 直接跟 isVisible 走，
-  // 不需要 Presence 那套"延迟卸载等动画播完"的逻辑。这不只是简化——是有意的：
-  // 选中一项的瞬间，ctx.value() 变化会让定位策略从"贴边下拉"切到"选中项对齐"，
-  // 两者算出来的坐标完全不同；如果退场动画期间面板还挂在 DOM 里，这次重新定位
-  // 会让面板先跳一下再消失，观感很突兀。立即卸载就没有这个问题。
+  // SelectContent 关闭时不再卸载子节点（否则 ctx.items 会被清空，SelectValue
+  // 读不到 label），因此 mounted 已经没有"延迟卸载/立即卸载"的语义，直接跟
+  // isVisible 保持一致即可。保留该字段只是为了兼容已导出的 useSelectContent
+  // 返回类型；新的展示层逻辑一律使用 isVisible。
   const mounted = isVisible;
 
   return {
