@@ -13,7 +13,7 @@ export function UnifiedCard() {
       class={clsx(
         "relative mb-1.5 mt-0.5 cursor-pointer rounded-lg border p-3.25 transition-all duration-200",
         fixedStore.allUnified
-          ? "border-primary bg-primary/8 shadow-[0_0_0_1px_hsl(var(--primary)),0_8px_24px_hsl(var(--primary)/.12)]"
+          ? "border-primary bg-primary/8 shadow-[0_8px_24px_-10px_var(--primary)]"
           : "border-border-2 bg-primary/8 hover:border-primary/40",
       )}
     >

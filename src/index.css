@@ -48,11 +48,13 @@ body {
     }
 }
 
-@layer inline {
-    :root {
-        --color-success: var(--success);
-        --color-warning: var(--warning);
-    }
+@theme inline {
+    --color-success: var(--success);
+    --color-success-foreground: hsl(var(--success-foreground));
+    --color-success-dim: hsl(var(--success-dim));
+    --color-warning: var(--warning);
+    --color-warning-foreground: hsl(var(--warning-foreground));
+    --color-warning-dim: hsl(var(--warning-dim));
 }
 
 @layer utilities {

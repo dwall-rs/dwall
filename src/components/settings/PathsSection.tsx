@@ -76,7 +76,7 @@ export function PathsSection() {
                 <Button
                   variant="outline"
                   size="sm"
-                  class="shadow-[inset_0_0_0_1px_hsl(var(--border-2))]"
+                  class="shadow-[inset_0_0_0_1px_var(--border-2)]"
                   disabled={settingsStore.saving}
                   onClick={() => void chooseDir()}
                 >

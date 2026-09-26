@@ -35,9 +35,9 @@ export function WallpaperStrip(props: Props) {
               class={clsx(
                 "group relative h-[64px] shrink-0 cursor-pointer overflow-hidden rounded-lg border transition-all duration-200 animate-rise hover:-translate-y-0.5",
                 sel
-                  ? "border-primary shadow-[0_0_0_2px_hsl(var(--primary)/.34)]"
+                  ? "border-primary ring-2 ring-primary/30"
                   : matched
-                    ? "border-success shadow-[0_0_0_2px_hsl(var(--success)/.35)]"
+                    ? "border-success ring-2 ring-success/30"
                     : "border-border hover:border-border-2",
               )}
             >

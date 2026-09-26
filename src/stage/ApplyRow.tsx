@@ -18,8 +18,9 @@ export function ApplyRow() {
       </span>
       {applied() ? (
         <Button
+          variant="destructive"
           onClick={() => void toggleApply(scopeKey())}
-          class="bg-destructive-dim px-7 py-2.5 text-[13.5px] text-destructive shadow-[inset_0_0_0_1px_hsl(var(--destructive)/.4)] hover:bg-destructive hover:text-destructive-foreground"
+          class="px-7 py-2.5 text-[13.5px]"
         >
           <Square class="size-3.5 fill-current" />
           {t("stage.stop")}

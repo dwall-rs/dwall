@@ -1,4 +1,4 @@
-// 职责：外观三档 segmented（亮/暗/系统）；读写 theme.store，pill 用等宽网格定位。
+// 职责：外观三档 segmented（亮/暗/系统）；活动态由 UI kit 的 Tabs（data-active）提供。
 import { themeStore, setMode } from "@/store/theme.store";
 import type { ThemeMode } from "@/domain/types";
 import { t } from "@/i18n";
@@ -17,17 +17,8 @@ const ITEMS: {
 ];
 
 export function ThemeSegmented() {
-  const idx = ITEMS.findIndex((i) => i.value === themeStore.mode);
-
   return (
-    <div class="relative rounded-[11px] border border-border-2 bg-secondary p-0.75">
-      <span
-        class="absolute top-0.75 bottom-0.75 rounded-lg bg-accent shadow-[inset_0_0_0_1px_hsl(var(--border-2))] transition-all duration-300 ease-[cubic-bezier(.22,.61,.36,1)]"
-        style={{
-          left: `calc(${idx} * (100% - 6px) / 3 + 3px)`,
-          width: "calc((100% - 6px) / 3)",
-        }}
-      />
+    <div class="rounded-[11px] border border-border-2 bg-secondary p-0.75">
       <Tabs value={themeStore.mode}>
         <TabsList>
           <For each={ITEMS}>
