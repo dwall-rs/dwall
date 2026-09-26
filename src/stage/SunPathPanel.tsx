@@ -33,13 +33,17 @@ export function SunPathPanel(props: Props) {
     (ps) => getSolarPath(ps, Math.floor(Date.now() / 1000)),
   );
 
-  // Y 轴自适应：覆盖真实日轨、壁纸角、当前位置与地平线(0)°，两侧留 8% 边距。
+  // Y 轴自适应：以「真实日轨」为基准（与主题无关，故各主题看到的是同一条轨迹），
+  // 并覆盖当前位置与地平线(0)°，两侧留 8% 边距。轨迹未加载时用主题角度兜底。
   const domain = createMemo(() => {
+    const pathAlts = (path() ?? []).map((p) => p.altitude);
     const alts = [
-      ...props.wallpapers.map((w) => w.solar.altitude),
       props.current.altitude,
       0,
-      ...(path() ?? []).map((p) => p.altitude),
+      ...pathAlts,
+      ...(pathAlts.length === 0
+        ? props.wallpapers.map((w) => w.solar.altitude)
+        : []),
     ];
     const lo = Math.min(...alts);
     const hi = Math.max(...alts);
@@ -51,6 +55,9 @@ export function SunPathPanel(props: Props) {
     return Y_TOP + ((hi - alt) / (hi - lo)) * (Y_BOT - Y_TOP);
   };
   const hor = () => Yp(0);
+
+  /** 纵坐标夹在绘图区内：主题角度超出当日日轨范围时，标记仍可见、可选中。 */
+  const clampY = (alt: number) => Math.min(Math.max(Yp(alt), Y_TOP), Y_BOT);
 
   const cx = createMemo(() => xForAzimuth(props.current.azimuth));
   const cy = createMemo(() => Yp(props.current.altitude));
@@ -151,7 +158,7 @@ export function SunPathPanel(props: Props) {
                 x1={cx()}
                 y1={cy()}
                 x2={xForAzimuth(m().solar.azimuth)}
-                y2={Yp(m().solar.altitude)}
+                y2={clampY(m().solar.altitude)}
                 stroke="var(--success)"
                 stroke-opacity=".55"
                 stroke-dasharray="3 4"
@@ -175,7 +182,7 @@ export function SunPathPanel(props: Props) {
                 onMouseLeave={() => setHover(null)}
                 style={{
                   left: `${xForAzimuth(wp.solar.azimuth)}%`,
-                  top: `${Yp(wp.solar.altitude)}%`,
+                  top: `${clampY(wp.solar.altitude)}%`,
                 }}
                 class={clsx(
                   "absolute -translate-x-1/2 -translate-y-1/2 rounded-full ring-1 ring-card transition-all",
