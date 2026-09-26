@@ -13,7 +13,7 @@ interface Props {
 
 export function Preview(props: Props) {
   return (
-    <div class="relative min-h-0 flex-1 overflow-hidden rounded-2xl border border-foreground/10 bg-black shadow-[0_24px_60px_rgba(0,0,0,.5)]">
+    <div class="relative min-h-0 flex-1 overflow-hidden rounded-2xl border border-border bg-muted shadow-[0_1px_3px_rgba(0,0,0,.08)] dark:border-white/10 dark:bg-black dark:shadow-[0_2px_8px_rgba(0,0,0,.45)]">
       <div class="absolute inset-3 overflow-hidden rounded-[12px]">
         <ThemeThumbnail
           themeId={props.themeId}
