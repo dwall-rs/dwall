@@ -1,4 +1,4 @@
-// 职责：根组件，仅渲染外壳；不持有任何业务状态（状态在各 store）。
+// Responsibility: root component, renders the shell only; holds no business state (state lives in the individual stores).
 import { AppShell } from "@/layout/AppShell";
 import { onCleanup, onMount } from "solid-js";
 import { catalogStore, load as loadCatalog } from "./store/catalog.store";
@@ -7,11 +7,14 @@ import { syncFromConfig as syncFixed } from "./store/fixed.store";
 import { syncFromConfig as syncRandom } from "./store/random.store";
 import { load as loadSettings, settingsStore } from "./store/settings.store";
 import { setMode } from "./store/ui.store";
+import { showWindow } from "./ipc";
 
 export default function App() {
   onMount(async () => {
+    if (import.meta.env.PROD) showWindow("main");
+
     refreshEngine();
-    // 引擎可能在窗口创建后才由后端拉起，或由外部启动/停止；定期对齐真实状态。
+    // The engine may start after the window is created, or be started/stopped externally; periodically align with the real state.
     const timer = setInterval(refreshEngine, 5000);
     onCleanup(() => clearInterval(timer));
 
