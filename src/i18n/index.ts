@@ -12,7 +12,6 @@ import * as koKR from "./ko-KR";
 
 export type Locale = "en-US" | "zh-CN" | "ja-JP" | "zh-HK" | "zh-TW" | "ko-KR";
 export type RawDictionary = typeof enUS.dict;
-export type Dictionary = i18n.Flatten<RawDictionary>;
 
 export const LANGUAGES = {
   "en-US": "English",
@@ -41,10 +40,6 @@ const dictionaries: Record<Locale, RawDictionary> = {
   "zh-TW": zhTW.dict,
   "ko-KR": koKR.dict,
 };
-
-export function fetchDictionary(locale: Locale): Dictionary {
-  return i18n.flatten(dictionaries[locale]);
-}
 
 const getInitialLocale = (): Locale => {
   if (typeof window === "undefined") return "en-US";

@@ -19,7 +19,6 @@ export function AppearanceSection() {
           desc={t("settings.appearance.appearanceDesc")}
           control={<ThemeSegmented />}
         />
-        {/*<SemanticSwatches />*/}
         <SettingsRow
           label={t("settings.appearance.languageLabel")}
           desc={t("settings.appearance.languageDesc")}
