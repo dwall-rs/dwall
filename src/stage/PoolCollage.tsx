@@ -78,7 +78,7 @@ export function PoolCollage() {
 
   return (
     <div
-      class="relative grid min-h-0 flex-1 grid-cols-4 gap-[3px] overflow-hidden rounded-[18px] border border-border-2 bg-black shadow-[0_24px_60px_rgba(0,0,0,.45)]"
+      class="relative grid min-h-0 flex-1 grid-cols-4 gap-0.75 overflow-hidden rounded-2xl border border-border-2 bg-black shadow-[0_24px_60px_rgba(0,0,0,.45)]"
       style={{
         "grid-template-rows": `repeat(${layout().rows}, minmax(0,1fr))`,
       }}
@@ -94,12 +94,12 @@ export function PoolCollage() {
           />
         </div>
       ))}
-      <div class="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/72 via-transparent to-transparent" />
+      <div class="pointer-events-none absolute inset-0 bg-linear-to-t from-black/72 via-transparent to-transparent" />
 
       {/* Today's theme badge */}
       <Show when={selection()}>
         {(sel) => (
-          <div class="pointer-events-none absolute left-[18px] top-4 flex items-center gap-2 rounded-full border border-primary/40 bg-black/65 px-3.5 py-1.5 shadow-[0_8px_24px_rgba(0,0,0,.5)] backdrop-blur-md">
+          <div class="pointer-events-none absolute left-4.5 top-4 flex items-center gap-2 rounded-full border border-primary/40 bg-black/65 px-3.5 py-1.5 shadow-[0_8px_24px_rgba(0,0,0,.5)] backdrop-blur-md">
             <span class="size-1.5 rounded-full bg-success animate-bdot" />
             <span class="font-mono text-[10px] tracking-wide text-white/65">
               {t("stage.stats.today")}
@@ -111,11 +111,11 @@ export function PoolCollage() {
         )}
       </Show>
 
-      <div class="pointer-events-none absolute bottom-4 left-[18px] right-[18px] text-white">
+      <div class="pointer-events-none absolute bottom-4 left-4.5 right-4.5 text-white">
         <div class="font-display text-[15px] font-bold">
           {t("stage.collageTitle")}
         </div>
-        <div class="mt-[3px] font-mono text-[11px] text-white/70">
+        <div class="mt-0.75 font-mono text-[11px] text-white/70">
           {t("stage.collageNote", { n: pool().length })}
         </div>
       </div>

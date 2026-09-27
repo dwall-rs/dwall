@@ -15,7 +15,7 @@ interface Props {
 export function WallpaperStrip(props: Props) {
   return (
     <div class="shrink-0">
-      <div class="mb-[9px] flex items-center justify-between">
+      <div class="mb-2.25 flex items-center justify-between">
         <span class="font-display text-[11px] font-bold uppercase tracking-[1.2px] text-muted-foreground">
           {t("stage.stripTitle")}
         </span>
@@ -23,7 +23,7 @@ export function WallpaperStrip(props: Props) {
           {t("stage.stripHint")}
         </span>
       </div>
-      <div class="flex gap-[7px] overflow-x-auto pb-1.5">
+      <div class="flex gap-1.75 overflow-x-auto pb-1.5">
         {props.wallpapers.map((wp, i) => {
           const sel = wp.index === props.selIndex;
           const matched = wp.index === props.matchedIndex;
@@ -32,7 +32,7 @@ export function WallpaperStrip(props: Props) {
               onClick={() => props.onSelect(sel ? null : wp.index)}
               style={{ width: "104px", "animation-delay": `${i * 40}ms` }}
               class={clsx(
-                "group relative h-[64px] shrink-0 cursor-pointer overflow-hidden rounded-lg border transition-all duration-200 animate-rise hover:-translate-y-0.5",
+                "group relative h-16 shrink-0 cursor-pointer overflow-hidden rounded-lg border transition-all duration-200 animate-rise hover:-translate-y-0.5",
                 sel
                   ? "border-primary ring-2 ring-primary/30"
                   : matched
@@ -42,11 +42,11 @@ export function WallpaperStrip(props: Props) {
             >
               <ThemeThumbnail themeId={props.themeId} index={wp.index} />
               {matched && (
-                <span class="absolute inset-x-0 top-0 flex items-center justify-center gap-1 bg-success py-0.5 font-mono text-[9px] font-bold tracking-wide text-success-foreground">
+                <span class="absolute inset-x-0 top-0 flex items-center justify-center gap-1 bg-success py-0.5 font-mono text-2.25 font-bold tracking-wide text-success-foreground">
                   {t("stage.match")}
                 </span>
               )}
-              <div class="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent py-0.5 text-center font-mono text-[8.5px] text-white">
+              <div class="absolute inset-x-0 bottom-0 bg-linear-to-t from-black/80 to-transparent py-0.5 text-center font-mono text-[8.5px] text-white">
                 {formatAngle(wp.solar.altitude)}° ·{" "}
                 {formatAngle(wp.solar.azimuth)}°
               </div>

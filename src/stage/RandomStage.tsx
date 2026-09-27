@@ -20,7 +20,7 @@ export function RandomStage() {
 
   return (
     <>
-      <p class="max-w-[580px] font-display text-[15px] font-semibold leading-relaxed text-foreground">
+      <p class="max-w-145 font-display text-[15px] font-semibold leading-relaxed text-foreground">
         {t("stage.randomIntro")}
       </p>
       <WriteNote />

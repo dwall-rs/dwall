@@ -9,7 +9,7 @@ export function RandomStats() {
   const n = createMemo(() => randomStore.selected.length);
   const empty = createMemo(() => n() === 0);
   return (
-    <div class="flex flex-wrap gap-[30px]">
+    <div class="flex flex-wrap gap-7.5">
       <Stat
         value={String(n())}
         label={t("stage.stats.pool")}

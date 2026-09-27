@@ -225,13 +225,13 @@ export function SunPathPanel(props: Props) {
           { az: 270, label: t("stage.west") },
         ].map((m) => (
           <span
-            class="absolute bottom-1 -translate-x-1/2 font-mono text-[9px] text-muted-foreground"
+            class="absolute bottom-1 -translate-x-1/2 font-mono text-2.25 text-muted-foreground"
             style={{ left: `${xForAzimuth(m.az)}%` }}
           >
             {m.label}
           </span>
         ))}
-        <span class="absolute right-2 top-1.5 font-mono text-[9px] text-muted-foreground">
+        <span class="absolute right-2 top-1.5 font-mono text-2.25 text-muted-foreground">
           {props.current.altitude < 0 ? "☾" : "☀"}{" "}
           {formatAngle(props.current.altitude)}° ·{" "}
           {formatAngle(props.current.azimuth)}°

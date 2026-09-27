@@ -39,7 +39,7 @@ export function ThemeTile({ id, index }: Props) {
       onClick={onClick}
       style={{ "animation-delay": `${index * 40}ms` }}
       class={clsx(
-        "group relative aspect-[16/10] cursor-pointer overflow-hidden rounded-lg border transition-all duration-200 animate-rise hover:-translate-y-1 hover:scale-[1.02] hover:border-border-2 hover:shadow-[0_12px_26px_rgba(0,0,0,.5)]",
+        "group relative aspect-16/10 cursor-pointer overflow-hidden rounded-lg border transition-all duration-200 animate-rise hover:-translate-y-1 hover:scale-[1.02] hover:border-border-2 hover:shadow-[0_12px_26px_rgba(0,0,0,.5)]",
         on() && uiStore.mode === "fixed" && "border-primary",
         on() && uiStore.mode === "random" && "border-warning",
       )}
@@ -48,7 +48,7 @@ export function ThemeTile({ id, index }: Props) {
         themeId={id}
         class="transition-transform duration-500 group-hover:scale-105"
       />
-      <div class="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/72 to-transparent px-2 pb-1.5 pt-3.5 font-display text-[10.5px] font-semibold text-white opacity-0 transition-opacity group-hover:opacity-100">
+      <div class="absolute inset-x-0 bottom-0 bg-linear-to-t from-black/72 to-transparent px-2 pb-1.5 pt-3.5 font-display text-[10.5px] font-semibold text-white opacity-0 transition-opacity group-hover:opacity-100">
         {t.name}
       </div>
       <span
