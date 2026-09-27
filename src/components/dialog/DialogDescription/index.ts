@@ -1,1 +1,0 @@
-export { DialogDescription } from "./DialogDescription";

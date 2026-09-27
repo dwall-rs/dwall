@@ -39,10 +39,10 @@ export type NonNullableProps<T, K extends keyof T> = Omit<T, K> & {
 };
 
 /**
- * 将任意含 `as` 属性的多态 Props 解析为内部确定类型
+ * Resolve any polymorphic Props containing an `as` property into a concrete internal type
  *
- * - 若 TProps 含 `as?: T`，则展开 T 对应的 ComponentProps
- * - 否则回退到 TDefault 的 ComponentProps
+ * - if TProps contains `as?: T`, expand into the ComponentProps for T
+ * - otherwise fall back to the ComponentProps of TDefault
  */
 export type ResolvedProps<TProps, TDefault extends ValidComponent> = (
   "as" extends keyof TProps
@@ -53,3 +53,9 @@ export type ResolvedProps<TProps, TDefault extends ValidComponent> = (
     ? Omit<TProps, "as"> & ComponentProps<TComp> & { as?: ValidComponent }
     : TProps & { as?: ValidComponent }
   : never;
+
+export type HTMLAttributes<T extends ValidComponent> = Omit<
+  ComponentProps<T>,
+  keyof BaseProps
+> &
+  BaseProps;

@@ -1,5 +1,5 @@
 {
-  "$schema": "https://biomejs.dev/schemas/2.4.14/schema.json",
+  "$schema": "https://biomejs.dev/schemas/2.5.12/schema.json",
   "assist": {
     "actions": {
       "source": {
@@ -8,7 +8,7 @@
     }
   },
   "files": {
-    "includes": ["**", "!!**/*.css"]
+    "includes": ["**", "!!**/*.css", "!!**/*.svg", "!!src/ipc/bindings"]
   },
   "formatter": {
     "indentStyle": "space",
@@ -31,7 +31,8 @@
       "a11y": {
         "useKeyWithClickEvents": "off",
         "useSemanticElements": "off",
-        "noStaticElementInteractions": "off"
+        "noStaticElementInteractions": "off",
+        "noNoninteractiveElementToInteractiveRole": "off"
       },
       "performance": {
         "noDelete": "off"

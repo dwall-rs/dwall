@@ -1,1 +1,0 @@
-export { CarouselItem } from "./CarouselItem";

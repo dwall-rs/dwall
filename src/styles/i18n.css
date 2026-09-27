@@ -2,27 +2,27 @@
 
 /* ================================================================
    i18n-font.css
-   国际化字体 + 行高方案 · Tailwind v4
+   i18n font + line-height scheme · Tailwind v4
    ----------------------------------------------------------------
-   行高覆盖策略：
-     各语言在 Tailwind 原始比例基础上乘以缩放系数，
-     保留各字号档位之间的相对疏密关系，整体向上/下调整。
+   Line-height override strategy:
+     Each language multiplies Tailwind's original ratios by a scaling factor,
+     preserving the relative density between size steps while shifting everything up/down.
 
-   系数表：
-     拉丁           × 1.0    base → 1.5
-     西里尔         × 1.07   base → 1.6
-     CJK            × 1.2    base → 1.8
-     天城文/孟加拉  × 1.33   base → 2.0
-     泰文           × 1.47   base → 2.2
-     阿拉伯/波斯    × 1.2    base → 1.8
-     希伯来         × 1.13   base → 1.7
+   Factor table:
+     Latin              × 1.0    base → 1.5
+     Cyrillic           × 1.07   base → 1.6
+     CJK                × 1.2    base → 1.8
+     Devanagari/Bengali × 1.33   base → 2.0
+     Thai               × 1.47   base → 2.2
+     Arabic/Persian     × 1.2    base → 1.8
+     Hebrew             × 1.13   base → 1.7
    ================================================================ */
 
 /* ----------------------------------------------------------------
-   1. 字体 & 缩放系数 token
+   1. Fonts & scaling factor tokens
    ---------------------------------------------------------------- */
 @theme {
-    /* 字体 */
+    /* Fonts */
     --font-en: "Inter", system-ui, sans-serif;
     --font-ru: "Inter", "Noto Sans", "Segoe UI", sans-serif;
     --font-zh-hans:
@@ -37,10 +37,18 @@
     --font-bn: "Inter", "Noto Sans Bengali", "Vrinda", sans-serif;
     --font-ar: "Inter", "Noto Sans Arabic", "Tahoma", sans-serif;
     --font-he: "Inter", "Noto Sans Hebrew", "Arial Hebrew", sans-serif;
+    /* Latin/digits stay monospaced, but the default mono stack has no CJK glyphs —
+       fall back to the loaded Noto families (kept before `monospace`) for CJK and
+       other scripts so labels like "今日主题" don't fall back to an ugly font. */
+    --font-mono:
+        ui-monospace, "SFMono-Regular", Menlo, Consolas, "Liberation Mono",
+        "Noto Sans SC", "Noto Sans TC", "Noto Sans JP", "Noto Sans KR",
+        "Noto Sans Devanagari", "Noto Sans Thai", "Noto Sans Bengali",
+        "Noto Sans Arabic", "Noto Sans Hebrew", "Noto Sans", monospace;
 }
 
 /* ----------------------------------------------------------------
-   2. font-family 绑定
+   2. font-family bindings
    ---------------------------------------------------------------- */
 [data-lang="en"],
 [data-lang="fr"],
@@ -82,10 +90,10 @@
 }
 
 /* ----------------------------------------------------------------
-   3. 行高覆盖（Tailwind 原始比例 × 语言系数）
+   3. Line-height overrides (Tailwind original ratios × language factors)
    ---------------------------------------------------------------- */
 
-/* 拉丁（en / fr / de）× 1.0 */
+/* Latin (en / fr / de) × 1.0 */
 [data-lang="en"],
 [data-lang="fr"],
 [data-lang="de"] {
@@ -104,7 +112,7 @@
     --text-9xl--line-height: 1;
 }
 
-/* 西里尔（ru）× 1.07 */
+/* Cyrillic (ru) × 1.07 */
 [data-lang="ru"] {
     --text-xs--line-height: calc(1.07 / 0.75);
     --text-sm--line-height: calc(1.338 / 0.875);
@@ -121,7 +129,7 @@
     --text-9xl--line-height: 1.07;
 }
 
-/* CJK（zh-hans / zh-hant / ja / ko）× 1.2 */
+/* CJK (zh-hans / zh-hant / ja / ko) × 1.2 */
 [data-lang="zh-hans"],
 [data-lang="zh-hant"],
 [data-lang="ja"],
@@ -141,7 +149,7 @@
     --text-9xl--line-height: 1.2;
 }
 
-/* 天城文（hi）× 1.33 */
+/* Devanagari (hi) × 1.33 */
 [data-lang="hi"] {
     --text-xs--line-height: calc(1.33 / 0.75);
     --text-sm--line-height: calc(1.663 / 0.875);
@@ -158,7 +166,7 @@
     --text-9xl--line-height: 1.33;
 }
 
-/* 孟加拉文（bn）× 1.33 */
+/* Bengali (bn) × 1.33 */
 [data-lang="bn"] {
     --text-xs--line-height: calc(1.33 / 0.75);
     --text-sm--line-height: calc(1.663 / 0.875);
@@ -175,7 +183,7 @@
     --text-9xl--line-height: 1.33;
 }
 
-/* 泰文（th）× 1.47 */
+/* Thai (th) × 1.47 */
 [data-lang="th"] {
     --text-xs--line-height: calc(1.47 / 0.75);
     --text-sm--line-height: calc(1.837 / 0.875);
@@ -192,7 +200,7 @@
     --text-9xl--line-height: 1.47;
 }
 
-/* 阿拉伯文 & 波斯文（ar / fa）× 1.2 · RTL */
+/* Arabic & Persian (ar / fa) × 1.2 · RTL */
 [data-lang="ar"],
 [data-lang="fa"] {
     direction: rtl;
@@ -211,7 +219,7 @@
     --text-9xl--line-height: 1.2;
 }
 
-/* 希伯来文（he）× 1.13 · RTL */
+/* Hebrew (he) × 1.13 · RTL */
 [data-lang="he"] {
     direction: rtl;
     --text-xs--line-height: calc(1.13 / 0.75);

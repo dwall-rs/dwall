@@ -1,1 +1,0 @@
-export { ProgressValue } from "./ProgressValue";

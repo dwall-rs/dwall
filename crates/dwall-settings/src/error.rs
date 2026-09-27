@@ -1,9 +1,7 @@
 use dwall::RegistryError;
 use serde::{Serialize, Serializer};
 
-use crate::{
-    infrastructure::filesystem::directory::DirectoryMoveError, services::thumbnail::ThumbnailError,
-};
+use crate::{filesystem::DirectoryMoveError, thumbnail::ThumbnailError};
 
 pub type DwallSettingsResult<T, E = DwallSettingsError> = std::result::Result<T, E>;
 

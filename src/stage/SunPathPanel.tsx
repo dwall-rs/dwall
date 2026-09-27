@@ -1,0 +1,246 @@
+// Responsibility: Theme solar-path preview — the track is the real sun path for "observer position + today's date" (computed in Rust),
+//       with the theme's solar-angle entries overlaid on it as marker points only; the Y axis adapts to all nodes.
+import type { SolarPosition, Wallpaper } from "@/models/types";
+import { getSolarPath } from "@/ipc";
+import { t } from "@/i18n";
+import { settingsStore } from "@/store/settings.store";
+import { clsx, formatAngle } from "@/utils";
+import { createMemo, createResource, createSignal, For, Show } from "solid-js";
+import { themeStore } from "~/store/theme.store";
+import {
+  type AltitudeDomain,
+  Y_BOT,
+  altitudeDomain,
+  clampY,
+  type Point,
+  smoothPath,
+  xForAzimuth,
+  yForAltitude,
+} from "./sunPath";
+
+// Y_TOP leaves a band at the top for the info strip; Y_BOT leaves one at the bottom for the azimuth labels.
+const band = (alt: number) =>
+  alt < 0 ? "bg-muted-foreground" : alt < 20 ? "bg-(--warning)" : "bg-primary";
+
+interface Props {
+  wallpapers: Wallpaper[];
+  current: SolarPosition;
+  /** Position of the matched solar-angle entry within the array (not the image index) */
+  matchedEntry: number | null;
+  selIndex: number | null;
+  onSelect: (index: number | null) => void;
+}
+
+export function SunPathPanel(props: Props) {
+  const [hover, setHover] = createSignal<number | null>(null);
+
+  // Real sun path: recomputed as the observer's position changes (today's date).
+  const [path] = createResource(
+    () => settingsStore.config?.position_source,
+    (ps) => getSolarPath(ps, Math.floor(Date.now() / 1000)),
+  );
+
+  // Adaptive Y axis: anchored to the "real sun path" (theme-independent, so every theme sees the same track),
+  // covering the current position and the horizon (0)° with an 8% margin on both sides. Falls back to the theme's angles while the track is not loaded.
+  const domain = createMemo<AltitudeDomain>(() => {
+    const pathAlts = (path() ?? []).map((p) => p.altitude);
+    return altitudeDomain([
+      props.current.altitude,
+      0,
+      ...pathAlts,
+      ...(pathAlts.length === 0
+        ? props.wallpapers.map((w) => w.solar.altitude)
+        : []),
+    ]);
+  });
+  const Yp = (alt: number) => yForAltitude(alt, domain());
+  const hor = () => Yp(0);
+
+  const cx = createMemo(() => xForAzimuth(props.current.azimuth));
+  const cy = createMemo(() => Yp(props.current.altitude));
+
+  const matched = createMemo(() =>
+    props.matchedEntry != null
+      ? props.wallpapers[props.matchedEntry]
+      : undefined,
+  );
+
+  const track = createMemo(() =>
+    smoothPath(
+      (path() ?? []).map(
+        (p): Point => [xForAzimuth(p.azimuth), Yp(p.altitude)],
+      ),
+    ),
+  );
+
+  return (
+    <div class="mx-auto w-full max-w-155 shrink-0">
+      <div class="relative h-28 shrink-0 overflow-hidden rounded-xl border border-border bg-card shadow-[0_1px_2px_rgba(0,0,0,.05),0_6px_18px_rgba(0,0,0,.06)]">
+        <div
+          class={clsx(
+            "pointer-events-none absolute inset-x-0 top-0",
+            themeStore.resolved === "light" &&
+              "bg-[radial-gradient(120%_80%_at_50%_-10%,color-mix(in_oklch,var(--color-sky-500),transparent_5%),transparent_60%)]",
+          )}
+          style={{ height: `${hor()}%` }}
+        />
+
+        <svg
+          viewBox="0 0 100 100"
+          preserveAspectRatio="none"
+          class="absolute inset-0 h-full w-full"
+          aria-label={t("stage.sunPath")}
+        >
+          <defs>
+            <linearGradient id="spArc" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0" stop-color="var(--warning)" />
+              <stop offset=".5" stop-color="var(--success)" />
+              <stop offset="1" stop-color="var(--warning)" />
+            </linearGradient>
+            <linearGradient id="spGround" x1="0" y1="0" x2="0" y2="1">
+              <stop
+                offset="0"
+                stop-color="var(--muted-foreground)"
+                stop-opacity=".16"
+              />
+              <stop
+                offset="1"
+                stop-color="var(--muted-foreground)"
+                stop-opacity=".04"
+              />
+            </linearGradient>
+          </defs>
+
+          <Show when={track()}>
+            {(d) => (
+              <path
+                d={d()}
+                fill="none"
+                stroke="url(#spArc)"
+                stroke-width="1.5"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                opacity=".8"
+                vector-effect="non-scaling-stroke"
+              />
+            )}
+          </Show>
+          <rect
+            x="0"
+            y={hor()}
+            width="100"
+            height={100 - hor()}
+            fill="var(--card)"
+            opacity=".45"
+          />
+          <rect
+            x="0"
+            y={hor()}
+            width="100"
+            height={100 - hor()}
+            fill="url(#spGround)"
+          />
+          <line
+            x1="2"
+            x2="98"
+            y1={hor()}
+            y2={hor()}
+            stroke="var(--muted-foreground)"
+            stroke-opacity=".5"
+            vector-effect="non-scaling-stroke"
+          />
+          <Show when={matched()}>
+            {(m) => (
+              <line
+                x1={cx()}
+                y1={cy()}
+                x2={xForAzimuth(m().solar.azimuth)}
+                y2={clampY(m().solar.altitude, domain())}
+                stroke="var(--success)"
+                stroke-opacity=".55"
+                stroke-dasharray="3 4"
+                vector-effect="non-scaling-stroke"
+              />
+            )}
+          </Show>
+        </svg>
+
+        <For each={props.wallpapers}>
+          {(wp, i) => {
+            const sel = createMemo(() => wp.index === props.selIndex),
+              mat = createMemo(() => i() === props.matchedEntry),
+              hov = createMemo(() => i() === hover());
+            return (
+              <button
+                type="button"
+                title={`${t("stage.altitude")} ${formatAngle(wp.solar.altitude)}° · ${t("stage.azimuth")} ${formatAngle(wp.solar.azimuth)}°`}
+                onClick={() => props.onSelect(wp.index)}
+                onMouseEnter={() => setHover(i())}
+                onMouseLeave={() => setHover(null)}
+                style={{
+                  left: `${xForAzimuth(wp.solar.azimuth)}%`,
+                  top: `${clampY(wp.solar.altitude, domain())}%`,
+                }}
+                class={clsx(
+                  "absolute -translate-x-1/2 -translate-y-1/2 rounded-full ring-1 ring-card transition-all",
+                  band(wp.solar.altitude),
+                  hov() || sel() ? "size-2.5" : "size-1.75",
+                  (mat() || sel()) &&
+                    "shadow-[0_0_0_2px_var(--card),0_0_0_3.5px_var(--success)]",
+                )}
+              />
+            );
+          }}
+        </For>
+
+        <div
+          style={{ left: `${cx()}%`, top: `${cy()}%` }}
+          class={clsx(
+            "absolute size-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full ring-2 ring-card",
+            props.current.altitude < 0
+              ? "bg-muted-foreground shadow-[0_0_6px_var(--muted-foreground)]"
+              : "bg-warning shadow-[0_0_8px_var(--warning)]",
+          )}
+        />
+
+        {/* Horizon label: sits in the empty middle band (the track hangs high here, no path crosses it) */}
+        <span
+          class="absolute left-1/2 -translate-x-1/2 -translate-y-1/2 whitespace-nowrap rounded bg-card/75 px-1 py-px font-mono text-[9px] text-muted-foreground"
+          style={{ top: `${hor()}%` }}
+        >
+          {t("stage.horizon")}
+        </span>
+        <span
+          class="absolute left-2 -translate-y-1/2 whitespace-nowrap rounded bg-card/75 px-1 py-px font-mono text-[9px] text-muted-foreground"
+          style={{ top: `${Y_BOT}%` }}
+        >
+          {Math.round(domain().lo)}°
+        </span>
+        {[
+          { az: 90, label: t("stage.east"), anchor: "" },
+          { az: 180, label: t("stage.south"), anchor: "-translate-x-1/2" },
+          { az: 270, label: t("stage.west"), anchor: "-translate-x-full" },
+        ].map((m) => (
+          <span
+            class={clsx(
+              "absolute bottom-1 whitespace-nowrap font-mono text-[11px] text-muted-foreground",
+              m.anchor,
+            )}
+            style={{ left: `${xForAzimuth(m.az)}%` }}
+          >
+            {m.label}
+          </span>
+        ))}
+        <span class="absolute right-2 top-1.5 flex items-center gap-1 whitespace-nowrap rounded bg-card/75 px-1.5 py-0.5 font-mono text-[11px] text-muted-foreground backdrop-blur-sm">
+          <span class={props.current.altitude < 0 ? "" : "text-warning"}>
+            {props.current.altitude < 0 ? "☾" : "☀"}
+          </span>
+          <span class="text-foreground">
+            {props.current.altitude.toFixed(1)}° ·{" "}
+            {props.current.azimuth.toFixed(1)}°
+          </span>
+        </span>
+      </div>
+    </div>
+  );
+}

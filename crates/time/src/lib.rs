@@ -617,6 +617,7 @@ impl PartialOrd for OffsetDateTime {
     }
 }
 
+#[derive(Debug, Clone, Copy)]
 pub struct Date {
     year: u16,
     month: Month,
@@ -624,12 +625,55 @@ pub struct Date {
 }
 
 impl Date {
+    /// Create a new Date from year, month, day
+    pub fn new(year: u16, month: Month, day: u8) -> Self {
+        Self { year, month, day }
+    }
+
     pub fn with_hms(&self, hour: u8, minute: u8, second: u8) -> Result<OffsetDateTime> {
         let offset = Offset::local_offset();
 
         OffsetDateTime::new(
             self.year, self.month, self.day, hour, minute, second, offset,
         )
+    }
+
+    /// Get the year
+    pub fn year(&self) -> u16 {
+        self.year
+    }
+
+    /// Get the month
+    pub fn month(&self) -> Month {
+        self.month
+    }
+
+    /// Get the day
+    pub fn day(&self) -> u8 {
+        self.day
+    }
+}
+
+impl PartialEq for Date {
+    fn eq(&self, other: &Self) -> bool {
+        self.year == other.year && self.month == other.month && self.day == other.day
+    }
+}
+
+impl Eq for Date {}
+
+impl PartialOrd for Date {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for Date {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.year
+            .cmp(&other.year)
+            .then_with(|| self.month.cmp(&other.month))
+            .then_with(|| self.day.cmp(&other.day))
     }
 }
 

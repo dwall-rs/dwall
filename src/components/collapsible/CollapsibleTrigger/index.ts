@@ -1,1 +1,0 @@
-export { CollapsibleTrigger } from "./CollapsibleTrigger";

@@ -28,7 +28,7 @@ const newMirrorJSON = (text, mirror, filepath) => {
 const run = async () => {
   let text = process.env.TEXT;
 
-  // 删除开头和结尾的引号
+  // Strip the leading and trailing quotes
   if (text[0] === '"') {
     text = text.slice(1);
   }
@@ -38,11 +38,11 @@ const run = async () => {
   }
 
   text = text
-    .replace("\\n}", "}") // 处理结尾的换行
-    .replaceAll("\\n ", "\n") // 删除 notes 外的换行
-    .replaceAll(/\s{2,}/g, "") // 删除所有空白符
-    .replaceAll('\\"', '"') // 替换转义的双引号
-    .replaceAll("\\\\n", "\\n"); // 处理 notes 中的换行
+    .replace("\\n}", "}") // handle the trailing newline
+    .replaceAll("\\n ", "\n") // remove newlines outside notes
+    .replaceAll(/\s{2,}/g, "") // remove all whitespace
+    .replaceAll('\\"', '"') // replace escaped double quotes
+    .replaceAll("\\\\n", "\\n"); // handle newlines inside notes
 
   const currentDir = process.cwd();
   const targetDir = path.join(currentDir, "mirrors");
