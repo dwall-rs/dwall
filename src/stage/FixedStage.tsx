@@ -1,7 +1,7 @@
 // Responsibility: Fixed-mode stage orchestration — resolves the current theme (draft → config → first in the catalog), loads its wallpaper solar angles and the current solar position, and passes them to the pure presentation children.
 import { createMemo, createResource, Show } from "solid-js";
-import { themeById } from "@/domain/themes";
-import type { Wallpaper } from "@/domain/types";
+import { themeById } from "@/store/catalog.selectors";
+import type { Wallpaper } from "@/models/types";
 import { getThemeWallpapers, matchWallpaper } from "@/ipc";
 import { t } from "@/i18n";
 import {

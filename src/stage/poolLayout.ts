@@ -1,5 +1,5 @@
 // Responsibility: pure layout math for the random-mode pool collage (stable shuffle + full-bleed tiling). No reactivity/DOM.
-import type { Theme } from "@/domain/types";
+import type { Theme } from "@/models/types";
 
 export const COLS = 4;
 

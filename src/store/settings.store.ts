@@ -9,9 +9,9 @@ import type {
   PositionSourceAutomatic,
   PositionSourceManual,
   WallpaperMode,
-} from "@/domain/config";
-import type { Socks5 } from "@/domain/config";
-import { isSocks5 } from "@/domain/config";
+} from "@/models/config";
+import type { Socks5 } from "@/models/config";
+import { isSocks5 } from "@/models/config";
 import {
   applyTheme,
   moveDirectory,

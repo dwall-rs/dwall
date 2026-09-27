@@ -7,8 +7,7 @@ import {
   toggleApply,
   selectMon,
 } from "@/store/fixed.store";
-import { monitorById } from "@/domain/monitors";
-import { themeById } from "@/domain/themes";
+import { monitorById, themeById } from "@/store/catalog.selectors";
 import { clsx } from "@/utils";
 import { ThemeThumbnail } from "~/scene/ThemeThumbnail";
 import { Monitor } from "lucide-solid";

@@ -1,7 +1,7 @@
 // Responsibility: Per-item commit for fixed mode — "apply this set / stop" is fixed mode's "save": it writes the config + restarts the engine.
 import { Button } from "@/components/ui/button";
 import { isApplied, scopeKey, toggleApply } from "@/store/fixed.store";
-import { monitorById } from "@/domain/monitors";
+import { monitorById } from "@/store/catalog.selectors";
 import { t } from "@/i18n";
 import { ArrowRight, Square } from "lucide-solid";
 

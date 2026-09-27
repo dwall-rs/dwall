@@ -1,8 +1,7 @@
 // Responsibility: Right-column container; adds h-full so it fills the height in drawer form. Everything else unchanged.
 import { modeStore } from "@/store/mode.store";
 import { fixedStore } from "@/store/fixed.store";
-import { monitorById } from "@/domain/monitors";
-import { themeList } from "@/domain/themes";
+import { monitorById, themeList } from "@/store/catalog.selectors";
 import { t } from "@/i18n";
 import { ThemeTile } from "./ThemeTile";
 import { Search } from "lucide-solid";

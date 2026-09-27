@@ -1,6 +1,6 @@
 // Responsibility: appearance intent (mode) + resolved appearance (resolved) + persistence.
 //       "Auto follow system" = mode==='system'; no extra field is needed, avoiding cross-domain coupling with settings.
-import type { ResolvedTheme, ThemeMode } from "@/domain/types";
+import type { ResolvedTheme, ThemeMode } from "@/models/types";
 import { createStore } from "solid-js/store";
 
 const STORAGE_KEY = "theme-mode";

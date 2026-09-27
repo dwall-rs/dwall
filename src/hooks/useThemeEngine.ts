@@ -1,7 +1,7 @@
 // Responsibility: apply the appearance intent to data-theme; skip the transition when the value is unchanged, swallow AbortError, and keep StrictMode noise out.
 import { themeStore, setResolved } from "@/store/theme.store";
 import { createEffect } from "solid-js";
-import type { ResolvedTheme } from "~/domain/types";
+import type { ResolvedTheme } from "~/models/types";
 
 export function useThemeEngine() {
   let lastApplied: ResolvedTheme | null = null;

@@ -1,6 +1,6 @@
 // Responsibility: the wallpaper mode selected in the UI (fixed/random). Seeded from the config on load;
 // changing it only affects the UI until the user applies a theme/pool, which persists it to the config.
-import type { Mode } from "@/domain/types";
+import type { Mode } from "@/models/types";
 import { createStore } from "solid-js/store";
 
 interface ModeState {

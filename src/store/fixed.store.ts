@@ -2,8 +2,8 @@
 //               per-entry "apply/stop". Config is the source of truth: apply = write the draft into config.wallpaper_mode and restart the engine.
 import { createStore } from "solid-js/store";
 
-import type { Config, WallpaperMode } from "@/domain/config";
-import { configuredThemeId } from "@/domain/config";
+import type { Config, WallpaperMode } from "@/models/config";
+import { configuredThemeId } from "@/models/config";
 import { catalogStore } from "./catalog.store";
 import { engineStore } from "./engine.store";
 import { applyWallpaperMode, settingsStore } from "./settings.store";
@@ -54,9 +54,6 @@ const themeForMon = (monId: string): string | undefined =>
   fixedStore.monitorThemes[monId] ??
   configuredThemeId(settingsStore.config, monId) ??
   catalogStore.themes[0]?.id;
-
-/** Theme in effect for the current scope (draft → config → first entry in the catalog). */
-const currentThemeId = (): string | undefined => themeForMon(scopeKey());
 
 /** Whether this scope has been written into the config (regardless of whether the engine is running). */
 const isConfigured = (key: string): boolean => {
@@ -135,7 +132,6 @@ export {
   fixedStore,
   scopeKey,
   themeForMon,
-  currentThemeId,
   isApplied,
   toggleApply,
   toggleUnified,

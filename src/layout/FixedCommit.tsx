@@ -1,7 +1,6 @@
 // Responsibility: Fixed-mode commit view — shows only "scope + applied / not applied", with no save button (committing is done per-theme via apply/stop).
 import { fixedStore, isApplied, scopeKey } from "@/store/fixed.store";
-import { monitorById } from "@/domain/monitors";
-import { themeById } from "@/domain/themes";
+import { monitorById, themeById } from "@/store/catalog.selectors";
 import { t } from "@/i18n";
 import { clsx } from "@/utils";
 

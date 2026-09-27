@@ -1,6 +1,6 @@
 // Responsibility: Candidate-pool collage wall — reshuffles randomly when the pool changes and tiles the whole area; a prominent badge shows "today's theme".
 import { randomStore } from "@/store/random.store";
-import { themeList, themeById } from "@/domain/themes";
+import { themeList, themeById } from "@/store/catalog.selectors";
 import { t } from "@/i18n";
 import { getRandomSelection } from "@/ipc";
 import { createMemo, createResource, Show } from "solid-js";

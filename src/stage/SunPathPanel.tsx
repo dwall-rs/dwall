@@ -1,6 +1,6 @@
 // Responsibility: Theme solar-path preview — the track is the real sun path for "observer position + today's date" (computed in Rust),
 //       with the theme's solar-angle entries overlaid on it as marker points only; the Y axis adapts to all nodes.
-import type { SolarPosition, Wallpaper } from "@/domain/types";
+import type { SolarPosition, Wallpaper } from "@/models/types";
 import { getSolarPath } from "@/ipc";
 import { t } from "@/i18n";
 import { settingsStore } from "@/store/settings.store";

@@ -1,6 +1,6 @@
 // Responsibility: Fixed-mode scope panel — unified card + divider + individual monitor list.
 import { fixedStore } from "@/store/fixed.store";
-import { monitorList } from "@/domain/monitors";
+import { monitorList } from "@/store/catalog.selectors";
 import { t } from "@/i18n";
 import { UnifiedCard } from "./UnifiedCard";
 import { MonitorCard } from "./MonitorCard";

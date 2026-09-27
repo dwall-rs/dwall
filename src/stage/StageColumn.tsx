@@ -1,8 +1,7 @@
 // Responsibility: Center-column container — title follows the mode + renders the corresponding stage panel.
 import { modeStore } from "@/store/mode.store";
 import { scopeKey, themeForMon } from "@/store/fixed.store";
-import { monitorById } from "@/domain/monitors";
-import { themeById } from "@/domain/themes";
+import { monitorById, themeById } from "@/store/catalog.selectors";
 import { FixedStage } from "./FixedStage";
 import { RandomStage } from "./RandomStage";
 import { createMemo, Show } from "solid-js";

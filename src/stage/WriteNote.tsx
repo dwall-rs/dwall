@@ -1,6 +1,6 @@
 // Responsibility: Candidate-pool status bar for random mode — three states: empty (destructive) / dirty (warning) / normal (muted).
 import { randomStore, isDirty } from "@/store/random.store";
-import { themeList } from "@/domain/themes";
+import { themeList } from "@/store/catalog.selectors";
 import { t } from "@/i18n";
 import { clsx } from "@/utils";
 import { createMemo } from "solid-js";

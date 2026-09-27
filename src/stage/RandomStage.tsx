@@ -1,6 +1,6 @@
 // Responsibility: Random-mode stage orchestration — intro + pool status + summary + select all / clear all + collage or empty state. No sampling.
 import { randomStore, selectAll, clearAll } from "@/store/random.store";
-import { themeList } from "@/domain/themes";
+import { themeList } from "@/store/catalog.selectors";
 import { t } from "@/i18n";
 import { createMemo } from "solid-js";
 import { WriteNote } from "./WriteNote";

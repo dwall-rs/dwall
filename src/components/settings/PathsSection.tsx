@@ -10,7 +10,7 @@ import {
   setNetworkType,
   settingsStore,
 } from "@/store/settings.store";
-import { isSocks5 } from "@/domain/config";
+import { isSocks5 } from "@/models/config";
 import { t } from "@/i18n";
 import { openDir, pickDirectory } from "@/ipc";
 import { SettingsGroup } from "./SettingsGroup";

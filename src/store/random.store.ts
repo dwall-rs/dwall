@@ -1,7 +1,7 @@
 // Responsibility: random mode — candidate pool selection + saving to the config (write wallpaper_mode = Random and restart the engine).
 import { createStore } from "solid-js/store";
 
-import type { Config } from "@/domain/config";
+import type { Config } from "@/models/config";
 import { applyWallpaperMode } from "./settings.store";
 
 interface RandomState {

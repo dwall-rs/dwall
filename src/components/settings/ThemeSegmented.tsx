@@ -1,6 +1,6 @@
 // Responsibility: Appearance three-way segmented control (light/dark/system); the active state comes from the UI kit Tabs (data-active).
 import { themeStore, setMode } from "@/store/theme.store";
-import type { ThemeMode } from "@/domain/types";
+import type { ThemeMode } from "@/models/types";
 import { t } from "@/i18n";
 import { Monitor, Moon, Sun } from "lucide-solid";
 import { Tabs, TabsList, TabsTrigger } from "../ui/tabs";

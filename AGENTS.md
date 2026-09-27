@@ -120,6 +120,12 @@ bun run build   # release: vite build + daemon release + tauri bundle
 - **i18n** uses `@solid-primitives/i18n`. When adding UI strings, update every
   locale file under `src/i18n/` (`en-US`, `zh-CN`, `zh-HK`, `zh-TW`, `ja-JP`,
   `ko-KR`).
+- **Feature-first structure.** Organize UI by capability (`stage/`, `scope/`,
+  `library/`, `scene/`, `views/`, `layout/`, `components/settings/`); shared
+  infrastructure lives in `store/`, `hooks/`, `lib/`, `utils/`, `types/`.
+  `models/` holds only pure UI types and pure mapping helpers — no store, IPC,
+  or i18n access. Adapters that read stores belong in `store/` (e.g.
+  `store/catalog.selectors.ts`).
 
 ## Commits
 

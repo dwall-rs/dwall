@@ -1,5 +1,5 @@
 // Responsibility: view routing state — current view + theme-library drawer toggle. Switching to the settings view also collapses the drawer.
-import type { View } from "@/domain/types";
+import type { View } from "@/models/types";
 import { createStore } from "solid-js/store";
 
 interface UiState {

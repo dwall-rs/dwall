@@ -1,5 +1,5 @@
 // Responsibility: Main preview — rendered as a contained thumbnail, annotated with the solar position and whether it matches.
-import type { Wallpaper } from "@/domain/types";
+import type { Wallpaper } from "@/models/types";
 import { t } from "@/i18n";
 import { ThemeThumbnail } from "@/scene/ThemeThumbnail";
 import { formatAngle } from "@/utils";

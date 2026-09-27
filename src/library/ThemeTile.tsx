@@ -5,7 +5,7 @@ import { fixedStore, scopeKey, setMonitorTheme } from "@/store/fixed.store";
 import { randomStore, toggle } from "@/store/random.store";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { MQ_XL } from "@/lib/layout";
-import { themeById } from "@/domain/themes";
+import { themeById } from "@/store/catalog.selectors";
 import { clsx } from "@/utils";
 import { Check } from "lucide-solid";
 import { ThemeThumbnail } from "~/scene/ThemeThumbnail";
