@@ -1,4 +1,3 @@
-/* ===== src/components/views/Body.tsx ===== */
 // Responsibility: Switches between the main view and the settings view based on `view` (cross-fade).
 import { uiStore } from "@/store/ui.store";
 import { MainView } from "./MainView";

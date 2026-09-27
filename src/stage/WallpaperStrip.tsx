@@ -1,4 +1,3 @@
-/* ===== src/stage/WallpaperStrip.tsx ===== */
 // Responsibility: Wallpaper strip — variable count, fixed width; displayed as thumbnails annotated with their own solar position; matches are flagged prominently, click to select/deselect.
 import type { Wallpaper } from "@/domain/types";
 import { t } from "@/i18n";

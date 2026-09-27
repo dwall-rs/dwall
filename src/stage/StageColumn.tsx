@@ -1,4 +1,3 @@
-/* ===== src/components/stage/StageColumn.tsx ===== */
 // Responsibility: Center-column container — title follows the mode + renders the corresponding stage panel.
 import { uiStore } from "@/store/ui.store";
 import { fixedStore } from "@/store/fixed.store";

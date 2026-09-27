@@ -1,4 +1,3 @@
-/* ===== src/components/scope/FixedScope.tsx ===== */
 // Responsibility: Fixed-mode scope panel — unified card + divider + individual monitor list.
 import { fixedStore } from "@/store/fixed.store";
 import { monitorList } from "@/domain/monitors";

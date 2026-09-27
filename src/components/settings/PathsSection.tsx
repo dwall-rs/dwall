@@ -1,4 +1,3 @@
-/* ===== src/components/settings/PathsSection.tsx ===== */
 // Responsibility: Directories & download sources group — themes directory (select / migrate) + network (mirror template / SOCKS5).
 import { Button } from "@/components/ui/button";
 import {

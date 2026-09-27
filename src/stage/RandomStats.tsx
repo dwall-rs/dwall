@@ -1,4 +1,3 @@
-/* ===== src/components/stage/RandomStats.tsx ===== */
 // Responsibility: Read-only summary figures for random mode — candidate pool / range / target / period.
 import { randomStore } from "@/store/random.store";
 import { themeList } from "@/domain/themes";

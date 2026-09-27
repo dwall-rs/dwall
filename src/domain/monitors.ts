@@ -1,4 +1,3 @@
-/* ===== src/domain/monitors.ts ===== */
 // Responsibility: adapt the Rust monitor list (catalog.store) to the UI's monitor model.
 import { catalogStore } from "@/store/catalog.store";
 import { t } from "@/i18n";

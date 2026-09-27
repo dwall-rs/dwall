@@ -1,4 +1,3 @@
-/* ===== src/components/stage/PoolEmpty.tsx ===== */
 // Responsibility: Empty state for the candidate pool — guides the user to keep at least one set.
 
 import { t } from "@/i18n";

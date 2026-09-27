@@ -1,4 +1,3 @@
-/* ===== src/components/settings/AboutSection.tsx ===== */
 // Responsibility: About group — asymmetric layout (one large version block + a column of narrow link rows), breaking the default three-equal-card look.
 import { ChevronRight, Code, FileText } from "lucide-solid";
 import { createResource, type JSXElement } from "solid-js";

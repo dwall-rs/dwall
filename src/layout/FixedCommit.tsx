@@ -1,4 +1,3 @@
-/* ===== src/layout/FixedCommit.tsx ===== */
 // Responsibility: Fixed-mode commit view — shows only "scope + applied / not applied", with no save button (committing is done per-theme via apply/stop).
 import { fixedStore, isApplied } from "@/store/fixed.store";
 import { monitorById } from "@/domain/monitors";

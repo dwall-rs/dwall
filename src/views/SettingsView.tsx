@@ -1,4 +1,3 @@
-/* ===== src/components/views/SettingsView.tsx ===== */
 // Responsibility: Settings view — title + intro + the sections (each section keeps a single responsibility).
 import { AppearanceSection } from "@/components/settings/AppearanceSection";
 import { EngineSection } from "@/components/settings/EngineSection";

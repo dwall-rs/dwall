@@ -1,4 +1,3 @@
-/* ===== src/domain/types.ts ===== */
 // Responsibility: UI display types (business data is provided by Rust, see src/ipc).
 import type { SolarPosition } from "@/ipc/types";
 

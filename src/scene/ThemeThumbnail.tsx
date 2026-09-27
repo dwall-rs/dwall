@@ -1,4 +1,3 @@
-/* ===== src/scene/ThemeThumbnail.tsx ===== */
 // Responsibility: Theme thumbnail (through mirror + local cache), fetched by wallpaper index. Every thumbnail display goes through it.
 //       Note: loads thumbnails only (small), never the full-resolution wallpaper originals.
 import { createResource, type JSXElement } from "solid-js";

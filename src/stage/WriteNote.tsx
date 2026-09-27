@@ -1,4 +1,3 @@
-/* ===== src/stage/WriteNote.tsx ===== */
 // Responsibility: Candidate-pool status bar for random mode — three states: empty (destructive) / dirty (warning) / normal (muted).
 import { randomStore, isDirty } from "@/store/random.store";
 import { themeList } from "@/domain/themes";

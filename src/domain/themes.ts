@@ -1,4 +1,3 @@
-/* ===== src/domain/themes.ts ===== */
 // Responsibility: adapt the Rust theme catalog (catalog.store) to the UI theme model.
 import { catalogStore } from "@/store/catalog.store";
 import type { Theme } from "./types";

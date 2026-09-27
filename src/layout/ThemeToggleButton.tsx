@@ -1,4 +1,3 @@
-/* ===== src/layout/ThemeToggleButton.tsx ===== */
 // Responsibility: One-click appearance toggle in the top bar (light ⇄ dark); inverts the current resolved result to avoid dead clicks in the three-state cycle.
 import { themeStore, toggle } from "@/store/theme.store";
 import { t } from "@/i18n";

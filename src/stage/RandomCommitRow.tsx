@@ -1,4 +1,3 @@
-/* ===== src/stage/RandomCommitRow.tsx ===== */
 // Responsibility: Commit row for random mode — "save config / discard" is random mode's "apply": it writes the config + restarts the engine.
 import { Button } from "@/components/ui/button";
 import { t } from "@/i18n";

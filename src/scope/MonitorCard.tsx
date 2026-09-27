@@ -1,4 +1,3 @@
-/* ===== src/components/scope/MonitorCard.tsx ===== */
 // Responsibility: Single-monitor card; the whole card is disabled when allUnified (the enforcement point of the structural exclusion).
 import { Switch } from "@/components/ui/switch";
 import {

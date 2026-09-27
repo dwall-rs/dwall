@@ -1,4 +1,3 @@
-/* ===== src/components/scope/ScopeColumn.tsx ===== */
 // Responsibility: Left-column container — the monitor scope panel for fixed mode (random mode has no left column).
 import { t } from "@/i18n";
 import { FixedScope } from "./FixedScope";

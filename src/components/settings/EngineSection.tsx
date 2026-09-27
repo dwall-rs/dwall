@@ -1,4 +1,3 @@
-/* ===== src/components/settings/EngineSection.tsx ===== */
 // Responsibility: Engine & solar-angle matching group — launch at startup / check interval / coordinates (automatic or manual) / lock screen.
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";

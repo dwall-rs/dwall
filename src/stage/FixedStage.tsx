@@ -1,4 +1,3 @@
-/* ===== src/stage/FixedStage.tsx ===== */
 // Responsibility: Fixed-mode stage orchestration — resolves the current theme (draft → config → first in the catalog), loads its wallpaper solar angles and the current solar position, and passes them to the pure presentation children.
 import { createMemo, createResource, onCleanup, onMount, Show } from "solid-js";
 import { configuredThemeId } from "@/domain/config";

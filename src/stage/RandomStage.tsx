@@ -1,4 +1,3 @@
-/* ===== src/components/stage/RandomStage.tsx ===== */
 // Responsibility: Random-mode stage orchestration — intro + pool status + summary + select all / clear all + collage or empty state. No sampling.
 import { randomStore, selectAll, clearAll } from "@/store/random.store";
 import { themeList } from "@/domain/themes";

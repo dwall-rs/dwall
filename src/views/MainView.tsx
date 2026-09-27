@@ -1,4 +1,3 @@
-/* ===== src/components/views/MainView.tsx ===== */
 // Responsibility: Main-view grid tiers + theme library drawer/inline switching; the backdrop exists only at the smallest tier while expanded.
 //       Fixed mode: monitor scope + stage (+ theme library); random mode has no left column (the pool is edited in the theme library).
 import { uiStore, setLibOpen } from "@/store/ui.store";

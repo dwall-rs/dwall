@@ -1,4 +1,3 @@
-/* ===== src/stage/PoolCollage.tsx ===== */
 // Responsibility: Candidate-pool collage wall — reshuffles randomly when the pool changes and tiles the whole area; a prominent badge shows "today's theme".
 import { randomStore } from "@/store/random.store";
 import { themeList, themeById } from "@/domain/themes";

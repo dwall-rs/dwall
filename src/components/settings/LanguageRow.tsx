@@ -1,4 +1,3 @@
-/* ===== src/components/settings/LanguageRow.tsx ===== */
 // Responsibility: Language row — uses the shadcn Select, reading and writing the i18n locale directly.
 import {
   Select,

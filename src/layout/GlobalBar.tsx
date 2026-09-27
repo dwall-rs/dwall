@@ -1,4 +1,3 @@
-/* ===== src/components/layout/GlobalBar.tsx ===== */
 // Responsibility: Global bar orchestration; allows wrapping so it degrades gracefully at the smallest tier (flex-wrap), everything else unchanged.
 import { uiStore } from "@/store/ui.store";
 import { ModeToggle } from "./ModeToggle";

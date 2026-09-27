@@ -1,4 +1,3 @@
-/* ===== src/components/library/ThemeTile.tsx ===== */
 // Responsibility: A single theme tile; addition — at the smallest tier in fixed mode the drawer collapses automatically after selection so the stage feedback stays visible.
 import { uiStore, setLibOpen } from "@/store/ui.store";
 import { fixedStore, setMonitorTheme } from "@/store/fixed.store";

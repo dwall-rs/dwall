@@ -1,4 +1,3 @@
-/* ===== src/hooks/useMediaQuery.ts ===== */
 // Responsibility: subscribe to a media query and return a boolean; components use it for decisions that pure CSS cannot express (e.g. auto-closing a drawer).
 
 import { type Accessor, createEffect, createSignal } from "solid-js";

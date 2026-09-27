@@ -1,4 +1,3 @@
-/* ===== src/stage/ApplyRow.tsx ===== */
 // Responsibility: Per-item commit for fixed mode — "apply this set / stop" is fixed mode's "save": it writes the config + restarts the engine.
 import { Button } from "@/components/ui/button";
 import { fixedStore, isApplied, toggleApply } from "@/store/fixed.store";

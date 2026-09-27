@@ -1,4 +1,3 @@
-/* ===== src/lib/layout.ts ===== */
 // Responsibility: single source of truth for the layout system — minimum
 // window size + media query strings, so magic numbers don't scatter.
 export const MIN_WINDOW = { width: 1024, height: 640 } as const;

@@ -1,4 +1,3 @@
-/* ===== src/components/settings/UpdateCheck.tsx ===== */
 // Responsibility: Update check widget — idle / checking / up to date / update available / downloading / awaiting restart / failed.
 import { Match, Switch } from "solid-js";
 import { t } from "@/i18n";
