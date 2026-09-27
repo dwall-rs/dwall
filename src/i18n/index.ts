@@ -1,5 +1,7 @@
-import { createEffect, createMemo, createSignal } from "solid-js";
+import { createEffect, createMemo, createRoot, createSignal } from "solid-js";
 import * as i18n from "@solid-primitives/i18n";
+
+import { loadFonts } from "@/utils";
 
 import * as enUS from "./en-US";
 import * as zhCN from "./zh-CN";
@@ -21,7 +23,7 @@ export const LANGUAGES = {
   "ko-KR": "한국어",
 } as const satisfies Record<Locale, string>;
 
-/** 语言 → 字体/行高方案（对应 styles/i18n.css 的 [data-lang] 规则）。 */
+/** Locale → font/line-height scheme (matches the [data-lang] rules in styles/i18n.css). */
 const DATA_LANG = {
   "en-US": "en",
   "zh-CN": "zh-hans",
@@ -58,17 +60,24 @@ const getInitialLocale = (): Locale => {
 
 const [locale, setLocale] = createSignal<Locale>(getInitialLocale());
 
-const dict = createMemo(() => i18n.flatten(dictionaries[locale()]));
+// Module-level singleton: owned by createRoot so the memo/effect aren't created outside a reactive root.
+const dict = createRoot(() =>
+  createMemo(() => i18n.flatten(dictionaries[locale()])),
+);
 
 export const t = i18n.translator(dict, i18n.resolveTemplate);
 
-createEffect(() => {
-  const current = locale();
-  localStorage.setItem("locale", current);
-  const el = document.documentElement;
-  el.lang = current;
-  // 激活 styles/i18n.css 的 [data-lang] 字体/行高/书写方向规则
-  el.setAttribute("data-lang", DATA_LANG[current]);
+createRoot(() => {
+  createEffect(() => {
+    const current = locale();
+    localStorage.setItem("locale", current);
+    const el = document.documentElement;
+    el.lang = current;
+    // Activate the [data-lang] font/line-height/direction rules in styles/i18n.css
+    el.setAttribute("data-lang", DATA_LANG[current]);
+    // Load the Google Fonts family backing the active [data-lang] rules.
+    loadFonts([DATA_LANG[current]]);
+  });
 });
 
 export { locale, setLocale };
