@@ -1,6 +1,7 @@
 // Responsibility: Directories & download sources group — themes directory (select / migrate) + network (mirror template / SOCKS5).
 import { Button } from "@/components/ui/button";
 import {
+  changeThemesDirectory,
   type NetworkType,
   networkType,
   patch,
@@ -11,8 +12,7 @@ import {
 } from "@/store/settings.store";
 import { isSocks5 } from "@/domain/config";
 import { t } from "@/i18n";
-import { moveDirectory, openDir, pickDirectory } from "@/ipc";
-import { logger } from "@/utils";
+import { openDir, pickDirectory } from "@/ipc";
 import { SettingsGroup } from "./SettingsGroup";
 import { SettingsRow } from "./SettingsRow";
 import { createMemo, Match, Switch } from "solid-js";
@@ -33,8 +33,6 @@ import { Tabs, TabsList, TabsTrigger } from "../ui/tabs";
 import { Field, FieldGroup, FieldLabel } from "../ui/field";
 import { Input } from "../ui/input";
 
-const log = logger.child("paths");
-
 export function PathsSection() {
   const network = createMemo(networkType);
   const socks = createMemo(() => {
@@ -44,18 +42,7 @@ export function PathsSection() {
 
   const chooseDir = async () => {
     const dir = await pickDirectory();
-    if (!dir) return;
-
-    const current = settingsStore.config?.themes_directory;
-    try {
-      if (current && current !== dir) {
-        await moveDirectory(current, dir);
-      }
-      patch({ themes_directory: dir });
-      await save();
-    } catch (e) {
-      log.error("Failed to move themes directory", e);
-    }
+    if (dir) await changeThemesDirectory(dir);
   };
 
   return (

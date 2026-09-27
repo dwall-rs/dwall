@@ -12,9 +12,17 @@ import type {
 } from "@/domain/config";
 import type { Socks5 } from "@/domain/config";
 import { isSocks5 } from "@/domain/config";
-import { applyTheme, readConfigFile, writeConfigFile } from "@/ipc";
+import {
+  applyTheme,
+  moveDirectory,
+  readConfigFile,
+  writeConfigFile,
+} from "@/ipc";
+import { logger } from "@/utils";
 import { refresh as refreshEngine } from "./engine.store";
 import { setMode, themeStore } from "./theme.store";
+
+const log = logger.child("settings");
 
 type Status = "idle" | "loading" | "ready" | "error";
 
@@ -119,26 +127,6 @@ const patchSocks5 = (p: Partial<Socks5>) => {
   );
 };
 
-const setWallpaperModeType = (m: "fixed" | "random") => {
-  setSettingsStore("config", (prev) =>
-    prev
-      ? {
-          ...prev,
-          wallpaper_mode:
-            m === "fixed"
-              ? {
-                  mode: "fixed",
-                  monitor_specific_wallpapers:
-                    prev.wallpaper_mode.mode === "fixed"
-                      ? prev.wallpaper_mode.monitor_specific_wallpapers
-                      : {},
-                }
-              : { mode: "random", pool: null },
-        }
-      : {},
-  );
-};
-
 const save = async () => {
   if (!settingsStore.config || settingsStore.saving) return;
 
@@ -199,6 +187,20 @@ const discard = () =>
     s.saved ? { config: { ...s.saved }, saveError: null } : {},
   );
 
+/** Move the themes directory to `dir` (when it changed) and persist the config. */
+const changeThemesDirectory = async (dir: string) => {
+  try {
+    const current = settingsStore.config?.themes_directory;
+    if (current && current !== dir) {
+      await moveDirectory(current, dir);
+    }
+    patch({ themes_directory: dir });
+    await save();
+  } catch (e) {
+    log.error("Failed to move themes directory", e);
+  }
+};
+
 /** Derived dirty state: deep-compare the whole config. */
 const isConfigDirty = (s: SettingsState): boolean =>
   !!s.config &&
@@ -214,9 +216,9 @@ export {
   networkType,
   setNetworkType,
   patchSocks5,
-  setWallpaperModeType,
   save,
   applyWallpaperMode,
   discard,
   isConfigDirty,
+  changeThemesDirectory,
 };
