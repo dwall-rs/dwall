@@ -42,7 +42,7 @@ export function WallpaperStrip(props: Props) {
             >
               <ThemeThumbnail themeId={props.themeId} index={wp.index} />
               {matched && (
-                <span class="absolute inset-x-0 top-0 flex items-center justify-center gap-1 bg-success py-0.5 font-mono text-2.25 font-bold tracking-wide text-success-foreground">
+                <span class="absolute inset-x-0 top-0 flex items-center justify-center gap-1 bg-success py-0.5 font-mono text-[8.5px] font-bold tracking-wide text-success-foreground">
                   {t("stage.match")}
                 </span>
               )}

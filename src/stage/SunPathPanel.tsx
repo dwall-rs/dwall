@@ -196,42 +196,49 @@ export function SunPathPanel(props: Props) {
         <div
           style={{ left: `${cx()}%`, top: `${cy()}%` }}
           class={clsx(
-            "absolute size-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full",
+            "absolute size-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full ring-2 ring-card",
             props.current.altitude < 0
-              ? "bg-muted-foreground shadow-[0_0_10px_var(--muted-foreground)]"
-              : "bg-warning shadow-[0_0_12px_var(--warning)]",
+              ? "bg-muted-foreground shadow-[0_0_6px_var(--muted-foreground)]"
+              : "bg-warning shadow-[0_0_8px_var(--warning)]",
           )}
         />
 
-        {/* Horizon label: placed in the empty middle band (the track hangs high here, no path crosses it) */}
+        {/* Horizon label: sits in the empty middle band (the track hangs high here, no path crosses it) */}
         <span
-          class="absolute left-1/2 -translate-x-1/2 -translate-y-1/2 rounded bg-card/70 px-1 font-mono text-[8px] text-muted-foreground"
+          class="absolute left-1/2 -translate-x-1/2 -translate-y-1/2 whitespace-nowrap rounded bg-card/75 px-1 py-px font-mono text-[9px] text-muted-foreground"
           style={{ top: `${hor()}%` }}
         >
           {t("stage.horizon")}
         </span>
         <span
-          class="absolute left-2 -translate-y-1/2 font-mono text-[8px] text-muted-foreground"
+          class="absolute left-2 -translate-y-1/2 whitespace-nowrap rounded bg-card/75 px-1 py-px font-mono text-[9px] text-muted-foreground"
           style={{ top: `${Y_BOT}%` }}
         >
           {Math.round(domain().lo)}°
         </span>
         {[
-          { az: 90, label: t("stage.east") },
-          { az: 180, label: t("stage.south") },
-          { az: 270, label: t("stage.west") },
+          { az: 90, label: t("stage.east"), anchor: "" },
+          { az: 180, label: t("stage.south"), anchor: "-translate-x-1/2" },
+          { az: 270, label: t("stage.west"), anchor: "-translate-x-full" },
         ].map((m) => (
           <span
-            class="absolute bottom-1 -translate-x-1/2 font-mono text-2.25 text-muted-foreground"
+            class={clsx(
+              "absolute bottom-1 whitespace-nowrap font-mono text-[11px] text-muted-foreground",
+              m.anchor,
+            )}
             style={{ left: `${xForAzimuth(m.az)}%` }}
           >
             {m.label}
           </span>
         ))}
-        <span class="absolute right-2 top-1.5 font-mono text-2.25 text-muted-foreground">
-          {props.current.altitude < 0 ? "☾" : "☀"}{" "}
-          {formatAngle(props.current.altitude)}° ·{" "}
-          {formatAngle(props.current.azimuth)}°
+        <span class="absolute right-2 top-1.5 flex items-center gap-1 whitespace-nowrap rounded bg-card/75 px-1.5 py-0.5 font-mono text-[11px] text-muted-foreground backdrop-blur-sm">
+          <span class={props.current.altitude < 0 ? "" : "text-warning"}>
+            {props.current.altitude < 0 ? "☾" : "☀"}
+          </span>
+          <span class="text-foreground">
+            {props.current.altitude.toFixed(1)}° ·{" "}
+            {props.current.azimuth.toFixed(1)}°
+          </span>
         </span>
       </div>
     </div>
