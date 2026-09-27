@@ -21,7 +21,7 @@ export function EngineButton() {
         </Button>
       }
     >
-      <Button variant="outline" size="sm" onClick={toggle}>
+      <Button variant="destructive" size="sm" onClick={toggle}>
         <Show when={!engineStore.pending}>
           <Square class="size-3 fill-current" />
         </Show>
