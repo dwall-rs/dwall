@@ -5,10 +5,10 @@ import {
   size,
   hide,
   containingBlockOffset,
+  getViewportBoundary,
   type Middleware,
   type Placement,
 } from "~/lib";
-import { getViewportBoundary } from "~/lib/positioner/utils/dom";
 import type { SelectOptionValue } from "../Select/Select.types";
 
 /** Match the overlay width to the trigger — no coordinate changes, it just passes the reference width up to be used as style.width */

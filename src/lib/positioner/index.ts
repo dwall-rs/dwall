@@ -16,6 +16,8 @@ export type { AutoUpdateOptions } from "./auto-update";
 export { createVirtualElement } from "./virtual-element";
 export type { PointOptions } from "./virtual-element";
 
+export { getViewportBoundary } from "./utils/dom";
+
 export {
   offset,
   shift,
