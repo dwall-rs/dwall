@@ -37,6 +37,14 @@
     --font-bn: "Inter", "Noto Sans Bengali", "Vrinda", sans-serif;
     --font-ar: "Inter", "Noto Sans Arabic", "Tahoma", sans-serif;
     --font-he: "Inter", "Noto Sans Hebrew", "Arial Hebrew", sans-serif;
+    /* Latin/digits stay monospaced, but the default mono stack has no CJK glyphs —
+       fall back to the loaded Noto families (kept before `monospace`) for CJK and
+       other scripts so labels like "今日主题" don't fall back to an ugly font. */
+    --font-mono:
+        ui-monospace, "SFMono-Regular", Menlo, Consolas, "Liberation Mono",
+        "Noto Sans SC", "Noto Sans TC", "Noto Sans JP", "Noto Sans KR",
+        "Noto Sans Devanagari", "Noto Sans Thai", "Noto Sans Bengali",
+        "Noto Sans Arabic", "Noto Sans Hebrew", "Noto Sans", monospace;
 }
 
 /* ----------------------------------------------------------------
