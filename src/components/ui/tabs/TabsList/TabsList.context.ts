@@ -1,7 +1,7 @@
 import { createContext, useContext } from "solid-js";
 
 interface TabsListContextValue {
-  /** 聚焦是否激活 tab(base-ui 语义,默认 false:聚焦只高亮,点击才激活) */
+  /** Whether focusing activates the tab (base-ui semantics, default false: focus only highlights, click activates) */
   activateOnFocus: boolean;
 }
 

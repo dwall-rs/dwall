@@ -1,4 +1,4 @@
-// 职责：顶栏右侧按钮排布；新增「主题库抽屉」开关，仅在最小档（<xl）可见。
+// Responsibility: Button layout on the right of the top bar; adds the "theme library drawer" toggle, visible only at the smallest tier (<xl).
 import { uiStore, toggleLib } from "@/store/ui.store";
 import { t } from "@/i18n";
 import {
@@ -17,7 +17,7 @@ export function RightCluster() {
 
   return (
     <div class="ml-auto flex items-center gap-2.5">
-      {/* 最小档：主题库收为抽屉，用此按钮展开/收起；xl+ 隐藏（库已内联） */}
+      {/* Smallest tier: the theme library collapses into a drawer, expanded/collapsed by this button; hidden at xl+ (the library is inline) */}
       <Tooltip>
         <TooltipTrigger
           aria-label={libLabel()}

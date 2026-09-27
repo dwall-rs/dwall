@@ -91,14 +91,14 @@ export function Toast(props: ToastProps) {
     setTimeout(() => local.onRemove(toast().id), EXIT_ANIMATION_MS);
   };
 
-  // 外部 dismiss：把 delete 标记转换成退场动画
+  // External dismiss: turn the delete flag into an exit animation
   createEffect(() => {
     if (toast().delete && animationState() === "open") {
       close();
     }
   });
 
-  // 自动关闭计时器
+  // Auto-close timer
   createEffect(() => {
     const current = toast();
     if (

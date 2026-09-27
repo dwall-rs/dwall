@@ -1,5 +1,5 @@
 /* ===== src/components/settings/LanguageRow.tsx ===== */
-// 职责：语言行——用 shadcn Select，直接读写 i18n 的 locale。
+// Responsibility: Language row — uses the shadcn Select, reading and writing the i18n locale directly.
 import {
   Select,
   SelectContent,

@@ -119,7 +119,7 @@ impl ThumbnailCache {
             debug!(image_path = %image_path.display(), "Image already cached");
             image_path
         } else {
-            // 清掉可能残留的空/损坏文件，避免被误判为已缓存
+            // Remove any leftover empty/corrupt file so it is not mistaken for a cached image
             if image_path.exists() {
                 let _ = tokio::fs::remove_file(&image_path).await;
             }

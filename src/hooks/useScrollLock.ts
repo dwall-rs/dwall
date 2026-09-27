@@ -2,28 +2,28 @@ import { createEffect, onCleanup, type Accessor } from "solid-js";
 
 export interface UseScrollLockOptions {
   /**
-   * 允许在锁滚动期间继续滚动的容器选择器(通常是浮层自身)。
-   * 未命中该选择器的滚轮/触摸滚动会被拦截;不传则整个页面都锁定滚动。
+   * Selector of a container that may keep scrolling while the lock is held (usually the overlay itself).
+   * Wheel/touch scrolling that misses this selector is blocked; omit it to lock scrolling for the whole page.
    */
   allowedSelector?: string;
 }
 
-// 多个浮层/嵌套浮层可能同时持锁,用计数避免其中一个关闭就提前恢复页面滚动。
+// Multiple overlays/nested overlays may hold the lock at once; a counter keeps one closing from restoring page scrolling early.
 let lockCount = 0;
 let release: (() => void) | undefined;
-// 各持锁浮层允许滚动的容器选择器。preventScroll 读取的是实时集合,
-// 因此即使某个选择器在锁生效之后才加入,也能立即对它放行。
+// Selectors of the containers each locked overlay allows scrolling in. preventScroll reads this live set,
+// so a selector added after the lock takes effect is honored immediately.
 const allowedSelectors = new Set<string>();
 
-/** 元素自身是否建立了滚动容器(与 positioner 里的判断口径一致) */
+/** Whether the element itself establishes a scroll container (same criterion as in the positioner) */
 function isOverflowElement(el: Element): boolean {
   const { overflow, overflowX, overflowY } = getComputedStyle(el);
   return /auto|scroll|overlay|hidden/.test(overflow + overflowX + overflowY);
 }
 
 /**
- * 页面的滚动容器:html 自己建立了滚动上下文时锁 html,否则锁 body
- * ——把 overflow 写在另一个元素上并不会锁住页面(Base UI 同样的判断)。
+ * The page's scroll container: lock html when html itself establishes a scroll context, otherwise lock body
+ * — putting overflow on some other element does not lock the page (Base UI makes the same check).
  */
 function getViewportScroller(): HTMLElement {
   const html = document.documentElement;
@@ -60,11 +60,11 @@ function lockViewport(): () => void {
     scrollLeft: scroller.scrollLeft,
   };
 
-  // 抵消滚动条消失带来的横向抖动:能用 scrollbar-gutter 就用它,
-  // 否则退化成给 body 补一个滚动条宽度的右内边距。
-  // 只有页面自身真的存在占位滚动条时才需要补偿:滚动条长在某个嵌套容器上时,
-  // 锁 html/body 并不会移除那条滚动条,再给 html 加 gutter 只会额外多出一条空白
-  // (滚动条 + gutter 双倍宽度),反而破坏布局。
+  // Offset the horizontal jitter caused by the scrollbar disappearing: use scrollbar-gutter when available,
+  // otherwise fall back to padding body's right side by the scrollbar width.
+  // Compensate only when the page itself really has a placeholder scrollbar: when the scrollbar belongs to a
+  // nested container, locking html/body does not remove it, and adding a gutter to html would only insert
+  // extra blank space (scrollbar + gutter = double width), breaking the layout instead.
   const scrollbarWidth = Math.max(0, window.innerWidth - html.clientWidth);
   const gutterSupported = supportsStableScrollbarGutter();
   if (scrollbarWidth > 0) {
@@ -80,8 +80,8 @@ function lockViewport(): () => void {
   scroller.style.overflowX = "hidden";
   scroller.style.overflowY = "hidden";
 
-  // 兜底:部分浏览器即使 overflow:hidden 仍能被滚轮/触摸滚动,
-  // 因此直接拦截浮层之外的滚动事件;浮层内部(命中 allowedSelector)保留滚动能力。
+  // Fallback: some browsers still allow wheel/touch scrolling despite overflow:hidden,
+  // so scroll events outside the overlay are intercepted; inside (matching allowedSelector) scrolling stays possible.
   const preventScroll = (event: Event) => {
     if (isWithinAllowedScroll(event.target)) return;
     event.preventDefault();
@@ -116,18 +116,19 @@ function acquireLock(allowedSelector?: string): () => void {
     if (lockCount === 0) {
       release?.();
       release = undefined;
-      // 全部释放后清空放行名单,避免残留的选择器影响下一次锁。
+      // Clear the allowlist once everything is released so leftover selectors do not affect the next lock.
       allowedSelectors.clear();
     }
   };
 }
 
 /**
- * 浮层打开时锁定页面滚动,关闭后恢复——对齐 Base UI 的 modal 行为
- * (文档滚动被锁定、浮层之外的滚轮/触摸滚动被拦截),避免浮窗锚点随页面滚动而"飘移"。
+ * Lock page scrolling while an overlay is open and restore it on close — matching Base UI's modal behavior
+ * (document scroll locked, wheel/touch scrolling outside the overlay intercepted), so floating anchors do not
+ * "drift" along with the page.
  *
- * 多个浮层可同时持锁(引用计数);`allowedSelector` 命中的容器内仍可滚动,
- * 通常传入浮层自身,例如 Popover 传 `[data-slot="popover-content"]`。
+ * Multiple overlays may hold the lock at once (reference counted); containers matching `allowedSelector`
+ * remain scrollable, usually the overlay itself — e.g. Popover passes `[data-slot="popover-content"]`.
  */
 export function useScrollLock(
   locked: Accessor<boolean>,

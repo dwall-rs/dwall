@@ -1,4 +1,4 @@
-// 职责：右栏容器；补 h-full 以在抽屉形态下撑满高度。其余不变。
+// Responsibility: Right-column container; adds h-full so it fills the height in drawer form. Everything else unchanged.
 import { uiStore } from "@/store/ui.store";
 import { fixedStore } from "@/store/fixed.store";
 import { monitorById } from "@/domain/monitors";

@@ -11,13 +11,13 @@ import type { TabsValue } from "./Tabs.types";
 
 interface TriggerEntry {
   value: TabsValue;
-  /** accessor,支持运行时 disabled 翻转 */
+  /** accessor, supports runtime disabled flips */
   disabled: () => boolean;
   element: HTMLElement;
 }
 
 export interface TabsContextValue {
-  /** 当前激活值(受控优先,否则内部状态) */
+  /** Current activated value (controlled takes precedence, else internal state) */
   value: Accessor<TabsValue | undefined>;
   setValue: (value: TabsValue) => void;
   isSelected: (value: TabsValue) => boolean;
@@ -25,21 +25,22 @@ export interface TabsContextValue {
   dir: Accessor<"ltr" | "rtl" | "auto">;
   loop: Accessor<boolean>;
   /**
-   * 当前焦点高亮 tab,与激活值分离:
-   * 默认(activateOnFocus=false)聚焦/键盘导航只更新高亮,不激活;
-   * 激活只发生在点击(click)时。与 base-ui 的 highlighted/active 语义一致。
+   * The currently focused/highlighted tab, separate from the activated value:
+   * by default (activateOnFocus=false) focus/keyboard navigation only moves
+   * the highlight, never activates; activation happens only on click.
+   * Matches base-ui's highlighted/active semantics.
    */
   highlightedValue: Accessor<TabsValue | undefined>;
   setHighlightedValue: (value: TabsValue) => void;
-  /** 按挂载顺序注册 trigger,返回注销函数;仅用于渲染期推导与键盘导航 */
+  /** Register a trigger in mount order, returning a deregistration function; used only for render-time derivation and keyboard navigation */
   registerTrigger: (entry: TriggerEntry) => () => void;
-  /** 已注册的 trigger 列表(挂载顺序) */
+  /** Registered trigger list (mount order) */
   getTriggers: () => TriggerEntry[];
-  /** 无高亮时,该 value 是否为第一个可用 trigger(键盘 tabindex 起点) */
+  /** With no highlight, whether this value is the first usable trigger (the keyboard tabindex starting point) */
   isFirstEnabled: (value: TabsValue) => boolean;
-  /** 该 value 对应的 trigger 当前是否可用(已注册且未 disabled) */
+  /** Whether the trigger for this value is currently usable (registered and not disabled) */
   isUsable: (value: TabsValue) => boolean;
-  /** value -> triggerId / contentId 交叉注册,供 aria-controls / aria-labelledby 使用 */
+  /** Cross-registration of value -> triggerId / contentId, for aria-controls / aria-labelledby */
   setTriggerId: (value: TabsValue, id: string) => void;
   getTriggerId: (value: TabsValue) => string | undefined;
   setContentId: (value: TabsValue, id: string) => void;
@@ -70,11 +71,11 @@ export function TabsProvider(
     content: Record<string, string>;
   }>({ trigger: {}, content: {} });
 
-  // 受控优先:props.value 存在时读外部值,否则读内部状态
+  // Controlled takes precedence: read the external value when props.value is present, otherwise internal state
   const value = (): TabsValue | undefined => props.value ?? internalValue();
 
   const setValue = (next: TabsValue) => {
-    // 受控模式:只通知外部,不改本地状态
+    // Controlled mode: only notify the outside, never touch local state
     if (props.value !== undefined) {
       props.onValueChange?.(next);
       return;
@@ -85,8 +86,9 @@ export function TabsProvider(
 
   const isSelected = (v: TabsValue) => value() === v;
 
-  // 对齐 base-ui:激活值变化时,若焦点不在 tab 上,将高亮同步到激活 tab
-  // (键盘 roving focus 过程中不覆盖,保持相对当前位置导航)
+  // Align with base-ui: when the activated value changes while focus is not on
+  // a tab, sync the highlight to the active tab (not overridden during keyboard
+  // roving focus, preserving navigation relative to the current position)
   createEffect(() => {
     const current = value();
     if (current === undefined) return;

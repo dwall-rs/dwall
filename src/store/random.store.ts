@@ -1,13 +1,13 @@
-// 职责：随机模式——候选池勾选 + 保存到配置（写 wallpaper_mode = Random 并重启引擎）。
+// Responsibility: random mode — candidate pool selection + saving to the config (write wallpaper_mode = Random and restart the engine).
 import { createStore } from "solid-js/store";
 
 import type { Config } from "@/domain/config";
 import { applyWallpaperMode } from "./settings.store";
 
 interface RandomState {
-  selected: string[]; // 当前勾选（= 候选池）
-  saved: string[]; // 配置快照
-  applied: boolean; // 配置里的 wallpaper_mode 是否已是 Random
+  selected: string[]; // current selection (= the candidate pool)
+  saved: string[]; // config snapshot
+  applied: boolean; // whether wallpaper_mode in the config is already Random
   saving: boolean;
   savedAt: number | null;
 }
@@ -20,11 +20,11 @@ const [randomStore, setRandomStore] = createStore<RandomState>({
   savedAt: null,
 });
 
-/** 用配置初始化候选池（配置 + 主题目录加载后调用）。 */
+/** Seed the candidate pool from the config (called once config + theme catalog are loaded). */
 const syncFromConfig = (config: Config | null, allIds: string[]) => {
   const mode = config?.wallpaper_mode;
   const pool = mode?.mode === "random" ? mode.pool : null;
-  // 配置里的池是真值源；剔除已不在目录中的（已卸载）主题 id。
+  // The pool in the config is the source of truth; drop theme ids no longer in the catalog (uninstalled).
   const selected = pool ? pool.filter((id) => allIds.includes(id)) : allIds;
   setRandomStore({
     selected: [...selected],
@@ -40,10 +40,10 @@ const toggle = (id: string) =>
     s.includes(id) ? s.filter((x) => x !== id) : [...s, id],
   );
 
-/** 全选（把候选池设为给定的全部主题 id）。 */
+/** Select all (set the pool to every given theme id). */
 const selectAll = (ids: string[]) => setRandomStore("selected", [...ids]);
 
-/** 取消全选（清空候选池）。 */
+/** Deselect all (empty the pool). */
 const clearAll = () => setRandomStore("selected", []);
 
 const save = async () => {
@@ -68,7 +68,7 @@ const save = async () => {
 
 const discard = () => setRandomStore("selected", [...randomStore.saved]);
 
-/** 派生：是否存在未保存改动（未应用随机模式，或候选池集合变化）。 */
+/** Derived: whether unsaved changes exist (random mode not applied, or the pool set changed). */
 const isDirty = (s: RandomState): boolean => {
   if (!s.applied) return true;
   if (s.selected.length !== s.saved.length) return true;

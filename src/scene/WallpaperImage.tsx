@@ -1,4 +1,4 @@
-// 职责：壁纸图片（本地文件）。path 为空时显示占位（可自定义）。
+// Responsibility: Wallpaper image (local file). Shows a placeholder when path is empty (customizable).
 import { Show, type JSXElement } from "solid-js";
 import { assetUrl } from "@/ipc";
 import { clsx } from "@/utils";

@@ -1,5 +1,5 @@
 /* ===== src/components/layout/GlobalBar.tsx ===== */
-// 职责：全局条编排；允许换行以在最小档优雅降级（flex-wrap），其余不变。
+// Responsibility: Global bar orchestration; allows wrapping so it degrades gracefully at the smallest tier (flex-wrap), everything else unchanged.
 import { uiStore } from "@/store/ui.store";
 import { ModeToggle } from "./ModeToggle";
 import { EngineStatus } from "./EngineStatus";

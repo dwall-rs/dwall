@@ -1,5 +1,5 @@
-// 职责：设置分组容器——图标 + 标题 + 卡片槽；纯展示，stagger 入场。
-//       注意：不解构 props（Solid 中解构会丢失响应性，语言切换等无法更新）。
+// Responsibility: Settings group container — icon + title + card slot; pure presentation, staggered entrance.
+//       Note: do not destructure props (in Solid, destructuring loses reactivity, so language switches etc. cannot update).
 
 import type { JSXElement } from "solid-js";
 

@@ -1,5 +1,5 @@
 /* ===== src/components/settings/EngineSection.tsx ===== */
-// 职责：引擎与太阳角匹配分组——开机/检查间隔/坐标（自动或手动）/锁屏。
+// Responsibility: Engine & solar-angle matching group — launch at startup / check interval / coordinates (automatic or manual) / lock screen.
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import {

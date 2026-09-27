@@ -22,29 +22,33 @@ function establishesContainingBlock(style: CSSStyleDeclaration): boolean {
 }
 
 /**
- * 修正因祖先元素设置了 transform / filter / perspective / backdrop-filter /
- * will-change / contain 等 CSS 属性，导致 position:fixed（部分情况下
- * position:absolute 也一样）的包含块被从“视口”重新定义成该祖先自身，
- * 从而让按视口坐标算出来的 x/y 出现系统性偏移的问题。
+ * Fixes the systematic x/y offset caused when an ancestor sets CSS properties
+ * like transform / filter / perspective / backdrop-filter / will-change /
+ * contain, which redefine the containing block of position:fixed (and some-
+ * times position:absolute) from the "viewport" to that ancestor itself.
  *
- * 典型症状：demo 页面里定位完全正常，放进真实项目（尤其是大量使用
- * transform 做拖拽/缩放/面板动画的应用，比如设计工具、看板、画布编辑器）
- * 后，浮层整体固定偏移某个方向，但相对位置关系（比如箭头跟着内容一起偏）
- * 保持不变——这正是“坐标系被祖先重新定义”而不是“定位算法算错了”的特征。
+ * Typical symptom: positioning works fine in a demo page, but in a real
+ * project (especially apps that use transform heavily for drag/zoom/panel
+ * animations — design tools, kanban boards, canvas editors) the whole
+ * floating layer is offset in one direction while relative relationships
+ * (e.g. the arrow shifting with the content) stay intact — the signature of
+ * "the coordinate system was redefined by an ancestor", not a wrong algorithm.
  *
- * 原理：从 floating 元素实际的 DOM 父节点开始向上查找，找到第一个会重新
- * 定义包含块的祖先，用它的 getBoundingClientRect() 反推出这个“意外包含块”
- * 相对视口的偏移量，从最终坐标里减掉，抵消这个偏移。
+ * Principle: walk up from the floating's actual DOM parent, find the first
+ * ancestor that redefines the containing block, derive that "accidental
+ * containing block"'s viewport offset from its getBoundingClientRect(),
+ * and subtract it from the final coordinates to cancel the shift.
  *
- * 局限：只处理纯平移类的偏移（比如 translate、面板展开动画、GPU 加速常见的
- * translateZ(0)）。如果那个祖先同时还做了 scale/rotate，这里不会做矩阵换算，
- * 位置依然会有偏差——遇到这种情况，更彻底的办法是让 Portal 挂载点脱离那个
- * 祖先（比如手动把挂载点换成真正不受影响的 document.body，而不是应用内部
- * 某个嵌套很深的容器）。
+ * Limitation: only pure translation offsets are handled (e.g. translate,
+ * panel expand animations, the common GPU-acceleration translateZ(0)). If
+ * that ancestor also applies scale/rotate, no matrix conversion is done and
+ * the position will still be off — the more thorough fix is to move the
+ * Portal mount point out from under that ancestor (e.g. manually switch to a
+ * truly unaffected document.body rather than a deeply nested app container).
  *
- * 建议放在 middleware 数组的最后一位——它修正的是“最终要写进 DOM 的坐标”，
- * 前面 offset/flip/shift/size/arrow 等都在统一的视口坐标系里计算，不受影响，
- * 只有真正落地前的这一步需要额外修正。
+ * Put it last in the middleware array — it corrects the coordinates that
+ * finally land in the DOM; preceding offset/flip/shift/size/arrow all compute
+ * in a unified viewport coordinate system, so only this final step needs it.
  */
 export function containingBlockOffset(): Middleware {
   return {

@@ -1,54 +1,58 @@
 /**
- * 极简日志库
+ * Minimal logging library
  *
- * 两套 API，按场景选用：
+ * Two APIs, pick by scenario:
  *
- * 1. logger.debug/info/warn/error —— 精确行号版
- *    直接 bind 原生 console 方法，浏览器控制台会指向真实的业务代码调用行，
- *    可点击跳转。生产环境（import.meta.env.DEV === false）自动变成空函数，
- *    构建时会被死代码消除，几乎不占体积、不产生开销。
- *    适合：普通业务日志，调用频率不高。
+ * 1. logger.debug/info/warn/error — exact line numbers
+ *    Binds the native console methods directly, so the browser console points at the
+ *    real business-code call line and can be clicked to jump there. In production
+ *    (import.meta.env.DEV === false) they become no-ops, eliminated as dead code at
+ *    build time: negligible size cost, no runtime overhead.
+ *    Suitable for: ordinary business logs, not called frequently.
  *
- * 2. logger.hot(tag) —— 高频热路径版
- *    用于循环内部、高频事件回调等会产生大量日志的场景。
- *    牺牲了精确行号（控制台里显示的是 hot() 内部位置，但会带上 tag 前缀
- *    方便定位），换取：
- *      - 节流：同一个 tag 在 windowMs 毫秒内最多真正输出 maxPerWindow 条，
- *        超出的直接丢弃，窗口结束时输出一条"跳过了 N 条"的汇总，避免刷屏和阻塞主线程。
- *      - 参数惰性求值：可以传函数作为参数，只有真正要输出时才会执行，
- *        被节流丢弃的调用不会白白付出字符串拼接 / JSON.stringify 等开销。
- *    适合：循环体内、高频 WebSocket 消息、频繁触发的事件回调等。
+ * 2. logger.hot(tag) — high-frequency hot-path variant
+ *    For loops, high-frequency event callbacks, and other scenarios that emit huge
+ *    volumes of logs. Trades exact line numbers (the console shows a spot inside
+ *    hot(), but the tag prefix makes it easy to locate) for:
+ *      - throttling: a given tag emits at most maxPerWindow messages per windowMs
+ *        window; extras are dropped outright, and a "skipped N messages" summary is
+ *        printed when the window ends, avoiding console spam and main-thread blocking.
+ *      - lazy argument evaluation: arguments may be functions, invoked only when the
+ *        message is actually emitted; throttled-out calls pay no string
+ *        concatenation / JSON.stringify cost.
+ *    Suitable for: loop bodies, high-frequency WebSocket messages, frequently
+ *    triggered event callbacks, etc.
  *
- * 使用：
+ * Usage:
  *   import { logger } from './logger';
  *
- *   // 普通日志，精确行号
- *   logger.info('用户登录', { userId: 123 });
+ *   // ordinary log, exact line number
+ *   logger.info('user logged in', { userId: 123 });
  *
- *   // 热路径日志，自动节流 + 惰性求值
+ *   // hot-path log, automatic throttling + lazy evaluation
  *   const logFrame = logger.hot('render-loop', 'debug', { windowMs: 1000, maxPerWindow: 3 });
  *   for (const item of hugeList) {
- *     logFrame(() => `处理 ${item.id}: ${JSON.stringify(item)}`); // 只有真正要输出时才会 JSON.stringify
+ *     logFrame(() => `processing ${item.id}: ${JSON.stringify(item)}`); // JSON.stringify only runs when actually emitted
  *   }
  */
 
 export type LogLevel = "debug" | "info" | "warn" | "error";
 
 export interface LoggerOptions {
-  /** 最低输出级别，默认 debug（即全部输出） */
+  /** Minimum output level, defaults to debug (i.e. everything is emitted) */
   level?: LogLevel;
-  /** 日志前缀，用于区分模块，如 'auth' / 'api' */
+  /** Log prefix used to distinguish modules, e.g. 'auth' / 'api' */
   prefix?: string;
 }
 
 export interface HotOptions {
-  /** 节流时间窗口，毫秒，默认 1000 */
+  /** Throttle window in milliseconds, defaults to 1000 */
   windowMs?: number;
-  /** 每个窗口内最多真正输出多少条，默认 5 */
+  /** Maximum messages actually emitted per window, defaults to 5 */
   maxPerWindow?: number;
 }
 
-/** hot() 的参数支持直接值，或者一个惰性求值函数（只有真正要输出时才会调用） */
+/** hot() arguments may be plain values or lazy thunks (invoked only when actually emitted) */
 type HotArg = unknown | (() => unknown);
 type HotLogFn = (...args: HotArg[]) => void;
 type LogFn = (...args: unknown[]) => void;
@@ -67,7 +71,7 @@ const LEVEL_STYLE: Record<LogLevel, string> = {
   error: "color:#c92a2a;font-weight:bold",
 };
 
-// Vite 会在构建期把这一行替换为字面量布尔值
+// Vite replaces this line with a literal boolean at build time
 const isDev = import.meta.env.DEV;
 
 const noop: LogFn = () => {};
@@ -80,7 +84,7 @@ interface HotState {
 }
 
 class Logger {
-  /** 精确行号版：构造时就确定好是真正绑定到 console 还是空函数 */
+  /** Exact-line-number variant: decided at construction whether it really binds to console or to a no-op */
   readonly debug: LogFn;
   readonly info: LogFn;
   readonly warn: LogFn;
@@ -99,8 +103,8 @@ class Logger {
     this.warn = isDev
       ? this.build("warn", console.warn)
       : (console.warn.bind(console, ...this.tagArgs("warn")) as LogFn);
-    // error 默认生产环境也保留输出（便于线上排查 / 接入上报）
-    // 如需生产环境也完全静默，把下面这行换成 this.build('error', console.error)
+    // error keeps its output in production by default (for online debugging / error reporting)
+    // To be fully silent in production too, replace the line below with this.build('error', console.error)
     this.error = isDev
       ? this.build("error", console.error)
       : (console.error.bind(console, ...this.tagArgs("error")) as LogFn);
@@ -119,9 +123,9 @@ class Logger {
   }
 
   /**
-   * 高频热路径日志：节流 + 惰性求值，牺牲精确行号。
-   * 每次调用 hot() 会返回一个绑定了 tag 的函数，建议在循环 / 高频回调外部
-   * 创建一次，复用同一个函数，而不是每次迭代都调用 logger.hot(...)。
+   * High-frequency hot-path logging: throttling + lazy evaluation, sacrificing exact line numbers.
+   * Each call to hot() returns a function bound to the tag; create it once outside the
+   * loop / high-frequency callback and reuse it rather than calling logger.hot(...) every iteration.
    */
   hot(
     tag: string,
@@ -143,7 +147,7 @@ class Logger {
       if (!state || now - state.windowStart > windowMs) {
         if (state && state.suppressed > 0) {
           console.log(
-            `%c[${fullTag}] 节流：过去 ${windowMs}ms 内还有 ${state.suppressed} 条日志被跳过`,
+            `%c[${fullTag}] throttled: ${state.suppressed} more log entries skipped in the last ${windowMs}ms`,
             "color:#999;font-style:italic",
           );
         }
@@ -153,12 +157,12 @@ class Logger {
 
       state.count++;
       if (state.count > maxPerWindow) {
-        // 超额直接丢弃，不对参数求值，避免白白付出计算开销
+        // Over the limit: drop outright without evaluating arguments, avoiding wasted computation
         state.suppressed++;
         return;
       }
 
-      // 惰性求值：只有真正要输出的这几条，才会执行传入的函数参数
+      // Lazy evaluation: only these messages that are actually emitted run the function arguments
       const resolved = args.map((a) =>
         typeof a === "function" ? (a as () => unknown)() : a,
       );
@@ -171,7 +175,7 @@ class Logger {
     };
   }
 
-  /** 创建带子前缀的子 logger，便于按模块区分 */
+  /** Create a child logger with a sub-prefix for distinguishing modules */
   child(prefix: string): Logger {
     return new Logger({
       level: this.level,

@@ -6,10 +6,11 @@ export interface UseSelectTriggerResult {
   ctx: ReturnType<typeof useSelectContext>;
   isDisabled: () => boolean;
   /**
-   * 把开关下拉相关的原生事件监听器绑定到真正的 DOM 元素上（通过 ref 调用）。
-   * 用 addEventListener 而不是 JSX 的 onXxx prop，是为了不占用这些 prop 名——
-   * 调用方可以在 <SelectTrigger onClick={...}> 上自由传自己的原生事件处理，
-   * 两者是完全独立的两套机制，互不覆盖。
+   * Attaches the native event listeners for opening/closing the dropdown to
+   * the real DOM element (invoked via ref). Using addEventListener instead of
+   * JSX onXxx props avoids consuming those prop names — callers can freely
+   * pass their own native handlers on <SelectTrigger onClick={...}>, and the
+   * two mechanisms are completely independent and never override each other.
    */
   attachListeners: (el: Element) => void;
 }

@@ -1,4 +1,4 @@
-// 职责：固定/随机 segmented；读写 ui.store 的 mode。
+// Responsibility: Fixed/random segmented control; reads and writes the mode in ui.store.
 import { For } from "solid-js";
 import { uiStore, setMode } from "@/store/ui.store";
 import type { Mode } from "@/domain/types";

@@ -1,5 +1,5 @@
 /* ===== src/components/library/ThemeTile.tsx ===== */
-// 职责：单个主题磁贴；新增——最小档下固定模式点选后自动收起抽屉，让舞台反馈可见。
+// Responsibility: A single theme tile; addition — at the smallest tier in fixed mode the drawer collapses automatically after selection so the stage feedback stays visible.
 import { uiStore, setLibOpen } from "@/store/ui.store";
 import { fixedStore, setMonitorTheme } from "@/store/fixed.store";
 import { randomStore, toggle } from "@/store/random.store";
@@ -28,7 +28,7 @@ export function ThemeTile({ id, index }: Props) {
   const onClick = () => {
     if (uiStore.mode === "fixed") {
       setMonitorTheme(scopeKey(), id);
-      // 最小档：指定后收起抽屉，用户立刻看到日轨/预览更新；随机模式保持展开以便连续勾选
+      // Smallest tier: collapse the drawer right after assigning, so the user immediately sees the sun-path/preview update; random mode stays open for consecutive checking
       if (!isXl()) setLibOpen(false);
     } else {
       toggle(id);

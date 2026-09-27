@@ -13,21 +13,23 @@ export interface SelectItemMeta<
 export interface SelectProps<T extends SelectOptionValue = string>
   extends ParentProps {
   /**
-   * 受控选中值；传入 null 表示受控模式下清空已选值。
-   * 不传（undefined）则内部自管理（非受控模式）。
+   * Controlled selected value; pass null to clear the selection while in
+   * controlled mode. Omit (undefined) to let the component manage the value
+   * internally (uncontrolled mode).
    */
   value?: T | null;
-  /** 非受控模式下的初始选中值 */
+  /** Initial selected value in uncontrolled mode */
   defaultValue?: T;
   onValueChange?: (value: T) => void;
-  /** 受控 open 状态；不传则内部自管理 */
+  /** Controlled open state; omitted means managed internally */
   open?: boolean;
   defaultOpen?: boolean;
   onOpenChange?: (open: boolean) => void;
   disabled?: boolean;
   /**
-   * 打开时是否锁定页面滚动，默认 true：锁住文档滚动并拦截浮层之外的
-   * 滚轮/触摸滚动，面板自身仍可滚动。
+   * Whether to lock page scrolling while open, defaults to true: document
+   * scrolling is locked and wheel/touch scrolling outside the overlay is
+   * intercepted, while the panel itself remains scrollable.
    */
   lockScroll?: boolean;
 }
@@ -45,15 +47,15 @@ export interface SelectContextValue<
   setReference: (el: Element | undefined) => void;
   floating: Accessor<HTMLElement | undefined>;
   setFloating: (el: HTMLElement | undefined) => void;
-  /** 已注册的选项列表（响应式 store），SelectContent/SelectValue 都要读 */
+  /** Registered option list (reactive store), read by SelectContent/SelectValue */
   items: SelectItemMeta<T>[];
-  /** SelectItem 挂载时注册自己，返回取消注册函数（卸载时调用） */
+  /** SelectItem registers itself on mount and returns an unregister function (called on unmount) */
   registerItem: (item: SelectItemMeta<T>) => () => void;
-  /** 键盘/鼠标悬停高亮的项 */
+  /** Item highlighted by keyboard/hover */
   activeValue: Accessor<T | undefined>;
   setActiveValue: (v: T | undefined) => void;
-  /** 选中某项后调用：设值、关闭、把 focus 还给 trigger */
+  /** Called after an item is chosen: set the value, close, return focus to the trigger */
   selectValue: (v: T) => void;
-  /** 单纯关闭（不选择任何值），键盘 Esc / 点击外部时用 */
+  /** Plain close (selects no value), used for Esc / clicking outside */
   close: () => void;
 }

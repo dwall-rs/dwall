@@ -60,9 +60,11 @@ export function SelectContent(props: SelectContentProps) {
     }
   };
 
-  // 点击外部关闭：捕获阶段监听 + stopPropagation，在事件还没下沉到真正的目标
-  // 元素之前就拦截掉，避免点击穿透到浮层下面被盖住的元素（细节见
-  // production-tooltip 那边点击穿透问题的排查记录，这里直接复用同一个模式）。
+  // Close on outside click: a capture-phase listener + stopPropagation
+  // intercepts the event before it bubbles down to the real target element,
+  // preventing clicks from falling through to elements covered underneath the
+  // overlay (see the click-through investigation notes in production-tooltip;
+  // the same pattern is reused here).
   createEffect(() => {
     if (!ctx.open()) return;
     const onPointerDown = (e: PointerEvent) => {
@@ -83,14 +85,15 @@ export function SelectContent(props: SelectContentProps) {
     );
   });
 
-  // 打开时把键盘事件绑到 document，这样不需要抢 focus 也能用方向键
+  // While open, bind keyboard events to document so arrow keys work without
+  // stealing focus
   createEffect(() => {
     if (!ctx.open()) return;
     document.addEventListener("keydown", onKeyDown);
     onCleanup(() => document.removeEventListener("keydown", onKeyDown));
   });
 
-  // 高亮项变化时自动滚动到可见区域
+  // Scroll the highlighted item into view when it changes
   createEffect(() => {
     const active = ctx.activeValue();
     const el = contentElement();
@@ -103,24 +106,28 @@ export function SelectContent(props: SelectContentProps) {
   return (
     <Portal>
       {/*
-        外层：只负责定位（position:fixed 来自 floatingStyles），不参与动画。
-        它的 transform 专门用来做 translate(x,y) 定位——如果内层的 zoom-in-95
-        动画也放在这一层，两者会互相冲突（细节见 SelectContent.utils.ts 顶部
-        的注释）。
+        Outer layer: handles positioning only (position:fixed comes from
+        floatingStyles) and takes no part in the animation. Its transform is
+        reserved for translate(x,y) positioning — putting the inner zoom-in-95
+        animation on this layer as well would make the two conflict (see the
+        comment at the top of SelectContent.utils.ts for details).
 
-        关闭时不再卸载整个 Portal，而是用 visibility/pointer-events 隐藏：
-        SelectItem 通过 onMount 向 ctx 注册 item 元数据，如果关闭时把子节点
-        卸载掉，ctx.items 会被清空，SelectValue 就无法再用 item.label 渲染
-        已选值。让子节点持续挂载，items 的注册生命周期才和 SelectContent
-        本身一致；隐藏只是视觉/交互上的关闭，不影响数据。
+        On close the whole Portal is no longer unmounted; it is hidden via
+        visibility/pointer-events instead: SelectItem registers its item
+        metadata with ctx via onMount, and unmounting the children on close
+        would clear ctx.items, leaving SelectValue unable to render the
+        selected value from item.label. Keeping the children mounted makes the
+        registration lifetime of items match SelectContent itself; hiding is
+        only a visual/interactive close and does not affect data.
       */}
       <div
         data-slot="select-content"
         ref={(el) => {
           ctx.setFloating(el);
-          // 元素卸载时清空 ctx.floating()，避免后续读到已从 DOM 摘除的
-          // 僵尸节点（Solid 的 ref 回调只在创建时触发一次，不会自动在
-          // 卸载时传 undefined）。
+          // Clear ctx.floating() when the element unmounts so later reads
+          // don't pick up a zombie node that has already been removed from
+          // the DOM (Solid's ref callback fires only once on creation and
+          // does not pass undefined automatically on unmount).
           onCleanup(() => ctx.setFloating(undefined));
         }}
         style={{
@@ -132,11 +139,13 @@ export function SelectContent(props: SelectContentProps) {
         }}
       >
         {/*
-            内层：真正的视觉样式 + overflow:auto 滚动 + 进出场动画。
-            position: relative 是为了让它成为内部所有选项的 offsetParent——
-            "选中项对齐"这套定位策略要用 offsetTop 算选项在列表里的位置，
-            这个值必须相对"真正会滚动的这个元素"才准确，不能让它被外层
-            （不滚动）抢走 offsetParent 的身份。
+            Inner layer: the real visual styling + overflow:auto scrolling +
+            enter/exit animation. position: relative makes it the
+            offsetParent of every option inside it — the "selected-item
+            alignment" positioning strategy uses offsetTop to compute an
+            option's position in the list, and that value is only accurate
+            relative to "the element that actually scrolls"; the outer layer
+            (which does not scroll) must not steal its offsetParent role.
           */}
         <div
           ref={setContentElement}
@@ -155,11 +164,13 @@ export function SelectContent(props: SelectContentProps) {
             "min-w-36",
             "no-scrollbar [&::-webkit-scrollbar]:hidden",
             "rounded-lg bg-popover text-popover-foreground shadow-md ring-1 ring-foreground/10 duration-100",
-            // 只保留入场动画，没有退场动画：关闭瞬间外层直接 visibility:hidden，
-            // data-state 也立即切回 closed，没有退场动画阶段，自然不会出现
-            // 选中项变更时"面板先跳一下再消失"的问题。duration-100（100ms）
-            // 比默认的 150ms 更短——下拉菜单这种高频交互的组件，动画应该比
-            // tooltip 更快、更利落。
+            // Enter animation only, no exit animation: on close the outer
+            // layer switches straight to visibility:hidden and data-state
+            // flips back to closed immediately, so there is no exit phase and
+            // no "panel jumps first, then disappears" effect when the
+            // selection changes. duration-100 (100ms) is shorter than the
+            // default 150ms — for a high-frequency component like a dropdown,
+            // animations should be faster and snappier than a tooltip's.
             "data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95",
             local.class,
           )}

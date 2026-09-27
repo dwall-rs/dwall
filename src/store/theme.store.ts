@@ -1,5 +1,5 @@
-// 职责：外观意图(mode) + 解析后的实际外观(resolved) + 持久化。
-//       「自动跟随系统」= mode==='system'，故无需额外字段，避免与 settings 跨域耦合。
+// Responsibility: appearance intent (mode) + resolved appearance (resolved) + persistence.
+//       "Auto follow system" = mode==='system'; no extra field is needed, avoiding cross-domain coupling with settings.
 import type { ResolvedTheme, ThemeMode } from "@/domain/types";
 import { createStore } from "solid-js/store";
 
@@ -38,10 +38,10 @@ const setMode = (mode: ThemeMode) => {
   setThemeStore({ mode, resolved: computeResolved(mode) });
 };
 
-/** 亮 ⇄ 暗：以当前解析结果取反，mode 为 system 时也能一次切到相反外观。 */
+/** Light ⇄ dark: invert the current resolved value, so one call flips to the opposite appearance even in system mode. */
 const toggle = () => setMode(themeStore.resolved === "dark" ? "light" : "dark");
 
-/** 由 useThemeEngine 在监听到系统变化时回写，供图标等读取。 */
+/** Written back by useThemeEngine when a system change is detected, for icons and others to read. */
 const setResolved = (resolved: ResolvedTheme) =>
   setThemeStore("resolved", resolved);
 

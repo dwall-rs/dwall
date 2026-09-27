@@ -1,4 +1,4 @@
-// 职责：应用更新——检查 / 下载安装 / 重启的状态机；网络配置复用 settings.store。
+// Responsibility: app updates — state machine for check / download-install / relaunch; network config reuses settings.store.
 
 import { createStore } from "solid-js/store";
 
@@ -31,7 +31,7 @@ const [updateStore, setUpdateStore] = createStore<UpdateState>({
   error: null,
 });
 
-/** 当前可安装的更新句柄；非响应式，派生字段已同步进 store。 */
+/** Handle of the update that can be installed right now; non-reactive — its derived fields are synced into the store. */
 let pending: Update | null = null;
 let totalBytes = 0;
 let receivedBytes = 0;

@@ -1,4 +1,4 @@
-// 职责：设置入口；在设置视图时高亮（active）。
+// Responsibility: Settings entry point; highlighted (active) while in the settings view.
 import { uiStore, toggleView } from "@/store/ui.store";
 import { t } from "@/i18n";
 import {

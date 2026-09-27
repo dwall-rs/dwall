@@ -1,5 +1,5 @@
 /* ===== src/components/scope/ScopeColumn.tsx ===== */
-// 职责：左栏容器——固定模式的显示器作用域面板（随机模式无左栏）。
+// Responsibility: Left-column container — the monitor scope panel for fixed mode (random mode has no left column).
 import { t } from "@/i18n";
 import { FixedScope } from "./FixedScope";
 

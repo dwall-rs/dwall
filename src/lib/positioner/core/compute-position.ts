@@ -20,11 +20,12 @@ function getElementRects(elements: Elements, strategy: Strategy): ElementRects {
 const MAX_MIDDLEWARE_PASSES = 8;
 
 /**
- * 计算 floating 元素相对 reference 元素的最终坐标。
- * reference 既可以是真实 DOM 元素，也可以是虚拟参照元素（见 createVirtualElement），
- * 后者常用于锚定到一个坐标点，比如右键菜单的鼠标点击位置。
- * middleware 按顺序执行，任意 middleware 返回 reset 时会用新的 placement 重跑一轮，
- * 但最多重跑 MAX_MIDDLEWARE_PASSES 次，避免死循环。
+ * Compute the floating element's final coordinates relative to the reference.
+ * The reference can be a real DOM element or a virtual reference element (see
+ * createVirtualElement); the latter typically anchors to a coordinate, such
+ * as a context menu's mouse click position.
+ * Middleware run in order; any middleware returning reset reruns the loop with
+ * the new placement, at most MAX_MIDDLEWARE_PASSES times to avoid a deadlock.
  */
 export function computePosition(
   reference: ReferenceElement,

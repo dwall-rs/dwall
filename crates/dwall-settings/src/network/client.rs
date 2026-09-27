@@ -58,8 +58,9 @@ impl HttpClient {
             request = request.header("Range", format!("bytes={downloaded_bytes}-"));
         }
 
-        // 先完成请求与状态校验，再创建目标文件：失败时不在磁盘上留下空文件
-        // （否则空文件会被缓存逻辑误判为「已下载」）。
+        // Finish the request and status validation before creating the target file, so a
+        // failure never leaves an empty file on disk (otherwise the cache logic would
+        // mistake it for a completed download).
         let response = request.send().await?;
         response.error_for_status_ref()?;
 

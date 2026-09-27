@@ -1,5 +1,5 @@
 /* ===== src/components/views/Body.tsx ===== */
-// 职责：按 view 在主视图/设置视图间切换（cross-fade）。
+// Responsibility: Switches between the main view and the settings view based on `view` (cross-fade).
 import { uiStore } from "@/store/ui.store";
 import { MainView } from "./MainView";
 import { SettingsView } from "./SettingsView";

@@ -1,4 +1,4 @@
-// 职责：「统一所有显示器」开关卡——开启即锁定下方单独设置。
+// Responsibility: "Unify all monitors" toggle card — enabling it locks the individual settings below.
 import { fixedStore, toggleUnified as toggle } from "@/store/fixed.store";
 import { t } from "@/i18n";
 import { clsx } from "@/utils";

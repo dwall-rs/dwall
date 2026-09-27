@@ -1,4 +1,4 @@
-// 职责：外观与语言分组——三档 + 色板 + 语言。注意「自动跟随系统」即三档里的「系统」。
+// Responsibility: Appearance & language group — three options + palette + language. Note: "follow the system" is the "System" option among the three.
 import { SettingsGroup } from "./SettingsGroup";
 import { SettingsRow } from "./SettingsRow";
 import { ThemeSegmented } from "./ThemeSegmented";

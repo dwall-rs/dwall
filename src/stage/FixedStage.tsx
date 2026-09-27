@@ -1,5 +1,5 @@
 /* ===== src/stage/FixedStage.tsx ===== */
-// 职责：固定模式舞台编排——解析当前主题（草稿 → 配置 → 目录首个），加载其壁纸太阳角与当前太阳位置，传给纯展示子件。
+// Responsibility: Fixed-mode stage orchestration — resolves the current theme (draft → config → first in the catalog), loads its wallpaper solar angles and the current solar position, and passes them to the pure presentation children.
 import { createMemo, createResource, onCleanup, onMount, Show } from "solid-js";
 import { configuredThemeId } from "@/domain/config";
 import { themeById } from "@/domain/themes";
@@ -57,14 +57,14 @@ export function FixedStage() {
     async ({ id, cur }) => await matchWallpaper(id, cur.altitude, cur.azimuth),
   );
 
-  // 定期刷新太阳位置，避免长时间打开后匹配过期
+  // Refresh the solar position periodically so the match does not go stale after the app stays open a long time
   onMount(() => {
     const timer = setInterval(() => refetchCurrent(), 60_000);
     onCleanup(() => clearInterval(timer));
   });
 
   const list = createMemo(() => wallpapers() ?? []);
-  // 同一张图可能对应多个太阳位置；列表按图去重展示
+  // One image may correspond to several solar positions; the list is deduplicated by image
   const unique = createMemo(() => {
     const seen = new Set<number>();
     const result: Wallpaper[] = [];

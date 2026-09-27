@@ -4,11 +4,12 @@ import { clsx } from "~/utils";
 import type { ScrollArrowButtonProps } from "./ScrollArrows.types";
 
 /**
- * 单个滚动提示箭头：覆盖在列表上/下沿，悬停或按住时用 requestAnimationFrame
- * 持续滚动目标容器，到边界后 scrollTop 不再变化即自动停止。
+ * A single scroll-indicator arrow overlaid on the top/bottom edge of a list.
+ * While hovered or held it scrolls the target container continuously via
+ * requestAnimationFrame, stopping at the boundary (scrollTop no longer changes).
  *
- * 箭头是装饰元素(`aria-hidden`、不可聚焦)，无障碍仍由列表自身的
- * listbox/aria-activedescendant 承担。
+ * The arrow is decorative (`aria-hidden`, not focusable); accessibility is
+ * still handled by the list's own listbox/aria-activedescendant semantics.
  */
 export function ScrollArrowButton(props: ScrollArrowButtonProps) {
   let frame: number | undefined;
@@ -26,7 +27,7 @@ export function ScrollArrowButton(props: ScrollArrowButtonProps) {
       stop();
       return;
     }
-    // 每帧约滚动 1/24 高度，连续但不至于过快
+    // Scroll roughly 1/24 of the height per frame: continuous but not too fast
     const step = Math.max(4, el.clientHeight / 24);
     const before = el.scrollTop;
     el.scrollTop = before + (props.direction === "down" ? step : -step);

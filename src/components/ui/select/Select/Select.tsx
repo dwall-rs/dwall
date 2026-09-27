@@ -10,20 +10,21 @@ import type {
 } from "./Select.types";
 
 /**
- * Select 根组件：不渲染任何 DOM，只负责状态管理 + 提供 context。
- * 真正的展示交给 <SelectTrigger>/<SelectValue>/<SelectContent>/<SelectItem>。
+ * Select root component: renders no DOM; it only manages state and
+ * provides context. Actual rendering is delegated to
+ * <SelectTrigger>/<SelectValue>/<SelectContent>/<SelectItem>.
  *
- * 泛型 T 约束为 string | number，用于约束 value / defaultValue /
- * onValueChange / SelectItem.value 的类型。
+ * The generic T is constrained to string | number, bounding the types of
+ * value / defaultValue / onValueChange / SelectItem.value.
  *
  * @example
  * ```tsx
  * <Select value={fruit()} onValueChange={setFruit}>
  *   <SelectTrigger>
- *     <SelectValue placeholder="选择一个水果" />
+ *     <SelectValue placeholder="Pick a fruit" />
  *   </SelectTrigger>
  *   <SelectContent>
- *     <SelectItem value="apple">苹果</SelectItem>
+ *     <SelectItem value="apple">Apple</SelectItem>
  *   </SelectContent>
  * </Select>
  * ```
@@ -52,8 +53,9 @@ export function Select<T extends SelectOptionValue = string>(
   const disabled = createMemo(() => !!props.disabled);
   const lockScroll = createMemo(() => props.lockScroll ?? true);
 
-  // 打开期间默认锁定页面滚动：锁住文档滚动并拦截浮层之外的滚轮/触摸，
-  // 面板自身仍可滚动。传 lockScroll={false} 可关闭该行为。
+  // While open, page scrolling is locked by default: document scrolling is
+  // locked and wheel/touch events outside the overlay are intercepted, while
+  // the panel itself remains scrollable. Pass lockScroll={false} to disable.
   useScrollLock(() => open() && lockScroll(), {
     allowedSelector: '[data-slot="select-content"]',
   });

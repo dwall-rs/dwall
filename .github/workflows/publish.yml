@@ -39,7 +39,7 @@ jobs:
       - name: Check if release is needed
         id: check
         run: |
-          # 检查是否有未发布的更改，但排除 nightly 标签
+          # Check for unreleased changes, excluding the nightly tag
           if git describe --tags --exact-match HEAD 2>/dev/null; then
             current_tag=$(git describe --tags --exact-match HEAD 2>/dev/null)
             if [[ "$current_tag" == "nightly" ]]; then
@@ -92,10 +92,10 @@ jobs:
             fi
             npm version "$BUMP_TYPE" --no-git-tag-version
           elif [ "$BUMP_TYPE" = "prerelease" ]; then
-            # 仅递增预发布号：0.2.0-alpha.1 → 0.2.0-alpha.2（不动基础版本）
+            # Bump only the pre-release number: 0.2.0-alpha.1 → 0.2.0-alpha.2 (base version untouched)
             npm version prerelease --preid "$RELEASE_CHANNEL" --no-git-tag-version
           else
-            # 提升基础版本并进入预发布：0.2.0 → 0.2.1-alpha.0
+            # Bump the base version and enter pre-release: 0.2.0 → 0.2.1-alpha.0
             npm version "pre$BUMP_TYPE" --preid "$RELEASE_CHANNEL" --no-git-tag-version
           fi
           VERSION=$(node -p "require('./package.json').version")
@@ -119,7 +119,7 @@ jobs:
             echo "fromTag=$LAST_TAG" >> $GITHUB_OUTPUT
             echo "Using tag $LAST_TAG as changelog base"
           else
-            # 找 main 的根提交作为起点
+            # Use main's root commit as the starting point
             ROOT_COMMIT=$(git rev-list --max-parents=0 refs/heads/main)
             echo "fromTag=$ROOT_COMMIT" >> $GITHUB_OUTPUT
             echo "No valid ancestor tag found, using root commit $ROOT_COMMIT"
@@ -374,7 +374,7 @@ jobs:
               console.log('Release branch deleted successfully')
             } catch (error) {
               console.log('Failed to delete release branch:', error.message)
-              // 不让这个失败阻止整个工作流
+              // Don't let this failure block the whole workflow
             }
 
   delete-nightly-release-and-tag:
@@ -388,7 +388,7 @@ jobs:
 
       - name: Delete old nightly release
         run: |
-          # 检查是否存在 nightly release
+          # Check whether a nightly release exists
           if gh release view nightly >/dev/null 2>&1; then
             echo "Deleting existing nightly release..."
             gh release delete nightly --cleanup-tag --yes

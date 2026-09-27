@@ -3,7 +3,7 @@ import { useSliderContext } from "../Slider";
 export const useSliderControl = () => {
   const ctx = useSliderContext();
 
-  /** 将页面坐标转为 slider 值 */
+  /** Convert page coordinates to a slider value */
   const coordToValue = (clientX: number, clientY: number): number => {
     const track = ctx.trackRef();
     if (!track) return ctx.min();
@@ -13,7 +13,7 @@ export const useSliderControl = () => {
 
     let ratio: number;
     if (isVertical) {
-      // 垂直方向：底部为 min，顶部为 max
+      // Vertical: bottom is min, top is max
       ratio = 1 - (clientY - rect.top) / rect.height;
     } else {
       ratio = (clientX - rect.left) / rect.width;
@@ -22,7 +22,7 @@ export const useSliderControl = () => {
     return ctx.min() + ratio * (ctx.max() - ctx.min());
   };
 
-  /** 找到距离点击位置最近的 thumb 索引 */
+  /** Find the index of the thumb closest to the click position */
   const closestThumbIndex = (value: number): number => {
     const vals = ctx.values();
     let closest = 0;
@@ -53,7 +53,7 @@ export const useSliderControl = () => {
 
   const handlePointerMove = (e: PointerEvent) => {
     if (ctx.disabled()) return;
-    // 只有在 pointer 被捕获（即 pointerdown 后）才处理
+    // Only handle once the pointer is captured (i.e. after pointerdown)
     if (!(e.currentTarget as HTMLElement).hasPointerCapture(e.pointerId))
       return;
 

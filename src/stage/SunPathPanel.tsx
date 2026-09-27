@@ -1,5 +1,5 @@
-// 职责：主题太阳轨迹预览——轨迹为「观测者位置 + 当日日期」下的真实日轨（Rust 计算），
-//       主题的太阳角条目仅作为标记点叠加其上；Y 轴自适应全部节点。
+// Responsibility: Theme solar-path preview — the track is the real sun path for "observer position + today's date" (computed in Rust),
+//       with the theme's solar-angle entries overlaid on it as marker points only; the Y axis adapts to all nodes.
 import type { SolarPosition, Wallpaper } from "@/domain/types";
 import { getSolarPath } from "@/ipc";
 import { t } from "@/i18n";
@@ -9,7 +9,7 @@ import { createMemo, createResource, createSignal, For, Show } from "solid-js";
 import { themeStore } from "~/store/theme.store";
 import { type Point, smoothPath, xForAzimuth } from "./sunPath";
 
-// 垂直绘图区（百分比）：上留信息条带，下留方位标签条带。
+// Vertical plotting area (percent): leaves a band at the top for the info strip and one at the bottom for the azimuth labels.
 const Y_TOP = 10,
   Y_BOT = 84;
 const band = (alt: number) =>
@@ -18,7 +18,7 @@ const band = (alt: number) =>
 interface Props {
   wallpapers: Wallpaper[];
   current: SolarPosition;
-  /** 匹配到的太阳角条目在数组中的位置（非图片序号） */
+  /** Position of the matched solar-angle entry within the array (not the image index) */
   matchedEntry: number | null;
   selIndex: number | null;
   onSelect: (index: number | null) => void;
@@ -27,14 +27,14 @@ interface Props {
 export function SunPathPanel(props: Props) {
   const [hover, setHover] = createSignal<number | null>(null);
 
-  // 真实日轨：随观测者位置变化重算（当日日期）。
+  // Real sun path: recomputed as the observer's position changes (today's date).
   const [path] = createResource(
     () => settingsStore.config?.position_source,
     (ps) => getSolarPath(ps, Math.floor(Date.now() / 1000)),
   );
 
-  // Y 轴自适应：以「真实日轨」为基准（与主题无关，故各主题看到的是同一条轨迹），
-  // 并覆盖当前位置与地平线(0)°，两侧留 8% 边距。轨迹未加载时用主题角度兜底。
+  // Adaptive Y axis: anchored to the "real sun path" (theme-independent, so every theme sees the same track),
+  // covering the current position and the horizon (0)° with an 8% margin on both sides. Falls back to the theme's angles while the track is not loaded.
   const domain = createMemo(() => {
     const pathAlts = (path() ?? []).map((p) => p.altitude);
     const alts = [
@@ -56,7 +56,7 @@ export function SunPathPanel(props: Props) {
   };
   const hor = () => Yp(0);
 
-  /** 纵坐标夹在绘图区内：主题角度超出当日日轨范围时，标记仍可见、可选中。 */
+  /** Clamps the Y coordinate into the plotting area: markers stay visible and clickable when a theme's angle falls outside today's sun path. */
   const clampY = (alt: number) => Math.min(Math.max(Yp(alt), Y_TOP), Y_BOT);
 
   const cx = createMemo(() => xForAzimuth(props.current.azimuth));
@@ -206,7 +206,7 @@ export function SunPathPanel(props: Props) {
           )}
         />
 
-        {/* 地平线标注：置于中段空位（此处日轨高悬，无轨道经过） */}
+        {/* Horizon label: placed in the empty middle band (the track hangs high here, no path crosses it) */}
         <span
           class="absolute left-1/2 -translate-x-1/2 -translate-y-1/2 rounded bg-card/70 px-1 font-mono text-[8px] text-muted-foreground"
           style={{ top: `${hor()}%` }}

@@ -1,13 +1,13 @@
 import type { Accessor } from "solid-js";
 
 export interface ScrollArrowsProps {
-  /** 滚动容器 accessor；组件内部据此计算上下边缘状态 */
+  /** Scrolling container accessor; the component derives edge states from it */
   target: Accessor<HTMLElement | undefined>;
-  /** 两个箭头共用的额外 class */
+  /** Extra class shared by both arrows */
   class?: string;
-  /** 顶部箭头额外 class(圆角等) */
+  /** Extra class for the top arrow (border radius, etc.) */
   upClass?: string;
-  /** 底部箭头额外 class(圆角等) */
+  /** Extra class for the bottom arrow (border radius, etc.) */
   downClass?: string;
 }
 

@@ -1,5 +1,6 @@
-// 职责：偏好——开机/坐标/锁屏开关、检查间隔、镜像模板、语言。行内字段自带 saved 快照。
-//       注意：「自动跟随系统」不在此处，它属于 theme 域（见 theme.store）。
+// Responsibility: preferences — startup/coordinate/lock-screen toggles, check interval, mirror template,
+//       language. Inline fields carry their own saved snapshot.
+//       Note: "auto follow system" does not live here — it belongs to the theme domain (see theme.store).
 
 import { createStore, produce } from "solid-js/store";
 import type {
@@ -45,7 +46,7 @@ const load = async () => {
       saved: cfg,
       status: "ready",
     }));
-    // 用持久化偏好初始化外观：auto_detect ⇄ 跟随系统
+    // Seed the appearance from the persisted preference: auto_detect ⇄ follow the system
     if (cfg.auto_detect_color_scheme) setMode("system");
     else if (themeStore.mode === "system") setMode("light");
   } catch (e) {
@@ -167,8 +168,8 @@ const save = async () => {
 };
 
 /**
- * 写入 wallpaper_mode 并应用到引擎（写配置文件 + 重启守护进程）。
- * 固定/随机模式的「应用/保存」都走这里。
+ * Write wallpaper_mode and apply it to the engine (write the config file + restart the daemon).
+ * Both fixed and random mode "apply/save" go through here.
  */
 const applyWallpaperMode = async (mode: WallpaperMode) => {
   const config = settingsStore.config;
@@ -179,7 +180,7 @@ const applyWallpaperMode = async (mode: WallpaperMode) => {
 
   try {
     await applyTheme(next);
-    // 应用/停止会启动或终止守护进程，立即同步引擎状态。
+    // Apply/stop starts or stops the daemon, so sync the engine state right away.
     void refreshEngine();
     setSettingsStore(
       produce((s) => {
@@ -198,7 +199,7 @@ const discard = () =>
     s.saved ? { config: { ...s.saved }, saveError: null } : {},
   );
 
-/** 派生脏态：整份配置深比较。 */
+/** Derived dirty state: deep-compare the whole config. */
 const isConfigDirty = (s: SettingsState): boolean =>
   !!s.config &&
   !!s.saved &&

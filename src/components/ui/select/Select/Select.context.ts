@@ -8,7 +8,7 @@ export function useSelectContext(
 ): SelectContextValue<SelectOptionValue> {
   const ctx = useContext(SelectContext);
   if (!ctx) {
-    throw new Error(`<${component}> 必须渲染在 <Select> 内部`);
+    throw new Error(`<${component}> must be rendered inside <Select>`);
   }
   return ctx;
 }

@@ -1,19 +1,20 @@
 import { createEffect, createSignal, onCleanup, type Accessor } from "solid-js";
 
 export interface ScrollEdges {
-  /** 上方是否还有未显示的内容 */
+  /** Whether content above is still hidden out of view */
   canScrollUp: Accessor<boolean>;
-  /** 下方是否还有未显示的内容 */
+  /** Whether content below is still hidden out of view */
   canScrollDown: Accessor<boolean>;
-  /** 手动刷新一次边缘状态(如打开、内容变化后) */
+  /** Manually refresh the edge state once (e.g. after opening or once content changes) */
   refresh: () => void;
 }
 
 /**
- * 跟踪某个滚动容器上方/下方是否还有未显示的内容，用于驱动滚动提示箭头。
+ * Track whether a scroll container still has hidden content above/below, driving the scroll hint arrows.
  *
- * 监听 scroll(passive) + ResizeObserver(容器与首个子元素尺寸) +
- * MutationObserver(childList/subtree)，因此面板高度变化、选项增删后显隐都能及时更新。
+ * Listens to scroll(passive) + ResizeObserver(container and first-child size) +
+ * MutationObserver(childList/subtree), so visibility updates promptly when the panel height changes
+ * or options are added/removed.
  */
 export function useScrollEdges(
   target: Accessor<HTMLElement | undefined>,

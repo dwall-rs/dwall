@@ -1,11 +1,13 @@
 import type { ParentProps } from "solid-js";
 
 /**
- * <TooltipGroup> 是可选的：把多个 <Tooltip> 包在一起，组内相邻 trigger 之间
- * 切换 hover 时，会跳过 openDelay 并触发"从旧位置滑到新位置"的过渡效果，
- * 而不是旧的先走完退场动画、新的再等 openDelay 出现。
+ * <TooltipGroup> is optional: wrapping multiple <Tooltip>s together makes switching
+ * hover between adjacent triggers in the group skip openDelay and trigger a "slide
+ * from the old position to the new one" transition, instead of the old tooltip
+ * finishing its exit animation and the new one waiting for openDelay.
  *
- * 不需要这个效果的话，<Tooltip> 完全可以脱离 <TooltipGroup> 单独使用，
- * 行为不受影响（内部用 useTooltipGroupContext 判断是否存在，缺失时静默降级）。
+ * If you don't need that effect, <Tooltip> works perfectly well on its own outside
+ * <TooltipGroup> with unchanged behavior (internally it uses
+ * useTooltipGroupContext to detect presence and degrades silently when absent).
  */
 export type TooltipGroupProps = ParentProps;

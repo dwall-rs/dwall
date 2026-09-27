@@ -1,4 +1,4 @@
-// 职责：引擎运行状态文案 + 脉冲点；颜色用语义色（success=运行，warning=随机，muted=停止）。
+// Responsibility: Engine run-state text + pulse dot; colors use semantic tokens (success=running, warning=random, muted=stopped).
 import { createResource, Show } from "solid-js";
 import { currentSolarPosition } from "@/ipc";
 import { t } from "@/i18n";

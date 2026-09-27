@@ -22,7 +22,7 @@ export const TabsContent = (props: TabsContentProps) => {
   const selected = () => ctx.isSelected(local.value);
   const mounted = () => selected() || !!local.forceMount;
 
-  // flex-1 的 display:flex 会覆盖 UA 的 [hidden] 规则,forceMount 隐藏必须显式 display:none
+  // flex-1's display:flex overrides the UA [hidden] rule, so forceMount hiding must set display:none explicitly
   const style = (): JSX.CSSProperties | undefined => {
     if (selected() || !local.forceMount) return local.style;
     return { ...local.style, display: "none" };

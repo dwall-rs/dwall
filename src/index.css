@@ -3,7 +3,7 @@
 /* Neut built-in styles (from animate.css and toast.css) */
 @import "./styles/index.css";
 
-/* 应用为整屏外壳，滚动由内部容器负责；禁用页面级滚动避免横向滚动条 */
+/* The app is a full-screen shell; scrolling is handled by inner containers. Disable page-level scrolling to avoid a horizontal scrollbar. */
 html,
 body {
     overflow: hidden;
@@ -19,10 +19,10 @@ body {
 
 @layer base {
     :root {
-        --success: oklch(62.7% 0.194 149.214); /* 补：完成/运行 */
+        --success: oklch(62.7% 0.194 149.214); /* supplement: completed/running */
         --success-foreground: 0 0% 100%;
         --success-dim: 145 40% 92%;
-        --warning: oklch(76.9% 0.188 70.08); /* 补：待办/随机 */
+        --warning: oklch(76.9% 0.188 70.08); /* supplement: pending/random */
         --warning-foreground: 35 100% 12%;
         --warning-dim: 38 60% 92%;
 
@@ -44,8 +44,8 @@ body {
         --scrollbar-thumb-active: theme("colors.neutral.400");
     }
 
-    /* 统一美化滚动条（WebView2 / Chromium）：透明轨道 + 圆角滑块 + 透明内边距，
-       随亮/暗主题变化；所有可滚动容器自动生效。 */
+    /* Unified scrollbar styling (WebView2 / Chromium): transparent track + rounded thumb + transparent padding,
+       varying with the light/dark theme; applies automatically to all scrollable containers. */
     ::-webkit-scrollbar {
         width: 10px;
         height: 10px;

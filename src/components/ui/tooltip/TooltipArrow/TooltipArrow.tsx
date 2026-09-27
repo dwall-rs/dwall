@@ -8,9 +8,9 @@ export interface TooltipArrowProps {
 }
 
 /**
- * 箭头组件，必须渲染在 <TooltipContent> 内部。
- * 采用 shadcn Base UI 的定位方式：通过 data-side / data-align 和 CSS 变量
- * 完成贴边与对齐，不手动计算 top/left。
+ * Arrow component; it must be rendered inside <TooltipContent>.
+ * Uses shadcn Base UI's positioning approach: edge alignment is done through
+ * data-side / data-align and CSS variables, without computing top/left manually.
  */
 export function TooltipArrow(props: TooltipArrowProps) {
   const ctx = useTooltipContentContext("TooltipArrow");

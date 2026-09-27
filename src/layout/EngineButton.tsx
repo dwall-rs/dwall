@@ -1,4 +1,4 @@
-// 职责：引擎进程按钮——运行中=「终止」（二次确认脉动），停止=primary「启动」。
+// Responsibility: Engine process button — running = "Stop" (pulsing double-confirm), stopped = primary "Start".
 import { Button } from "@/components/ui/button";
 import { t } from "@/i18n";
 import { engineStore, toggle } from "@/store/engine.store";

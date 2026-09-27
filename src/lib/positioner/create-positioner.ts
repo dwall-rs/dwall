@@ -26,32 +26,32 @@ function unwrap<T>(value: MaybeAccessor<T> | undefined, fallback: T): T {
 }
 
 export interface CreatePositionerOptions {
-  /** 期望的初始/首选摆放位置，默认 'bottom' */
+  /** Desired initial/preferred placement, default 'bottom' */
   placement?: MaybeAccessor<Placement>;
-  /** 定位方式：'absolute' 需要 floating 挂在 body 下且无非 static 定位祖先；不确定就用 'fixed' */
+  /** Positioning strategy: 'absolute' requires the floating to be under body with no non-static positioned ancestor; use 'fixed' when unsure */
   strategy?: MaybeAccessor<Strategy>;
-  /** middleware 数组，顺序执行，如 [offset(8), flip(), shift({padding: 8})] */
+  /** Middleware array, executed in order, e.g. [offset(8), flip(), shift({padding: 8})] */
   middleware?: MaybeAccessor<Middleware[]>;
-  /** 是否在滚动/尺寸变化时自动重新计算，默认 true；也可传细粒度配置 */
+  /** Whether to recompute automatically on scroll/size changes, default true; fine-grained options can also be passed */
   autoUpdate?: boolean | AutoUpdateOptions;
 }
 
 export interface Positioner {
-  /** floating 元素相对定位坐标系的 x（细粒度信号，只在数值变化时更新） */
+  /** x of the floating element in its positioning coordinate system (fine-grained signal, updates only when the value changes) */
   x: Accessor<number>;
-  /** floating 元素相对定位坐标系的 y（细粒度信号，只在数值变化时更新） */
+  /** y of the floating element in its positioning coordinate system (fine-grained signal, updates only when the value changes) */
   y: Accessor<number>;
-  /** 经过 middleware（如 flip）调整后的最终 placement */
+  /** Final placement after middleware (e.g. flip) adjustments */
   placement: Accessor<Placement>;
-  /** 实际生效的定位策略 */
+  /** The positioning strategy actually in effect */
   strategy: Accessor<Strategy>;
-  /** 各 middleware 产出的附加数据，例如 arrow 的偏移量 */
+  /** Additional data produced by each middleware, e.g. the arrow's offset */
   middlewareData: Accessor<MiddlewareData>;
-  /** 是否已完成至少一次定位计算，可用于首次渲染前隐藏 floating 元素避免闪烁 */
+  /** Whether at least one positioning computation has completed; useful for hiding the floating element before the first render to avoid flashing */
   isPositioned: Accessor<boolean>;
-  /** 手动触发一次重新计算 */
+  /** Manually trigger a recomputation */
   update: () => void;
-  /** 可直接展开到 style 上的便捷样式对象 */
+  /** Convenience style object that can be spread directly onto style */
   floatingStyles: Accessor<{
     position: Strategy;
     top: string;
@@ -61,11 +61,12 @@ export interface Positioner {
 }
 
 /**
- * Solid 的细粒度浮窗定位 primitive。
+ * Solid's fine-grained floating positioning primitive.
  *
- * 传入 reference / floating 两个元素访问器，返回一组独立的响应式信号
- * （x、y、placement 等分别更新，不会因为其中一个变化而让另一个也重新渲染），
- * 上层组件（tooltip / dropdown / popover）只需订阅自己关心的信号。
+ * Pass in the reference / floating element accessors and get back a set of
+ * independent reactive signals (x, y, placement, etc. update separately — a
+ * change in one does not re-render the others), so upper-layer components
+ * (tooltip / dropdown / popover) only subscribe to the signals they care about.
  *
  * @example
  * ```tsx
@@ -79,7 +80,7 @@ export interface Positioner {
  * <button ref={setReference}>trigger</button>
  * <Show when={open()}>
  *   <Portal>
- *     <div ref={setFloating} style={pos.floatingStyles()}>内容</div>
+ *     <div ref={setFloating} style={pos.floatingStyles()}>content</div>
  *   </Portal>
  * </Show>
  * ```
@@ -114,8 +115,9 @@ export function createPositioner(
       middleware: unwrap(options.middleware, []),
     });
 
-    // 每个 setter 只有在值真正变化时才会触发下游更新（Solid 信号默认行为），
-    // 这就是“细粒度”的关键：只订阅 x 的节点不会因为 middlewareData 变化而重跑。
+    // Each setter only triggers downstream updates when the value truly
+    // changes (Solid's default signal behavior) — the key to "fine-grained":
+    // nodes subscribed only to x never re-run because middlewareData changed.
     setX(result.x);
     setY(result.y);
     setPlacement(result.placement);
@@ -127,8 +129,9 @@ export function createPositioner(
   createEffect(() => {
     const refEl = reference();
     const floatEl = floating();
-    // 主动读取，建立依赖：placement/strategy/middleware 若是响应式访问器，
-    // 变化时也会重新进入这个 effect 并重新计算 + 重新挂 autoUpdate。
+    // Read eagerly to establish dependencies: if placement/strategy/middleware
+    // are reactive accessors, changes re-enter this effect, recompute, and
+    // re-attach autoUpdate.
     unwrap(options.placement, "bottom");
     unwrap(options.strategy, "absolute");
     unwrap(options.middleware, []);
@@ -155,7 +158,7 @@ export function createPositioner(
     position: strategy(),
     top: "0px",
     left: "0px",
-    // 用 transform 而非 top/left 赋值，避免触发 layout，性能更好
+    // Assign via transform instead of top/left to avoid triggering layout — better performance
     transform: `translate(${Math.round(x())}px, ${Math.round(y())}px)`,
   }));
 

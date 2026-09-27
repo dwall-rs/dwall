@@ -1,5 +1,5 @@
 /* ===== src/components/stage/StageColumn.tsx ===== */
-// 职责：中栏容器——标题随模式 + 渲染对应舞台面板。
+// Responsibility: Center-column container — title follows the mode + renders the corresponding stage panel.
 import { uiStore } from "@/store/ui.store";
 import { fixedStore } from "@/store/fixed.store";
 import { settingsStore } from "@/store/settings.store";

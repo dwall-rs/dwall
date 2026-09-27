@@ -134,20 +134,20 @@ impl MonitorSpecificWallpapers {
     }
 }
 
-/// 壁纸切换模式
+/// Wallpaper switching mode.
 #[cfg_attr(feature = "ts", derive(ts_rs::TS))]
 #[cfg_attr(feature = "ts", ts(export))]
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 #[serde(rename_all = "snake_case", tag = "mode")]
 pub enum WallpaperMode {
-    /// 固定主题模式：用户为显示器配置主题，根据太阳位置切换壁纸
+    /// Fixed theme mode: the user configures a theme per monitor, and wallpapers switch by solar position.
     Fixed {
         #[serde(default = "default_monitor_specific_wallpapers")]
         monitor_specific_wallpapers: MonitorSpecificWallpapers,
     },
-    /// 随机主题模式：每天随机选择一套主题，所有显示器统一
+    /// Random theme mode: a theme is picked at random each day, shared by all monitors.
     Random {
-        /// 随机池（None 表示使用所有可用主题）
+        /// Random pool (`None` means use all available themes).
         #[serde(default)]
         pool: Option<Vec<String>>,
     },

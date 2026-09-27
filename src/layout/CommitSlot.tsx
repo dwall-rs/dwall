@@ -1,4 +1,4 @@
-// 职责：顶栏右侧提交槽——仅固定模式显示「已应用/未应用」；随机模式不显示（信息在舞台）。
+// Responsibility: Commit slot on the right of the top bar — shows "applied / not applied" in fixed mode only; random mode shows nothing (the info lives on the stage).
 import { Show } from "solid-js";
 import { settingsStore } from "@/store/settings.store";
 import { uiStore } from "@/store/ui.store";

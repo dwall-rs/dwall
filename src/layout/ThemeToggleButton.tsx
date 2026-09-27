@@ -1,5 +1,5 @@
 /* ===== src/layout/ThemeToggleButton.tsx ===== */
-// 职责：顶栏一键切换外观（亮 ⇄ 暗）；以当前解析结果取反，避免三态循环的空点击。
+// Responsibility: One-click appearance toggle in the top bar (light ⇄ dark); inverts the current resolved result to avoid dead clicks in the three-state cycle.
 import { themeStore, toggle } from "@/store/theme.store";
 import { t } from "@/i18n";
 import {

@@ -17,8 +17,9 @@ export function SelectItem(props: SelectItemProps) {
     "children",
   ]);
 
-  // click/mouseenter 走 addEventListener（不是 JSX onClick），和 SelectTrigger
-  // 是同一套约定，不占用 onXxx prop 名，调用方自己传的 onClick 不会被覆盖。
+  // click/mouseenter go through addEventListener (not JSX onClick), the same
+  // convention as SelectTrigger: no onXxx prop names are consumed, and an
+  // onClick passed by the caller is never overridden.
   const attachListeners = (el: HTMLDivElement) => {
     const handleClick = () => select();
     const handleMouseEnter = () => onMouseEnter();

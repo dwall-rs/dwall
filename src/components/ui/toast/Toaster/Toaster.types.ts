@@ -32,7 +32,7 @@ export interface ToastOptions {
 export interface ToasterProps {
   id?: string;
   invert?: boolean;
-  /** @deprecated Toast 不再自行设置明暗主题，请直接设置 <html data-theme="..."> */
+  /** @deprecated Toast no longer sets the light/dark theme itself; set <html data-theme="..."> directly */
   theme?: "light" | "dark" | "system";
   position?: Position;
   hotkey?: string[];

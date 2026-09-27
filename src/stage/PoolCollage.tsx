@@ -1,5 +1,5 @@
 /* ===== src/stage/PoolCollage.tsx ===== */
-// 职责：候选池拼贴墙——池变化时随机重排、铺满整个区域；醒目徽章显示「今日主题」。
+// Responsibility: Candidate-pool collage wall — reshuffles randomly when the pool changes and tiles the whole area; a prominent badge shows "today's theme".
 import { randomStore } from "@/store/random.store";
 import { themeList, themeById } from "@/domain/themes";
 import { t } from "@/i18n";
@@ -9,7 +9,7 @@ import { ThemeThumbnail } from "~/scene/ThemeThumbnail";
 
 const COLS = 4;
 
-/** 候选池内容 → 种子：同一池得到稳定排布，池一变就换一种排列。 */
+/** Pool contents → seed: the same pool yields a stable layout; once the pool changes, so does the arrangement. */
 function seedOf(ids: string[]): number {
   let hash = 2166136261;
   for (const id of [...ids].sort()) {
@@ -21,7 +21,7 @@ function seedOf(ids: string[]): number {
   return hash >>> 0;
 }
 
-/** mulberry32：可复现的伪随机数。 */
+/** mulberry32: reproducible pseudo-random numbers. */
 function makeRng(seed: number): () => number {
   let a = seed;
   return () => {
@@ -42,8 +42,8 @@ function shuffled<T>(items: T[], rand: () => number): T[] {
 }
 
 /**
- * 每行的列宽（1 或 2），各行之和恰为 COLS——保证铺满整个拼贴区域。
- * 行数取 `ceil(n / COLS)`，行内格数尽量均分，宽度再随机分配到各格。
+ * Column widths per row (1 or 2), each row summing exactly to COLS — guarantees the entire collage area is filled.
+ * Row count is `ceil(n / COLS)`, cells within a row are split as evenly as possible, then widths are distributed randomly.
  */
 function rowWidths(n: number, rand: () => number): number[][] {
   const rows = Math.ceil(n / COLS);
@@ -97,7 +97,7 @@ export function PoolCollage() {
       ))}
       <div class="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/72 via-transparent to-transparent" />
 
-      {/* 今日主题徽章 */}
+      {/* Today's theme badge */}
       <Show when={selection()}>
         {(sel) => (
           <div class="pointer-events-none absolute left-[18px] top-4 flex items-center gap-2 rounded-full border border-primary/40 bg-black/65 px-3.5 py-1.5 shadow-[0_8px_24px_rgba(0,0,0,.5)] backdrop-blur-md">

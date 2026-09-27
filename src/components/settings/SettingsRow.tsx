@@ -1,5 +1,5 @@
-// 职责：设置行——基于 Field 提供 label/description 语义与水平/垂直布局。
-//       注意：不解构 props（Solid 中解构会丢失响应性，语言切换等无法更新）。
+// Responsibility: Settings row — built on Field, providing label/description semantics with horizontal/vertical layout.
+//       Note: do not destructure props (in Solid, destructuring loses reactivity, so language switches etc. cannot update).
 import type { JSXElement } from "solid-js";
 import { Show } from "solid-js";
 import { Check } from "lucide-solid";

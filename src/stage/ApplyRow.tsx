@@ -1,5 +1,5 @@
 /* ===== src/stage/ApplyRow.tsx ===== */
-// 职责：固定模式的逐条提交——「应用此套/停止」就是固定模式的「保存」，写配置 + 重启引擎。
+// Responsibility: Per-item commit for fixed mode — "apply this set / stop" is fixed mode's "save": it writes the config + restarts the engine.
 import { Button } from "@/components/ui/button";
 import { fixedStore, isApplied, toggleApply } from "@/store/fixed.store";
 import { monitorById } from "@/domain/monitors";

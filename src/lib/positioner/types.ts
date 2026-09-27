@@ -26,15 +26,17 @@ export interface Elements {
 }
 
 /**
- * 虚拟参照元素：用于锚定到一个不存在真实 DOM 节点的位置，
- * 最典型的场景就是右键菜单——锚点是鼠标点击的那个像素坐标，不是某个元素。
- * 只要实现 getBoundingClientRect() 就能像真实 HTMLElement 一样参与定位计算。
+ * Virtual reference element: anchors to a position where no real DOM node
+ * exists — the typical case is a context menu, where the anchor is the mouse
+ * click's pixel coordinate, not an element. Implementing getBoundingClientRect()
+ * lets it take part in positioning like a real HTMLElement.
  */
 export interface VirtualElement {
   getBoundingClientRect(): Rect;
   /**
-   * 可选：关联一个真实 DOM 节点，autoUpdate 会用它去查找可滚动祖先容器
-   * （虚拟元素本身没有父节点链，无法直接判断哪些祖先滚动会影响这个点的位置）。
+   * Optional: associate a real DOM node; autoUpdate uses it to find scrollable
+   * ancestor containers (the virtual element has no parent chain of its own,
+   * so there is no way to tell which ancestors' scrolling affects this point).
    */
   contextElement?: Element;
 }
@@ -45,7 +47,7 @@ export interface MiddlewareData {
   [key: string]: any;
 }
 
-/** 传给每个 middleware 的当前计算状态 */
+/** The current computation state passed to each middleware */
 export interface MiddlewareState extends Coords {
   initialPlacement: Placement;
   placement: Placement;
@@ -58,8 +60,8 @@ export interface MiddlewareState extends Coords {
 export interface MiddlewareReturn extends Partial<Coords> {
   data?: any;
   /**
-   * 若返回该字段，表示需要用新的 placement 重新计算一轮，
-   * 主循环会用新 placement 重跑一次（用于 flip 等场景）。
+   * If this field is returned, another pass must be computed with the new
+   * placement; the main loop reruns once with it (used by flip and friends).
    */
   reset?: boolean | { placement?: Placement };
 }

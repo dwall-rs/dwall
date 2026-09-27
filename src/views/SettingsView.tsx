@@ -1,5 +1,5 @@
 /* ===== src/components/views/SettingsView.tsx ===== */
-// 职责：设置视图——标题 + 导语 + 各分组（分组各自单一职责）。
+// Responsibility: Settings view — title + intro + the sections (each section keeps a single responsibility).
 import { AppearanceSection } from "@/components/settings/AppearanceSection";
 import { EngineSection } from "@/components/settings/EngineSection";
 import { PathsSection } from "@/components/settings/PathsSection";

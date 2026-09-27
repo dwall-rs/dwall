@@ -8,22 +8,27 @@ export interface UseSelectContentResult {
   ctx: ReturnType<typeof useSelectContext>;
   pos: Positioner;
   /**
-   * 面板应该用的最大高度：有选中值时，直接读 alignSelectedItem 自己算好的
-   * panelHeight（不经过 size 中间件）；没有选中值（占位符状态、走贴边下拉）
-   * 时，用 size 中间件算出来的可用空间。两种场景用的是不同的高度来源，
-   * 统一在这里合并成一个对外的值，展示层不需要关心具体走的是哪一个。
+   * The max height the panel should use: with a selected value it reads the
+   * panelHeight that alignSelectedItem computed itself (bypassing the size
+   * middleware); without a value (placeholder state, edge-anchored dropdown)
+   * it uses the available space computed by the size middleware. The two
+   * scenarios use different height sources, merged here into a single public
+   * value so the presentation layer does not care which one was taken.
    */
   maxHeight: () => number | undefined;
-  /** 综合了 open 状态 + hide 中间件的 referenceHidden 判断 */
+  /** Combines the open state with the hide middleware's referenceHidden check */
   isVisible: () => boolean;
   /**
-   * 兼容字段：SelectContent 现在关闭时不再卸载 Portal（为了保住 ctx.items 的
-   * 注册信息），因此 mounted 已不再被展示层用来控制 <Show>。该值目前等价于
-   * isVisible，保留只是为了不破坏已导出的 useSelectContent 返回类型。
+   * Compatibility field: SelectContent no longer unmounts its Portal on
+   * close (to preserve the ctx.items registration), so mounted is no longer
+   * used by the presentation layer to drive <Show>. It is currently
+   * equivalent to isVisible and is kept only to avoid breaking the exported
+   * useSelectContent return type.
    */
   mounted: () => boolean;
-  /** 驱动 data-state 的状态，打开时比 isVisible 晚一帧，给"选中项对齐"这类
-   * 需要先读到子元素（选项）才能算准位置的定位策略留出时间。 */
+  /** State driving data-state; on open it lags one frame behind isVisible,
+   * giving positioning strategies like "selected-item alignment" time — they
+   * must read the child elements (options) first to compute accurately. */
   animationState: () => "open" | "closed";
   contentElement: () => HTMLElement | undefined;
   setContentElement: (el: HTMLElement) => void;
@@ -68,21 +73,25 @@ export function useSelectContent(
     () => ctx.open() && !pos.middlewareData().hide?.referenceHidden,
   );
 
-  // SelectContent 关闭时也不会卸载（为了保住 ctx.items 的注册信息），因此
-  // createPositioner 不会像 Tooltip/Popover 那样在每次打开时重新创建并自动
-  // 算一次位置。这里在每次打开时显式重新计算一次，修复“触发器第一次打开后
-  // 因外部布局变化移动了位置，第二次打开时面板还停留在旧坐标”的问题。
+  // SelectContent also does not unmount on close (to preserve the ctx.items
+  // registration), so createPositioner is not recreated and does not
+  // auto-compute a position on every open like Tooltip/Popover. Recompute
+  // explicitly on each open to fix "after the trigger moved due to an
+  // external layout change on its first open, the panel still sits at the old
+  // coordinates on the second open".
   createEffect(() => {
     if (ctx.open()) {
       pos.update();
     }
   });
 
-  // --- 打开时延迟一帧再触发动画 class ---
-  // "选中项对齐"策略要读子元素（SelectItem 渲染出来的 <li data-value>）才能
-  // 算出正确的位置，如果动画在这次定位算完之前就开始播放，面板会在动画播到
-  // 一半时才"跳"到正确位置——等一帧，给这次定位计算留出时间（细节和
-  // production-tooltip 里箭头位置的处理是同一个道理）。
+  // --- Delay one frame before triggering the animation class on open ---
+  // The "selected-item alignment" strategy must read the child elements (the
+  // <li data-value> elements SelectItem renders) to compute the correct
+  // position. If the animation starts playing before that positioning
+  // finishes, the panel only "jumps" to the correct position halfway through
+  // the animation — wait one frame to give the positioning calculation time
+  // (same idea as how production-tooltip handles arrow position).
   const [animationState, setAnimationState] = createSignal<"open" | "closed">(
     "closed",
   );
@@ -96,10 +105,12 @@ export function useSelectContent(
     }
   });
 
-  // SelectContent 关闭时不再卸载子节点（否则 ctx.items 会被清空，SelectValue
-  // 读不到 label），因此 mounted 已经没有"延迟卸载/立即卸载"的语义，直接跟
-  // isVisible 保持一致即可。保留该字段只是为了兼容已导出的 useSelectContent
-  // 返回类型；新的展示层逻辑一律使用 isVisible。
+  // SelectContent no longer unmounts its children on close (otherwise
+  // ctx.items would be cleared and SelectValue could not read the labels), so
+  // mounted no longer carries any "deferred/immediate unmount" semantics and
+  // simply stays in sync with isVisible. The field is kept only for
+  // compatibility with the exported useSelectContent return type; new
+  // presentation-layer logic should always use isVisible.
   const mounted = isVisible;
 
   return {

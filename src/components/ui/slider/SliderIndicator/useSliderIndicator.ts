@@ -5,9 +5,9 @@ export const useSliderIndicator = () => {
   const { min, max, values, orientation } = useSliderContext();
 
   // /**
-  //  * 计算 indicator 的 start% 和 end%：
-  //  *  - 单 thumb：从 0 到当前值
-  //  *  - 双 thumb（range）：从 min thumb 到 max thumb
+  //  * Compute the indicator's start% and end%:
+  //  *  - single thumb: from 0 to the current value
+  //  *  - dual thumb (range): from the min thumb to the max thumb
   //  */
   // const indicatorStyle = createMemo(() => {
   //   const range = max() - min();
@@ -33,10 +33,10 @@ export const useSliderIndicator = () => {
   // });
 
   /**
-   * 计算 indicator 的 start% 和 end%：
-   *  - 单 thumb：start 固定为 0，end 为当前值的百分比
-   *  - 多 thumb（range）：start 为第一个 thumb，end 为最后一个 thumb
-   *  注意：不对 values 排序，保持与 thumb 索引的对应关系
+   * Compute the indicator's start% and end%:
+   *  - single thumb: start is fixed at 0, end is the current value's percentage
+   *  - multi thumb (range): start is the first thumb, end is the last thumb
+   *  Note: values are not sorted, to keep the mapping to thumb indices
    */
   const indicatorStyle = createMemo(() => {
     const range = max() - min();

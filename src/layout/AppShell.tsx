@@ -1,4 +1,4 @@
-// 职责：外壳；挂载最小尺寸提示。其余不变。
+// Responsibility: App shell; mounts the minimum-size notice. Everything else unchanged.
 import { useThemeEngine } from "~/hooks/useThemeEngine";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { GlobalBar } from "./GlobalBar";

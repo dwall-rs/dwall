@@ -1,4 +1,4 @@
-// 职责：主题目录与显示器列表（来自 Rust）。UI 只读展示，不持有业务逻辑。
+// Responsibility: theme catalog and monitor list (from Rust). The UI shows them read-only and holds no business logic.
 
 import { createStore } from "solid-js/store";
 

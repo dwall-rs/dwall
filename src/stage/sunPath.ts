@@ -1,14 +1,14 @@
-// 职责：太阳轨迹的纯几何工具——方位→横坐标与曲线平滑。
+// Responsibility: Pure geometry helpers for the sun path — azimuth → x coordinate and curve smoothing.
 
 export type Point = readonly [number, number];
 
 const DEG = Math.PI / 180;
 
-/** 方位 → 横坐标（0..100）：东=6%、南=50%、西=94%。 */
+/** Azimuth → x coordinate (0..100): east = 6%, south = 50%, west = 94%. */
 export const xForAzimuth = (azimuth: number): number =>
   50 - 44 * Math.sin(azimuth * DEG);
 
-/** Catmull-Rom → 三次贝塞尔：经过全部节点的平滑曲线（张力 0.5）。 */
+/** Catmull-Rom → cubic Bézier: a smooth curve passing through every node (tension 0.5). */
 export function smoothPath(points: readonly Point[]): string {
   if (points.length < 2) return "";
   if (points.length === 2) {

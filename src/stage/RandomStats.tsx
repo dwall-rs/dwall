@@ -1,5 +1,5 @@
 /* ===== src/components/stage/RandomStats.tsx ===== */
-// 职责：随机模式只读摘要数字——候选池/范围/目标/周期。
+// Responsibility: Read-only summary figures for random mode — candidate pool / range / target / period.
 import { randomStore } from "@/store/random.store";
 import { themeList } from "@/domain/themes";
 import { t } from "@/i18n";

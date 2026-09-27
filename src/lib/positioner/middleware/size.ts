@@ -9,11 +9,11 @@ export interface SizeAvailableSpace {
 export interface SizeOptions {
   padding?: number;
   boundary?: Boundary;
-  /** 拿到可用空间后自行处理，比如设置 floating 的 maxHeight */
+  /** Handle the available space yourself, e.g. set the floating's maxHeight */
   apply?: (space: SizeAvailableSpace, state: MiddlewareState) => void;
 }
 
-/** 计算 floating 在当前边界内的可用宽高，交给 apply 回调去应用（如设置 max-height 实现滚动） */
+/** Compute the floating's available width/height within the current boundary and hand it to the apply callback (e.g. set max-height to enable scrolling) */
 export function size(options: SizeOptions = {}): Middleware {
   return {
     name: "size",

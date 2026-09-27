@@ -1,5 +1,5 @@
 /* ===== src/stage/Preview.tsx ===== */
-// 职责：主预览——以缩略图 contain 展示，标注太阳位置与是否匹配。
+// Responsibility: Main preview — rendered as a contained thumbnail, annotated with the solar position and whether it matches.
 import type { Wallpaper } from "@/domain/types";
 import { t } from "@/i18n";
 import { ThemeThumbnail } from "@/scene/ThemeThumbnail";

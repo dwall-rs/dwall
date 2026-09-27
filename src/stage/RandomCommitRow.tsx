@@ -1,5 +1,5 @@
 /* ===== src/stage/RandomCommitRow.tsx ===== */
-// 职责：随机模式的提交行——「保存配置/放弃」就是随机模式的「应用」，写配置 + 重启引擎。
+// Responsibility: Commit row for random mode — "save config / discard" is random mode's "apply": it writes the config + restarts the engine.
 import { Button } from "@/components/ui/button";
 import { t } from "@/i18n";
 import { randomStore, isDirty, save, discard } from "@/store/random.store";

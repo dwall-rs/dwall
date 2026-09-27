@@ -2,9 +2,9 @@ name: "Nightly Build"
 
 on:
   schedule:
-    # 每天 UTC 4 点执行，即北京时间 12 点
+    # Runs daily at 04:00 UTC (12:00 Beijing time)
     - cron: "0 4 * * *"
-  workflow_dispatch: # 允许手动触发
+  workflow_dispatch: # allow manual triggering
 
 env:
   CARGO_TERM_COLOR: always
@@ -28,21 +28,21 @@ jobs:
         run: |
           echo "Checking nightly build conditions..."
 
-          # 检查commit是否有labels
+          # Check whether the commit has labels
           has_labels() {
             local commit_sha=$1
-            # 获取commit的PR信息，检查是否有labels
+            # Fetch the commit's PR info and check for labels
             local pr_number=$(gh pr list --state merged --search "$commit_sha" --json number --jq '.[0].number' 2>/dev/null || echo "")
             if [ -n "$pr_number" ]; then
               local labels=$(gh pr view "$pr_number" --json labels --jq '.labels | length' 2>/dev/null || echo "0")
               [ "$labels" -gt 0 ]
             else
-              # 如果不是PR commit，检查commit message是否包含标签格式
+              # If not a PR commit, check whether the commit message contains a label tag
               git log --format=%B -n 1 "$commit_sha" | grep -E '\[(feat|fix|style|refactor|perf|test)\]' >/dev/null 2>&1
             fi
           }
 
-          # 获取有labels的commits
+          # Get commits that have labels
           get_labeled_commits_since() {
             local since_commit=$1
             local commits=$(git rev-list --reverse "$since_commit"..HEAD 2>/dev/null || git rev-list --reverse HEAD)
@@ -61,15 +61,15 @@ jobs:
             echo "$labeled_commits"
           }
 
-          # 检查是否存在nightly prerelease
+          # Check whether a nightly prerelease exists
           if gh release view nightly >/dev/null 2>&1; then
             echo "has_nightly=true" >> $GITHUB_OUTPUT
             echo "Found existing nightly release"
 
-            # 获取nightly标签的commit
+            # Get the commit of the nightly tag
             nightly_commit=$(git rev-list -n 1 nightly 2>/dev/null || echo "")
             if [ -n "$nightly_commit" ]; then
-              # 检查nightly标签之后是否有带labels的新commit
+              # Check whether there are new labeled commits after the nightly tag
               labeled_commits=$(get_labeled_commits_since "$nightly_commit")
               latest_commit=$(git rev-parse HEAD)
               echo "latest_commit=$latest_commit" >> $GITHUB_OUTPUT
@@ -90,11 +90,11 @@ jobs:
             echo "has_nightly=false" >> $GITHUB_OUTPUT
             echo "No nightly release found"
 
-            # 获取最新的正式release
+            # Get the latest stable release
             latest_release=$(gh release list --exclude-pre-releases --limit 1 --json tagName --jq '.[0].tagName' 2>/dev/null || echo "")
 
             if [ -n "$latest_release" ]; then
-              # 检查最新release之后是否有带labels的新commit
+              # Check whether there are new labeled commits after the latest release
               release_commit=$(git rev-list -n 1 "$latest_release" 2>/dev/null || echo "")
               labeled_commits=$(get_labeled_commits_since "$release_commit")
               latest_commit=$(git rev-parse HEAD)
@@ -174,27 +174,27 @@ jobs:
             exit 0
           fi
 
-          # 使用关联数组来跟踪已处理的PR编号和直接提交
+          # Use associative arrays to track processed PR numbers and direct commits
           declare -A seen_prs
           declare -A seen_commits
           changelog=""
 
           for commit in $labeled_commits; do
-            # 尝试获取PR信息
+            # Try to fetch PR info
             pr_info=$(gh pr list --state merged --search "$commit" --json number,title --jq '.[0] | select(.number != null)' 2>/dev/null || echo "")
 
             if [ -n "$pr_info" ]; then
-              # 如果是PR commit，使用PR编号去重
+              # If it's a PR commit, dedupe by PR number
               pr_number=$(echo "$pr_info" | jq -r '.number')
 
-              # 检查是否已经处理过这个PR
+              # Check whether this PR has already been processed
               if [ -z "${seen_prs[$pr_number]}" ]; then
                 pr_title=$(echo "$pr_info" | jq -r '.title')
                 changelog="${changelog}- ${pr_title} (#${pr_number})\n"
                 seen_prs[$pr_number]=1
               fi
             else
-              # 如果不是PR commit，使用commit hash去重
+              # If not a PR commit, dedupe by commit hash
               if [ -z "${seen_commits[$commit]}" ]; then
                 commit_title=$(git log --format=%s -n 1 "$commit")
                 commit_short=$(echo "$commit" | cut -c1-7)
@@ -204,7 +204,7 @@ jobs:
             fi
           done
 
-          # 使用EOF来处理多行输出
+          # Use EOF to handle multi-line output
           {
             echo 'changelog<<EOF'
             echo -e "$changelog"

@@ -1,5 +1,5 @@
 /* ===== src/components/settings/AboutSection.tsx ===== */
-// 职责：关于分组——不等分（一个大版本块 + 一列窄链接行），破「三等卡」默认相。
+// Responsibility: About group — asymmetric layout (one large version block + a column of narrow link rows), breaking the default three-equal-card look.
 import { ChevronRight, Code, FileText } from "lucide-solid";
 import { createResource, type JSXElement } from "solid-js";
 import {

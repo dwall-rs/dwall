@@ -1,13 +1,13 @@
 /* ===== src/domain/monitors.ts ===== */
-// 职责：把 Rust 显示器列表（catalog.store）适配为 UI 的显示器模型。
+// Responsibility: adapt the Rust monitor list (catalog.store) to the UI's monitor model.
 import { catalogStore } from "@/store/catalog.store";
 import { t } from "@/i18n";
 import type { Monitor } from "./types";
 
-/** 伪显示器：对所有显示器统一设置。 */
+/** Pseudo monitor: applies one setting to all monitors. */
 const ALL_MONITOR_ID = "all";
 
-/** 显示器列表（含「所有显示器」项）。 */
+/** Monitor list (including the "all monitors" entry). */
 export const monitorList = (): Monitor[] => [
   { id: ALL_MONITOR_ID, name: t("scope.allMonitors") },
   ...catalogStore.monitors.map((m) => ({
@@ -16,6 +16,6 @@ export const monitorList = (): Monitor[] => [
   })),
 ];
 
-/** 按 id 取显示器。 */
+/** Look up a monitor by id. */
 export const monitorById = (id: string): Monitor | undefined =>
   monitorList().find((m) => m.id === id);

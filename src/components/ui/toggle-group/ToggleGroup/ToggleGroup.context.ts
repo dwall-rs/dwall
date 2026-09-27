@@ -14,7 +14,7 @@ import type {
 
 const ToggleGroupContext = createContext<ToggleGroupContextValue>();
 
-/** 单选/多选的 onValueChange 签名(从 props 类型派生,保持单一事实来源) */
+/** onValueChange signatures for single/multiple (derived from the props types to keep a single source of truth) */
 type SingleChangeHandler<TValue extends ToggleGroupValue> = NonNullable<
   ToggleGroupSingleProps<TValue>["onValueChange"]
 >;
@@ -23,10 +23,11 @@ type MultipleChangeHandler<TValue extends ToggleGroupValue> = NonNullable<
 >;
 
 /**
- * createToggleGroupState 的输入:ToggleGroupProps 的运行时形态。
+ * Input to createToggleGroupState: the runtime shape of ToggleGroupProps.
  *
- * 受控值时单选给标量、多选给数组,内部统一规范化成数组;
- * `multiple` 同时决定 onValueChange 用哪种签名回调。
+ * With a controlled value, single mode receives a scalar and multiple mode an
+ * array; internally both are normalized to an array. `multiple` also decides
+ * which signature onValueChange is called with.
  */
 export interface ToggleGroupStateProps<
   TValue extends ToggleGroupValue = ToggleGroupValue,
@@ -45,21 +46,24 @@ export interface ToggleGroupStateProps<
 }
 
 /**
- * ToggleGroup 的唯一状态源:选中值(受控/非受控)、焦点高亮、item 注册表。
+ * The single source of state for ToggleGroup: selected value
+ * (controlled/uncontrolled), focus highlight, and the item registry.
  *
- * 返回的 context 值里所有字段都是 accessor,因此传入的 `props` 可以是
- * splitProps 得到的响应式代理,读取始终是最新值。
- * 组件根只负责输出 DOM 与 data-* 样式钩子,状态与交互算法收敛在这里。
+ * Every field on the returned context value is an accessor, so the `props`
+ * passed in can be the reactive proxy from splitProps and reads always see
+ * the latest value. The component root only emits DOM and data-* style hooks;
+ * state and interaction logic converge here.
  *
- * 值类型由泛型参数决定;内部只用 `===` / `includes` 做同一性比较,
- * 因此 string 与 number 都能正常工作。
+ * The value type is determined by the generic parameter; internally only
+ * `===` / `includes` are used for identity comparison, so both string and
+ * number work.
  */
 export function createToggleGroupState<
   TValue extends ToggleGroupValue = ToggleGroupValue,
 >(props: ToggleGroupStateProps<TValue>): ToggleGroupContextValue<TValue> {
   const multiple = () => props.multiple === true;
 
-  /** 单选传标量、多选传数组,内部统一成数组 */
+  /** Single passes a scalar, multiple an array; normalized to an array internally */
   const toArray = (v: TValue | readonly TValue[] | undefined): TValue[] => {
     if (v === undefined) return [];
     return Array.isArray(v) ? [...(v as readonly TValue[])] : [v as TValue];
@@ -76,7 +80,7 @@ export function createToggleGroupState<
   >([]);
 
   const isControlled = () => props.value !== undefined;
-  // 受控优先:props.value 存在时读外部值,否则读内部状态
+  // Controlled takes priority: read the external value when props.value is present, otherwise internal state
   const value = (): readonly TValue[] =>
     isControlled() ? toArray(props.value) : internalValue();
 
@@ -90,7 +94,7 @@ export function createToggleGroupState<
     const current = value();
     const pressed = current.includes(itemValue);
 
-    // 单选时再次点击已按下项会取消选中(next = [])
+    // In single mode, clicking an already pressed item deselects it (next = [])
     let next: TValue[];
     if (multiple()) {
       next = pressed
@@ -100,8 +104,8 @@ export function createToggleGroupState<
       next = pressed ? [] : [itemValue];
     }
 
-    // 先通知外部:onValueChange 中 cancel() 可阻止组件提交本次变更
-    // 单选回调标量(取消时是 undefined),多选回调数组
+    // Notify the outside first: cancel() inside onValueChange can prevent the
+    // component from committing; single gets a scalar (undefined on cancel), multiple an array
     const details = createChangeEventDetails(event, trigger);
     if (multiple()) {
       (props.onValueChange as MultipleChangeHandler<TValue> | undefined)?.(
@@ -116,7 +120,7 @@ export function createToggleGroupState<
     }
     if (details.isCanceled) return;
 
-    // 受控模式只通知外部,不改内部状态
+    // In controlled mode only the outside is notified; internal state is not changed
     if (!isControlled()) setInternalValue(next);
   };
 
@@ -153,18 +157,19 @@ export function createToggleGroupState<
 }
 
 /**
- * 读取 ToggleGroup 的 context。
+ * Reads the ToggleGroup context.
  *
- * 泛型参数是**调用方标注**:组件本身无法从子节点推导所属 group 的值类型,
- * 自定义 item 时请显式传入与 ToggleGroup 一致的类型,例如
- * `useToggleGroupContext<"bold" | "italic">("MyToggle")`。
+ * The generic parameter is **annotated by the caller**: the component cannot
+ * derive the group's value type from its children, so when writing a custom
+ * item pass a type matching ToggleGroup explicitly, e.g.
+ * `useToggleGroupContext<"bold" | "italic">("MyToggle")`.
  */
 export function useToggleGroupContext<
   TValue extends ToggleGroupValue = ToggleGroupValue,
 >(component: string): ToggleGroupContextValue<TValue> {
   const ctx = useContext(ToggleGroupContext);
   if (!ctx) {
-    throw new Error(`<${component}> 必须渲染在 <ToggleGroup> 内部`);
+    throw new Error(`<${component}> must be rendered inside <ToggleGroup>`);
   }
   return ctx as ToggleGroupContextValue<TValue>;
 }

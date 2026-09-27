@@ -1,6 +1,7 @@
 /**
- * 调用用户传入的事件处理器(兼容 Solid 的函数 / 函数数组 / bound 对象形式)。
- * splitProps 提取出的事件类型是 EventHandlerUnion,不能直接调用。
+ * Calls a user-supplied event handler (supporting Solid's function / array of
+ * functions / bound object forms). The event type extracted by splitProps is
+ * an EventHandlerUnion and cannot be called directly.
  */
 export function callEventHandler<E extends Event>(
   handler: unknown,

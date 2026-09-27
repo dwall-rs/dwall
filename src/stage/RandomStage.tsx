@@ -1,5 +1,5 @@
 /* ===== src/components/stage/RandomStage.tsx ===== */
-// 职责：随机模式舞台编排——导语 + 池状态 + 摘要 + 全选/取消全选 + 拼贴/空态。无抽样。
+// Responsibility: Random-mode stage orchestration — intro + pool status + summary + select all / clear all + collage or empty state. No sampling.
 import { randomStore, selectAll, clearAll } from "@/store/random.store";
 import { themeList } from "@/domain/themes";
 import { t } from "@/i18n";
@@ -12,7 +12,7 @@ import { RandomCommitRow } from "./RandomCommitRow";
 
 export function RandomStage() {
   const allIds = createMemo(() => themeList().map((theme) => theme.id));
-  // 以「目录中真实存在」的主题数为准，避免池里只剩已卸载 id 时仍渲染空拼贴。
+  // Counts only themes that really exist in the catalog, so we never render an empty collage when the pool is left holding uninstalled ids.
   const poolSize = createMemo(
     () =>
       themeList().filter((theme) => randomStore.selected.includes(theme.id))

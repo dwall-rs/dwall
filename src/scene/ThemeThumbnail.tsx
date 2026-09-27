@@ -1,6 +1,6 @@
 /* ===== src/scene/ThemeThumbnail.tsx ===== */
-// 职责：主题缩略图（经镜像与本地缓存），按壁纸序号取。所有缩略展示统一走它。
-//       注意：只加载缩略图（体积小），绝不加载原始壁纸大图。
+// Responsibility: Theme thumbnail (through mirror + local cache), fetched by wallpaper index. Every thumbnail display goes through it.
+//       Note: loads thumbnails only (small), never the full-resolution wallpaper originals.
 import { createResource, type JSXElement } from "solid-js";
 import { getOrSaveCachedThumbnails, mirrorUrl } from "@/ipc";
 import { catalogStore } from "@/store/catalog.store";
@@ -22,7 +22,7 @@ export function ThemeThumbnail(props: Props) {
       const theme = catalogStore.themes.find((t) => t.id === id);
       const url = theme?.thumbnails[index];
       if (!url) return null;
-      // 自定义主题：缩略图为本地路径，直接走 asset 协议，无需镜像与缓存。
+      // Custom themes: thumbnails are local paths, served straight through the asset protocol — no mirroring or caching needed.
       if (theme?.source === "custom") return url;
       const mirrored = await mirrorUrl(
         url,

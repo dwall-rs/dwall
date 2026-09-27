@@ -1,11 +1,11 @@
-// 职责：视图路由态——view / mode / 主题库抽屉开关。切到设置视图时顺手收起抽屉。
+// Responsibility: view routing state — view / mode / theme-library drawer toggle. Switching to the settings view also collapses the drawer.
 import type { Mode, View } from "@/domain/types";
 import { createStore } from "solid-js/store";
 
 interface UiState {
   view: View;
   mode: Mode;
-  libOpen: boolean; // 最小档下主题库抽屉是否展开（xl+ 忽略此值）
+  libOpen: boolean; // whether the theme library drawer is expanded at the smallest breakpoint (ignored at xl+)
 }
 
 const [uiStore, setUiStore] = createStore<UiState>({

@@ -1,5 +1,5 @@
 /* ===== src/layout/FixedCommit.tsx ===== */
-// 职责：固定模式提交视图——只显示「作用域 + 已应用/未应用」，无保存按钮（提交靠每套的应用/停止）。
+// Responsibility: Fixed-mode commit view — shows only "scope + applied / not applied", with no save button (committing is done per-theme via apply/stop).
 import { fixedStore, isApplied } from "@/store/fixed.store";
 import { monitorById } from "@/domain/monitors";
 import { themeById } from "@/domain/themes";

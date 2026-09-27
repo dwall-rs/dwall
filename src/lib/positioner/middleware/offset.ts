@@ -2,15 +2,15 @@ import type { Middleware } from "../types";
 import { getSide, isVerticalSide } from "../core/placement";
 
 export interface OffsetValue {
-  /** 沿主轴方向的偏移（远离/靠近 reference），默认 0 */
+  /** Offset along the main axis (away from/toward the reference), default 0 */
   mainAxis?: number;
-  /** 沿交叉轴方向的偏移（左右或上下平移），默认 0 */
+  /** Offset along the cross axis (left/right or up/down translation), default 0 */
   crossAxis?: number;
 }
 
 export type OffsetOptions = number | OffsetValue;
 
-/** 让 floating 元素与 reference 保持一定间距，或沿对齐轴做微调 */
+/** Keep a gap between the floating and the reference, or fine-tune along the alignment axis */
 export function offset(value: OffsetOptions = 0): Middleware {
   return {
     name: "offset",
@@ -23,7 +23,7 @@ export function offset(value: OffsetOptions = 0): Middleware {
         typeof value === "number" ? value : (value.mainAxis ?? 0);
       const crossAxis = typeof value === "number" ? 0 : (value.crossAxis ?? 0);
 
-      // top/left 是"负方向"，bottom/right 是"正方向"
+      // top/left are the "negative" direction, bottom/right the "positive" direction
       const mainSign = side === "bottom" || side === "right" ? 1 : -1;
 
       const diffMain = mainAxis * mainSign;

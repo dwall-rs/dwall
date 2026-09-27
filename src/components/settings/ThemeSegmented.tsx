@@ -1,4 +1,4 @@
-// 职责：外观三档 segmented（亮/暗/系统）；活动态由 UI kit 的 Tabs（data-active）提供。
+// Responsibility: Appearance three-way segmented control (light/dark/system); the active state comes from the UI kit Tabs (data-active).
 import { themeStore, setMode } from "@/store/theme.store";
 import type { ThemeMode } from "@/domain/types";
 import { t } from "@/i18n";

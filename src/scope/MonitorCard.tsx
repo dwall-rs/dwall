@@ -1,5 +1,5 @@
 /* ===== src/components/scope/MonitorCard.tsx ===== */
-// 职责：单显示器卡；allUnified 时整体禁用（结构性互斥的执行点）。
+// Responsibility: Single-monitor card; the whole card is disabled when allUnified (the enforcement point of the structural exclusion).
 import { Switch } from "@/components/ui/switch";
 import {
   fixedStore,

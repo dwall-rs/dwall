@@ -1,5 +1,5 @@
 /* ===== src/hooks/useMediaQuery.ts ===== */
-// 职责：订阅一条媒体查询并返回布尔；组件据此做「无法纯 CSS 表达」的决策（如抽屉自动关闭）。
+// Responsibility: subscribe to a media query and return a boolean; components use it for decisions that pure CSS cannot express (e.g. auto-closing a drawer).
 
 import { type Accessor, createEffect, createSignal } from "solid-js";
 

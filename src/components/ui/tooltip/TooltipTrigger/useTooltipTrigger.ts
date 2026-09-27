@@ -4,30 +4,35 @@ import { useTooltipContext } from "../Tooltip/Tooltip.context";
 export interface UseTooltipTriggerResult {
   ctx: ReturnType<typeof useTooltipContext>;
   /**
-   * 把打开/关闭相关的原生事件监听器绑定到真正的 DOM 元素上（通过 ref 调用）。
-   * 用 addEventListener 而不是 JSX 的 onXxx prop，是为了不占用这些 prop 名——
-   * 调用方可以在 <TooltipTrigger onClick={...} onMouseEnter={...}> 上自由传
-   * 自己的原生事件处理，两者是完全独立的两套机制（一个走 Solid 的事件系统，
-   * 一个是原生 addEventListener），互不覆盖、都会正常触发。
+   * Binds the open/close native event listeners to the real DOM element (called via ref).
+   * Uses addEventListener rather than JSX onXxx props so as not to occupy those prop
+   * names — callers can freely pass their own native event handlers to
+   * <TooltipTrigger onClick={...} onMouseEnter={...}>; the two are entirely separate
+   * mechanisms (one goes through Solid's event system, the other is native
+   * addEventListener) and neither overrides the other — both fire normally.
    */
   attachListeners: (el: Element) => void;
 }
 
 /**
- * 封装 TooltipTrigger 需要绑定的所有事件逻辑：
- * - pointerenter/pointerleave（悬停进入/离开）走 openDelay/closeDelay
- * - focus/blur（键盘导航）跳过延迟，立即开关——这是无障碍要求，键盘用户不该被迫等待
- * - Escape 立即关闭，并阻止冒泡（避免被外层其他也监听 Escape 的逻辑重复处理）
- * - mousedown 立即关闭——贴近 shadcn/Radix 的行为：用户开始点击这个元素，
- *   就意味着要跟它交互了，tooltip 这时候还杵在那儿会挡视线，应该立刻让路，
- *   不用等 pointerleave 或者走 closeDelay。
+ * Encapsulates all the event logic TooltipTrigger needs to bind:
+ * - pointerenter/pointerleave (hover in/out) go through openDelay/closeDelay
+ * - focus/blur (keyboard navigation) skip the delay and toggle immediately — this is
+ *   an accessibility requirement; keyboard users shouldn't be forced to wait
+ * - Escape closes immediately and stops propagation (so it isn't handled again by
+ *   other outer logic also listening for Escape)
+ * - mousedown closes immediately — close to shadcn/Radix behavior: if the user starts
+ *   clicking the element, they intend to interact with it, and a tooltip still sitting
+ *   there would block the view, so it should get out of the way at once without
+ *   waiting for pointerleave or closeDelay.
  *
- * mousedown 和 focus 之间有一个容易踩的坑：原生事件顺序是
- * mousedown → focus → mouseup → click——点击一个可聚焦元素（比如 <button>），
- * 浏览器会在 mousedown 之后自动给它 focus。如果不做处理，mousedown 刚关掉
- * tooltip，紧跟着浏览器自动触发的 focus 又会把它立刻重新打开，两条逻辑打架。
- * 用 isPointerDown 标记"这次 focus 是不是紧跟在点击后面被动触发的"，是的话
- * 就跳过重新打开，只有真正的键盘 Tab 导航触发的 focus 才会打开 tooltip。
+ * There's an easy-to-miss pitfall between mousedown and focus: the native event order
+ * is mousedown → focus → mouseup → click — when clicking a focusable element (e.g.
+ * <button>), the browser focuses it automatically after mousedown. Without handling,
+ * mousedown just closed the tooltip and the browser-triggered focus immediately
+ * reopens it, with the two logics fighting each other. The isPointerDown flag marks
+ * "was this focus passively triggered right after a click"; if so, skip reopening,
+ * and only a focus triggered by real keyboard Tab navigation opens the tooltip.
  */
 export function useTooltipTrigger(): UseTooltipTriggerResult {
   const ctx = useTooltipContext("TooltipTrigger");
@@ -42,8 +47,9 @@ export function useTooltipTrigger(): UseTooltipTriggerResult {
       ctx.requestClose();
     };
     const onFocus = () => {
-      // 紧跟在 mousedown 后面的这次 focus 是浏览器自动带出来的副作用，
-      // 不代表用户在用键盘导航，不应该重新打开刚被 mousedown 关掉的 tooltip。
+      // This focus immediately following mousedown is an automatic browser side
+      // effect, not an indication that the user is navigating with the keyboard, so
+      // it shouldn't reopen the tooltip that mousedown just closed.
       if (isPointerDown) return;
       if (!ctx.disabled()) ctx.openImmediate();
     };
@@ -62,9 +68,10 @@ export function useTooltipTrigger(): UseTooltipTriggerResult {
       if (ctx.disabled()) return;
       if (ctx.open()) ctx.closeImmediate();
     };
-    // 标记要在 mouseup 时清掉，而且特意监听 document 而不是元素自己的
-    // mouseup——如果鼠标按下后拖动到元素外面再松开，元素自己收不到 mouseup，
-    // 标记会一直卡在 true，导致后续真正的键盘 focus 也被误伤跳过。
+    // The flag must be cleared on mouseup, and we deliberately listen on document
+    // rather than the element's own mouseup — if the mouse is pressed and dragged
+    // outside the element before release, the element never receives mouseup, the
+    // flag stays stuck at true, and subsequent genuine keyboard focus is wrongly skipped.
     const onDocumentMouseUp = () => {
       isPointerDown = false;
     };

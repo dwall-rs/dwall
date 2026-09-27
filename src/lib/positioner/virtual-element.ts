@@ -3,13 +3,14 @@ import type { VirtualElement } from "./types";
 export interface PointOptions {
   x: number;
   y: number;
-  /** 可选：关联一个真实 DOM 节点，供 autoUpdate 查找可滚动祖先使用 */
+  /** Optional: associate a real DOM node for autoUpdate to find scrollable ancestors */
   contextElement?: Element;
 }
 
 /**
- * 创建一个锚定到具体像素坐标的虚拟参照元素（宽高均为 0），
- * 常见用途：右键菜单锚定到鼠标点击位置、拖拽跟随光标、按坐标弹出的提示等。
+ * Create a virtual reference element anchored to specific pixel coordinates
+ * (width and height both 0). Typical uses: context menus anchored to the mouse
+ * click position, drag-follows-cursor, coordinate-popped tooltips, etc.
  *
  * @example
  * ```ts

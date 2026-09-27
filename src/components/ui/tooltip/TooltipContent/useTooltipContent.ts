@@ -4,48 +4,52 @@ import { useTooltipContext } from "../Tooltip/Tooltip.context";
 import { createTooltipMiddleware, toPlacement } from "./TooltipContent.utils";
 import type { TooltipContentProps } from "./TooltipContent.types";
 
-/** 没有触发任何 CSS animation 时的兜底卸载延迟（ms）——比如没装 tailwindcss-animate、
- * 或者自定义样式只用了 transition 而不是 @keyframes，animationend 永远不会触发，
- * 避免元素卡在 DOM 里退不出去。 */
+/** Fallback unmount delay (ms) when no CSS animation fires — e.g. without
+ * tailwindcss-animate, or when custom styles use transitions instead of
+ * @keyframes so animationend never fires, leaving the element stuck in the DOM. */
 const EXIT_FALLBACK_MS = 300;
 
 export interface UseTooltipContentResult {
   ctx: ReturnType<typeof useTooltipContext>;
   pos: Positioner;
-  /** 综合了 open 状态 + hide 中间件的 referenceHidden 判断，代表"逻辑上应不应该打开" */
+  /** Combines the open state + the hide middleware's referenceHidden flag: "should it logically be open" */
   isVisible: () => boolean;
   /**
-   * 代表"DOM 里要不要还留着这个节点"。isVisible 变 false 之后，mounted 不会立刻
-   * 跟着变 false，而是等退场动画播完（或者兜底超时）才变——展示层应该用它来控制
-   * <Show>，而不是直接用 isVisible，否则退场动画根本来不及播放就被卸载了。
+   * Whether the node should stay in the DOM. Once isVisible turns false,
+   * mounted does not follow right away — it waits for the exit animation (or
+   * the fallback timeout). Drive <Show> with it rather than isVisible,
+   * otherwise the element unmounts before the exit animation can play.
    */
   mounted: () => boolean;
   /**
-   * 真正用来驱动 data-state（进而驱动 CSS 进出场动画 class）的状态，
-   * 展示层应该用它，而不是直接用 isVisible。
+   * The state that actually drives data-state (and the CSS enter/exit
+   * classes); the view layer should use it, not isVisible.
    *
-   * 和 isVisible 的区别只在"打开"这一侧：isVisible 变 true 的瞬间，
-   * animationState 不会立刻跟着变 "open"，而是等一帧（requestAnimationFrame）
-   * 之后才变——这一帧的间隙用来让箭头（TooltipArrow）完成挂载、把自己注册给
-   * arrow middleware、拿到正确的位置偏移。如果不等这一帧，动画会在箭头位置
-   * 还没算对的时候就开始播放，播到一半箭头才"跳"到正确位置，看起来就像是
-   * 箭头比内容慢一拍——这正是因为内容的淡入/缩放靠的是 CSS 动画（父元素的
-   * opacity/transform 会连带影响所有子元素，包括箭头，两者本该同步），而箭头
-   * 的具体位置靠的是 JS 算出来的 left/top，这是两套完全独立的机制，只有当
-   * "开始播放动画"这个时间点晚于"箭头位置算完"，才能保证两者观感一致。
-   * 关闭这一侧不需要这个延迟，isVisible 变 false 时 animationState 立刻跟着变。
+   * It differs from isVisible only on the "open" side: the moment isVisible
+   * turns true, animationState does not switch to "open" right away — it
+   * waits a frame (requestAnimationFrame). That gap lets the arrow
+   * (TooltipArrow) mount, register with the arrow middleware, and get the
+   * right position offset. Without it the animation would start before the
+   * arrow's position is computed, and the arrow would "jump" into place
+   * halfway through — looking like the arrow lags a beat behind the content.
+   * That is because the content's fade/scale is CSS-driven (a parent's
+   * opacity/transform reaches all children, including the arrow, so both
+   * should be in sync) while the arrow's exact position comes from JS
+   * computed left/top — two independent mechanisms that only look consistent
+   * when "animation starts" after "arrow position computed". Closing needs
+   * no delay: when isVisible turns false, animationState switches at once.
    */
   animationState: () => "open" | "closed";
   arrowElement: () => Element | undefined;
   setArrowElement: (el: Element) => void;
-  /** 内层内容元素（真正播放进出场动画的那一层），TooltipContent 需要把它 ref 进来 */
+  /** The inner content element (the one actually playing the enter/exit animation), which TooltipContent must ref */
   contentElement: () => HTMLElement | undefined;
   setContentElement: (el: HTMLElement) => void;
   /**
-   * 加在"滑动层"（定位层和内容层之间的中间那层）上的 style。
-   * 命中 TooltipGroup 抢占时会有一个非零初始偏移，下一帧起会用 CSS transition
-   * 平滑归零，从而制造出"从旧 tooltip 位置滑到新位置"的效果；平时是空对象，
-   * 不产生任何影响。
+   * Style applied to the "slide layer" (between the positioning and content
+   * layers). On a TooltipGroup preemption it starts non-zero, then a CSS
+   * transition smoothly zeroes it next frame, producing the "slide from the
+   * old tooltip's position to the new one" effect; normally an empty object.
    */
   slideStyle: () => { transform?: string; transition?: string };
 }
@@ -74,15 +78,17 @@ export function useTooltipContent(
       }),
   });
 
-  // reference 完全滚出视口（比如所在容器被单独滚动）时，hide middleware 会标记
-  // referenceHidden，这里据此隐藏浮层，避免它悬空显示在一个已经看不到的触发器旁边。
+  // When the reference scrolls entirely out of the viewport (e.g. its own
+  // container is scrolled), hide flags referenceHidden; hide the floating
+  // layer accordingly so it doesn't hover next to an unseen trigger.
   const isVisible = createMemo(
     () => ctx.open() && !pos.middlewareData().hide?.referenceHidden,
   );
 
-  // --- 箭头和内容同步入场：延迟一帧再触发动画 class ---
-  // 见 UseTooltipContentResult.animationState 的注释：只有"开始播放动画"这个
-  // 时间点晚于"箭头位置算完"，才能保证箭头不会在动画播到一半时才跳到正确位置。
+  // --- Arrow and content enter in sync: delay one frame before firing the
+  // animation classes ---
+  // See the animationState comment: only when "animation start" comes after
+  // "arrow position computed" can the arrow avoid jumping mid-animation.
   const [animationState, setAnimationState] = createSignal<"open" | "closed">(
     "closed",
   );
@@ -92,13 +98,13 @@ export function useTooltipContent(
       const raf = requestAnimationFrame(() => setAnimationState("open"));
       onCleanup(() => cancelAnimationFrame(raf));
     } else {
-      // 关闭不需要等——退场动画本来就是从"当前已经落定的位置"往外淡出/缩小，
-      // 不存在箭头位置还没算好这个问题，没理由延迟。
+      // Closing needs no wait — the exit animation fades/shrinks outward from
+      // the settled position, so the arrow's position is a non-issue: no delay.
       setAnimationState("closed");
     }
   });
 
-  // --- TooltipGroup 抢占时的"滑入"过渡（FLIP 技术） ---
+  // --- "Slide-in" transition on TooltipGroup preemption (FLIP) ---
   const [slideOffset, setSlideOffset] = createSignal<{
     x: number;
     y: number;
@@ -110,23 +116,25 @@ export function useTooltipContent(
     if (!mounted()) return;
     const from = ctx.pendingSlideFrom();
     if (!from) return;
-    // 必须等真正定位完成（知道自己算出来的最终坐标）才能算出"要从哪滑过来"的差值。
+    // Must wait for real positioning (final coordinates known) to compute the slide delta.
     if (!pos.isPositioned()) return;
 
     const dx = from.x - pos.x();
     const dy = from.y - pos.y();
-    // 第一步：把偏移设成非零值——这一步和 floatingStyles() 的最终坐标叠加后，
-    // 视觉上让新 tooltip 一出现就恰好在旧 tooltip 原来的位置，没有任何跳动。
+    // Step 1: set a non-zero offset — stacked with floatingStyles()' final
+    // coordinates, the new tooltip appears exactly where the old one was,
+    // with no jump.
     setSlideOffset({ x: dx, y: dy });
-    // 消费一次立刻清空，避免后续 autoUpdate（滚动/resize 触发的重新定位）
-    // 又把这次的偏移重新套用一遍。
+    // Clear right after consuming it once, so a later autoUpdate
+    // (reposition on scroll/resize) doesn't re-apply this offset.
     ctx.clearPendingSlideFrom();
 
-    // 第二步：下一帧再把偏移量归零。因为这次更新带上了 transition（见下面
-    // slideStyle 的实现），浏览器会把"从非零偏移回到 0"这个变化平滑动画出来，
-    // 效果就是从旧位置滑到新位置。用 requestAnimationFrame 而不是同步归零，
-    // 是为了确保浏览器先真正画出第一帧（非零偏移、无 transition），
-    // 下一帧的变化才有"起点"可以过渡，不会被浏览器合并成一次跳变。
+    // Step 2: zero the offset on the next frame. This update carries a
+    // transition (see slideStyle below), so the browser animates from the
+    // non-zero offset back to 0 — sliding from the old position to the new.
+    // requestAnimationFrame (not synchronous zeroing) ensures the browser
+    // paints frame one first (non-zero offset, no transition), giving the
+    // next change a start point instead of merging it into a single jump.
     requestAnimationFrame(() => setSlideOffset({ x: 0, y: 0 }));
   });
 
@@ -136,16 +144,18 @@ export function useTooltipContent(
     const atRest = offset.x === 0 && offset.y === 0;
     return {
       transform: `translate(${offset.x}px, ${offset.y}px)`,
-      // 只有"归零"这一步才带 transition：非零的那一帧要求瞬间落位、不能有动画，
-      // 否则会先看到它从视口原点飞过来，而不是从旧 tooltip 的位置飞过来。
+      // Only the "zero it out" step carries a transition: the non-zero frame must
+      // snap into place with no animation, otherwise you'd first see it fly in from
+      // the viewport origin instead of from the old tooltip's position.
       transition: atRest ? "transform 150ms ease" : undefined,
     };
   });
 
-  // --- 退场动画支持（Presence）---
-  // isVisible 从 true 变 false 的瞬间，不立刻让 <Show> 卸载节点：先把 data-state
-  // 切到 closed（触发退场动画的 CSS class），等这个节点自己的 animationend 触发
-  // （或者兜底超时）之后，才真正把 mounted 设为 false，交给 <Show> 卸载。
+  // --- Exit animation support (Presence) ---
+  // The moment isVisible flips true → false, don't let <Show> unmount the node right
+  // away: first switch data-state to closed (triggering the exit-animation CSS
+  // class), then wait for this node's own animationend (or the fallback timeout)
+  // before actually setting mounted to false and handing unmounting to <Show>.
   createEffect((wasVisible: boolean) => {
     const visible = isVisible();
     const el = contentElement();
@@ -154,13 +164,15 @@ export function useTooltipContent(
       setMounted(true);
     } else if (wasVisible && el) {
       if (ctx.consumeSuppressExitAnimation()) {
-        // 被 TooltipGroup 抢占强制关闭：跳过退场动画，立即卸载，避免和正在
-        // 滑入的新 tooltip 同时出现在屏幕上（这是"同时存在两个 tooltip"这个
-        // bug 的根因——之前不管什么原因关闭，都统一走了退场动画那条路）。
+        // Force-closed after being preempted by a TooltipGroup: skip the exit
+        // animation and unmount immediately, so it doesn't coexist on screen with the
+        // new tooltip sliding in (this is the root cause of the "two tooltips at once"
+        // bug — previously every close, whatever the reason, went through the exit
+        // animation path).
         setMounted(false);
       } else {
         const handleAnimationEnd = (e: AnimationEvent) => {
-          // 忽略从子元素冒泡上来的 animationend，只认内容元素自己播放的那个动画
+          // Ignore animationend events bubbling up from children; only honor the animation played by the content element itself
           if (e.target !== el) return;
           setMounted(false);
         };

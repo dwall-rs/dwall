@@ -35,7 +35,7 @@ export function getOppositePlacement(placement: Placement): Placement {
   return (alignment ? `${opposite}-${alignment}` : opposite) as Placement;
 }
 
-/** 同一条边上，start <-> end 互换（用于 shift 后仍溢出时的对齐翻转） */
+/** On the same side, swap start <-> end (used to flip alignment when still overflowing after shift) */
 export function getOppositeAlignmentPlacement(placement: Placement): Placement {
   const side = getSide(placement);
   const alignment = getAlignment(placement);
@@ -45,8 +45,10 @@ export function getOppositeAlignmentPlacement(placement: Placement): Placement {
 }
 
 /**
- * 根据 reference / floating 的矩形与 placement，计算 floating 左上角坐标。
- * 注意：这里只做“理想坐标”计算，不做视口裁剪，裁剪交给 shift middleware。
+ * Compute the floating element's top-left coordinates from the reference /
+ * floating rects and the placement.
+ * Note: this only computes the "ideal coordinates" — no viewport clipping;
+ * clipping is left to the shift middleware.
  */
 export function computeCoordsFromPlacement(
   rects: ElementRects,

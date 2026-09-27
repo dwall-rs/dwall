@@ -2,17 +2,17 @@ import type { Boundary, Middleware } from "../types";
 import { getViewportBoundary } from "../utils/dom";
 
 export interface ShiftOptions {
-  /** 距边界的最小间距，默认 0 */
+  /** Minimum gap from the boundary, default 0 */
   padding?: number;
-  /** 自定义边界矩形，默认使用视口 */
+  /** Custom boundary rect; defaults to the viewport */
   boundary?: Boundary;
-  /** 是否限制主轴方向（如 top/bottom placement 的 y 方向），默认 true */
+  /** Whether to constrain the main axis (e.g. the y direction of top/bottom placements), default true */
   mainAxis?: boolean;
-  /** 是否限制交叉轴方向（如 top/bottom placement 的 x 方向），默认 true */
+  /** Whether to constrain the cross axis (e.g. the x direction of top/bottom placements), default true */
   crossAxis?: boolean;
 }
 
-/** 平移 floating 元素，使其尽量停留在边界（默认视口）内，不做 placement 翻转 */
+/** Translate the floating element to stay within the boundary (viewport by default), without flipping the placement */
 export function shift(options: ShiftOptions = {}): Middleware {
   return {
     name: "shift",

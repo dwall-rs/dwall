@@ -1,5 +1,5 @@
 /* ===== src/components/stage/PoolEmpty.tsx ===== */
-// 职责：候选池空态——引导至少保留一套。
+// Responsibility: Empty state for the candidate pool — guides the user to keep at least one set.
 
 import { t } from "@/i18n";
 import { ImageOff } from "lucide-solid";

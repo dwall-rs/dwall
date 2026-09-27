@@ -1,5 +1,5 @@
 /* ===== src/components/scope/FixedScope.tsx ===== */
-// 职责：固定模式作用域面板——统一卡 + 分隔 + 单独显示器列表。
+// Responsibility: Fixed-mode scope panel — unified card + divider + individual monitor list.
 import { fixedStore } from "@/store/fixed.store";
 import { monitorList } from "@/domain/monitors";
 import { t } from "@/i18n";

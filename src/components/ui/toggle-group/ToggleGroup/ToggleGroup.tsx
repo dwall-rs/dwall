@@ -10,21 +10,22 @@ import type { ToggleGroupProps, ToggleGroupValue } from "./ToggleGroup.types";
 import { useToggleGroupKeyboard } from "./useToggleGroupKeyboard";
 
 /**
- * ToggleGroup 根组件:渲染 `<div role="group">`,输出样式与语义钩子
- * (`data-orientation` / `data-vertical` / `data-horizontal` / `data-multiple`
- * / `data-disabled` / `data-spacing` / `data-variant` / `data-size`),
- * 并挂载 roving focus 键盘导航。
+ * ToggleGroup root component: renders `<div role="group">`, emits styling and
+ * semantic hooks (`data-orientation` / `data-vertical` / `data-horizontal` /
+ * `data-multiple` / `data-disabled` / `data-spacing` / `data-variant` /
+ * `data-size`), and mounts roving focus keyboard navigation.
  *
- * 单选模式(默认)的 value 是标量,多选模式(`multiple`)才是数组:
+ * In single mode (default) value is a scalar; only multiple mode
+ * (`multiple`) uses an array:
  *
  * @example
  * ```tsx
- * // 单选
+ * // single
  * <ToggleGroup defaultValue="bold" onValueChange={(v) => ...}>
  *   <ToggleGroupItem value="bold">Bold</ToggleGroupItem>
  * </ToggleGroup>
  *
- * // 多选
+ * // multiple
  * <ToggleGroup multiple value={["bold"]} onValueChange={(v) => ...}>
  *   <ToggleGroupItem value="bold">Bold</ToggleGroupItem>
  * </ToggleGroup>
@@ -52,7 +53,8 @@ export function ToggleGroup<TValue extends ToggleGroupValue = ToggleGroupValue>(
     "children",
   ]);
 
-  // 默认值与单选/多选的差异统一由状态层处理,渲染用 ctx 里的已解析值
+  // Defaults and the single/multiple differences are handled uniformly by the
+  // state layer; rendering uses the resolved value from ctx
   const ctx = createToggleGroupState<TValue>(local);
   const { handleKeyDown } = useToggleGroupKeyboard(ctx);
   const isVertical = () => ctx.orientation() === "vertical";
@@ -65,14 +67,14 @@ export function ToggleGroup<TValue extends ToggleGroupValue = ToggleGroupValue>(
       data-size={ctx.size()}
       data-spacing={ctx.spacing()}
       data-orientation={ctx.orientation()}
-      // 拼接态样式依赖 data-vertical / data-horizontal(与 tabs 根保持一致)
+      // Joined-state styles depend on data-vertical / data-horizontal (consistent with the tabs root)
       data-vertical={isVertical() ? "" : null}
       data-horizontal={isVertical() ? null : ""}
       data-multiple={ctx.multiple() ? "" : null}
       data-disabled={ctx.disabled() ? "" : null}
       aria-disabled={ctx.disabled() ? "true" : undefined}
       dir={local.dir}
-      // --gap 作为 spacing 的样式入口,用户 style 可覆盖
+      // --gap is the styling entry point for spacing; overridable via user style
       style={{ "--gap": ctx.spacing(), ...local.style } as JSX.CSSProperties}
       class={clsx(toggleGroupVariants(), local.class)}
       classList={local.classList}

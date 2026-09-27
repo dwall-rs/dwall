@@ -7,7 +7,7 @@ export const Label = (props: LabelProps) => {
   const [local, others] = splitProps(props, ["for", "class", "classList"]);
 
   const handleClick = (e: MouseEvent) => {
-    // 兄弟元素用 for 查找
+    // Look up the sibling element via `for`
     const htmlFor = local.for;
     if (htmlFor) {
       const target = document.querySelector<HTMLElement>(
@@ -18,11 +18,11 @@ export const Label = (props: LabelProps) => {
       return;
     }
 
-    // 子元素直接查询有 `aria-labelledby` 属性
+    // For descendants, query directly for an element with `aria-labelledby`
     const target = ref?.querySelector<HTMLElement>("[aria-labelledby]");
     if (target && !target.contains(e.target as Node)) {
-      e.preventDefault(); // 阻止 label 原生的自动点击转发
-      target.click(); // 手动触发一次
+      e.preventDefault(); // Suppress the label's native automatic click forwarding
+      target.click(); // Trigger it manually once
     }
   };
 

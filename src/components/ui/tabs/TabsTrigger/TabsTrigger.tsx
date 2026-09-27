@@ -23,9 +23,10 @@ export const TabsTrigger = (props: TabsTriggerProps) => {
   const disabled = () => !!local.disabled;
   const selected = () => ctx.isSelected(local.value);
 
-  // roving tabindex 跟随焦点高亮:高亮 tab 持 0;
-  // 高亮为空或高亮指向的 trigger 不可用(disabled/卸载)时,
-  // 首个可用 tab 持 0 作为键盘起点,避免 tablist 键盘不可达
+  // roving tabindex follows the focus highlight: the highlighted tab holds 0;
+  // when there is no highlight or the highlighted trigger is unusable
+  // (disabled/unmounted), the first usable tab holds 0 as the keyboard
+  // starting point, keeping the tablist keyboard-reachable
   const tabIndex = () => {
     if (disabled()) return -1;
     const highlighted = ctx.highlightedValue();
@@ -70,13 +71,13 @@ export const TabsTrigger = (props: TabsTriggerProps) => {
       classList={local.classList}
       {...others}
       onClick={(e) => {
-        // base-ui 语义:激活发生在点击(鼠标抬起/Enter/Space)时,
-        // mousedown 触发的 focus 不激活
+        // base-ui semantics: activation happens on click (mouse up / Enter /
+        // Space); the focus triggered by mousedown does not activate
         if (!disabled()) ctx.setValue(local.value);
         callEventHandler(events.onClick, e);
       }}
       onFocus={(e) => {
-        // 聚焦只更新高亮(roving focus);activateOnFocus 时聚焦即激活
+        // Focus only updates the highlight (roving focus); with activateOnFocus, focusing activates
         if (!disabled()) {
           ctx.setHighlightedValue(local.value);
           if (listCtx.activateOnFocus) ctx.setValue(local.value);

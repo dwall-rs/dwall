@@ -26,7 +26,7 @@ env:
   RUST_BACKTRACE: 1
 
 jobs:
-  # 检测文件变化类型
+  # Detect the type of file changes
   detect-changes:
     name: "Detect Changes"
     runs-on: ubuntu-latest

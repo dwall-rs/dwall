@@ -1,10 +1,12 @@
 import type { ToggleGroupChangeEventDetails } from "./ToggleGroup.types";
 
 /**
- * 构造 onValueChange 的事件详情(对齐 base-ui 的 `ChangeEventDetails`)。
+ * Builds the event details for onValueChange (aligned with base-ui's
+ * `ChangeEventDetails`).
  *
- * `isCanceled` / `isPropagationAllowed` 用 getter 暴露:回调内部可以即时读到
- * `cancel()` / `allowPropagation()` 之后的最新值,而不是创建时的快照。
+ * `isCanceled` / `isPropagationAllowed` are exposed as getters: inside the
+ * callback the latest value set by `cancel()` / `allowPropagation()` is read
+ * immediately, not a snapshot from creation time.
  */
 export function createChangeEventDetails(
   event: Event,

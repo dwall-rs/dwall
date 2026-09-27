@@ -16,25 +16,27 @@ const DEFAULT_OPEN_DELAY = 0;
 const DEFAULT_CLOSE_DELAY = 150;
 
 /**
- * Tooltip 根组件：不渲染任何 DOM，只负责状态管理 + 提供 context。
- * 真正的展示交给 <TooltipTrigger>/<TooltipContent>/<TooltipArrow>。
+ * Tooltip root component: renders no DOM itself, only managing state and
+ * providing context. Actual rendering is delegated to
+ * <TooltipTrigger>/<TooltipContent>/<TooltipArrow>.
  *
- * 如果外面包了 <TooltipGroup>，组内相邻 trigger 之间切换 hover 会跳过
- * openDelay，并触发"从旧位置滑到新位置"的过渡（细节见 TooltipGroup.context.ts）。
+ * When wrapped in <TooltipGroup>, switching hover between adjacent triggers in
+ * the group skips openDelay and triggers a "slide from the old position to the
+ * new position" transition (see TooltipGroup.context.ts for details).
  *
  * @example
  * ```tsx
  * <Tooltip openDelay={300}>
- *   <TooltipTrigger>悬停我</TooltipTrigger>
+ *   <TooltipTrigger>Hover me</TooltipTrigger>
  *   <TooltipContent>
- *     提示内容
+ *     Some tooltip text
  *     <TooltipArrow />
  *   </TooltipContent>
  * </Tooltip>
  * ```
  */
 export function Tooltip(props: TooltipProps): JSX.Element {
-  const group = useTooltipGroupContext(); // undefined 是正常情况，代表没用 TooltipGroup
+  const group = useTooltipGroupContext(); // undefined is normal: no TooltipGroup used
   const provider = useTooltipProviderContext();
 
   const [internalOpen, setInternalOpen] = createSignal(
@@ -55,8 +57,8 @@ export function Tooltip(props: TooltipProps): JSX.Element {
     props.onOpenChange?.(next);
   };
 
-  // 用 window.setTimeout/clearTimeout（而不是裸的全局 setTimeout）显式拿到
-  // DOM lib 的重载（返回 number），避免和 @types/node 的 NodeJS.Timeout 重载冲突。
+  // Use window.setTimeout/clearTimeout (not the bare global setTimeout) to get
+  // the DOM lib overload (number), avoiding @types/node's NodeJS.Timeout clash.
   let openTimer: number | undefined;
   let closeTimer: number | undefined;
 
@@ -75,9 +77,9 @@ export function Tooltip(props: TooltipProps): JSX.Element {
     clearTimers();
     if (disabled() || open()) return;
 
-    // 组内抢占：如果当前组里已经有一个活跃的 tooltip（哪怕它还在自己的
-    // closeDelay 倒计时里，还没真正关闭），claim() 会立即强制关闭它、
-    // 把它此刻的矩形要回来——这里直接跳过 openDelay，走"滑入"路径。
+    // Group preemption: if the group already has an active tooltip (even one
+    // still in its closeDelay countdown, not yet closed), claim() force-closes
+    // it and takes its current rect — here we skip openDelay and "slide in".
     const claimedRect = group?.claim();
     if (claimedRect) {
       setPendingSlideFrom(claimedRect);
@@ -111,11 +113,12 @@ export function Tooltip(props: TooltipProps): JSX.Element {
   };
 
   /**
-   * 专门给 <TooltipGroup> 抢占用的关闭方式：和 closeImmediate 的区别是，
-   * 这里会额外标记 suppressExitAnimation，告诉 TooltipContent 的 Presence
-   * 逻辑跳过退场动画、立即卸载——因为这次关闭是"被新 tooltip 取代"，而不是
-   * 用户主动关闭，旧的应该立刻让位，不该和正在滑入的新 tooltip 同时可见。
-   * Escape/blur 等正常关闭场景依然走 closeImmediate，退场动画不受影响。
+   * Close variant for <TooltipGroup> preemption: it also sets
+   * suppressExitAnimation, telling TooltipContent's Presence logic to skip the
+   * exit animation and unmount immediately — this close is "replaced by a new
+   * tooltip", not user-initiated, so the old one must yield instead of staying
+   * visible beside the new one sliding in. Escape/blur still use
+   * closeImmediate; their exit animation is unaffected.
    */
   const forceCloseForGroup = () => {
     setSuppressExitAnimation(true);
@@ -132,8 +135,9 @@ export function Tooltip(props: TooltipProps): JSX.Element {
 
   onCleanup(clearTimers);
 
-  // 打开期间把自己登记成"组内当前活跃的 tooltip"，供其他 trigger 打开时
-  // claim 走（触发平移过渡）。关闭或卸载时自动取消登记。
+  // While open, register as the "currently active tooltip in the group" so
+  // other triggers can claim it on open (triggering the slide transition).
+  // Automatically unregistered on close or unmount.
   createEffect(() => {
     if (!group || !open()) return;
     const unregister = group.registerActive({

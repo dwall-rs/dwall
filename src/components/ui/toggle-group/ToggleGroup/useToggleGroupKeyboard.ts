@@ -3,7 +3,7 @@ import type {
   ToggleGroupValue,
 } from "./ToggleGroup.types";
 
-/** 键盘导航按键:方向键 + Home/End(对齐 base-ui CompositeRoot 的 enableHomeAndEndKeys) */
+/** Keyboard navigation keys: arrow keys + Home/End (aligned with base-ui CompositeRoot's enableHomeAndEndKeys) */
 const NAV_KEYS = new Set([
   "ArrowLeft",
   "ArrowRight",
@@ -14,17 +14,20 @@ const NAV_KEYS = new Set([
 ]);
 
 /**
- * ToggleGroup 的 roving focus 键盘导航(纯逻辑,可独立单测)。
+ * Roving focus keyboard navigation for ToggleGroup (pure logic, unit-testable
+ * on its own).
  *
- * 方向映射:
+ * Direction mapping:
  * - horizontal + ltr: ArrowRight → next, ArrowLeft → prev
- * - horizontal + rtl: 左右反转
+ * - horizontal + rtl: left/right reversed
  * - vertical:          ArrowDown → next, ArrowUp → prev
- * - Home → 第一个,End → 最后一个
- * - loopFocus=true 环绕,false 边界停止;跳过 disabled 的 item
+ * - Home → first, End → last
+ * - loopFocus=true wraps, false stops at the boundary; disabled items are
+ *   skipped
  *
- * 只有焦点已经在某个 item 上时才接管按键,避免影响外部其它元素;
- * 移动焦点后由 item 的 onFocus 更新高亮。
+ * Keys are only taken over when focus is already on some item, to avoid
+ * affecting other external elements; after moving focus the item's onFocus
+ * updates the highlight.
  */
 export function useToggleGroupKeyboard<
   TValue extends ToggleGroupValue = ToggleGroupValue,
@@ -41,7 +44,7 @@ export function useToggleGroupKeyboard<
     if (currentIndex === -1) return;
 
     const isVertical = ctx.orientation() === "vertical";
-    // dir 未指定/auto 时,按根元素的实际书写方向判断(兼容祖先节点上的 dir)
+    // When dir is unspecified/auto, use the root element's actual writing direction (honoring dir on ancestors)
     const dir = ctx.dir();
     const isRTL =
       dir === "rtl" ||
@@ -77,7 +80,7 @@ export function useToggleGroupKeyboard<
 
     if (nextIndex === undefined) return;
 
-    // 方向键与当前布局匹配,接管默认滚动行为
+    // The arrow key matches the current layout; take over the default scroll behavior
     e.preventDefault();
 
     if (ctx.loopFocus()) {

@@ -1,4 +1,4 @@
-// 职责：把外观意图落到 data-theme；值未变不启动过渡，吞掉 AbortError，消除 StrictMode 噪音。
+// Responsibility: apply the appearance intent to data-theme; skip the transition when the value is unchanged, swallow AbortError, and keep StrictMode noise out.
 import { themeStore, setResolved } from "@/store/theme.store";
 import { createEffect } from "solid-js";
 import type { ResolvedTheme } from "~/domain/types";
@@ -17,7 +17,7 @@ export function useThemeEngine() {
             : "light"
           : themeStore.mode;
 
-      // 目标值没变就不启动过渡：既省一次无意义动画，也避免 StrictMode 双跑触发 AbortError
+      // Skip the transition when the target value is unchanged: saves a pointless animation and avoids AbortError from StrictMode's double run
       if (lastApplied === resolved) {
         setResolved(resolved);
         return;
@@ -34,7 +34,7 @@ export function useThemeEngine() {
       };
       if (doc.startViewTransition) {
         try {
-          // 过渡被后续切换打断是无害的，吞掉 AbortError，别让它变成未捕获报错
+          // A transition interrupted by a later switch is harmless; swallow AbortError instead of letting it become an uncaught error
           doc.startViewTransition(run).finished.catch(() => {});
         } catch {
           run();

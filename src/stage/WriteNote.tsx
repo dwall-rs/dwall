@@ -1,5 +1,5 @@
 /* ===== src/stage/WriteNote.tsx ===== */
-// 职责：随机模式候选池状态条——三态：空集(destructive) / 脏态(warning) / 正常(muted)。
+// Responsibility: Candidate-pool status bar for random mode — three states: empty (destructive) / dirty (warning) / normal (muted).
 import { randomStore, isDirty } from "@/store/random.store";
 import { themeList } from "@/domain/themes";
 import { t } from "@/i18n";

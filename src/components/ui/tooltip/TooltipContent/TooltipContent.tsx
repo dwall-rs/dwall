@@ -8,13 +8,15 @@ import type { TooltipContentProps } from "./TooltipContent.types";
 import { clsx } from "~/utils";
 
 /**
- * Tooltip 的浮层内容。挂 Portal 到 body，用 position:fixed 定位。
+ * Tooltip's floating content: portals into the body, positioned via
+ * position:fixed.
  *
- * 内容本身默认是可以 hover 的（不是 pointer-events:none）：鼠标移进 content
- * 会取消待执行的关闭计时器（ctx.keepOpen），移出才真正走 closeDelay 关闭——
- * 这样用户可以把鼠标从 trigger 移动到 tooltip 上选中里面的文字，不会因为
- * "离开 trigger 就关闭" 而选不到。如果你的 tooltip 内容很简单、不需要这个特性，
- * 可以自己在外面包一层设置 pointer-events: none。
+ * The content itself is hoverable by default (not pointer-events:none):
+ * moving into it cancels the pending close timer (ctx.keepOpen); only leaving
+ * it runs the closeDelay close — so users can move from the trigger onto the
+ * tooltip to select its text instead of losing it to "closes as soon as you
+ * leave the trigger". If your content is simple, wrap it in your own layer
+ * with pointer-events: none.
  */
 export function TooltipContent(props: TooltipContentProps) {
   const {
@@ -27,8 +29,8 @@ export function TooltipContent(props: TooltipContentProps) {
     slideStyle,
   } = useTooltipContent(() => props);
 
-  // 只摘出内部要单独处理的几个字段，剩下的（style、data-*、onXxx 等任意原生
-  // prop）原样透传给内层元素——和 TooltipTrigger 是同一套约定。
+  // Pull out only the fields handled internally; the rest (style, data-*,
+  // onXxx, any other native prop) passes through — same as TooltipTrigger.
   const [local, rest] = splitProps(props, [
     "side",
     "align",
@@ -44,20 +46,22 @@ export function TooltipContent(props: TooltipContentProps) {
     <Show when={mounted()}>
       <Portal>
         {/*
-          外层：只负责定位（position:fixed 来自 floatingStyles），不设 overflow，
-          也不参与任何动画——它的 transform 已经被占用来做定位（translate(x,y)），
-          如果别的动画也要控制 transform 会互相冲突，所以动画都放在下面两层。
+          Outer layer: positioning only (position:fixed comes from
+          floatingStyles), no overflow, no animation — its transform is
+          already used for positioning (translate(x,y)), so another animation
+          driving transform would conflict; all animations live below.
         */}
         <div
           ref={(el) => {
             ctx.setFloating(el);
-            // Solid 的 ref 回调只在元素创建时触发一次，元素被移除时不会自动
-            // 再调用一次传 undefined（这是 React 的约定，不是 Solid 的）。
-            // 不手动清空的话，ctx.floating() 会一直指向一个已经从 DOM 里
-            // 摘除的"僵尸节点"，直到下次重新打开——期间如果被别处读取
-            // （比如 TooltipGroup 抢占时读取矩形），getBoundingClientRect()
-            // 对一个 detached 元素规范规定就是返回全 0 的矩形，会造成
-            // "滑动效果从左上角(0,0)滑入"这种明显错误的观感。
+            // Solid's ref callback fires only once on element creation, not
+            // again with undefined on removal (that is React's convention,
+            // not Solid's). Without manually clearing, ctx.floating() keeps
+            // pointing at a "zombie node" already removed from the DOM until
+            // the next open — if read elsewhere meanwhile (e.g. TooltipGroup
+            // preemption reading the rect), getBoundingClientRect() per spec
+            // returns an all-zero rect for a detached element, giving an
+            // obviously wrong "slides in from (0,0)" look.
             onCleanup(() => ctx.setFloating(undefined));
           }}
           data-placement={pos.placement()}
@@ -68,60 +72,73 @@ export function TooltipContent(props: TooltipContentProps) {
           }}
         >
           {/*
-            滑动层：命中 <TooltipGroup> 抢占时，用来把整个 tooltip（内容+箭头）
-            从旧 tooltip 的位置平移过来（FLIP 技术，细节见 useTooltipContent 里
-            的 slideOffset 计算）。平时 slideStyle() 是空对象，这一层形同不存在。
+            Slide layer: on a <TooltipGroup> preemption hit, translates the whole
+            tooltip (content + arrow) from the old tooltip's position via FLIP
+            (see the slideOffset computation in useTooltipContent). Normally
+            slideStyle() is an empty object, so this layer is effectively absent.
 
-            这一层必须夹在"定位层"和"样式/动画层"之间、而不是随便找个地方加：
-            它自己也会用到 transform（滑动过程中），如果和定位层共用一个元素会
-            跟 translate(x,y) 冲突（原因同上）；但它又不能在样式层（overflow:auto
-            那层）的下面/内部，因为箭头的 position:absolute 是故意跳过样式层、
-            以"最近的已定位祖先"为基准的（这是修复箭头戳出来触发滚动条那次的
-            设计），如果滑动层的 transform 出现在样式层内部，箭头的定位基准就会
-            变成滑动层而不是外层——效果上依然正确（滑动层的盒子和外层几乎重合），
-            但为了让"定位基准"这件事始终清晰、不产生"技术上是谁、视觉上又是谁"
-            的心智负担，把滑动层放在外层和样式层之间、维持这条链路的清晰顺序。
+            This layer must sit between the "positioning layer" and the
+            "style/animation layer", not anywhere else: it uses transform while
+            sliding, which would clash with translate(x,y) if it shared an
+            element with the positioning layer (same reason as above). Nor can
+            it sit below/inside the style layer (the overflow:auto one), since
+            the arrow's position:absolute deliberately skips that layer and
+            references "the nearest positioned ancestor" (the design that fixed
+            the arrow poking out and triggering a scrollbar). Were its
+            transform inside the style layer, the arrow's reference would become
+            the slide layer instead of the outer one — still visually correct
+            (their boxes nearly coincide), but to keep the positioning reference
+            unambiguous and avoid the "technically vs. visually who" mental
+            load, the slide layer sits between the outer and style layers,
+            preserving the chain's clear order.
           */}
           <div style={slideStyle()}>
             {/*
-              内层：真正的视觉样式 + 进出场动画。
-              data-state 跟着 animationState 走（不是 isVisible/mounted）：
-              - isVisible 变 false 的瞬间，animationState 立刻跟着变 closed，
-                触发退场动画的 class；
-              - isVisible 变 true 时，animationState 会晚一帧才变 open，
-                留出时间让箭头（TooltipArrow）完成挂载、注册给 arrow middleware、
-                算出正确的位置偏移（细节见 useTooltipContent 里的注释）；
-              - mounted 会比 animationState 变 closed 更晚才变 false（见下面的
-                Presence 逻辑），留出时间让退场动画播完。
+              Inner layer: real visual styling + enter/exit animation.
+              data-state follows animationState (not isVisible/mounted):
+              - the moment isVisible turns false, animationState turns closed
+                right away, triggering the exit-animation class;
+              - when isVisible turns true, animationState turns open a frame
+                later, giving the arrow (TooltipArrow) time to mount, register
+                with the arrow middleware, and compute its position offset
+                (see the comments in useTooltipContent);
+              - mounted turns false after animationState does (see the
+                Presence logic below), giving the exit animation time to end.
 
-              data-[state=open]/data-[state=closed] 这套 class 依赖 tailwindcss-animate
-              插件提供的 animate-in/animate-out/fade-in-0/zoom-in-95 等工具类——
-              如果你的项目还没装，`npm install tailwindcss-animate` 并在 tailwind
-              config 里加上这个 plugin 即可；不想装的话，把这几个 data-[state=...]
-              class 换成你自己写的 @keyframes + 对应 class 也一样能工作，
-              Presence 逻辑（mounted 延迟卸载）不依赖具体用了哪套动画实现。
+              The data-[state=open]/data-[state=closed] classes rely on utility
+              classes from the tailwindcss-animate plugin
+              (animate-in/animate-out/fade-in-0/zoom-in-95, …). If your project
+              doesn't have it, `npm install tailwindcss-animate` and add the
+              plugin to your tailwind config; otherwise swap these
+              data-[state=...] classes for your own @keyframes + classes — the
+              Presence logic (delayed unmount via mounted) doesn't depend on a
+              specific animation implementation.
 
-              箭头（TooltipArrow）不依赖"作为这个元素的子节点、被动继承这里的
-              transform/opacity 动画"这种隐式机制——它自己也从 context 里读到
-              同一个 animationState，独立播放一份自己的入场/退场动画，两者由
-              同一个信号同步触发。
+              The arrow (TooltipArrow) doesn't rely on the implicit "child of
+              this element passively inheriting its transform/opacity
+              animation" — it reads the same animationState from context and
+              plays its own copy, both triggered in sync by one signal.
 
-              data-side/data-align 是从最终生效的 placement 拆出来的，驱动上面
-              这几条方向感知的 slide-in class，也顺带给 transform-origin 提供了
-              依据——缩放动画的锚点会落在"贴近 trigger 的那条边"上（细节见
-              TooltipContent.utils.ts 里的 getTransformOrigin），而不是默认的
-              几何中心，这样整个入场效果才会像是"从 trigger 那里长出来"，
-              贴近 shadcn 的实际观感。
+              data-side/data-align are split from the effective placement,
+              driving the direction-aware slide-in classes above and giving
+              transform-origin its basis — the scale animation anchors on "the
+              edge closest to the trigger" (see getTransformOrigin in
+              TooltipContent.utils.ts) rather than the default center, so the
+              entrance looks like it "grows out of the trigger", close to
+              shadcn's actual look.
 
-              特意没有 overflow:auto / max-height，tooltip 不支持内容超长时滚动——
-              宽度上限靠下面静态的 max-w-xs class 兜底，让文字自然换行；高度完全
-              不做限制。这不只是为了贴近 shadcn/Radix 的行为（它们的 tooltip 也不
-              允许滚动），还避免了一个真实踩过的坑：overflow:auto 配合这里的
-              zoom-in-95 动画（会给这个元素加一个非 none 的 transform，CSS 规范
-              规定这会让它变成子元素新的包含块）曾经导致箭头戳出边缘的那部分被
-              误判成"可滚动溢出"，表现为打开瞬间闪一下滚动条、箭头跟着被遮住，
-              动画播完滚动条消失、箭头才重新出现。去掉滚动能力后这个耦合从根上
-              就不存在了。
+              Deliberately no overflow:auto / max-height — tooltips don't
+              support scrolling when content is too long. Width is capped by
+              the static max-w-xs class below so text wraps naturally; height
+              is unrestricted. This is not only to match shadcn/Radix (their
+              tooltips don't scroll either), it also avoids a real pitfall:
+              overflow:auto combined with the zoom-in-95 animation here (which
+              adds a non-none transform, making this element a new containing
+              block for children per the CSS spec) once made the arrow's
+              overhang be misjudged as "scrollable overflow" — on open, a
+              scrollbar flashed and clipped the arrow, then the scrollbar
+              vanished and the arrow returned when the animation ended.
+              Dropping scrolling removes this coupling at the root.
             */}
             <div
               ref={setContentElement}
@@ -141,11 +158,12 @@ export function TooltipContent(props: TooltipContentProps) {
                 "has-data-[slot=kbd]:pr-1.5",
                 "data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95",
                 "data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95",
-                // 方向感知的滑入：不只是原地淡入缩放，还从"贴近 trigger 的反方向"
-                // 轻微位移过来——比如 placement 是 top（content 在 trigger 上方），
-                // 就从下方 8px（slide-in-from-bottom-2）滑上来，视觉上更像是从
-                // trigger 那里"冒出来"，而不是凭空原地出现。只在打开时生效，
-                // 贴近 shadcn 的实际行为（它们的退场动画没有对应的滑出位移）。
+                // Direction-aware slide-in: not just a fade/zoom in place, it
+                // also drifts in from the side opposite the trigger — e.g.
+                // placement top (content above the trigger) slides up from 8px
+                // below (slide-in-from-bottom-2), looking like it "emerges"
+                // from the trigger rather than appearing from nowhere. Only on
+                // open — matching shadcn, whose exit has no slide-out.
                 "data-[side=top]:slide-in-from-bottom-2",
                 "data-[side=bottom]:slide-in-from-top-2",
                 "data-[side=left]:slide-in-from-right-2",

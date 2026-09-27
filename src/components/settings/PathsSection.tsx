@@ -1,5 +1,5 @@
 /* ===== src/components/settings/PathsSection.tsx ===== */
-// 职责：目录与下载源分组——主题目录（选择/迁移）+ 网络（镜像模板 / SOCKS5）。
+// Responsibility: Directories & download sources group — themes directory (select / migrate) + network (mirror template / SOCKS5).
 import { Button } from "@/components/ui/button";
 import {
   type NetworkType,

@@ -20,16 +20,16 @@ export const useSlider = <T extends number | number[]>({
     "max" | "min" | "step" | "orientation" | "disabled"
   >;
 }) => {
-  // 由初始传入的类型一次性决定，运行时不再改变
+  // Decided once from the initially passed type; never changes at runtime
   const isArray = Array.isArray(local.value ?? local.defaultValue);
 
-  // 将外部的 T 统一转为内部 number[]
+  // Normalize the external T into an internal number[]
   const toArray = (v: T | undefined): number[] => {
     if (v === undefined) return [local.min];
     return Array.isArray(v) ? v : [v as number];
   };
 
-  // 受控 / 非受控模式
+  // Controlled / uncontrolled mode
   const isControlled = () => local.value !== undefined;
 
   const [internalValues, setInternalValues] = createSignal<number[]>(
@@ -40,27 +40,27 @@ export const useSlider = <T extends number | number[]>({
     isControlled() ? toArray(local.value) : internalValues(),
   );
 
-  // 将内部 number[] 还原为外部类型 T
+  // Restore the internal number[] back to the external type T
   const toExternal = (arr: number[]): T => (isArray ? arr : arr[0]) as T;
 
-  // 当前被拖拽的 thumb 索引
+  // Index of the thumb currently being dragged
   const [activeThumbIndex, setActiveThumbIndex] = createSignal(0);
 
-  // track DOM 引用（由 SliderTrack 注入）
+  // Track DOM reference (injected by SliderTrack)
   let trackEl: HTMLDivElement | undefined;
   const trackRef = () => trackEl;
   const setTrackRef = (el: HTMLDivElement) => {
     trackEl = el;
   };
 
-  /** 从 step 推导需要保留的小数位数，例如 step=0.05 → 2 位 */
+  /** Derive the number of decimal places to keep from step, e.g. step=0.05 → 2 */
   const stepDecimals = createMemo(() => {
     const s = local.step.toString();
     const dot = s.indexOf(".");
     return dot === -1 ? 0 : s.length - dot - 1;
   });
 
-  /** 将原始数值 snap 到 step 并 clamp 到 [min, max] */
+  /** Snap the raw value to step and clamp it to [min, max] */
   const snapValue = (raw: number) => {
     const { min, max, step } = local;
     const snapped = Math.round((raw - min) / step) * step + min;
@@ -72,7 +72,7 @@ export const useSlider = <T extends number | number[]>({
     const next = values().slice();
     let snapped = snapValue(rawValue);
 
-    // 防止 thumbs 交叉（多 thumb 场景）
+    // Prevent thumbs from crossing (multi-thumb case)
     if (index > 0 && snapped <= next[index - 1]) {
       snapped = snapValue(next[index - 1] + local.step);
     }

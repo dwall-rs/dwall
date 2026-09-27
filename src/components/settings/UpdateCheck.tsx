@@ -1,5 +1,5 @@
 /* ===== src/components/settings/UpdateCheck.tsx ===== */
-// 职责：更新检查控件——闲置 / 检查中 / 最新 / 可更新 / 下载中 / 待重启 / 失败。
+// Responsibility: Update check widget — idle / checking / up to date / update available / downloading / awaiting restart / failed.
 import { Match, Switch } from "solid-js";
 import { t } from "@/i18n";
 import { check, install, restart, updateStore } from "@/store/update.store";

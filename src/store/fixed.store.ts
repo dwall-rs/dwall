@@ -1,5 +1,5 @@
-// 职责：固定模式——统一/单独互斥、当前显示器、每显示器主题草稿、逐条「应用/停止」。
-//       配置是唯一真值源：应用 = 把草稿写进 config.wallpaper_mode 并重启引擎。
+// Responsibility: fixed mode — unified/per-monitor exclusivity, current monitor, per-monitor theme drafts,
+//               per-entry "apply/stop". Config is the source of truth: apply = write the draft into config.wallpaper_mode and restart the engine.
 import { createStore } from "solid-js/store";
 
 import type { Config, WallpaperMode } from "@/domain/config";
@@ -11,10 +11,10 @@ import { applyWallpaperMode, settingsStore } from "./settings.store";
 type StrMap = Record<string, string>;
 
 interface FixedState {
-  allUnified: boolean; // 统一所有显示器（与单独设置结构性互斥）
-  curMon: string; // 当前编辑的显示器 id
-  selIndex: number | null; // null = 预览当前匹配的那张
-  monitorThemes: StrMap; // 草稿：monId -> themeId（"all" 表示统一）
+  allUnified: boolean; // unify all monitors (structurally mutually exclusive with per-monitor settings)
+  curMon: string; // id of the monitor being edited
+  selIndex: number | null; // null = preview the currently matching entry
+  monitorThemes: StrMap; // draft: monId -> themeId ("all" means unified)
 }
 
 const [fixedStore, setFixedStore] = createStore<FixedState>({
@@ -24,11 +24,11 @@ const [fixedStore, setFixedStore] = createStore<FixedState>({
   monitorThemes: {},
 });
 
-/** 当前作用域 key。 */
+/** The current scope key. */
 const scopeKey = (): string =>
   fixedStore.allUnified ? "all" : fixedStore.curMon;
 
-/** 用配置初始化草稿（配置与显示器加载后调用）。 */
+/** Seed the draft from the config (called once config and monitors are loaded). */
 const syncFromConfig = (config: Config | null) => {
   const mode = config?.wallpaper_mode;
   if (mode?.mode !== "fixed") return;
@@ -49,16 +49,16 @@ const syncFromConfig = (config: Config | null) => {
   }
 };
 
-/** 某显示器当前生效的主题（草稿 → 配置 → 目录首个）。 */
+/** Theme in effect for a monitor (draft → config → first entry in the catalog). */
 const themeForMon = (monId: string): string | undefined =>
   fixedStore.monitorThemes[monId] ??
   configuredThemeId(settingsStore.config, monId) ??
   catalogStore.themes[0]?.id;
 
-/** 当前作用域生效的主题（草稿 → 配置 → 目录首个）。 */
+/** Theme in effect for the current scope (draft → config → first entry in the catalog). */
 const currentThemeId = (): string | undefined => themeForMon(scopeKey());
 
-/** 该作用域是否已写入配置（与引擎是否运行无关）。 */
+/** Whether this scope has been written into the config (regardless of whether the engine is running). */
 const isConfigured = (key: string): boolean => {
   const mode = settingsStore.config?.wallpaper_mode;
   if (mode?.mode !== "fixed") return false;
@@ -70,11 +70,11 @@ const isConfigured = (key: string): boolean => {
   return typeof m === "string" ? m === theme : m[key] === theme;
 };
 
-/** 该作用域当前是否真正生效：已写入配置且引擎在运行。 */
+/** Whether this scope is actually in effect right now: written into the config and the engine is running. */
 const isApplied = (key: string): boolean =>
   engineStore.running && isConfigured(key);
 
-/** 应用/停止该作用域（写配置并重启引擎）。 */
+/** Apply/stop that scope (write the config and restart the engine). */
 const toggleApply = async (key: string) => {
   const config = settingsStore.config;
   if (!config) return;
@@ -110,7 +110,7 @@ const toggleUnified = () => {
   setFixedStore((s) => ({
     ...s,
     allUnified: !s.allUnified,
-    // 关闭统一时选中第一台显示器，避免作用域停留在伪显示器 "all"。
+    // When unified is turned off, select the first monitor so the scope does not stay on the pseudo-monitor "all".
     curMon: s.allUnified
       ? (catalogStore.monitors[0]?.device_path ?? "all")
       : "all",

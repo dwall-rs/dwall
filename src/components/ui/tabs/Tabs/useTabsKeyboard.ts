@@ -10,25 +10,27 @@ const NAV_KEYS = new Set([
 ]);
 
 /**
- * tablist 的 roving focus 键盘导航(纯逻辑,可在事件中独立单测)
+ * Roving focus keyboard navigation for the tablist (pure logic, unit-testable
+ * independently).
  *
- * 方向映射:
+ * Direction mapping:
  * - horizontal + ltr: ArrowRight → next, ArrowLeft → prev
- * - horizontal + rtl: 左右反转
+ * - horizontal + rtl: left/right reversed
  * - vertical:          ArrowDown → next, ArrowUp → prev
- * - Home → 第一个,End → 最后一个
- * - loop=true 环绕,false 边界停止;跳过 disabled 的 trigger
+ * - Home → first, End → last
+ * - loop=true wraps, false stops at the boundary; skips disabled triggers
  *
- * 与 base-ui 一致:方向键只移动焦点(触发 onFocus 更新高亮),不激活;
- * 激活靠点击(Enter/Space 触发 button 的 click)。activateOnFocus 时的
- * 聚焦激活由 TabsTrigger 的 onFocus 处理,这里不做。
+ * Matches base-ui: arrow keys only move focus (onFocus updates the highlight),
+ * never activate; activation happens on click (Enter/Space triggers the
+ * button's click). Focus activation under activateOnFocus is handled by
+ * TabsTrigger's onFocus, not here.
  */
 export function useTabsKeyboard(ctx: TabsContextValue) {
   const handleKeyDown = (e: KeyboardEvent) => {
     if (!NAV_KEYS.has(e.key)) return;
 
     const activeEl = document.activeElement as HTMLElement | null;
-    // 只有焦点在 tab 上时才接管键盘
+    // Only take over the keyboard when focus is on a tab
     if (activeEl?.getAttribute("role") !== "tab") return;
 
     const tabs = ctx.getTriggers().filter((t) => !t.disabled());
@@ -38,7 +40,7 @@ export function useTabsKeyboard(ctx: TabsContextValue) {
     if (currentIndex === -1) return;
 
     const isVertical = ctx.orientation() === "vertical";
-    // dir=auto 时回退到文档实际方向
+    // Fall back to the document's actual direction when dir=auto
     const dir = ctx.dir();
     const isRTL =
       dir === "rtl" ||
@@ -74,7 +76,7 @@ export function useTabsKeyboard(ctx: TabsContextValue) {
 
     if (nextIndex === undefined) return;
 
-    // 方向键与当前布局匹配,接管默认滚动行为
+    // The arrow key matches the current layout; take over default scrolling
     e.preventDefault();
 
     if (ctx.loop()) {
@@ -83,7 +85,7 @@ export function useTabsKeyboard(ctx: TabsContextValue) {
       nextIndex = Math.min(tabs.length - 1, Math.max(0, nextIndex));
     }
 
-    // focus 触发 trigger 的 onFocus → 更新高亮(及 activateOnFocus 时激活)
+    // Focusing triggers the trigger's onFocus → update highlight (and activate when activateOnFocus)
     tabs[nextIndex].element.focus();
   };
 

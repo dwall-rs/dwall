@@ -1,5 +1,5 @@
 /* ===== src/stage/WallpaperStrip.tsx ===== */
-// 职责：壁纸条——数量可变、定宽；以缩略图展示，标注各自太阳位置；匹配项醒目标记，点击选中/取消。
+// Responsibility: Wallpaper strip — variable count, fixed width; displayed as thumbnails annotated with their own solar position; matches are flagged prominently, click to select/deselect.
 import type { Wallpaper } from "@/domain/types";
 import { t } from "@/i18n";
 import { ThemeThumbnail } from "@/scene/ThemeThumbnail";

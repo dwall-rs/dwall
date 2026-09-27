@@ -5,11 +5,11 @@ export interface HideOptions {
   padding?: number;
   boundary?: Boundary;
   /**
-   * 'referenceHidden'：reference 元素被自身滚动容器完全裁掉（比如滚出了可滚动的父级）
-   * 'escaped'：floating 元素虽然还在视口内，但已经完全脱离了 reference 所在的边界
-   *（比如 reference 在一个卡片里被横向滚动挡住了一半，虽然 floating 还能摆在视口里，
-   *  但已经不该再显示，否则看起来像是"飘"在别的内容上）
-   * 默认只做 referenceHidden 检测，这是最常见也最需要的场景。
+   * 'referenceHidden': the reference element is fully clipped away by its own scroll container (e.g. scrolled out of a scrollable parent)
+   * 'escaped': the floating element is still within the viewport but has fully left the boundary the reference belongs to
+   * (e.g. the reference is half blocked by horizontal scrolling inside a card; the floating can still be placed in the viewport,
+   *  but should no longer be shown, otherwise it looks like it is "floating" over other content)
+   * By default only referenceHidden is detected — the most common and most needed scenario.
    */
   strategy?: "referenceHidden" | "escaped";
 }
@@ -20,8 +20,9 @@ export interface HideData {
 }
 
 /**
- * 不改变坐标，只产出"是否应该隐藏浮层"的判断数据，交给上层组件决定要不要渲染。
- * 用法：在业务组件里读 `middlewareData().hide?.referenceHidden`，为 true 时关闭浮层。
+ * Doesn't change coordinates; only produces "should the floating be hidden"
+ * data for the caller to decide rendering: read
+ * `middlewareData().hide?.referenceHidden` and close it when true.
  */
 export function hide(options: HideOptions = {}): Middleware {
   return {

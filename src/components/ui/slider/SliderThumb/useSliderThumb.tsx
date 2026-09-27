@@ -7,9 +7,10 @@ export const useSliderThumb = (index: number) => {
   const value = createMemo(() => ctx.values()[index] ?? ctx.min());
 
   /**
-   * thumb 相对于 SliderControl（position: relative）绝对定位。
-   * 主轴：百分比 + translate(-50%) 使 thumb 中心对齐刻度点。
-   * 交叉轴：50% + translate(-50%) 使 thumb 始终居中于 track 细线。
+   * The thumb is absolutely positioned relative to SliderControl
+   * (position: relative).
+   * Main axis: percentage + translate(-50%) centers the thumb on the tick point.
+   * Cross axis: 50% + translate(-50%) keeps the thumb centered on the track line.
    */
   const positionStyle = createMemo(() => {
     const pct = ((value() - ctx.min()) / (ctx.max() - ctx.min())) * 100;

@@ -8,17 +8,20 @@ import { toggleGroupItemVariants } from "./ToggleGroupItem.styles";
 import type { ToggleGroupItemProps } from "./ToggleGroupItem.types";
 
 /**
- * ToggleGroupItem:ToggleGroup 内的两态按钮。
+ * ToggleGroupItem: a two-state button inside a ToggleGroup.
  *
- * - 选中值由 ToggleGroup 统一持有,点击通过 `ctx.toggleItem` 触发变更
- * - disabled 继承整组状态,可在 item 上单独禁用
- * - roving tabindex:整组只有一个 tab 停靠点,方向键在同组内移动焦点
+ * - The selected value is held centrally by ToggleGroup; clicking triggers a
+ *   change via `ctx.toggleItem`
+ * - disabled inherits the whole group's state and can also be set per item
+ * - roving tabindex: the group has a single tab stop, arrow keys move focus
+ *   within the group
  */
 export function ToggleGroupItem<
   TValue extends ToggleGroupValue = ToggleGroupValue,
 >(props: ToggleGroupItemProps<TValue>): JSX.Element {
-  // context 用宽值类型读取:item 无法从父级推导 group 的值类型,
-  // 自己的 TValue 始终可以传给宽类型参数
+  // The context is read with the wide value type: an item cannot derive the
+  // group's value type from its parent, while its own TValue is always
+  // assignable to the wide type parameter
   const ctx = useToggleGroupContext("ToggleGroupItem");
   const merged = mergeProps({ type: "button" as const }, props);
 
@@ -37,14 +40,16 @@ export function ToggleGroupItem<
 
   let elementRef: HTMLButtonElement | undefined;
 
-  // 组级未显式指定 variant/size 时,item 可单独覆盖
+  // The item can override variant/size individually when the group does not specify them
   const variant = () => ctx.variant() ?? local.variant ?? "default";
   const size = () => ctx.size() ?? local.size ?? "default";
   const pressed = () => ctx.isPressed(local.value);
   const disabled = () => ctx.disabled() || !!local.disabled;
 
-  // roving tabindex:高亮 item 持 0;高亮缺失或指向不可用 item(disabled/卸载)时,
-  // 首个可用 item 持 0 作为键盘起点,避免整组键盘不可达
+  // roving tabindex: the highlighted item holds 0; when the highlight is
+  // missing or points at an unusable item (disabled/unmounted), the first
+  // enabled item holds 0 as the keyboard starting point, so the group is
+  // never unreachable via the keyboard
   const tabIndex = () => {
     if (disabled()) return -1;
     const highlighted = ctx.highlightedValue();
@@ -91,14 +96,14 @@ export function ToggleGroupItem<
       )}
       classList={local.classList}
       onClick={(e) => {
-        // 用户回调优先,可用 preventDefault() 阻止本次选中
+        // The user callback takes priority; preventDefault() can block this selection
         callEventHandler(local.onClick, e);
         if (!e.defaultPrevented && !disabled()) {
           ctx.toggleItem(local.value, e, e.currentTarget);
         }
       }}
       onFocus={(e) => {
-        // 聚焦更新高亮(roving focus 起点)
+        // Focus updates the highlight (the roving focus starting point)
         if (!disabled()) ctx.setHighlightedValue(local.value);
         callEventHandler(local.onFocus, e);
       }}
