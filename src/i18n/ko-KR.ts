@@ -12,8 +12,7 @@ export const dict: RawDictionary = {
     },
     engine: {
       notRunning: "엔진 중지됨",
-      running: "실행 중 · 현재",
-      daily: "실행 중 · 매일 셔플",
+      running: "실행 중 · {{ mode }} · 현재",
       start: "엔진 시작",
       stop: "엔진 종료",
       confirmStop: "종료할까요?",

@@ -10,8 +10,7 @@ export const dict = {
     },
     engine: {
       notRunning: "Engine not running",
-      running: "Running · now",
-      daily: "Running · daily shuffle",
+      running: "Running · {{ mode }} · now",
       start: "Start engine",
       stop: "Stop engine",
       confirmStop: "Confirm stop?",
