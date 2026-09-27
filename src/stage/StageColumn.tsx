@@ -1,8 +1,6 @@
 // Responsibility: Center-column container — title follows the mode + renders the corresponding stage panel.
-import { uiStore } from "@/store/ui.store";
-import { fixedStore } from "@/store/fixed.store";
-import { settingsStore } from "@/store/settings.store";
-import { configuredThemeId } from "@/domain/config";
+import { modeStore } from "@/store/mode.store";
+import { scopeKey, themeForMon } from "@/store/fixed.store";
 import { monitorById } from "@/domain/monitors";
 import { themeById } from "@/domain/themes";
 import { FixedStage } from "./FixedStage";
@@ -10,21 +8,12 @@ import { RandomStage } from "./RandomStage";
 import { createMemo, Show } from "solid-js";
 
 export function StageColumn() {
-  const scopeKey = createMemo(() =>
-    fixedStore.allUnified ? "all" : fixedStore.curMon,
-  );
   const mon = createMemo(() => monitorById(scopeKey()));
-  const themeName = createMemo(
-    () =>
-      themeById(
-        fixedStore.monitorThemes[scopeKey()] ??
-          configuredThemeId(settingsStore.config, scopeKey()),
-      ).name,
-  );
+  const themeName = createMemo(() => themeById(themeForMon(scopeKey())).name);
 
   return (
     <div class="col-stage flex min-h-0 flex-col gap-3 overflow-hidden px-4 pt-4 xl:px-6.5">
-      <Show when={uiStore.mode === "fixed"}>
+      <Show when={modeStore.mode === "fixed"}>
         <div class="flex items-center gap-2.5 text-[12.5px] text-muted-foreground">
           <span class="font-display text-[14px] font-bold text-foreground">
             {mon()?.name ?? scopeKey()}
@@ -36,7 +25,7 @@ export function StageColumn() {
         </div>
       </Show>
 
-      <Show when={uiStore.mode === "fixed"} fallback={<RandomStage />}>
+      <Show when={modeStore.mode === "fixed"} fallback={<RandomStage />}>
         <FixedStage />
       </Show>
     </div>

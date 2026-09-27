@@ -1,6 +1,7 @@
 // Responsibility: Main-view grid tiers + theme library drawer/inline switching; the backdrop exists only at the smallest tier while expanded.
 //       Fixed mode: monitor scope + stage (+ theme library); random mode has no left column (the pool is edited in the theme library).
 import { uiStore, setLibOpen } from "@/store/ui.store";
+import { modeStore } from "@/store/mode.store";
 import { StageColumn } from "@/stage/StageColumn";
 import { LibraryColumn } from "@/library/LibraryColumn";
 import { t } from "@/i18n";
@@ -9,7 +10,7 @@ import { ScopeColumn } from "~/scope/ScopeColumn";
 import { Show } from "solid-js";
 
 export function MainView() {
-  const fixed = () => uiStore.mode === "fixed";
+  const fixed = () => modeStore.mode === "fixed";
 
   return (
     <div

@@ -1,6 +1,7 @@
 // Responsibility: A single theme tile; addition — at the smallest tier in fixed mode the drawer collapses automatically after selection so the stage feedback stays visible.
-import { uiStore, setLibOpen } from "@/store/ui.store";
-import { fixedStore, setMonitorTheme } from "@/store/fixed.store";
+import { setLibOpen } from "@/store/ui.store";
+import { modeStore } from "@/store/mode.store";
+import { fixedStore, scopeKey, setMonitorTheme } from "@/store/fixed.store";
 import { randomStore, toggle } from "@/store/random.store";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { MQ_XL } from "@/lib/layout";
@@ -18,14 +19,13 @@ export function ThemeTile({ id, index }: Props) {
   const isXl = useMediaQuery(MQ_XL);
 
   const t = themeById(id);
-  const scopeKey = () => (fixedStore.allUnified ? "all" : fixedStore.curMon);
   const on = () =>
-    uiStore.mode === "fixed"
+    modeStore.mode === "fixed"
       ? fixedStore.monitorThemes[scopeKey()] === id
       : randomStore.selected.includes(id);
 
   const onClick = () => {
-    if (uiStore.mode === "fixed") {
+    if (modeStore.mode === "fixed") {
       setMonitorTheme(scopeKey(), id);
       // Smallest tier: collapse the drawer right after assigning, so the user immediately sees the sun-path/preview update; random mode stays open for consecutive checking
       if (!isXl()) setLibOpen(false);
@@ -40,8 +40,8 @@ export function ThemeTile({ id, index }: Props) {
       style={{ "animation-delay": `${index * 40}ms` }}
       class={clsx(
         "group relative aspect-16/10 cursor-pointer overflow-hidden rounded-lg border transition-all duration-200 animate-rise hover:-translate-y-1 hover:scale-[1.02] hover:border-border-2 hover:shadow-[0_12px_26px_rgba(0,0,0,.5)]",
-        on() && uiStore.mode === "fixed" && "border-primary",
-        on() && uiStore.mode === "random" && "border-warning",
+        on() && modeStore.mode === "fixed" && "border-primary",
+        on() && modeStore.mode === "random" && "border-warning",
       )}
     >
       <ThemeThumbnail
@@ -55,7 +55,7 @@ export function ThemeTile({ id, index }: Props) {
         class={clsx(
           "absolute right-1.5 top-1.5 grid size-5 place-items-center rounded-md transition-all duration-200",
           on() ? "scale-100 opacity-100" : "scale-50 opacity-0",
-          uiStore.mode === "fixed"
+          modeStore.mode === "fixed"
             ? "bg-primary text-primary-foreground"
             : "bg-warning text-warning-foreground",
         )}

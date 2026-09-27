@@ -6,7 +6,7 @@ import { refresh as refreshEngine } from "./store/engine.store";
 import { syncFromConfig as syncFixed } from "./store/fixed.store";
 import { syncFromConfig as syncRandom } from "./store/random.store";
 import { load as loadSettings, settingsStore } from "./store/settings.store";
-import { setMode } from "./store/ui.store";
+import { setMode } from "./store/mode.store";
 import { showWindow } from "./ipc";
 
 export default function App() {

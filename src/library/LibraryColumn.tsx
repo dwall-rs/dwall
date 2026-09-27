@@ -1,5 +1,5 @@
 // Responsibility: Right-column container; adds h-full so it fills the height in drawer form. Everything else unchanged.
-import { uiStore } from "@/store/ui.store";
+import { modeStore } from "@/store/mode.store";
 import { fixedStore } from "@/store/fixed.store";
 import { monitorById } from "@/domain/monitors";
 import { themeList } from "@/domain/themes";
@@ -33,7 +33,7 @@ export function LibraryColumn() {
           {t("library.title")}
         </span>
         <span class="hidden font-mono text-[11px] text-muted-foreground min-[1150px]:block">
-          {uiStore.mode === "fixed"
+          {modeStore.mode === "fixed"
             ? t("library.hintFixed", { name: scopeName() })
             : t("library.hintRandom")}
         </span>
