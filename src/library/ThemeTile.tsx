@@ -57,7 +57,7 @@ export function ThemeTile({ id, index }: Props) {
           on() ? "scale-100 opacity-100" : "scale-50 opacity-0",
           modeStore.mode === "fixed"
             ? "bg-primary text-primary-foreground"
-            : "bg-warning text-warning-foreground",
+            : "bg-warning text-white",
         )}
       >
         <Check class="size-3" strokeWidth={3} />
