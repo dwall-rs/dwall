@@ -1,17 +1,15 @@
 // Responsibility: Engine run-state text + pulse dot; colors use semantic tokens (success=running, warning=random, muted=stopped).
-import { createResource, Show } from "solid-js";
-import { currentSolarPosition } from "@/ipc";
+import { Show } from "solid-js";
 import { t } from "@/i18n";
 import { engineStore } from "@/store/engine.store";
-import { settingsStore } from "@/store/settings.store";
-import { uiStore } from "@/store/ui.store";
+import { modeStore } from "@/store/mode.store";
+import { useSolarPosition } from "@/hooks/useSolarPosition";
 import { clsx, formatAngle } from "@/utils";
 
 export function EngineStatus() {
-  const [sp] = createResource(
-    () => settingsStore.config?.position_source,
-    (ps) => currentSolarPosition(ps),
-  );
+  const { position: sp } = useSolarPosition({
+    enabled: () => engineStore.running,
+  });
 
   return (
     <Show
@@ -27,12 +25,15 @@ export function EngineStatus() {
         <span
           class={clsx(
             "size-2 rounded-full text-current animate-pulse-ring",
-            uiStore.mode === "random"
+            modeStore.mode === "random"
               ? "bg-warning text-warning"
               : "bg-success text-success",
           )}
         />
-        <Show when={uiStore.mode === "fixed"} fallback={t("app.engine.daily")}>
+        <Show
+          when={modeStore.mode === "fixed"}
+          fallback={t("app.engine.daily")}
+        >
           {t("app.engine.running")}{" "}
           <span class="inline-flex items-center gap-1 font-display font-semibold text-foreground">
             <Show when={sp()} fallback="—">

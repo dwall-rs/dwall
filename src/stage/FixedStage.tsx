@@ -1,33 +1,23 @@
 // Responsibility: Fixed-mode stage orchestration — resolves the current theme (draft → config → first in the catalog), loads its wallpaper solar angles and the current solar position, and passes them to the pure presentation children.
-import { createMemo, createResource, onCleanup, onMount, Show } from "solid-js";
-import { configuredThemeId } from "@/domain/config";
+import { createMemo, createResource, Show } from "solid-js";
 import { themeById } from "@/domain/themes";
 import type { Wallpaper } from "@/domain/types";
-import {
-  currentSolarPosition,
-  getThemeWallpapers,
-  matchWallpaper,
-} from "@/ipc";
+import { getThemeWallpapers, matchWallpaper } from "@/ipc";
 import { t } from "@/i18n";
-import { catalogStore } from "@/store/catalog.store";
-import { fixedStore, selectWallpaper } from "@/store/fixed.store";
-import { settingsStore } from "@/store/settings.store";
+import {
+  fixedStore,
+  scopeKey,
+  selectWallpaper,
+  themeForMon,
+} from "@/store/fixed.store";
+import { useSolarPosition } from "@/hooks/useSolarPosition";
 import { ApplyRow } from "./ApplyRow";
 import { Preview } from "./Preview";
 import { SunPathPanel } from "./SunPathPanel";
 import { WallpaperStrip } from "./WallpaperStrip";
 
 export function FixedStage() {
-  const scopeKey = createMemo(() =>
-    fixedStore.allUnified ? "all" : fixedStore.curMon,
-  );
-  const themeId = createMemo(
-    () =>
-      fixedStore.monitorThemes[scopeKey()] ??
-      configuredThemeId(settingsStore.config, scopeKey()) ??
-      catalogStore.themes[0]?.id ??
-      "",
-  );
+  const themeId = createMemo(() => themeForMon(scopeKey()) ?? "");
   const theme = createMemo(() => themeById(themeId()));
 
   const [wallpapers] = createResource(
@@ -42,10 +32,8 @@ export function FixedStage() {
     },
   );
 
-  const [current, { refetch: refetchCurrent }] = createResource(
-    () => settingsStore.config?.position_source,
-    (ps) => currentSolarPosition(ps),
-  );
+  // Keep refreshing the solar position so the match does not go stale while the app stays open.
+  const { position: current } = useSolarPosition({ pollMs: 60_000 });
 
   const [matchedEntry] = createResource(
     () => {
@@ -55,12 +43,6 @@ export function FixedStage() {
     },
     async ({ id, cur }) => await matchWallpaper(id, cur.altitude, cur.azimuth),
   );
-
-  // Refresh the solar position periodically so the match does not go stale after the app stays open a long time
-  onMount(() => {
-    const timer = setInterval(() => refetchCurrent(), 60_000);
-    onCleanup(() => clearInterval(timer));
-  });
 
   const list = createMemo(() => wallpapers() ?? []);
   // One image may correspond to several solar positions; the list is deduplicated by image
