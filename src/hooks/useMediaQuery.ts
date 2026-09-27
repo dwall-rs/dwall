@@ -12,7 +12,7 @@ export function useMediaQuery(query: string): Accessor<boolean> {
     onChange();
     mql.addEventListener("change", onChange);
     return () => mql.removeEventListener("change", onChange);
-  }, [query]);
+  });
 
   return matches;
 }
