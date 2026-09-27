@@ -1,4 +1,4 @@
-// Responsibility: Pure geometry helpers for the sun path — azimuth → x coordinate and curve smoothing.
+// Responsibility: Pure geometry helpers for the sun path — azimuth → x coordinate, curve smoothing, and Y plotting math.
 
 export type Point = readonly [number, number];
 
@@ -7,6 +7,31 @@ const DEG = Math.PI / 180;
 /** Azimuth → x coordinate (0..100): east = 6%, south = 50%, west = 94%. */
 export const xForAzimuth = (azimuth: number): number =>
   50 - 44 * Math.sin(azimuth * DEG);
+
+/** Vertical plotting band (percent of the panel height). */
+export const Y_TOP = 10;
+export const Y_BOT = 84;
+
+export interface AltitudeDomain {
+  lo: number;
+  hi: number;
+}
+
+/** Adaptive altitude domain covering every entry, with an 8% margin (minimum 4°). */
+export function altitudeDomain(alts: readonly number[]): AltitudeDomain {
+  const lo = Math.min(...alts);
+  const hi = Math.max(...alts);
+  const pad = Math.max((hi - lo) * 0.08, 4);
+  return { lo: lo - pad, hi: hi + pad };
+}
+
+/** Altitude → y coordinate (percent) within [Y_TOP, Y_BOT]. */
+export const yForAltitude = (alt: number, domain: AltitudeDomain): number =>
+  Y_TOP + ((domain.hi - alt) / (domain.hi - domain.lo)) * (Y_BOT - Y_TOP);
+
+/** Clamp an altitude's y into the plotting band so out-of-range markers stay visible and clickable. */
+export const clampY = (alt: number, domain: AltitudeDomain): number =>
+  Math.min(Math.max(yForAltitude(alt, domain), Y_TOP), Y_BOT);
 
 /** Catmull-Rom → cubic Bézier: a smooth curve passing through every node (tension 0.5). */
 export function smoothPath(points: readonly Point[]): string {

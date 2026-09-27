@@ -7,11 +7,18 @@ import { settingsStore } from "@/store/settings.store";
 import { clsx, formatAngle } from "@/utils";
 import { createMemo, createResource, createSignal, For, Show } from "solid-js";
 import { themeStore } from "~/store/theme.store";
-import { type Point, smoothPath, xForAzimuth } from "./sunPath";
+import {
+  type AltitudeDomain,
+  Y_BOT,
+  altitudeDomain,
+  clampY,
+  type Point,
+  smoothPath,
+  xForAzimuth,
+  yForAltitude,
+} from "./sunPath";
 
-// Vertical plotting area (percent): leaves a band at the top for the info strip and one at the bottom for the azimuth labels.
-const Y_TOP = 10,
-  Y_BOT = 84;
+// Y_TOP leaves a band at the top for the info strip; Y_BOT leaves one at the bottom for the azimuth labels.
 const band = (alt: number) =>
   alt < 0 ? "bg-muted-foreground" : alt < 20 ? "bg-(--warning)" : "bg-primary";
 
@@ -35,29 +42,19 @@ export function SunPathPanel(props: Props) {
 
   // Adaptive Y axis: anchored to the "real sun path" (theme-independent, so every theme sees the same track),
   // covering the current position and the horizon (0)° with an 8% margin on both sides. Falls back to the theme's angles while the track is not loaded.
-  const domain = createMemo(() => {
+  const domain = createMemo<AltitudeDomain>(() => {
     const pathAlts = (path() ?? []).map((p) => p.altitude);
-    const alts = [
+    return altitudeDomain([
       props.current.altitude,
       0,
       ...pathAlts,
       ...(pathAlts.length === 0
         ? props.wallpapers.map((w) => w.solar.altitude)
         : []),
-    ];
-    const lo = Math.min(...alts);
-    const hi = Math.max(...alts);
-    const pad = Math.max((hi - lo) * 0.08, 4);
-    return { lo: lo - pad, hi: hi + pad };
+    ]);
   });
-  const Yp = (alt: number) => {
-    const { lo, hi } = domain();
-    return Y_TOP + ((hi - alt) / (hi - lo)) * (Y_BOT - Y_TOP);
-  };
+  const Yp = (alt: number) => yForAltitude(alt, domain());
   const hor = () => Yp(0);
-
-  /** Clamps the Y coordinate into the plotting area: markers stay visible and clickable when a theme's angle falls outside today's sun path. */
-  const clampY = (alt: number) => Math.min(Math.max(Yp(alt), Y_TOP), Y_BOT);
 
   const cx = createMemo(() => xForAzimuth(props.current.azimuth));
   const cy = createMemo(() => Yp(props.current.altitude));
@@ -158,7 +155,7 @@ export function SunPathPanel(props: Props) {
                 x1={cx()}
                 y1={cy()}
                 x2={xForAzimuth(m().solar.azimuth)}
-                y2={clampY(m().solar.altitude)}
+                y2={clampY(m().solar.altitude, domain())}
                 stroke="var(--success)"
                 stroke-opacity=".55"
                 stroke-dasharray="3 4"
@@ -182,7 +179,7 @@ export function SunPathPanel(props: Props) {
                 onMouseLeave={() => setHover(null)}
                 style={{
                   left: `${xForAzimuth(wp.solar.azimuth)}%`,
-                  top: `${clampY(wp.solar.altitude)}%`,
+                  top: `${clampY(wp.solar.altitude, domain())}%`,
                 }}
                 class={clsx(
                   "absolute -translate-x-1/2 -translate-y-1/2 rounded-full ring-1 ring-card transition-all",
