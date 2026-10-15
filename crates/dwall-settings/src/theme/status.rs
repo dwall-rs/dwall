@@ -12,8 +12,7 @@ pub struct ThemeStatusProvider;
 impl ThemeStatusProvider {
     /// Get the currently applied theme ID for a monitor
     pub fn get_current_theme_id(monitor_id: &str) -> DwallSettingsResult<Option<String>> {
-        let daemon_path = crate::DAEMON_EXE_PATH.get().unwrap();
-        if find_process_by_path(daemon_path)?.is_none() {
+        if find_process_by_path(crate::daemon::daemon_path()?)?.is_none() {
             return Ok(None);
         }
 
