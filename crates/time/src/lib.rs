@@ -64,11 +64,15 @@ impl UtcDateTime {
     }
 
     /// Gets the current UTC time.
+    ///
+    /// Saturates to the Unix epoch if the system clock is set before 1970 (a dead
+    /// CMOS battery, a clock rollback) instead of panicking: a panic here would
+    /// take down the daemon, because every log record reads the current time.
     #[inline]
     pub fn now() -> Self {
         let duration = SystemTime::now()
             .duration_since(SystemTime::UNIX_EPOCH)
-            .expect("Invalid system time");
+            .unwrap_or_default();
         Self { inner: duration }
     }
 
@@ -152,9 +156,11 @@ impl UtcDateTime {
     }
 
     /// Returns the year, month, and day (recommended for fetching multiple date components efficiently).
+    ///
+    /// Timestamps beyond year 9999 are clamped to 9999-12-31 rather than wrapping.
     #[inline]
     pub const fn ymd(&self) -> (u16, Month, u8) {
-        let days = (self.inner.as_secs() / SECONDS_PER_DAY) as u32;
+        let days = self.inner.as_secs() / SECONDS_PER_DAY;
         days_to_ymd(days)
     }
 
@@ -262,7 +268,7 @@ impl UtcDateTime {
     pub fn end_of_day(&self) -> Self {
         let days = self.inner.as_secs() / SECONDS_PER_DAY;
         Self {
-            inner: Duration::from_secs((days + 1) * SECONDS_PER_DAY - 1),
+            inner: Duration::from_secs(days.saturating_add(1) * SECONDS_PER_DAY - 1),
         }
     }
 
@@ -359,8 +365,11 @@ impl fmt::Display for UtcDateTime {
 
 /// A point in time with a fixed UTC offset.
 ///
-/// Internally stores the "offset-adjusted timestamp" to efficiently obtain components such as year, month, and day.
-/// This value is **not public**; external code can only obtain UTC time through semantically clear methods (e.g., `utc()`).
+/// Internally stores the "offset-adjusted timestamp" (`utc + offset`) so the
+/// calendar components can be read directly; the offset is kept alongside it. Use
+/// [`utc`](OffsetDateTime::utc) or [`assume_utc`](OffsetDateTime::assume_utc) — the
+/// latter is a true conversion (`inner - offset`), not a relabeling — whenever the
+/// instant itself matters, e.g. for solar calculations.
 #[derive(Debug, Clone, Copy)]
 pub struct OffsetDateTime {
     inner: UtcDateTime, // offset-adjusted displayed time
@@ -401,10 +410,18 @@ impl OffsetDateTime {
         Ok(UtcDateTime::from_timestamp(utc_secs as u64))
     }
 
+    /// Interprets the stored local wall-clock time as UTC (`inner - offset`).
+    ///
+    /// This is the inverse of [`from_utc`](Self::from_utc) and does **not** consult
+    /// the system time zone. Local times that fall before the Unix epoch cannot be
+    /// represented and saturate to the epoch instead of wrapping around to a
+    /// nonsense timestamp; use [`utc`](Self::utc) when the failure has to be
+    /// observable.
     pub const fn assume_utc(&self) -> UtcDateTime {
         let local_secs = self.inner.timestamp() as i64;
         let utc_secs = local_secs - self.offset.seconds() as i64;
-        UtcDateTime::from_timestamp(utc_secs as u64)
+
+        UtcDateTime::from_timestamp(if utc_secs < 0 { 0 } else { utc_secs as u64 })
     }
 
     /// Constructs a local time from local time components and a time zone offset.
@@ -436,8 +453,13 @@ impl OffsetDateTime {
     }
 
     /// Returns the UTC timestamp (seconds).
+    ///
+    /// Saturates to 0 for local times before the Unix epoch (see
+    /// [`assume_utc`](Self::assume_utc)).
     pub const fn timestamp(&self) -> u64 {
-        (self.inner.timestamp() as i64 - self.offset.seconds() as i64) as u64
+        let utc_secs = self.inner.timestamp() as i64 - self.offset.seconds() as i64;
+
+        if utc_secs < 0 { 0 } else { utc_secs as u64 }
     }
 
     /// Returns the time zone offset.
@@ -602,8 +624,16 @@ impl fmt::Display for OffsetDateTime {
 }
 
 impl PartialEq for OffsetDateTime {
+    /// Compares the represented instants.
+    ///
+    /// Values whose UTC form cannot be represented (before the Unix epoch) are
+    /// never equal to anything — including each other — so this stays consistent
+    /// with [`PartialOrd`], which returns `None` for the same inputs.
     fn eq(&self, other: &Self) -> bool {
-        self.utc().ok() == other.utc().ok()
+        match (self.utc(), other.utc()) {
+            (Ok(a), Ok(b)) => a == b,
+            _ => false,
+        }
     }
 }
 
@@ -895,6 +925,40 @@ mod tests {
         // add a huge number of seconds should overflow
         let result = local.add_seconds(u64::MAX);
         assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_out_of_range_timestamp_is_clamped() {
+        // A bogus timestamp must not overflow the calendar math or produce garbage.
+        let (year, month, day) = UtcDateTime::from_timestamp(u64::MAX).ymd();
+        assert_eq!((year, month, day), (9999, Month::December, 31));
+    }
+
+    #[test]
+    fn test_assume_utc_saturates_before_epoch() {
+        // Moving back an hour from UTC+8 midnight puts the UTC instant before the
+        // epoch, so the conversion must saturate instead of wrapping to a huge
+        // timestamp.
+        let base =
+            OffsetDateTime::from_utc(UtcDateTime::from_timestamp(0), offset_plus_8()).unwrap();
+        let local = base.sub_seconds(3600).unwrap();
+
+        assert!(local.utc().is_err());
+        assert_eq!(local.assume_utc().timestamp(), 0);
+        assert_eq!(local.timestamp(), 0);
+    }
+
+    #[test]
+    fn test_unrepresentable_times_are_not_equal() {
+        // Both values are unrepresentable; they must not compare equal, otherwise
+        // `eq` and `partial_cmp` would contradict each other.
+        let base =
+            OffsetDateTime::from_utc(UtcDateTime::from_timestamp(0), offset_plus_8()).unwrap();
+        let a = base.sub_seconds(3600).unwrap();
+        let b = base.sub_seconds(7200).unwrap();
+
+        assert_ne!(a, b);
+        assert_eq!(a.partial_cmp(&b), None);
     }
 
     #[test]
