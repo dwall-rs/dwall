@@ -8,7 +8,7 @@ macro_rules! kv_log_internal {
     // Accumulated kv segments are each prefixed with ", " so the final string is:
     //   "{msg}, k1=v1, k2=v2"
     (@build $lvl:ident () ($($kv_fmt:tt)*) ($($kv_args:expr,)*) $msg:literal $(, $($msg_args:tt)*)?) => {
-        ::log::$lvl!(
+        $crate::log::$lvl!(
             concat!("{}", $($kv_fmt)*),
             format_args!($msg $(, $($msg_args)*)?),
             $($kv_args,)*
@@ -17,7 +17,7 @@ macro_rules! kv_log_internal {
 
     // ── Base case 2: with target ─────────────────────────────────────────────
     (@build $lvl:ident (target: $tgt:expr) ($($kv_fmt:tt)*) ($($kv_args:expr,)*) $msg:literal $(, $($msg_args:tt)*)?) => {
-        ::log::$lvl!(
+        $crate::log::$lvl!(
             target: $tgt,
             concat!("{}", $($kv_fmt)*),
             format_args!($msg $(, $($msg_args)*)?),
