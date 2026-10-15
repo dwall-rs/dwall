@@ -1,3 +1,4 @@
+pub mod async_operation;
 pub mod color_scheme;
 pub mod geolocation;
 pub mod monitor;

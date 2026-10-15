@@ -56,6 +56,10 @@ pub enum DwallError {
     #[error("Wallpaper operation failed: {0}")]
     WallpaperManager(#[from] WallpaperError),
 
+    /// A WinRT asynchronous operation did not complete within its budget
+    #[error("WinRT operation did not complete within {0:?}")]
+    AsyncTimeout(std::time::Duration),
+
     #[error(transparent)]
     DateTime(#[from] time::Error),
 
