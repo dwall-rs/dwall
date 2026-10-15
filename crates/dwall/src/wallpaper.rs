@@ -42,14 +42,16 @@ impl WallpaperSelector {
             .iter()
             .enumerate()
             .min_by(|(_, a), (_, b)| {
+                // `total_cmp` instead of `partial_cmp().unwrap()`: a theme file is
+                // external data and TOML allows `nan`, which made the unwrap panic
+                // (and the daemon abort on the next cycle).
                 solar_distance(a.altitude(), a.azimuth(), current_altitude, current_azimuth)
-                    .partial_cmp(&solar_distance(
+                    .total_cmp(&solar_distance(
                         b.altitude(),
                         b.azimuth(),
                         current_altitude,
                         current_azimuth,
                     ))
-                    .unwrap()
             })
             .map(|(entry, _)| entry)
     }
@@ -66,4 +68,68 @@ fn solar_distance(alt1: f64, az1: f64, alt2: f64, az2: f64) -> f64 {
     let daz = daz_raw.min(360.0 - daz_raw) / 360.0;
 
     da * da + daz * daz
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn theme_angles() -> Vec<SolarAngle> {
+        vec![
+            SolarAngle::new(0, -18.0, 0.0),
+            SolarAngle::new(1, -6.0, 90.0),
+            SolarAngle::new(2, 20.0, 180.0),
+            SolarAngle::new(3, 60.0, 270.0),
+        ]
+    }
+
+    #[test]
+    fn finds_the_nearest_entry() {
+        let angles = theme_angles();
+
+        assert_eq!(
+            WallpaperSelector::find_closest_entry(&angles, -17.0, 2.0),
+            Some(0)
+        );
+        assert_eq!(
+            WallpaperSelector::find_closest_entry(&angles, 21.0, 179.0),
+            Some(2)
+        );
+        assert_eq!(
+            WallpaperSelector::find_closest_entry(&angles, 59.0, 269.0),
+            Some(3)
+        );
+    }
+
+    #[test]
+    fn azimuth_wraps_around_zero() {
+        let angles = vec![SolarAngle::new(0, 0.0, 5.0), SolarAngle::new(1, 0.0, 355.0)];
+
+        // 358° is much closer to 355° than to 5° once wrapping is taken into account.
+        assert_eq!(
+            WallpaperSelector::find_closest_entry(&angles, 0.0, 358.0),
+            Some(1)
+        );
+    }
+
+    #[test]
+    fn nan_angles_do_not_panic() {
+        // TOML accepts `altitude = nan`; a theme file must not be able to abort the
+        // daemon through the distance comparison.
+        let angles = vec![
+            SolarAngle::new(0, f64::NAN, 0.0),
+            SolarAngle::new(1, 10.0, 20.0),
+        ];
+
+        assert!(WallpaperSelector::find_closest_entry(&angles, 11.0, 21.0).is_some());
+        assert_eq!(
+            WallpaperSelector::find_closest_image(&angles, 11.0, 21.0),
+            Some(1)
+        );
+    }
+
+    #[test]
+    fn empty_theme_has_no_match() {
+        assert_eq!(WallpaperSelector::find_closest_entry(&[], 0.0, 0.0), None);
+    }
 }

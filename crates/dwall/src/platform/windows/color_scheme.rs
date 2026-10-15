@@ -66,7 +66,8 @@ impl ColorSchemeProvider for ColorSchemeScheduler {
     fn set_color_scheme(&self, scheme: ColorScheme) -> DwallResult<()> {
         let current_color_scheme = self.get_current_scheme()?;
         if current_color_scheme == scheme {
-            info!(scheme = %scheme, "Color scheme is already set");
+            // Runs once per cycle, so keep it out of the info stream.
+            debug!(scheme = %scheme, "Color scheme is already set");
             return Ok(());
         }
 
@@ -93,8 +94,7 @@ impl ColorSchemeProvider for ColorSchemeScheduler {
 
         notify_theme_change()?;
 
-        let current_color_scheme = self.get_current_scheme()?;
-        if !verify_theme_change(&scheme, &current_color_scheme)? {
+        if !verify_theme_change(scheme)? {
             warn!("Theme change may not have been applied correctly");
         }
 
@@ -102,9 +102,14 @@ impl ColorSchemeProvider for ColorSchemeScheduler {
     }
 }
 
-fn verify_theme_change(expected: &ColorScheme, current: &ColorScheme) -> DwallResult<bool> {
+/// Waits briefly for the shell to apply a change, then re-reads the current value.
+///
+/// The sleep has to happen *before* the re-read, otherwise the comparison inspects
+/// the pre-change value (and the wait buys nothing).
+fn verify_theme_change(expected: ColorScheme) -> DwallResult<bool> {
     std::thread::sleep(std::time::Duration::from_millis(100));
-    Ok(current == expected)
+
+    Ok(ColorSchemeScheduler.get_current_scheme()? == expected)
 }
 
 /// Notify the system about theme changes

@@ -11,6 +11,7 @@ use std::{
 };
 
 use serde::{Deserialize, Serialize};
+use windows::Win32::Foundation::ERROR_INSUFFICIENT_BUFFER;
 use windows::Win32::{
     Devices::DeviceAndDriverInstallation::{
         DIGCF_DEVICEINTERFACE, DIGCF_PRESENT, HDEVINFO, SP_DEVICE_INTERFACE_DATA,
@@ -31,6 +32,9 @@ use windows::core::{Error as WindowsError, Free, GUID, PCWSTR};
 use crate::DwallResult;
 use crate::monitor::MonitorProvider;
 use crate::utils::WideStringRead;
+
+/// Attempts allowed when the display configuration changes mid-query.
+const MAX_QUERY_CONFIG_ATTEMPTS: u8 = 3;
 
 // ── Errors ──────────────────────────────────────────────────────────────────
 
@@ -74,8 +78,7 @@ struct DisplayPath {
 
 /// Queries all active display paths in the system
 fn query_display_paths() -> DwallResult<Vec<DisplayPath>> {
-    let (mut path_count, mut mode_count) = get_buffer_sizes()?;
-    let (paths, _) = query_config(&mut path_count, &mut mode_count)?;
+    let (paths, _) = query_config()?;
 
     Ok(paths
         .into_iter()
@@ -141,34 +144,50 @@ fn get_buffer_sizes() -> DwallResult<(u32, u32)> {
     Ok((path_count, mode_count))
 }
 
-fn query_config(
-    path_count: &mut u32,
-    mode_count: &mut u32,
-) -> DwallResult<(Vec<DISPLAYCONFIG_PATH_INFO>, Vec<DISPLAYCONFIG_MODE_INFO>)> {
-    let mut paths = vec![Default::default(); *path_count as usize];
-    let mut modes = vec![Default::default(); *mode_count as usize];
+fn query_config() -> DwallResult<(Vec<DISPLAYCONFIG_PATH_INFO>, Vec<DISPLAYCONFIG_MODE_INFO>)> {
+    // The display configuration can change between the size query and the config
+    // query — that is exactly the hot-plug case this code detects — in which case
+    // `QueryDisplayConfig` reports ERROR_INSUFFICIENT_BUFFER and the buffers have
+    // to be sized again.
+    for _ in 0..MAX_QUERY_CONFIG_ATTEMPTS {
+        let (mut path_count, mut mode_count) = get_buffer_sizes()?;
 
-    let err = unsafe {
-        QueryDisplayConfig(
-            QDC_ALL_PATHS,
-            path_count,
-            paths.as_mut_ptr(),
-            mode_count,
-            modes.as_mut_ptr(),
-            None,
-        )
-    };
+        let mut paths = vec![Default::default(); path_count as usize];
+        let mut modes = vec![Default::default(); mode_count as usize];
 
-    if err != ERROR_SUCCESS {
-        error!(error = ?err, "Failed to get display config");
-        return Err(DisplayError::QueryDisplayConfig(err).into());
+        let err = unsafe {
+            QueryDisplayConfig(
+                QDC_ALL_PATHS,
+                &mut path_count,
+                paths.as_mut_ptr(),
+                &mut mode_count,
+                modes.as_mut_ptr(),
+                None,
+            )
+        };
+
+        if err == ERROR_INSUFFICIENT_BUFFER {
+            debug!("Display configuration changed while querying, retrying");
+            continue;
+        }
+
+        if err != ERROR_SUCCESS {
+            error!(error = ?err, "Failed to get display config");
+            return Err(DisplayError::QueryDisplayConfig(err).into());
+        }
+
+        paths.truncate(path_count as usize);
+        modes.truncate(mode_count as usize);
+        debug!(path_count = path_count, "Got display count");
+
+        return Ok((paths, modes));
     }
 
-    paths.truncate(*path_count as usize);
-    modes.truncate(*mode_count as usize);
-    debug!(path_count = path_count, "Got display count");
-
-    Ok((paths, modes))
+    error!(
+        attempts = MAX_QUERY_CONFIG_ATTEMPTS,
+        "Failed to query display configuration after repeated retries"
+    );
+    Err(DisplayError::QueryDisplayConfig(ERROR_INSUFFICIENT_BUFFER).into())
 }
 
 // ── Device installer queries ────────────────────────────────────────────────
@@ -521,19 +540,20 @@ impl MonitorProvider for DisplayMonitorProvider {
 
     fn has_configuration_changed(&self) -> DwallResult<bool> {
         let current_monitors = fetch_system_monitors()?;
-        let cache = self.cache.borrow();
+        let mut cache = self.cache.borrow_mut();
 
-        if current_monitors.len() != cache.data.len() {
-            return Ok(true);
+        let changed = current_monitors.len() != cache.data.len()
+            || current_monitors
+                .keys()
+                .any(|device_path| !cache.data.contains_key(device_path));
+
+        if changed {
+            // Refresh the cache too: callers re-apply wallpapers right after this
+            // check and would otherwise read the pre-hot-plug monitor list.
+            cache.update(current_monitors);
         }
 
-        for device_path in current_monitors.keys() {
-            if !cache.data.contains_key(device_path) {
-                return Ok(true);
-            }
-        }
-
-        Ok(false)
+        Ok(changed)
     }
 }
 
@@ -584,7 +604,7 @@ fn fetch_system_monitors() -> DwallResult<HashMap<String, DisplayMonitor>> {
     }
 
     let monitor_count = monitors.len();
-    info!("Found {} active monitor(s)", monitor_count);
+    debug!("Found {} active monitor(s)", monitor_count);
 
     Ok(monitors)
 }

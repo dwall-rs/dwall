@@ -1,17 +1,18 @@
 //! Windows implementation of [`WallpaperProvider`].
 
-use std::{collections::HashMap, path::Path};
+use std::{collections::HashMap, path::Path, time::Duration, time::Instant};
 
 use windows::{
     Foundation::Uri,
     Storage::{IStorageFile, StorageFile},
     System::UserProfile::LockScreen,
     Win32::{
-        System::Com::{CLSCTX_ALL, CoCreateInstance, CoInitialize, CoUninitialize},
+        System::Com::{CLSCTX_ALL, CoCreateInstance, CoInitialize, CoTaskMemFree, CoUninitialize},
         UI::Shell::{DesktopWallpaper, IDesktopWallpaper},
     },
-    core::{HSTRING, Interface},
+    core::{HSTRING, Interface, PWSTR},
 };
+use windows_future::{AsyncStatus, IAsyncAction, IAsyncOperation};
 
 use crate::monitor::MonitorProvider;
 use crate::wallpaper::WallpaperProvider;
@@ -30,9 +31,81 @@ pub enum WallpaperError {
     SetWallpaper(windows::core::Error),
     #[error("Monitor with specified ID not found: {0}")]
     MonitorNotFound(String),
+    #[error("WinRT operation failed: {0}")]
+    AsyncFailed(windows::core::Error),
+    #[error("Timed out waiting for a WinRT operation after {0:?}")]
+    Timeout(Duration),
 }
 
 type WallpaperResult<T> = Result<T, WallpaperError>;
+
+/// How long a lock-screen WinRT operation may block the daemon.
+const LOCK_SCREEN_TIMEOUT: Duration = Duration::from_secs(30);
+
+/// Poll interval while waiting for a WinRT operation.
+const ASYNC_POLL_INTERVAL: Duration = Duration::from_millis(50);
+
+/// Waits for a WinRT `IAsyncOperation` with a bounded timeout.
+///
+/// `windows-future`'s `get()` waits with `WaitForSingleObject(…, INFINITE)`, so a
+/// stuck broker — a lock-screen file on an unreachable network share, a wedged
+/// shell — would block the single-threaded daemon forever. Polling `Status()`
+/// keeps the wait bounded without installing a completion handler (which would
+/// require the result type to be `Send`).
+fn wait_bounded<T: windows::core::RuntimeType>(
+    operation: &IAsyncOperation<T>,
+    timeout: Duration,
+) -> WallpaperResult<T> {
+    let started = Instant::now();
+
+    loop {
+        match operation.Status() {
+            Ok(AsyncStatus::Started) => {
+                if started.elapsed() >= timeout {
+                    return Err(WallpaperError::Timeout(timeout));
+                }
+                std::thread::sleep(ASYNC_POLL_INTERVAL);
+            }
+            _ => return operation.GetResults().map_err(WallpaperError::AsyncFailed),
+        }
+    }
+}
+
+/// Bounded wait for a WinRT `IAsyncAction` (no result value).
+fn wait_action_bounded(operation: &IAsyncAction, timeout: Duration) -> WallpaperResult<()> {
+    let started = Instant::now();
+
+    loop {
+        match operation.Status() {
+            Ok(AsyncStatus::Started) => {
+                if started.elapsed() >= timeout {
+                    return Err(WallpaperError::Timeout(timeout));
+                }
+                std::thread::sleep(ASYNC_POLL_INTERVAL);
+            }
+            _ => return operation.GetResults().map_err(WallpaperError::AsyncFailed),
+        }
+    }
+}
+
+/// Owns a COM-allocated string handed out by the shell.
+///
+/// `IDesktopWallpaper::GetWallpaper` fills an `[out] LPWSTR` that the callee
+/// allocated with `CoTaskMemAlloc`; the caller is responsible for releasing it.
+/// `windows` returns a bare [`PWSTR`] (no `Drop`, no `Free`), so without this
+/// guard every query leaks one block — and the query runs once per monitor per
+/// cycle.
+struct OwnedCoTaskMemString(PWSTR);
+
+impl Drop for OwnedCoTaskMemString {
+    fn drop(&mut self) {
+        unsafe {
+            // SAFETY: the pointer came from `GetWallpaper`, which allocates with
+            // `CoTaskMemAlloc`, and it is freed exactly once here.
+            CoTaskMemFree(Some(self.0.0 as *const core::ffi::c_void));
+        }
+    }
+}
 
 /// Windows wallpaper setter with COM management
 pub(crate) struct WallpaperSetter {
@@ -131,7 +204,7 @@ impl WallpaperSetter {
             e
         })?;
 
-        debug!(path = %uri.DisplayUri()?, "Target lock screen image");
+        debug!(path = ?uri.DisplayUri(), "Target lock screen image");
 
         let current_lock_screen_image_uri = Self::get_current_lock_screen_image()?;
 
@@ -149,7 +222,7 @@ impl WallpaperSetter {
             e
         })?;
 
-        let file = file.get().map_err(|e| {
+        let file = wait_bounded(&file, LOCK_SCREEN_TIMEOUT).map_err(|e| {
             error!(
                 path = %image_path.display(),
                 error = %e,
@@ -176,7 +249,7 @@ impl WallpaperSetter {
             e
         })?;
 
-        result.get().map_err(|e| {
+        wait_action_bounded(&result, LOCK_SCREEN_TIMEOUT).map_err(|e| {
             error!(
                 path = %image_path.display(),
                 error = %e,
@@ -229,16 +302,23 @@ impl WallpaperSetter {
             match unsafe { self.desktop_wallpaper.GetWallpaper(monitor_path) } {
                 Ok(path) => path,
                 Err(e) => {
-                    error!(
+                    // Treat "unknown" as "not the requested wallpaper" so a transient
+                    // COM failure does not stop the cycle from applying it.
+                    warn!(
                         error = %e,
                         monitor_path = %monitor_path,
-                        "Failed to retrieve wallpaper for monitor"
+                        "Failed to read the current wallpaper; applying anyway"
                     );
-                    return Err(WallpaperError::GetWallpaper(e));
+                    return Ok(false);
                 }
             };
 
-        let current_wallpaper_path = unsafe { current_wallpaper_ptr.to_hstring() };
+        let current_wallpaper_path = unsafe {
+            // SAFETY: `GetWallpaper` returned an owned `LPWSTR`; the guard frees it
+            // with `CoTaskMemFree` once `to_hstring` has copied the contents.
+            let owned = OwnedCoTaskMemString(current_wallpaper_ptr);
+            owned.0.to_hstring()
+        };
         let is_same = *wallpaper_path == current_wallpaper_path;
 
         debug!(
@@ -268,18 +348,29 @@ impl WallpaperSetter {
             return Ok(());
         };
 
-        unsafe {
+        let applied = unsafe {
             self.desktop_wallpaper
                 .SetWallpaper(&device_path, &wallpaper_path)
-                .map_err(|e| {
-                    error!(
-                        error = %e,
-                        monitor_id = monitor.device_path(),
-                        wallpaper_path = %wallpaper_path,
-                        "Failed to set wallpaper for monitor"
-                    );
-                    WallpaperError::SetWallpaper(e)
-                })
+        };
+
+        match applied {
+            Ok(()) => {
+                info!(
+                    monitor_id = monitor.device_path(),
+                    wallpaper_path = %wallpaper_path,
+                    "Applied wallpaper"
+                );
+                Ok(())
+            }
+            Err(e) => {
+                error!(
+                    error = %e,
+                    monitor_id = monitor.device_path(),
+                    wallpaper_path = %wallpaper_path,
+                    "Failed to set wallpaper for monitor"
+                );
+                Err(WallpaperError::SetWallpaper(e))
+            }
         }
     }
 
@@ -289,7 +380,7 @@ impl WallpaperSetter {
             e
         })?;
 
-        debug!(path = %result.DisplayUri()?, "Current lock screen image");
+        debug!(path = ?result.DisplayUri(), "Current lock screen image");
         Ok(result)
     }
 }

@@ -105,7 +105,14 @@ impl<'a> ThemeEngine<'a> {
             &solar_position,
         )?;
 
-        info!(
+        if success_count == 0 && !available_monitors.is_empty() {
+            warn!(
+                total_monitors = available_monitors.len(),
+                "No monitor received a wallpaper in this cycle"
+            );
+        }
+
+        debug!(
             successful_monitors = success_count,
             total_monitors = available_monitors.len(),
             "Theme cycle completed"
@@ -133,17 +140,24 @@ impl<'a> ThemeEngine<'a> {
                 }
             };
 
-            info!(
+            debug!(
                 monitor_id = monitor_id,
                 theme_id = theme_id,
                 "Processing wallpaper for monitor"
             );
 
-            if self
-                .process_single(monitor_id, theme_id, solar_position)
-                .is_ok()
-            {
-                success_count += 1;
+            match self.process_single(monitor_id, theme_id, solar_position) {
+                Ok(()) => success_count += 1,
+                // Surface the reason: without this the only symptom of a broken
+                // theme is that the wallpaper stops changing.
+                Err(e) => {
+                    warn!(
+                        error = %e,
+                        monitor_id = monitor_id,
+                        theme_id = theme_id,
+                        "Failed to apply wallpaper for monitor"
+                    );
+                }
             }
         }
 
@@ -158,7 +172,7 @@ impl<'a> ThemeEngine<'a> {
     ) -> DwallResult<()> {
         let (theme_dir, is_customized) = get_theme_directory_path(self.config, theme_id);
 
-        info!(
+        debug!(
             theme_dir = %theme_dir.display(),
             is_customized = is_customized,
             theme_id = theme_id,
@@ -250,7 +264,7 @@ impl<'a> ThemeEngine<'a> {
             .into());
         }
 
-        info!(
+        debug!(
             wallpaper_path = %image_path.display(),
             image_index = optimal_image_index,
             theme_id = theme_id,
