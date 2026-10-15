@@ -1,6 +1,6 @@
 //! Windows implementation of [`WallpaperProvider`].
 
-use std::{collections::HashMap, path::Path, time::Duration, time::Instant};
+use std::{collections::HashMap, path::Path, time::Duration};
 
 use windows::{
     Foundation::Uri,
@@ -12,12 +12,12 @@ use windows::{
     },
     core::{HSTRING, Interface, PWSTR},
 };
-use windows_future::{AsyncStatus, IAsyncAction, IAsyncOperation};
 
 use crate::monitor::MonitorProvider;
 use crate::wallpaper::WallpaperProvider;
 use crate::{DwallResult, platform::DisplayMonitor};
 
+use super::async_operation::{self, AsyncWaitError};
 use super::monitor::DisplayMonitorProvider;
 
 /// Wallpaper operation errors
@@ -31,62 +31,14 @@ pub enum WallpaperError {
     SetWallpaper(windows::core::Error),
     #[error("Monitor with specified ID not found: {0}")]
     MonitorNotFound(String),
-    #[error("WinRT operation failed: {0}")]
-    AsyncFailed(windows::core::Error),
-    #[error("Timed out waiting for a WinRT operation after {0:?}")]
-    Timeout(Duration),
+    #[error("Failed to wait for a WinRT operation: {0}")]
+    AsyncWait(#[from] AsyncWaitError),
 }
 
 type WallpaperResult<T> = Result<T, WallpaperError>;
 
 /// How long a lock-screen WinRT operation may block the daemon.
 const LOCK_SCREEN_TIMEOUT: Duration = Duration::from_secs(30);
-
-/// Poll interval while waiting for a WinRT operation.
-const ASYNC_POLL_INTERVAL: Duration = Duration::from_millis(50);
-
-/// Waits for a WinRT `IAsyncOperation` with a bounded timeout.
-///
-/// `windows-future`'s `get()` waits with `WaitForSingleObject(…, INFINITE)`, so a
-/// stuck broker — a lock-screen file on an unreachable network share, a wedged
-/// shell — would block the single-threaded daemon forever. Polling `Status()`
-/// keeps the wait bounded without installing a completion handler (which would
-/// require the result type to be `Send`).
-fn wait_bounded<T: windows::core::RuntimeType>(
-    operation: &IAsyncOperation<T>,
-    timeout: Duration,
-) -> WallpaperResult<T> {
-    let started = Instant::now();
-
-    loop {
-        match operation.Status() {
-            Ok(AsyncStatus::Started) => {
-                if started.elapsed() >= timeout {
-                    return Err(WallpaperError::Timeout(timeout));
-                }
-                std::thread::sleep(ASYNC_POLL_INTERVAL);
-            }
-            _ => return operation.GetResults().map_err(WallpaperError::AsyncFailed),
-        }
-    }
-}
-
-/// Bounded wait for a WinRT `IAsyncAction` (no result value).
-fn wait_action_bounded(operation: &IAsyncAction, timeout: Duration) -> WallpaperResult<()> {
-    let started = Instant::now();
-
-    loop {
-        match operation.Status() {
-            Ok(AsyncStatus::Started) => {
-                if started.elapsed() >= timeout {
-                    return Err(WallpaperError::Timeout(timeout));
-                }
-                std::thread::sleep(ASYNC_POLL_INTERVAL);
-            }
-            _ => return operation.GetResults().map_err(WallpaperError::AsyncFailed),
-        }
-    }
-}
 
 /// Owns a COM-allocated string handed out by the shell.
 ///
@@ -222,7 +174,7 @@ impl WallpaperSetter {
             e
         })?;
 
-        let file = wait_bounded(&file, LOCK_SCREEN_TIMEOUT).map_err(|e| {
+        let file = async_operation::wait(&file, LOCK_SCREEN_TIMEOUT).map_err(|e| {
             error!(
                 path = %image_path.display(),
                 error = %e,
@@ -249,7 +201,7 @@ impl WallpaperSetter {
             e
         })?;
 
-        wait_action_bounded(&result, LOCK_SCREEN_TIMEOUT).map_err(|e| {
+        async_operation::wait_action(&result, LOCK_SCREEN_TIMEOUT).map_err(|e| {
             error!(
                 path = %image_path.display(),
                 error = %e,

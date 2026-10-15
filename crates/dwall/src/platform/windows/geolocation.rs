@@ -8,16 +8,23 @@ use windows::Foundation::TimeSpan;
 use crate::error::{DwallError, DwallResult};
 use crate::solar::{GeolocationAccessError, Position, PositionProvider};
 
+use super::async_operation;
+
 /// Maximum acceptable age of a cached reading before a fresh sensor read is requested.
 const MAX_GEOPOSITION_AGE: Duration = Duration::from_secs(60);
 
-/// Upper bound on how long a single reading may block the caller.
+/// Upper bound on how long a reading may block the caller.
 ///
-/// `windows_future`'s `IAsyncOperation::get()` waits with `WaitForSingleObject`
-/// and an `INFINITE` timeout, so an unresponsive location service would block the
-/// single-threaded daemon forever. The WinRT overload used below enforces this
-/// bound inside the platform call.
+/// The WinRT overload used below enforces this budget inside the platform call (an
+/// unresponsive location service returns a timeout instead of waiting for the
+/// sensor), and the wait itself is bounded by the same value as a backstop.
 const GEOPOSITION_TIMEOUT: Duration = Duration::from_secs(30);
+
+/// Upper bound on waiting for the access-status request.
+///
+/// `RequestAccessAsync` has no platform-side budget of its own, so this wait is the
+/// only thing keeping a hung broker from blocking the daemon.
+const ACCESS_REQUEST_TIMEOUT: Duration = Duration::from_secs(10);
 
 /// Converts a [`Duration`] into a WinRT `TimeSpan` (100-nanosecond ticks).
 fn time_span(duration: Duration) -> TimeSpan {
@@ -73,16 +80,17 @@ impl PositionProvider for Positioner {
 
         // Get geoposition with an explicit age/timeout budget instead of the
         // no-argument overload, which can block indefinitely.
-        let geoposition = handle_windows_error("Getting geoposition asynchronously", || {
+        let operation = handle_windows_error("Getting geoposition asynchronously", || {
             geolocator.GetGeopositionAsyncWithAgeAndTimeout(
                 time_span(MAX_GEOPOSITION_AGE),
                 time_span(GEOPOSITION_TIMEOUT),
             )
-        })?
-        .get()
-        .inspect_err(|e| {
-            error!(error = e, "Failed to retrieve geoposition");
         })?;
+
+        let geoposition =
+            async_operation::wait(&operation, GEOPOSITION_TIMEOUT).inspect_err(|e| {
+                error!(error = %e, "Failed to retrieve geoposition");
+            })?;
 
         // Extract coordinate
         let coordinate = handle_windows_error("Extracting coordinate from geoposition", || {
@@ -118,14 +126,15 @@ impl PositionProvider for Positioner {
     }
 
     fn check_location_permission(&self) -> DwallResult<()> {
-        let access_status = handle_windows_error(
+        let operation = handle_windows_error(
             "Requesting geolocation access permission",
             Geolocator::RequestAccessAsync,
-        )?
-        .get()
-        .inspect_err(|e| {
-            error!(error = e, "Failed to get access status");
-        })?;
+        )?;
+
+        let access_status =
+            async_operation::wait(&operation, ACCESS_REQUEST_TIMEOUT).inspect_err(|e| {
+                error!(error = %e, "Failed to get access status");
+            })?;
 
         match access_status {
             GeolocationAccessStatus::Allowed => {
