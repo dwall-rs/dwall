@@ -48,7 +48,6 @@ async fn main() -> DwallSettingsResult<()> {
 
     let builder = tauri::Builder::default()
         .plugin(tauri_plugin_process::init())
-        .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_single_instance::init(|app, _argv, _cwd| {
             if let Some(w) = app.get_webview_window("main") {
@@ -105,7 +104,7 @@ async fn main() -> DwallSettingsResult<()> {
     if cfg!(debug_assertions) {
         builder.build(tauri::generate_context!())?.run(|_, event| {
             if let RunEvent::Exit = event {
-                match find_process_by_path(DAEMON_EXE_PATH.get().unwrap()) {
+                match crate::daemon::daemon_path().and_then(find_process_by_path) {
                     Ok(Some(pid)) => match terminate_process(pid) {
                         Ok(_) => debug!("Daemon process killed on exit"),
                         Err(e) => error!(error = %e, "Failed to kill daemon process on exit"),
