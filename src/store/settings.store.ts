@@ -18,6 +18,8 @@ import {
   readConfigFile,
   writeConfigFile,
 } from "@/ipc";
+import { toast } from "@/components/ui/toast";
+import { t } from "@/i18n";
 import { logger } from "@/utils";
 import { refresh as refreshEngine } from "./engine.store";
 import { setMode, themeStore } from "./theme.store";
@@ -152,6 +154,7 @@ const save = async () => {
         settings.saveError = String(e);
       }),
     );
+    toast.error(t("common.operationFailed"), { description: String(e) });
   }
 };
 
@@ -178,6 +181,8 @@ const applyWallpaperMode = async (mode: WallpaperMode) => {
     );
   } catch (e) {
     setSettingsStore("saveError", String(e));
+    // Also surface it: the caller usually discards the rejection (`void apply…`).
+    toast.error(t("common.operationFailed"), { description: String(e) });
     throw e;
   }
 };

@@ -3,6 +3,7 @@ import type { RawDictionary } from ".";
 export const dict: RawDictionary = {
   common: {
     loading: "불러오는 중",
+    operationFailed: "작업 실패",
   },
 
   app: {

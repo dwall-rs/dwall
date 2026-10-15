@@ -62,6 +62,7 @@ const save = async () => {
       savedAt: Date.now(),
     }));
   } catch {
+    // `applyWallpaperMode` already reports the failure to the user.
     setRandomStore("saving", false);
   }
 };
