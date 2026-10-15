@@ -18,11 +18,12 @@
     "dev": "bun run build:daemon-dev && bun run start:dev",
     "stage": "bun run build:daemon-stage && cross-env RUST_BACKTRACE=1 tauri dev --features devtools --release",
     "serve": "vite preview",
-    "check": "tsgo --noEmit && biome check --write src",
-    "test": "vitest",
+    "check": "tsgo --noEmit && biome check src",
+    "fix": "biome check --write src",
+    "test": "vitest --run",
     "typegen": "cargo test -p dwall --features ts --lib export_bindings && cargo test -p dwall-settings --features typegen export_bindings"
   },
-  "license": "MIT",
+  "license": "AGPL-3.0",
   "dependencies": {
     "@solid-primitives/i18n": "^2.2.1",
     "@tauri-apps/api": "^2.11.1",
@@ -37,11 +38,13 @@
     "tailwind-merge": "^3.7.0"
   },
   "devDependencies": {
+    "@biomejs/biome": "^2.5.12",
     "@tailwindcss/vite": "^4.3.3",
     "@tauri-apps/cli": "^2.11.5",
     "@types/node": "^26.6.3",
     "@typescript/native-preview": "^7.0.0-dev.20260707.2",
     "cross-env": "^10.1.0",
+    "jsdom": "^30.1.3",
     "tailwindcss": "^4.3.3",
     "vite": "^8.3.1",
     "vite-plugin-solid": "^2.11.14",
