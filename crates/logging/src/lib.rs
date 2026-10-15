@@ -1,4 +1,8 @@
-use std::{env, io::IsTerminal, io::Write, str::FromStr};
+use std::{env, io::Write, str::FromStr};
+
+// Only the debug formatter asks whether stderr is a terminal.
+#[cfg(debug_assertions)]
+use std::io::IsTerminal;
 
 use log::{LevelFilter, Log, SetLoggerError, set_boxed_logger, set_max_level};
 use time::{OffsetDateTime, UtcDateTime};
@@ -100,7 +104,15 @@ impl Logger {
             std::fs::rename(&path, backup_dir.join(bak_name))?;
         }
 
-        let file = OpenOptions::new().create(true).write(true).open(&path)?;
+        // The previous file was just rotated into `backup/`, so this starts a fresh
+        // log; `truncate` states that intent (without it, a file that survived the
+        // rename for any reason would be overwritten from offset 0 and keep the
+        // tail of the previous run).
+        let file = OpenOptions::new()
+            .create(true)
+            .write(true)
+            .truncate(true)
+            .open(&path)?;
 
         self.output = ProductionOutput::File(std::sync::Mutex::new(file));
         Ok(self)
