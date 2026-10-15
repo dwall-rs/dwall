@@ -137,6 +137,19 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-rust-debug-
 
+      # The release-profile lints below would otherwise recompile every dependency
+      # on each pull request.
+      - name: Cache Rust release dependencies
+        uses: actions/cache/restore@v5
+        with:
+          path: |
+            target/release/.fingerprint
+            target/release/deps
+            target/release/build
+          key: ${{ runner.os }}-rust-release-${{ steps.rust-toolchain.outputs.cachekey }}-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-rust-release-
+
       - name: Create mock dwall.exe
         run: |
           New-Item -ItemType File -Path target/release/dwall.exe -Value "" -Force
@@ -146,6 +159,15 @@ jobs:
 
       - name: Cargo clippy
         run: cargo clippy -- -D warnings
+
+      # `cfg(debug_assertions)` hides whole blocks from the debug pass, and
+      # `log-max-level-info` compiles the debug!/trace! macros away, so the shipped
+      # configuration has its own set of lints to fail.
+      - name: Cargo clippy (release)
+        run: cargo clippy -r -- -D warnings
+
+      - name: Cargo clippy (release, shipped features)
+        run: cargo clippy -r -p dwall --features build-script,log-max-level-info --all-targets -- -D warnings
 
       - name: Cargo test
         run: cargo test

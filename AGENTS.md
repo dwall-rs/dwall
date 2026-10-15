@@ -38,9 +38,15 @@ reintroduce them.
 ```sh
 cargo fmt --all -- --check
 cargo clippy -- -D warnings
+cargo clippy -r -- -D warnings
 cargo test
 ```
 
+- Lint in **both** profiles. `cfg(debug_assertions)` hides whole blocks from the
+  debug pass, and the shipped feature set
+  (`cargo clippy -r -p dwall --features build-script,log-max-level-info --all-targets`)
+  compiles `debug!`/`trace!` away, which can leave their arguments' bindings
+  unused. CI runs all three.
 - `cargo test -p dwall --all-features` runs the daemon tests (unit + mockall
   integration + insta snapshots). `--all-features` includes the `ts` feature, so
   it also **regenerates `src/ipc/bindings/**`**: commit the regenerated bindings
