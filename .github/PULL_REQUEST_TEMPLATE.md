@@ -2,20 +2,20 @@
 
 A hardening pass over the whole repository, driven by a five-way code review (daemon core, Tauri settings backend, SolidJS frontend, `logging`/`time`/Windows platform layer, build-dependency-size-CI). Every change is traceable to an item in **[`docs/code-review-2026-10-15.md`](docs/code-review-2026-10-15.md)**, which carries a `path:line`, the evidence, the impact, the fix and an acceptance criterion per item, plus a per-batch progress log and an appendix of findings that were checked and deliberately left alone.
 
-**77 files, +2 910 / −764, 15 commits.** No public API change in `dwall`; `src/ipc/**` remains the only importer of `@tauri-apps/api`.
+**80 files, +3 282 / −1 244 across 18 commits** (this file's own wording update included; GitHub's diff stat is authoritative if a later commit drifts it). No public API change in `dwall`; `src/ipc/**` remains the only importer of `@tauri-apps/api`.
 
 | Area | Files | +/− |
 | --- | --- | --- |
 | `crates/dwall-settings` | 29 | +1 126 / −360 |
-| `crates/dwall` (daemon) | 12 | +572 / −105 |
+| `crates/dwall` (daemon) | 15 | +640 / −117 |
 | `src` (frontend) | 19 | +214 / −73 |
 | `crates/logging` | 2 | +141 / −31 |
 | `crates/time` | 3 | +89 / −14 |
-| root / manifests | 8 | +90 / −179 |
+| root / manifests | 8 | +394 / −647 |
 | `.github` (CI, this template) | 3 | +178 / −2 |
 | `docs` | 1 | +500 / −0 |
 
-New: `.gitattributes`, `docs/code-review-2026-10-15.md`, `.github/PULL_REQUEST_TEMPLATE.md`, `src/utils/call-event-handler{,test}.ts`. Removed: `src/utils/fonts.ts`.
+New: `.gitattributes`, `docs/code-review-2026-10-15.md`, `.github/PULL_REQUEST_TEMPLATE.md`, `crates/dwall/src/platform/windows/async_operation.rs`, `src/utils/call-event-handler{,test}.ts`. Removed: `src/utils/fonts.ts`.
 
 ## The failures this fixes
 
@@ -23,7 +23,7 @@ Each of these was reproduced or read out of the source during the review; the bo
 
 ### Daemon (`crates/dwall`)
 
-- **The wallpaper quietly stops changing.** Four independent causes, all fixed: `IDesktopWallpaper::GetWallpaper` fills an `[out] LPWSTR` that the caller must release with `CoTaskMemFree`, but `windows-rs` hands back a bare `PWSTR` with no `Drop`/`Free` — the daemon leaked one block per monitor per cycle (its only unbounded allocation); an unreadable/invalid config propagated out of `run()`, so the process **exited with no trace** (release has no console and the message only went to stderr); per-monitor apply failures were swallowed by `is_ok()` with no log and no counter; and the lock-screen WinRT calls waited with `windows-future`'s `INFINITE` timeout, so a wedged shell or an unreachable network share hung the single-threaded daemon forever (the lock-screen feature is on by default).
+- **The wallpaper quietly stops changing.** Four independent causes, all fixed: `IDesktopWallpaper::GetWallpaper` fills an `[out] LPWSTR` that the caller must release with `CoTaskMemFree`, but `windows-rs` hands back a bare `PWSTR` with no `Drop`/`Free` — the daemon leaked one block per monitor per cycle (its only unbounded allocation); an unreadable/invalid config propagated out of `run()`, so the process **exited with no trace** (release has no console and the message only went to stderr); per-monitor apply failures were swallowed by `is_ok()` with no log and no counter; and every WinRT call waited with `windows-future`'s `INFINITE` timeout (the lock-screen file/uri calls and the geolocation reads), so a wedged shell, an unreachable network share or an unresponsive location service hung the single-threaded daemon forever. All of them now wait through one bounded helper (`platform/windows/async_operation.rs`): 30 s for the lock screen and the geoposition read, 10 s for the access-status request, which has no platform-side budget at all. The daemon calls neither `get()`/`join()` nor `IntoFuture`: an executor is exactly what a synchronous single-threaded daemon does not have, and awaiting would park the same thread on a waker for the same latency.
 - **A restarted daemon re-rolled the day's random theme,** because the daily draw lived only in memory. It is now restored from `random_selection.json` when still valid, and placed first in a fresh shuffle so it does not repeat.
 - **A hot-plugged display got no wallpaper for up to five minutes,** and the log claimed it was reapplying: `has_configuration_changed()` compared against the 5-minute monitor cache without refreshing it, and `QueryDisplayConfig` had no retry for `ERROR_INSUFFICIENT_BUFFER` (which *is* the hot-plug case).
 - `verify_theme_change()` slept *after* re-reading, so it always compared the pre-change value; `debug!(path = %uri.DisplayUri()?)` made a log statement able to fail the function in non-`log-max-level-info` builds; `ConfigWriter` now replaces the file atomically (tmp + rename) so a concurrent read cannot see a torn document; coordinates and the full config dropped from `INFO` to `DEBUG` (they are personal data and the log directory is one click away in the UI); release default log level is `INFO` and the per-cycle chatter dropped to `DEBUG`, so the release log carries events instead of noise.
@@ -53,7 +53,7 @@ Each of these was reproduced or read out of the source during the review; the bo
 
 ### Build, dependencies, CI
 
-- **The `windows` crate was in the binary twice** (`crates/time` asked for `0` → 0.62.2, everything else 0.61.3), compiling and linking two copies of the generated bindings. It is now a workspace dependency pinned to 0.61; `cargo tree -d` reports no duplicates.
+- **The `windows` crate was in the binary twice** (`crates/time` asked for `0`, which resolved to the newer line while everything else sat on 0.61), compiling and linking two copies of the generated bindings. The workspace now pins the line Tauri itself resolves (`0.62`) and `windows-future` moved to `0.3`; `cargo tree` shows exactly one version of every windows-family crate, with tao (via tauri-runtime-wry) unified onto 0.62.2 as well. Two API renames came with it: `windows-future`'s `get()` → `join()` (neither is used any more, see the WinRT waits below) and `windows-core`'s `Error::from_win32()` → `from_thread()`.
 - **`tauri-plugin-shell` was registered and granted `shell:default` but never called.** Removed (dependency, `init()`, capability), which also removed the only provider of tokio's `time` feature — so `tokio` and `reqwest` now declare the features they actually use. To remove the plugin in the release artifacts, see the size table below.
 - **The CI checks were not checks:** `bun run check` ran `biome check --write`, so it rewrote files and reported success; `bun run test` failed outright (`Cannot find dependency 'jsdom'`, no test files, watch mode in CI); the trigger paths missed `index.html`/`tsconfig.node.json`/`.cargo/**`; and auto-merge used `!failure()`, so a PR whose checks were **skipped** by path filtering still merged. All fixed: the writing form moved to `bun run fix`, `@biomejs/biome` and `jsdom` are lockfile devDependencies, `vitest --run` runs in CI with a real test, and auto-merge now requires the change detection to have run and each check to be `success` or `skipped`.
 - **Release-only lints were invisible.** `cfg(debug_assertions)` hides whole blocks from the debug pass, and the shipped configuration (`--features build-script,log-max-level-info`) compiles `debug!`/`trace!` away. CI now runs clippy three ways (debug, `-r`, and release + shipped features) and the warm-cache job populates the release cache so this does not recompile every dependency per PR.
@@ -92,14 +92,14 @@ Real release builds, no warnings:
 
 | Binary | Size | vs. before |
 | --- | --- | --- |
-| `target/release/dwall.exe` | 608 256 B | 600 576 B → **+7 680 B (+1.3 %)** |
-| `target/release/dwall-settings.exe` | 4 005 376 B | 5 346 304 B → **−1 340 928 B (−25.1 %)** |
+| `target/release/dwall.exe` | 606 720 B | 600 576 B → **+6 144 B (+1.0 %)** |
+| `target/release/dwall-settings.exe` | 4 131 328 B | 5 346 304 B → **−1 214 976 B (−22.7 %)** |
 
-The settings binary shrinks by a quarter because the unused shell plugin and its dependency tree are gone and only one `windows` crate is linked; the daemon grows ~1 % from the new error paths and timeouts.
+The settings binary shrinks by nearly a quarter because the unused shell plugin and its dependency tree are gone and only one `windows` crate is linked; the daemon grows ~1 % from the new error paths and timeouts.
 
 Frontend: `bun run check` (tsgo + biome over 376 files), `bun run test` (3 tests) and `bun run build:vite` all pass; `dist/` is 363.9 KB. The full frontend job (`tsgo --noEmit`, `biome check src`, `vitest --run`) was **also verified inside a fresh Windows worktree with `core.autocrlf=true`**, i.e. the exact condition that used to fail, and all three are green.
 
-Each of the 15 commits was additionally compiled in isolation (`cargo check --workspace --all-targets` in a detached worktree) so the history is bisectable; two ordering mistakes found that way were fixed by reordering the commits (the dependency commit must precede the daemon's WinRT work and follow the settings `daemon_path`).
+Every commit was additionally compiled in isolation (`cargo check --workspace --all-targets` in a detached worktree) so the history is bisectable; two ordering mistakes found that way were fixed by reordering the commits (the dependency commit must precede the daemon's WinRT work and follow the settings `daemon_path`).
 
 **Not verified:** the GUI and the daemon were never *run* against a live desktop — the app changes the user's wallpaper, lock screen and colour scheme, so runtime behaviour (wallpaper transitions, lock-screen application, theme download against a real mirror) still needs a manual pass. Everything above is compile/lint/test-level plus the fresh-checkout CI simulation.
 
@@ -117,7 +117,7 @@ The checklist is the index: `docs/code-review-2026-10-15.md` maps every item to 
 
 1. `crates/dwall-settings/src/daemon.rs` + `filesystem.rs` — the "engine silently stopped" and path-validation fixes.
 2. `crates/dwall-settings/src/theme/downloader.rs` + `network/client.rs` — staging swap, bounds, resume rule, client reconfiguration.
-3. `crates/dwall/src/platform/windows/wallpaper.rs` — COM string guard and the bounded WinRT waits (`wait_bounded`/`wait_action_bounded`; polling instead of a completion handler because `StorageFile` is not `Send`).
+3. `crates/dwall/src/platform/windows/async_operation.rs` + `wallpaper.rs` + `geolocation.rs` — one bounded WinRT wait for every call site (polling `Status()`; no `get()`/`join()`/`IntoFuture`) and the COM string guard.
 4. `crates/dwall/src/daemon.rs` — retry loop, mtime baseline, persisted random selection.
 5. `crates/logging/src/lib.rs` — level filtering, ANSI gating, file handling.
 6. `.github/workflows/pr-check.yml` — the gate changes (these are what will police every later PR).

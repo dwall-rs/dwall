@@ -26,7 +26,7 @@ serde_json = { version = "1", default-features = false, features = ["std"] }
 log = { version = "0", default-features = false, features = ["std"] }
 # Pinned to match Tauri. Declared here so every crate links the same version:
 # a second copy doubles the generated bindings in the build and in the binary.
-windows = { version = "0.61", default-features = false }
+windows = { version = "0.62", default-features = false }
 
 [profile.release]
 panic = "abort"

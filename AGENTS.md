@@ -96,9 +96,13 @@ bun run build   # release: vite build + daemon release + tauri bundle
     need,
   - per-cycle heap clones (share via `Rc`/references instead).
     Any new resident allocation or dependency needs justification.
-- **Windows bindings.** `dwall` depends on the `windows` crate (version pinned
-  to match Tauri, currently `0.61`) with an explicit feature list. Only enable
-  the features actually used; trim unused ones.
+- **Windows bindings.** `dwall` depends on the `windows` crate, declared once in
+  `[workspace.dependencies]` and pinned to the line Tauri itself resolves
+  (currently `0.62`), with an explicit feature list — only enable features that
+  are used. WinRT async operations are waited on through
+  `platform/windows/async_operation.rs`: never `windows-future`'s `get()`/`join()`
+  (infinite wait) and never `IntoFuture` (it needs an executor that this
+  synchronous, single-threaded daemon deliberately does not have).
 - **Errors.** `thiserror`. Use `DwallResult` / `DwallError` in `dwall` and
   `DwallSettingsResult` / `DwallSettingsError` in `dwall-settings`. Preserve
   `#[from]` conversions rather than adding ad-hoc error types.

@@ -11,7 +11,6 @@ use std::{
 };
 
 use serde::{Deserialize, Serialize};
-use windows::Win32::Foundation::ERROR_INSUFFICIENT_BUFFER;
 use windows::Win32::{
     Devices::DeviceAndDriverInstallation::{
         DIGCF_DEVICEINTERFACE, DIGCF_PRESENT, HDEVINFO, SP_DEVICE_INTERFACE_DATA,
@@ -28,6 +27,7 @@ use windows::Win32::{
     Foundation::ERROR_SUCCESS,
 };
 use windows::core::{Error as WindowsError, Free, GUID, PCWSTR};
+use windows::{Win32::Foundation::ERROR_INSUFFICIENT_BUFFER, core::HRESULT};
 
 use crate::DwallResult;
 use crate::monitor::MonitorProvider;
@@ -115,7 +115,10 @@ fn query_target_name(
 
     let result = unsafe { DisplayConfigGetDeviceInfo(&mut target_name as *mut _ as *mut _) };
     if result != 0 {
-        let win_error = WindowsError::from_win32();
+        // The function returns the failure code directly; `GetLastError` is not part
+        // of its contract (`Error::from_win32` was also renamed to `from_thread` in
+        // the windows 0.62 line).
+        let win_error = WindowsError::from_hresult(HRESULT::from_nt(result));
         error!(error = ?win_error, "Failed to get target name, error code: {}", result);
         return Err(DisplayError::GetTargetName(win_error).into());
     }

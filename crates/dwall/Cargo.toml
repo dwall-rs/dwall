@@ -50,9 +50,9 @@ windows = { workspace = true, features = [
 ] }
 # The WinRT async types (`IAsyncOperation`, `AsyncStatus`, …) live in this crate and
 # are not re-exported by `windows`. It is already in the dependency tree via
-# `windows`; naming it directly lets us wait on those operations with a timeout
-# instead of the `INFINITE` wait inside `windows-future`'s `get()`.
-windows-future = { version = "0.2", default-features = false }
+# `windows`; naming it directly is what lets us wait on those operations with a
+# timeout instead of the `INFINITE` wait inside `windows-future`'s blocking helpers.
+windows-future = { version = "0.3", default-features = false }
 
 
 [dev-dependencies]
