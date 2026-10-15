@@ -31,8 +31,19 @@ pub async fn get_applied_theme_id_cmd(monitor_id: &str) -> DwallSettingsResult<O
 }
 
 #[tauri::command]
-pub async fn apply_theme_cmd(config: dwall::Config) -> DwallSettingsResult<()> {
-    ThemeApplier::apply(config).await
+pub async fn apply_theme_cmd(
+    downloader: tauri::State<'_, crate::theme::downloader::ThemeDownloader>,
+    config: dwall::Config,
+) -> DwallSettingsResult<()> {
+    let network = config.network().cloned();
+    ThemeApplier::apply(config).await?;
+
+    // Applying also writes the config, so keep the HTTP client in sync here too.
+    if let Err(e) = downloader.reconfigure(network.as_ref()) {
+        warn!(error = %e, "Failed to apply the network configuration to the HTTP client");
+    }
+
+    Ok(())
 }
 
 #[tauri::command]
