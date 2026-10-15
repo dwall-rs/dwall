@@ -22,6 +22,72 @@
         var(--tw-animation-direction, normal)
         var(--tw-animation-fill-mode, none);
 
+    /* App-level motion. These tokens (with the keyframes below) are what make the
+       `animate-rise` / `animate-fade-up` / `animate-bdot` / `animate-breathe` /
+       `animate-pulse-ring` classes used across the UI resolve at all — without
+       them Tailwind emits nothing for those class names. */
+    --animate-rise: rise 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+    --animate-fade-up: fade-up 0.26s ease-out both;
+    --animate-bdot: bdot 1.6s ease-in-out infinite;
+    --animate-breathe: breathe 2.4s ease-in-out infinite;
+    --animate-pulse-ring: pulse-ring 1.8s ease-out infinite;
+
+    @keyframes rise {
+        0% {
+            opacity: 0;
+            transform: translateY(10px) scale(0.98);
+        }
+        100% {
+            opacity: 1;
+            transform: none;
+        }
+    }
+
+    @keyframes fade-up {
+        0% {
+            opacity: 0;
+            transform: translateY(6px);
+        }
+        100% {
+            opacity: 1;
+            transform: none;
+        }
+    }
+
+    @keyframes bdot {
+        0%,
+        100% {
+            opacity: 1;
+            transform: scale(1);
+        }
+        50% {
+            opacity: 0.45;
+            transform: scale(0.82);
+        }
+    }
+
+    @keyframes breathe {
+        0%,
+        100% {
+            box-shadow: 0 0 0 0 color-mix(in oklab, currentColor 42%, transparent);
+        }
+        50% {
+            box-shadow: 0 0 0 5px color-mix(in oklab, currentColor 0%, transparent);
+        }
+    }
+
+    @keyframes pulse-ring {
+        0% {
+            box-shadow: 0 0 0 0 currentColor;
+        }
+        70% {
+            box-shadow: 0 0 0 6px color-mix(in oklab, currentColor 0%, transparent);
+        }
+        100% {
+            box-shadow: 0 0 0 0 color-mix(in oklab, currentColor 0%, transparent);
+        }
+    }
+
     @keyframes accordion-down {
         0% {
             height: 0;

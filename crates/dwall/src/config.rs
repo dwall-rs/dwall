@@ -501,7 +501,16 @@ impl ConfigReader {
         let config = Config::from(raw_config);
 
         config.validate()?;
-        info!(config = ?config, "Configuration loaded successfully");
+
+        // Deliberately not the whole struct: it carries the user's exact
+        // coordinates and network/proxy settings.
+        info!(
+            interval_seconds = config.interval(),
+            image_format = ?config.image_format(),
+            auto_detect_color_scheme = config.auto_detect_color_scheme(),
+            "Configuration loaded successfully"
+        );
+        debug!(config = ?config, "Loaded configuration values");
 
         Ok(config)
     }
@@ -521,9 +530,28 @@ impl ConfigWriter {
         })?;
 
         info!(path = %config_path.display(), "Writing configuration file");
-        fs::write(config_path, toml_string.as_bytes())?;
+        write_atomically(config_path, toml_string.as_bytes())?;
         Ok(())
     }
+}
+
+/// Writes `contents` to `path` through a temporary file plus rename.
+///
+/// The daemon polls this file (and the settings window writes it while the daemon
+/// runs), so a plain `fs::write` — truncate, then write — exposes a window in which
+/// a reader sees a half-written document. `fs::rename` replaces the destination
+/// atomically (MOVEFILE_REPLACE_EXISTING on Windows).
+fn write_atomically(path: &Path, contents: &[u8]) -> std::io::Result<()> {
+    let temp_path = path.with_extension("toml.tmp");
+
+    fs::write(&temp_path, contents)?;
+
+    if let Err(e) = fs::rename(&temp_path, path) {
+        let _ = fs::remove_file(&temp_path);
+        return Err(e);
+    }
+
+    Ok(())
 }
 
 /// Watches a configuration file for modification-time changes.
@@ -615,6 +643,22 @@ mod tests {
     }
 
     // ── Integration tests for serialization/deserialization ────────────────────
+
+    #[test]
+    fn write_atomically_replaces_existing_file() {
+        let dir = std::env::temp_dir().join("dwall_config_atomic");
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("config.toml");
+
+        fs::write(&path, "interval = 30").unwrap();
+        write_atomically(&path, b"interval = 45").unwrap();
+
+        assert_eq!(fs::read_to_string(&path).unwrap(), "interval = 45");
+        assert!(!dir.join("config.toml.tmp").exists());
+
+        let _ = fs::remove_dir_all(&dir);
+    }
 
     /// Test full config roundtrip serialization
     #[test]

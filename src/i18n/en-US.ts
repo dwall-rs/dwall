@@ -1,6 +1,7 @@
 export const dict = {
   common: {
     loading: "Loading",
+    operationFailed: "Operation failed",
   },
 
   app: {

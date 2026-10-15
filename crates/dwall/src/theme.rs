@@ -134,13 +134,16 @@ thread_local! {
 }
 
 /// Builds the on-disk path of a theme's wallpaper image for the given index.
+///
+/// Image files are 1-based (`index + 1`), so the index is widened before the
+/// increment: `u8::MAX` would otherwise wrap to `0.jpg` in release builds.
 pub fn wallpaper_image_path(
     theme_dir: &Path,
     index: u8,
     image_format: &ImageFormat,
     is_customized: bool,
 ) -> PathBuf {
-    let file_name = format!("{}.{}", index + 1, image_format.as_str());
+    let file_name = format!("{}.{}", u16::from(index) + 1, image_format.as_str());
     if is_customized {
         theme_dir.join("images").join(file_name)
     } else {
@@ -341,7 +344,7 @@ fn validate_theme_image_files(
 
     let mut missing_images_count = 0;
     let validation_successful = expected_image_indices.iter().all(|&image_index| {
-        let image_filename = format!("{}.{}", image_index + 1, image_file_format);
+        let image_filename = format!("{}.{}", u16::from(image_index) + 1, image_file_format);
         let image_file_path = images_directory_path.join(image_filename);
 
         let image_exists = image_file_path.exists() && image_file_path.is_file();
@@ -478,6 +481,38 @@ impl DailyRandomThemeSelector {
     pub fn mark_applied(&mut self, today: &Date) {
         self.last_applied_date = Some(*today);
     }
+
+    /// Re-seeds the selector with a theme that was already applied today.
+    ///
+    /// Used when the daemon restarts: today's draw is restored instead of being
+    /// rolled again, and it is placed first in a fresh shuffle so it does not
+    /// repeat tomorrow while other candidates remain. Returns `false` (leaving
+    /// the selector untouched) when the theme is no longer available.
+    pub fn restore<T: AsRef<str>>(
+        &mut self,
+        theme_id: &str,
+        available: &[T],
+        today: &Date,
+    ) -> bool {
+        if !available.iter().any(|theme| theme.as_ref() == theme_id) {
+            return false;
+        }
+
+        let mut remaining: Vec<String> = available
+            .iter()
+            .map(|theme| theme.as_ref().to_string())
+            .filter(|theme| theme != theme_id)
+            .collect();
+        SimpleRng::new(get_random_seed()).shuffle(&mut remaining);
+
+        self.shuffle_order = std::iter::once(theme_id.to_string())
+            .chain(remaining)
+            .collect();
+        self.current_index = 1;
+        self.mark_applied(today);
+
+        true
+    }
 }
 
 impl Default for DailyRandomThemeSelector {
@@ -536,6 +571,43 @@ mod tests {
 
         selector.mark_applied(&today);
         assert!(selector.needs_switch(&tomorrow));
+    }
+
+    #[test]
+    fn test_wallpaper_image_path_is_one_based() {
+        let dir = Path::new("C:/themes/Demo");
+
+        assert!(wallpaper_image_path(dir, 0, &ImageFormat::Jpeg, false).ends_with("jpg/1.jpg"));
+        // `u8::MAX` must widen instead of wrapping to `0.jpg`.
+        assert!(
+            wallpaper_image_path(dir, u8::MAX, &ImageFormat::Jpeg, false).ends_with("jpg/256.jpg")
+        );
+        assert!(wallpaper_image_path(dir, 2, &ImageFormat::Png, true).ends_with("images/3.png"));
+    }
+
+    #[test]
+    fn test_daily_selector_restore_keeps_today_and_avoids_repeat() {
+        let mut selector = DailyRandomThemeSelector::new();
+        let today = Date::new(2026, time::Month::August, 1);
+        let themes = vec!["a".to_string(), "b".to_string(), "c".to_string()];
+
+        assert!(selector.restore("b", &themes, &today));
+        assert!(!selector.needs_switch(&today), "today's draw must be kept");
+
+        // The restored theme sits first in the shuffle, so it is not drawn again
+        // before the other candidates.
+        let next = selector.select_next(&themes).unwrap();
+        assert_ne!(next, "b");
+    }
+
+    #[test]
+    fn test_daily_selector_restore_rejects_missing_theme() {
+        let mut selector = DailyRandomThemeSelector::new();
+        let today = Date::new(2026, time::Month::August, 1);
+        let themes = vec!["a".to_string()];
+
+        assert!(!selector.restore("gone", &themes, &today));
+        assert!(selector.needs_switch(&today));
     }
 
     #[test]

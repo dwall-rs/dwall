@@ -18,8 +18,11 @@ on:
       - "bun.lockb"
       - "bunfig.toml"
       - "tsconfig.json"
+      - "tsconfig.node.json"
       - "vite.config.ts"
+      - "index.html"
       - "biome.json"
+      - ".cargo/**"
 
 env:
   CARGO_TERM_COLOR: always
@@ -46,12 +49,15 @@ jobs:
               - 'bun.lockb'
               - 'bunfig.toml'
               - 'tsconfig.json'
+              - 'tsconfig.node.json'
               - 'vite.config.ts'
+              - 'index.html'
               - 'biome.json'
             backend:
               - "Cargo.toml"
               - "Cargo.lock"
               - "crates/**"
+              - ".cargo/**"
             workflow:
               - '.github/workflows/**'
 
@@ -84,8 +90,11 @@ jobs:
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
-      - name: Run Biome check
+      - name: Typecheck and lint
         run: bun run check
+
+      - name: Run unit tests
+        run: bun run test
 
       - name: Build frontend
         run: bun run build:vite
@@ -128,6 +137,19 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-rust-debug-
 
+      # The release-profile lints below would otherwise recompile every dependency
+      # on each pull request.
+      - name: Cache Rust release dependencies
+        uses: actions/cache/restore@v5
+        with:
+          path: |
+            target/release/.fingerprint
+            target/release/deps
+            target/release/build
+          key: ${{ runner.os }}-rust-release-${{ steps.rust-toolchain.outputs.cachekey }}-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-rust-release-
+
       - name: Create mock dwall.exe
         run: |
           New-Item -ItemType File -Path target/release/dwall.exe -Value "" -Force
@@ -138,6 +160,15 @@ jobs:
       - name: Cargo clippy
         run: cargo clippy -- -D warnings
 
+      # `cfg(debug_assertions)` hides whole blocks from the debug pass, and
+      # `log-max-level-info` compiles the debug!/trace! macros away, so the shipped
+      # configuration has its own set of lints to fail.
+      - name: Cargo clippy (release)
+        run: cargo clippy -r -- -D warnings
+
+      - name: Cargo clippy (release, shipped features)
+        run: cargo clippy -r -p dwall --features build-script,log-max-level-info --all-targets -- -D warnings
+
       - name: Cargo test
         run: cargo test
 
@@ -145,7 +176,14 @@ jobs:
     name: Auto Merge PR
     runs-on: ubuntu-latest
     needs: [detect-changes, frontend-check, rust-check]
-    if: always() && !cancelled() && !failure()
+    # Only merge when the change detection actually ran and no executed check
+    # failed; a skipped check (nothing relevant changed) is acceptable, a failed
+    # or cancelled one is not.
+    if: >-
+      always() && !cancelled()
+      && needs.detect-changes.result == 'success'
+      && (needs.frontend-check.result == 'success' || needs.frontend-check.result == 'skipped')
+      && (needs.rust-check.result == 'success' || needs.rust-check.result == 'skipped')
     permissions:
       contents: write
       pull-requests: write

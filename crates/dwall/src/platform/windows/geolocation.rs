@@ -1,9 +1,30 @@
 //! Windows implementation of [`PositionProvider`] using the Geolocator API.
 
+use std::time::Duration;
+
 use windows::Devices::Geolocation::{GeolocationAccessStatus, Geolocator, PositionAccuracy};
+use windows::Foundation::TimeSpan;
 
 use crate::error::{DwallError, DwallResult};
 use crate::solar::{GeolocationAccessError, Position, PositionProvider};
+
+/// Maximum acceptable age of a cached reading before a fresh sensor read is requested.
+const MAX_GEOPOSITION_AGE: Duration = Duration::from_secs(60);
+
+/// Upper bound on how long a single reading may block the caller.
+///
+/// `windows_future`'s `IAsyncOperation::get()` waits with `WaitForSingleObject`
+/// and an `INFINITE` timeout, so an unresponsive location service would block the
+/// single-threaded daemon forever. The WinRT overload used below enforces this
+/// bound inside the platform call.
+const GEOPOSITION_TIMEOUT: Duration = Duration::from_secs(30);
+
+/// Converts a [`Duration`] into a WinRT `TimeSpan` (100-nanosecond ticks).
+fn time_span(duration: Duration) -> TimeSpan {
+    TimeSpan {
+        Duration: (duration.as_secs() as i64) * 10_000_000,
+    }
+}
 
 /// Helper function to handle Windows API errors with consistent logging
 fn handle_windows_error<T, F>(operation: &str, f: F) -> DwallResult<T>
@@ -50,9 +71,13 @@ impl PositionProvider for Positioner {
             geolocator.SetDesiredAccuracy(PositionAccuracy::High)
         })?;
 
-        // Get geoposition
+        // Get geoposition with an explicit age/timeout budget instead of the
+        // no-argument overload, which can block indefinitely.
         let geoposition = handle_windows_error("Getting geoposition asynchronously", || {
-            geolocator.GetGeopositionAsync()
+            geolocator.GetGeopositionAsyncWithAgeAndTimeout(
+                time_span(MAX_GEOPOSITION_AGE),
+                time_span(GEOPOSITION_TIMEOUT),
+            )
         })?
         .get()
         .inspect_err(|e| {
@@ -81,7 +106,9 @@ impl PositionProvider for Positioner {
             );
         }
 
-        info!(
+        // Coordinates are personal data and the log directory is one click away in
+        // the settings UI, so they stay out of the default (info) log stream.
+        debug!(
             latitude = position.latitude(),
             longitude = position.longitude(),
             altitude = position.altitude(),
@@ -113,7 +140,16 @@ impl PositionProvider for Positioner {
                 error!("{}", GeolocationAccessError::Unspecified);
                 Err(GeolocationAccessError::Unspecified.into())
             }
-            _ => unreachable!(),
+            // `GeolocationAccessStatus` is a struct with associated constants, so
+            // this arm is reachable: a value this build does not know about must not
+            // abort the daemon.
+            other => {
+                warn!(
+                    status = other.0,
+                    "Unexpected geolocation access status, treating it as unspecified"
+                );
+                Err(GeolocationAccessError::Unspecified.into())
+            }
         }
     }
 }

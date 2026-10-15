@@ -1,0 +1,32 @@
+# Line endings.
+#
+# The repository stores LF, but without a policy git materialises CRLF on
+# Windows, where `core.autocrlf` defaults to true. The formatting checks read
+# files as checked out, so a CRLF working copy made `biome check` (and its
+# predecessor's `--write`) report every file as misformatted on the Windows
+# runners. Keep checkouts LF everywhere so the tools see what is committed.
+* text=auto eol=lf
+
+# NSIS scripts are Windows-native and its samples ship CRLF; keep the checkout in
+# the form the installer tooling expects (the repository copy stays LF).
+*.nsi text eol=crlf
+*.nsh text eol=crlf
+
+# Binary assets: never convert, never diff.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.icns binary
+*.avif binary
+*.webp binary
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.otf binary
+*.exe binary
+*.dll binary
+*.lib binary
+*.zip binary
+*.lockb binary

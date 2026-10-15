@@ -9,12 +9,8 @@
     "core:default",
     "updater:default",
     "updater:deny-check",
-    "dialog:default",
-    "shell:default",
+    "dialog:allow-open",
     "core:window:default",
-    "core:window:allow-start-dragging",
-    "core:window:allow-minimize",
-    "core:window:allow-close",
     "process:default"
   ]
 }

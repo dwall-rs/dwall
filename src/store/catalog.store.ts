@@ -4,6 +4,8 @@ import { createStore } from "solid-js/store";
 
 import { getMonitors, getThemeCatalog } from "@/ipc";
 import type { CatalogTheme, DisplayMonitor } from "@/ipc";
+import { toast } from "@/components/ui/toast";
+import { t } from "@/i18n";
 import { logger } from "@/utils";
 
 const log = logger.child("catalog");
@@ -35,6 +37,7 @@ const load = async () => {
   } catch (e) {
     log.error("Failed to load catalog", e);
     setCatalogStore("status", "error");
+    toast.error(t("common.operationFailed"), { description: String(e) });
   }
 };
 

@@ -13,6 +13,16 @@ impl ThemePathResolver {
         config.themes_directory().join(theme_id)
     }
 
+    /// Staging directory used while a theme is being downloaded and extracted.
+    ///
+    /// It is renamed onto [`theme_dir`](Self::theme_dir) only after a successful
+    /// extraction, so an interrupted download never removes a working theme.
+    pub fn staging_dir(config: &dwall::Config, theme_id: &str) -> PathBuf {
+        config
+            .themes_directory()
+            .join(format!("{theme_id}.staging"))
+    }
+
     /// Get the path for the theme zip file
     pub fn zip_path(config: &dwall::Config, theme_id: &str) -> PathBuf {
         config.themes_directory().join(format!("{theme_id}.zip"))

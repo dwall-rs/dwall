@@ -23,7 +23,7 @@ the GUI.
 crates/dwall/            daemon (bin) + shared library
 crates/dwall-settings/   Tauri GUI backend
 crates/logging/          custom logger + log macros
-crates/time/             hand-rolled, zero-dependency time types
+crates/time/             hand-rolled time types (no chrono/time dependency)
 src/                     SolidJS frontend (Vite + Tailwind v4 + TypeScript)
 ```
 
@@ -38,11 +38,21 @@ reintroduce them.
 ```sh
 cargo fmt --all -- --check
 cargo clippy -- -D warnings
+cargo clippy -r -- -D warnings
 cargo test
 ```
 
+- Lint in **both** profiles. `cfg(debug_assertions)` hides whole blocks from the
+  debug pass, and the shipped feature set
+  (`cargo clippy -r -p dwall --features build-script,log-max-level-info --all-targets`)
+  compiles `debug!`/`trace!` away, which can leave their arguments' bindings
+  unused. CI runs all three.
 - `cargo test -p dwall --all-features` runs the daemon tests (unit + mockall
-  integration + insta snapshots).
+  integration + insta snapshots). `--all-features` includes the `ts` feature, so
+  it also **regenerates `src/ipc/bindings/**`**: commit the regenerated bindings
+  (or run `bun run typegen`) instead of leaving them modified.
+- `cargo test` at the root also runs the settings crate; the crate has only a
+  binary target, so the per-crate form is `cargo test -p dwall-settings --bins`.
 - Building `dwall-settings` requires `target/release/dwall.exe` to exist,
   because it is referenced as a bundle resource in
   `crates/dwall-settings/tauri.conf.json`. CI creates an empty dummy file;
@@ -55,8 +65,9 @@ cargo test
 
 ```sh
 bun i
-bun run check        # tsgo --noEmit && biome check --write src
-bun run test         # vitest
+bun run check        # tsgo --noEmit && biome check src   (read-only)
+bun run fix          # biome check --write src            (rewrites files)
+bun run test         # vitest --run
 bun run build:vite   # production frontend build
 ```
 
@@ -95,8 +106,9 @@ bun run build   # release: vite build + daemon release + tauri bundle
   args: `info!(theme_id = %id, "message")`, `warn!`, `error!`, `debug!`,
   `trace!`. `debug!`/`trace!` are compiled out when the `max-level-info`
   feature is enabled (release builds). Do not use `println!` for diagnostics.
-- **`time` is intentional.** `crates/time` is a hand-rolled, zero-dependency
-  replacement for `chrono`/`time`. Don't swap it out.
+- **`time` is intentional.** `crates/time` is a hand-rolled replacement for
+  `chrono`/`time` — it has no calendar/timezone dependency (only `thiserror`,
+  plus `windows`/`libc` for the local UTC offset). Don't swap it out.
 - **Snapshots.** `insta` snapshots live in a `snapshots/` directory next to the
   source file and are named after the module path (e.g.
   `src/snapshots/dwall__solar__tests__....snap`). Update them with

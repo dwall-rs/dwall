@@ -19,10 +19,21 @@ use crate::theme_engine::ThemeEngine;
 
 const MAX_CONSECUTIVE_FAILURE_THRESHOLD: u8 = 3;
 
+/// Backoff before retrying a configuration read that failed.
+const CONFIG_RETRY_DELAY: Duration = Duration::from_secs(5);
+
 /// Runtime state for Random wallpaper mode
 struct RandomModeState {
     selector: DailyRandomThemeSelector,
     current_theme: Option<String>,
+}
+
+/// The candidate pool configured for random mode (`None` = every installed theme).
+fn random_pool(config: &Config) -> Option<&Vec<String>> {
+    match config.wallpaper_mode() {
+        WallpaperMode::Random { pool } => pool.as_ref(),
+        WallpaperMode::Fixed { .. } => None,
+    }
 }
 
 /// Main daemon application
@@ -47,8 +58,29 @@ impl DaemonApplication {
     pub fn run(&mut self) -> DwallResult<()> {
         let mut consecutive_failure_count = 0;
 
+        // Establish the baseline modification time so the first loop iteration does
+        // not report a change that never happened.
+        if let Err(e) = self.config_watcher.update_modified_time() {
+            warn!(error = %e, "Failed to read the initial configuration modification time");
+        }
+
         loop {
-            let mut config = ConfigReader::read_from_path(self.config_watcher.config_path())?;
+            let config = match ConfigReader::read_from_path(self.config_watcher.config_path()) {
+                Ok(config) => config,
+                Err(e) => {
+                    // A hand-edited or half-written file must not kill the daemon:
+                    // keep running and retry, otherwise wallpapers silently stop
+                    // updating until the user restarts it manually.
+                    error!(
+                        error = %e,
+                        path = %self.config_watcher.config_path().display(),
+                        "Failed to read configuration, retrying"
+                    );
+                    sleep(CONFIG_RETRY_DELAY);
+                    continue;
+                }
+            };
+            let mut config = config;
 
             match config.wallpaper_mode() {
                 WallpaperMode::Random { .. } => {
@@ -87,13 +119,23 @@ impl DaemonApplication {
     fn handle_random_mode(&mut self, config: &mut Config) -> DwallResult<()> {
         let today = OffsetDateTime::now_local()?.date();
 
+        if self.random_state.is_none() {
+            self.random_state = Some(RandomModeState {
+                selector: DailyRandomThemeSelector::new(),
+                current_theme: None,
+            });
+        }
+
         let needs_switch = self
             .random_state
             .as_ref()
-            .map(|state| state.selector.needs_switch(&today))
-            .unwrap_or(true);
+            .is_some_and(|state| state.selector.needs_switch(&today));
 
-        if needs_switch {
+        if needs_switch
+            // A restart must not re-roll today's theme, so reuse the persisted draw
+            // when it is still valid and fall back to a fresh draw otherwise.
+            && !self.restore_persisted_selection(config, &today)?
+        {
             self.select_random_theme(config, &today)?;
         }
 
@@ -113,6 +155,49 @@ impl DaemonApplication {
         Ok(())
     }
 
+    /// Reuses the persisted draw for `today` when the theme is still installed.
+    ///
+    /// Returns `true` when today's selection was restored.
+    fn restore_persisted_selection(&mut self, config: &Config, today: &Date) -> DwallResult<bool> {
+        let selection = match crate::random_state::read() {
+            Ok(Some(selection)) => selection,
+            Ok(None) => return Ok(false),
+            Err(e) => {
+                warn!(error = %e, "Failed to read the persisted random selection");
+                return Ok(false);
+            }
+        };
+
+        if selection.date != crate::random_state::date_key(today) {
+            return Ok(false);
+        }
+
+        let available = self.list_available_themes(config)?;
+        let candidates = filter_themes_by_pool(&available, random_pool(config));
+
+        let Some(state) = self.random_state.as_mut() else {
+            return Ok(false);
+        };
+
+        if state
+            .selector
+            .restore(&selection.theme_id, &candidates, today)
+        {
+            info!(
+                theme_id = %selection.theme_id,
+                "Restored today's random theme selection"
+            );
+            state.current_theme = Some(selection.theme_id);
+            Ok(true)
+        } else {
+            debug!(
+                theme_id = %selection.theme_id,
+                "Persisted random theme is no longer available"
+            );
+            Ok(false)
+        }
+    }
+
     /// Draw today's theme from the candidate pool (once per day).
     fn select_random_theme(&mut self, config: &Config, today: &Date) -> DwallResult<()> {
         let available = self.list_available_themes(config)?;
@@ -121,12 +206,7 @@ impl DaemonApplication {
             return Ok(());
         }
 
-        let pool = match config.wallpaper_mode() {
-            WallpaperMode::Random { pool } => pool.as_ref(),
-            _ => None,
-        };
-
-        let themes_to_select = filter_themes_by_pool(&available, pool);
+        let themes_to_select = filter_themes_by_pool(&available, random_pool(config));
         if themes_to_select.is_empty() {
             warn!("Random mode: candidate pool is empty; nothing to apply");
             return Ok(());
@@ -197,9 +277,24 @@ impl DaemonApplication {
         let update_interval = Duration::from_secs(theme_engine.update_interval().into());
 
         loop {
-            if self.config_watcher.has_changed()? {
+            let config_changed = match self.config_watcher.has_changed() {
+                Ok(changed) => changed,
+                Err(e) => {
+                    // A transient metadata failure must not terminate the daemon.
+                    warn!(
+                        error = %e,
+                        path = %self.config_watcher.config_path().display(),
+                        "Failed to check the configuration file, keeping the current configuration"
+                    );
+                    false
+                }
+            };
+
+            if config_changed {
                 info!("Configuration file change detected, reloading configuration");
-                self.config_watcher.update_modified_time()?;
+                if let Err(e) = self.config_watcher.update_modified_time() {
+                    warn!(error = %e, "Failed to record the configuration modification time");
+                }
                 return Ok(());
             }
 
@@ -207,11 +302,17 @@ impl DaemonApplication {
                 Ok(_) => {
                     *consecutive_failure_count = 0;
                 }
-                Err(_) => {
+                Err(e) => {
                     *consecutive_failure_count += 1;
+                    error!(
+                        error = %e,
+                        consecutive_failures = *consecutive_failure_count,
+                        "Theme update cycle failed"
+                    );
                     if *consecutive_failure_count >= MAX_CONSECUTIVE_FAILURE_THRESHOLD {
                         error!(
-                            "Maximum consecutive failures reached, terminating daemon: consecutive_failures={consecutive_failure_count}"
+                            consecutive_failures = *consecutive_failure_count,
+                            "Maximum consecutive failures reached, terminating daemon"
                         );
                         std::process::exit(1);
                     }

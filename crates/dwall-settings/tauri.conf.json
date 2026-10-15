@@ -10,11 +10,10 @@
   },
   "app": {
     "security": {
-      "csp": "default-src 'self' ipc: http://ipc.localhost; img-src 'self' asset: http://asset.localhost; style-src-elem 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com",
+      "csp": "default-src 'self' ipc: http://ipc.localhost; img-src 'self' asset: http://asset.localhost; style-src-elem 'self'",
       "assetProtocol": {
         "enable": true,
         "scope": {
-          "requireLiteralLeadingDot": false,
           "allow": ["**/*"]
         }
       }

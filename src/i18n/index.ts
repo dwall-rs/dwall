@@ -1,8 +1,6 @@
 import { createEffect, createMemo, createRoot, createSignal } from "solid-js";
 import * as i18n from "@solid-primitives/i18n";
 
-import { loadFonts } from "@/utils";
-
 import * as enUS from "./en-US";
 import * as zhCN from "./zh-CN";
 import * as zhHK from "./zh-HK";
@@ -44,8 +42,10 @@ const dictionaries: Record<Locale, RawDictionary> = {
 const getInitialLocale = (): Locale => {
   if (typeof window === "undefined") return "en-US";
 
-  const savedLocale = localStorage.getItem("locale") as Locale;
-  if (savedLocale) return savedLocale;
+  // Validate the persisted value: a stale key from an older version would make
+  // `dictionaries[locale()]` undefined and crash during module init (blank app).
+  const savedLocale = localStorage.getItem("locale");
+  if (savedLocale && savedLocale in LANGUAGES) return savedLocale as Locale;
 
   const browserLang = navigator.language;
   if (browserLang in LANGUAGES) return browserLang as Locale;
@@ -68,10 +68,12 @@ createRoot(() => {
     localStorage.setItem("locale", current);
     const el = document.documentElement;
     el.lang = current;
-    // Activate the [data-lang] font/line-height/direction rules in styles/i18n.css
+    // Activate the [data-lang] font/line-height/direction rules in styles/i18n.css.
+    // The families those rules name come from the system font stack: the app used
+    // to fetch webfonts from a third-party CDN at startup, which conflicted with
+    // both the "no data transmission" documentation and the low-footprint goal
+    // (a CJK family alone is megabytes, and is unreachable in some regions).
     el.setAttribute("data-lang", DATA_LANG[current]);
-    // Load the Google Fonts family backing the active [data-lang] rules.
-    loadFonts([DATA_LANG[current]]);
   });
 });
 

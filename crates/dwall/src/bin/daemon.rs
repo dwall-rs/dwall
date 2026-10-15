@@ -19,5 +19,13 @@ fn main() -> dwall::DwallResult<()> {
     }
 
     let mut app = DaemonApplication::new();
-    app.run()
+
+    if let Err(e) = app.run() {
+        // In release builds the daemon has no console, so without this the fatal
+        // error would never reach the log file.
+        logging::error!(error = %e, "Daemon stopped because of a fatal error");
+        return Err(e);
+    }
+
+    Ok(())
 }

@@ -54,7 +54,9 @@ Below are two screenshots showcasing DWALL in action:
 
 ## Running Logs
 
-DWALL's log level is set to `warning` by default. You can adjust the log level by setting the environment variable `DWALL_LOG`, for example, `DWALL_LOG=info`. Please note that the release version will not output logs below the `info` level.
+DWALL's log level is `info` by default. You can change it with the `DWALL_LOG` environment variable — either a plain level (`DWALL_LOG=debug`) or the `env_logger`-style form (`DWALL_LOG=dwall=debug`). Note that release builds are compiled without `debug`/`trace` statements, so only `info`, `warn` and `error` can be emitted there.
+
+The daemon writes to `%LOCALAPPDATA%\com.thep0y.dwall\log\dwall.log` (open the folder from the settings window). Each start rotates the previous file into a `backup` subdirectory.
 
 ## Frequently Asked Questions
 
@@ -62,7 +64,7 @@ DWALL's log level is set to `warning` by default. You can adjust the log level b
 
 In the initial version, the settings and daemon processes ran in the same process, with taskbar tray management support. However, this resulted in higher memory usage (though still much less than other similar programs), which wasn't the desired outcome. Therefore, the settings and daemon processes were completely isolated to reduce the daemon's memory footprint and simplify process management.
 
-Of course, this also introduced inter-process communication challenges. In the current version, the settings process (graphical program) and daemon process don't implement inter-process communication. Their only means of communication is through configuration files, which means that when the daemon process abnormally exits, the settings process cannot promptly obtain the daemon's status. This is an issue that needs to be addressed.
+Of course, this also introduced inter-process communication challenges. In the current version, the settings process (graphical program) and daemon process don't implement inter-process communication. Their only means of communication is through configuration files, so the settings window polls the daemon's process state (and reads the tail of its log when a start fails) instead of being notified.
 
 ### 2. Wallpaper download failure.
 
@@ -80,9 +82,11 @@ https://kkgithub.com/<owner>/<repo>/releases/download/<version>/<asset>
 
 Then you can download wallpapers normally.
 
-### 3. Why doesn't support custom wallpapers?
+### 3. Can I use my own wallpapers?
 
-The wallpaper transitions need to correlate with the sun's position. Since most users lack specialized astronomical knowledge to perfectly align custom wallpapers with solar movements, we provide pre-configured wallpaper sets that are scientifically aligned with sun positions. Users can choose from these curated collections.
+Yes — custom themes are supported. A theme is a directory containing a `theme.toml` manifest (schema 1) plus its images and thumbnails; put it in the customized-themes directory and it shows up in the theme library. The manifest format (and the *Dwall Maker* tool that generates it) is documented in [docs/custom-themes.md](./docs/custom-themes.md).
+
+The curated sets remain the easiest choice: their frames are already aligned with the sun's path across locations, so they look right without any manual tuning.
 
 ### 4. I can design sun-position-aligned wallpaper sets. How to contribute them to DWALL?
 

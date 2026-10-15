@@ -36,9 +36,25 @@ let pending: Update | null = null;
 let totalBytes = 0;
 let receivedBytes = 0;
 
+/**
+ * Releases the resource registered on the Rust side by `check_for_updates_cmd`.
+ * Every check adds one entry to the resource table, so without this the handle
+ * count only ever grows.
+ */
+const releasePending = () => {
+  if (!pending) return;
+
+  void pending.close().catch((e) => {
+    log.warn("Failed to release the update resource", e);
+  });
+  pending = null;
+};
+
 const check = async () => {
   if (updateStore.status === "checking" || updateStore.status === "downloading")
     return;
+
+  releasePending();
 
   setUpdateStore({
     status: "checking",
@@ -90,6 +106,7 @@ const install = async () => {
     await relaunchApp();
   } catch (e) {
     log.error("Failed to install update", e);
+    releasePending();
     setUpdateStore({ status: "error", error: String(e) });
   }
 };

@@ -55,6 +55,12 @@ fn count_leap_years(start: u16, end: u16) -> u32 {
     count(end - 1) - count(start - 1)
 }
 
+/// Number of days representable in the `u16` year range used by this crate.
+///
+/// Clamping above this keeps an out-of-range input (e.g. a bogus Unix timestamp)
+/// from overflowing the internal arithmetic and returning a garbage date.
+pub(super) const MAX_DAYS: u64 = 2_932_896; // 9999-12-31
+
 /// Converts the number of days since the Unix epoch into a Gregorian calendar date.
 ///
 /// This algorithm is based on Howard Hinnant's efficient date algorithm.
@@ -63,8 +69,15 @@ fn count_leap_years(start: u16, end: u16) -> u32 {
 /// The algorithm shifts the year start to March 1st, placing the leap day at the end of the year,
 /// which simplifies leap year handling.
 ///
+/// `days` is saturating-clamped to [`MAX_DAYS`], so callers passing a wildly
+/// out-of-range timestamp get 9999-12-31 instead of an overflow or a nonsense date.
+///
 /// Returns: (year, month, day)
-pub(super) const fn days_to_ymd(days: u32) -> (u16, Month, u8) {
+pub(super) const fn days_to_ymd(days: u64) -> (u16, Month, u8) {
+    // Clamp first, then narrow: `MAX_DAYS + UNIX_EPOCH_TO_MARCH_1_YEAR_0` stays far
+    // inside `u32`, so the arithmetic below can never overflow.
+    let days = if days > MAX_DAYS { MAX_DAYS } else { days } as u32;
+
     // Convert input days to days since March 1 of year 0
     let days_from_base = days + UNIX_EPOCH_TO_MARCH_1_YEAR_0;
 
@@ -216,7 +229,7 @@ mod tests {
 
         for (year, month, day) in dates {
             let days = days_since_epoch(year, month, day).unwrap();
-            let (y, m, d) = days_to_ymd(days);
+            let (y, m, d) = days_to_ymd(u64::from(days));
             assert_eq!(
                 (y, m, d),
                 (year, month, day),
@@ -232,7 +245,7 @@ mod tests {
     fn test_february_29_edge_cases() {
         // Valid leap day
         let days = days_since_epoch(2024, Month::February, 29).unwrap();
-        let (y, m, d) = days_to_ymd(days);
+        let (y, m, d) = days_to_ymd(u64::from(days));
         assert_eq!((y, m, d), (2024, Month::February, 29));
     }
 }

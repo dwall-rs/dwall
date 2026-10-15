@@ -5,7 +5,7 @@ use tauri_plugin_updater::UpdaterExt;
 
 use crate::autostart::AutoStartProvider;
 use crate::error::DwallSettingsResult;
-use crate::filesystem::move_directory;
+use crate::filesystem::{move_directory, validate_directory};
 use crate::network::MirrorUrlResolver;
 use crate::process::{find_process_by_path, terminate_process};
 
@@ -25,11 +25,18 @@ pub fn enable_auto_start() -> DwallSettingsResult<()> {
 }
 
 #[tauri::command]
-pub fn request_location_permission() -> DwallSettingsResult<()> {
-    use dwall::solar::PositionProvider;
-    dwall::platform::Positioner::new()
-        .check_location_permission()
-        .map_err(Into::into)
+pub async fn request_location_permission() -> DwallSettingsResult<()> {
+    // `RequestAccessAsync` can show the system location prompt, so keep it off the
+    // main thread.
+    tauri::async_runtime::spawn_blocking(|| -> DwallSettingsResult<()> {
+        use dwall::solar::PositionProvider;
+
+        dwall::platform::Positioner::new()
+            .check_location_permission()
+            .map_err(Into::into)
+    })
+    .await
+    .map_err(|e| crate::error::DwallSettingsError::Other(e.to_string()))?
 }
 
 #[tauri::command]
@@ -37,21 +44,27 @@ pub async fn move_directory_cmd(
     source: std::path::PathBuf,
     destination: std::path::PathBuf,
 ) -> DwallSettingsResult<()> {
+    validate_directory(&source, "source")?;
+    validate_directory(&destination, "destination")?;
     move_directory(source, destination)
         .await
         .map_err(Into::into)
 }
 
 #[tauri::command]
-pub fn kill_daemon_cmd() -> DwallSettingsResult<Option<u32>> {
-    let daemon_path = crate::DAEMON_EXE_PATH.get().unwrap();
-    match find_process_by_path(daemon_path)? {
-        Some(pid) => {
-            terminate_process(pid)?;
-            Ok(Some(pid))
+pub async fn kill_daemon_cmd() -> DwallSettingsResult<Option<u32>> {
+    let path = crate::daemon::daemon_path()?;
+    tauri::async_runtime::spawn_blocking(move || -> DwallSettingsResult<Option<u32>> {
+        match find_process_by_path(path)? {
+            Some(pid) => {
+                terminate_process(pid)?;
+                Ok(Some(pid))
+            }
+            None => Ok(None),
         }
-        None => Ok(None),
-    }
+    })
+    .await
+    .map_err(|e| crate::error::DwallSettingsError::Other(e.to_string()))?
 }
 
 #[tauri::command]

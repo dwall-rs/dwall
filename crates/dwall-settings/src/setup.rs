@@ -39,7 +39,16 @@ pub fn setup_app(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>>
     }
 
     let config_path = dwall::DWALL_CONFIG_DIR.join("config.toml");
-    let config = dwall::config::ConfigReader::read_from_path(&config_path)?;
+    let config = match dwall::config::ConfigReader::read_from_path(&config_path) {
+        Ok(config) => config,
+        Err(e) => {
+            // A corrupt config must not stop the settings window from opening: the
+            // user may have opened it precisely to fix the configuration.
+            error!(error = %e, "Failed to read the configuration, falling back to defaults");
+            dwall::Config::default()
+        }
+    };
+    let should_run_daemon = crate::daemon::should_run(&config);
     let http_client = HttpClient::new(config.network())?;
 
     let theme_downloader = ThemeDownloader::new(http_client.clone());
@@ -52,8 +61,16 @@ pub fn setup_app(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>>
 
     tokio::spawn(async move { crate::tracker::track().await });
 
+    // Only start the daemon when the configuration asks for it; otherwise "stop
+    // engine" would be undone every time the settings window opens.
+    if !should_run_daemon {
+        debug!("Configuration does not require the daemon; not starting it");
+        info!("Application setup completed successfully");
+        return Ok(());
+    }
+
     tokio::spawn(async move {
-        let Some(path) = DAEMON_EXE_PATH.get() else {
+        let Ok(path) = crate::daemon::daemon_path() else {
             return;
         };
         let _ = find_process_by_path(path)

@@ -2,14 +2,40 @@
 
 use std::io::Read;
 use std::os::windows::process::CommandExt;
+use std::path::Path;
 use std::process::Command;
 
-use serde::Deserialize;
-use serde_json::Value;
 use windows::Win32::System::Threading::CREATE_NO_WINDOW;
 
 use crate::DAEMON_EXE_PATH;
 use crate::error::{DwallSettingsError, DwallSettingsResult};
+
+/// The configured daemon executable path.
+///
+/// Returns an error instead of panicking: `dwall.exe` may be missing (partial
+/// install, anti-virus quarantine, portable copy), and the caller is expected to
+/// surface that to the user rather than aborting the settings process.
+pub(crate) fn daemon_path() -> DwallSettingsResult<&'static Path> {
+    DAEMON_EXE_PATH
+        .get()
+        .map(std::path::PathBuf::as_path)
+        .ok_or_else(|| DwallSettingsError::Daemon("Daemon executable path not configured".into()))
+}
+
+/// Whether the configuration asks for a running daemon.
+///
+/// Random mode always needs one (the daemon draws the daily theme); fixed mode only
+/// needs one when at least one monitor is configured. `setup_app` and
+/// `ThemeApplier::apply` must agree on this, otherwise "stop engine" does not stick
+/// and saving a random pool leaves the engine dead.
+pub(crate) fn should_run(config: &dwall::Config) -> bool {
+    match config.wallpaper_mode() {
+        dwall::config::WallpaperMode::Random { .. } => true,
+        dwall::config::WallpaperMode::Fixed {
+            monitor_specific_wallpapers,
+        } => !monitor_specific_wallpapers.is_empty(),
+    }
+}
 
 /// Launches the daemon process
 pub struct DaemonLauncher;
@@ -42,17 +68,13 @@ impl DaemonLauncher {
     }
 }
 
-#[derive(Deserialize)]
-struct DaemonLogEntry {
-    fields: Value,
-}
-
 /// Attempts to read the most recent error from the daemon log file.
 ///
-/// Returns the error message if found, or `None` if no error was found or the
-/// log file couldn't be read.
-pub fn get_last_daemon_error(dwall_config_dir: &std::path::Path) -> Option<String> {
-    let log_file_path = dwall_config_dir.join("dwall.log");
+/// `log_dir` is the daemon's log directory (`dwall::DWALL_LOG_DIR`); the daemon
+/// writes plain-text lines (`"{timestamp} {LEVEL} [target] {message}"`), so the
+/// last `ERROR` line is returned as-is.
+pub fn get_last_daemon_error(log_dir: &Path) -> Option<String> {
+    let log_file_path = log_dir.join("dwall.log");
     if !log_file_path.exists() {
         return None;
     }
@@ -63,20 +85,12 @@ pub fn get_last_daemon_error(dwall_config_dir: &std::path::Path) -> Option<Strin
     let mut reader = std::io::BufReader::new(file);
     reader.read_to_end(&mut content).ok()?;
 
-    let content = String::from_utf8(content).ok()?;
+    let content = String::from_utf8_lossy(&content);
 
-    for line in content.lines().rev() {
-        let line = line.trim();
-        if line.is_empty() {
-            continue;
-        }
-
-        if line.to_lowercase().contains("error")
-            && let Ok(log_line) = serde_json::from_str::<DaemonLogEntry>(line)
-        {
-            return Some(log_line.fields.to_string());
-        }
-    }
-
-    None
+    content
+        .lines()
+        .rev()
+        .map(str::trim)
+        .find(|line| !line.is_empty() && line.contains(" ERROR "))
+        .map(str::to_owned)
 }

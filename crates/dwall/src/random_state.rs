@@ -24,15 +24,20 @@ pub struct RandomSelection {
 impl RandomSelection {
     pub fn new(date: &time::Date, theme_id: String) -> Self {
         Self {
-            date: format!(
-                "{:04}-{:02}-{:02}",
-                date.year(),
-                date.month().as_u8(),
-                date.day()
-            ),
+            date: date_key(date),
             theme_id,
         }
     }
+}
+
+/// Formats a local date as the `YYYY-MM-DD` key stored in the file.
+pub fn date_key(date: &time::Date) -> String {
+    format!(
+        "{:04}-{:02}-{:02}",
+        date.year(),
+        date.month().as_u8(),
+        date.day()
+    )
 }
 
 fn path() -> PathBuf {

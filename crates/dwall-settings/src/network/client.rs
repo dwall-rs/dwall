@@ -1,81 +1,121 @@
 //! HTTP client with optional SOCKS5 proxy support.
 
 use std::path::Path;
-use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{Arc, RwLock};
 use std::time::Duration;
 
-use reqwest::Client;
+use reqwest::{Client, StatusCode};
 use tokio::io::AsyncWriteExt;
 
-use crate::error::DwallSettingsResult;
+use crate::error::{DwallSettingsError, DwallSettingsResult};
+
+/// How long to wait for the TCP/TLS connection to be established.
+const CONNECT_TIMEOUT: Duration = Duration::from_secs(15);
+
+/// Maximum idle time between two body chunks.
+///
+/// A per-read timeout (instead of a total one) keeps large theme archives working
+/// while still failing a stalled transfer instead of hanging forever.
+const READ_TIMEOUT: Duration = Duration::from_secs(60);
 
 /// Generic HTTP downloader for files.
 ///
 /// Provides pure technical download functionality without business logic.
+///
+/// The underlying `reqwest::Client` sits behind an `RwLock` so it can be rebuilt
+/// when the user edits the network settings: otherwise a new proxy address only
+/// took effect after restarting the window.
 pub struct HttpClient {
-    client: Arc<Client>,
+    client: Arc<RwLock<Arc<Client>>>,
+}
+
+fn build_client(network: Option<&dwall::config::Network>) -> DwallSettingsResult<Client> {
+    let builder = reqwest::ClientBuilder::new()
+        .connect_timeout(CONNECT_TIMEOUT)
+        .read_timeout(READ_TIMEOUT);
+
+    let builder = match network {
+        Some(dwall::config::Network::Socks5 { host, port }) => {
+            let proxy = reqwest::Proxy::all(format!("socks5h://{host}:{port}")).map_err(|e| {
+                error!(error = ?e, "Failed to create SOCKS5 proxy");
+                e
+            })?;
+            info!("Using SOCKS5 proxy: {host}:{port}");
+            builder.proxy(proxy)
+        }
+        _ => builder,
+    };
+
+    builder.build().map_err(|e| {
+        error!(error = %e, "Failed to create HTTP client");
+        DwallSettingsError::from(e)
+    })
 }
 
 impl HttpClient {
     /// Create a new HTTP client with network configuration
     pub fn new(network: Option<&dwall::config::Network>) -> DwallSettingsResult<Self> {
-        let builder = reqwest::ClientBuilder::new().connect_timeout(Duration::from_secs(120));
-
-        let builder = match network {
-            Some(dwall::config::Network::Socks5 { host, port }) => {
-                let proxy =
-                    reqwest::Proxy::all(format!("socks5h://{host}:{port}")).map_err(|e| {
-                        error!(error = ?e, "Failed to create SOCKS5 proxy");
-                        e
-                    })?;
-                info!("Using SOCKS5 proxy: {host}:{port}");
-                builder.proxy(proxy)
-            }
-            _ => builder,
-        };
-
-        let client = builder.build().map_err(|e| {
-            error!(error = %e, "Failed to create HTTP client");
-            e
-        })?;
-
         Ok(Self {
-            client: Arc::new(client),
+            client: Arc::new(RwLock::new(Arc::new(build_client(network)?))),
         })
     }
 
-    /// Download a file from URL to local path
+    /// Rebuilds the client from the current network configuration.
+    ///
+    /// Called after the config is written so a changed proxy applies immediately.
+    /// On failure the previous client is kept.
+    pub fn reconfigure(&self, network: Option<&dwall::config::Network>) -> DwallSettingsResult<()> {
+        let client = Arc::new(build_client(network)?);
+        *self.client.write().unwrap_or_else(|e| e.into_inner()) = client;
+        debug!("Reconfigured the HTTP client");
+        Ok(())
+    }
+
+    fn current(&self) -> Arc<Client> {
+        self.client
+            .read()
+            .unwrap_or_else(|e| e.into_inner())
+            .clone()
+    }
+
+    /// Streams a URL into `target_path`, returning the number of bytes on disk.
+    ///
+    /// The body is written chunk by chunk — a theme archive can be hundreds of MB,
+    /// so it is never buffered whole — the cancellation flag is checked between
+    /// chunks (so cancelling actually stops the transfer), and a range request is
+    /// only continued when the server really answered `206 Partial Content`.
     pub async fn download_file(
         &self,
         url: &str,
         target_path: &Path,
         downloaded_bytes: u64,
-        cancel_flag: Option<&Arc<std::sync::atomic::AtomicBool>>,
+        cancel_flag: Option<&Arc<AtomicBool>>,
         progress_callback: Option<Arc<dyn Fn(u64, u64) + Send + Sync>>,
     ) -> DwallSettingsResult<u64> {
-        let mut request = self.client.get(url);
+        let mut request = self.current().get(url);
         if downloaded_bytes > 0 {
             request = request.header("Range", format!("bytes={downloaded_bytes}-"));
         }
 
-        // Finish the request and status validation before creating the target file, so a
-        // failure never leaves an empty file on disk (otherwise the cache logic would
-        // mistake it for a completed download).
-        let response = request.send().await?;
+        let mut response = request.send().await?;
         response.error_for_status_ref()?;
 
-        let bytes = response.bytes().await?;
-        let total_size = bytes.len() as u64;
+        let resume = downloaded_bytes > 0 && response.status() == StatusCode::PARTIAL_CONTENT;
 
-        if let Some(cancel) = cancel_flag
-            && cancel.load(std::sync::atomic::Ordering::Relaxed)
-        {
-            return Err(crate::error::DwallSettingsError::Other(
-                "Download cancelled".to_string(),
-            ));
+        if downloaded_bytes > 0 && !resume {
+            // The server (or a mirror) ignored the range request; appending the
+            // whole body to the partial file would corrupt it, so start over.
+            debug!(
+                url = url,
+                "Range request was not honoured, restarting the download"
+            );
         }
 
-        let mut file = if downloaded_bytes > 0 {
+        let already_written = if resume { downloaded_bytes } else { 0 };
+        let total_size = already_written + response.content_length().unwrap_or(0);
+
+        let mut file = if resume {
             tokio::fs::OpenOptions::new()
                 .write(true)
                 .append(true)
@@ -85,22 +125,35 @@ impl HttpClient {
             tokio::fs::File::create(target_path).await?
         };
 
-        file.write_all(&bytes).await?;
+        let mut written = already_written;
 
-        if let Some(callback) = progress_callback {
-            callback(total_size, total_size);
+        while let Some(chunk) = response.chunk().await? {
+            if let Some(cancel) = cancel_flag
+                && cancel.load(Ordering::Relaxed)
+            {
+                return Err(DwallSettingsError::Other("Download cancelled".to_string()));
+            }
+
+            file.write_all(&chunk).await?;
+            written += chunk.len() as u64;
+
+            if let Some(callback) = &progress_callback {
+                callback(written, total_size);
+            }
         }
 
-        Ok(total_size)
-    }
+        file.flush().await?;
 
-    pub fn arc(&self) -> Arc<Client> {
-        self.client.clone()
+        Ok(written)
     }
 }
 
 impl Clone for HttpClient {
+    /// Clones the shared handle, not the client: clones stay in sync when the
+    /// configuration is applied.
     fn clone(&self) -> Self {
-        Self { client: self.arc() }
+        Self {
+            client: self.client.clone(),
+        }
     }
 }

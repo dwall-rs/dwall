@@ -3,9 +3,18 @@
 import { createStore } from "solid-js/store";
 
 import { getEngineStatus, startEngine, stopEngine } from "@/ipc";
+import { toast } from "@/components/ui/toast";
+import { t } from "@/i18n";
 import { logger } from "@/utils";
 
 const log = logger.child("engine");
+
+const notifyFailure = (action: string, error: unknown) => {
+  log.error(`Failed to ${action}`, error);
+  // Production builds compile the dev logger away, so failures must also reach
+  // the user through the UI.
+  toast.error(t("common.operationFailed"), { description: String(error) });
+};
 
 interface EngineState {
   running: boolean;
@@ -24,7 +33,7 @@ const refresh = async () => {
   try {
     setEngineStore("running", await getEngineStatus());
   } catch (e) {
-    log.error("Failed to query engine status", e);
+    notifyFailure("query engine status", e);
   }
 };
 
@@ -41,7 +50,7 @@ const toggle = async () => {
           pendingTimer: undefined,
         });
       } catch (e) {
-        log.error("Failed to stop engine", e);
+        notifyFailure("stop engine", e);
         setEngineStore((prev) => ({
           ...prev,
           pending: false,
@@ -66,7 +75,7 @@ const toggle = async () => {
       await startEngine();
       setEngineStore("running", true);
     } catch (e) {
-      log.error("Failed to start engine", e);
+      notifyFailure("start engine", e);
     }
   }
 };

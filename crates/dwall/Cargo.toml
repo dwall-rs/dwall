@@ -35,8 +35,8 @@ ts-rs = { version = "12", optional = true, default-features = false, features = 
 ] }
 
 [target.'cfg(windows)'.dependencies]
-# Keep version in sync with tauri
-windows = { version = "0.61", default-features = false, features = [
+# Keep version in sync with tauri (declared in the workspace root)
+windows = { workspace = true, features = [
     "std",
     "Devices_Geolocation",
     "Win32_System_Registry",
@@ -48,6 +48,11 @@ windows = { version = "0.61", default-features = false, features = [
     "Win32_Devices_Display",
     "Win32_Devices_DeviceAndDriverInstallation",
 ] }
+# The WinRT async types (`IAsyncOperation`, `AsyncStatus`, …) live in this crate and
+# are not re-exported by `windows`. It is already in the dependency tree via
+# `windows`; naming it directly lets us wait on those operations with a timeout
+# instead of the `INFINITE` wait inside `windows-future`'s `get()`.
+windows-future = { version = "0.2", default-features = false }
 
 
 [dev-dependencies]
