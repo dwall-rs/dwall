@@ -57,6 +57,10 @@ pub fn setup_app(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>>
     let thumbnail_cache = ThumbnailCache::new(http_client.clone());
     app.manage(thumbnail_cache);
 
+    // The update check needs the same client, so that the configured proxy applies to
+    // the release list it reads for pre-release builds.
+    app.manage(http_client);
+
     build_window(app.app_handle(), "main", "Dwall Settings")?;
 
     tokio::spawn(async move { crate::tracker::track().await });

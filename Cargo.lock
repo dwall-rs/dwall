@@ -924,6 +924,7 @@ dependencies = [
  "open",
  "rand",
  "reqwest",
+ "semver",
  "serde",
  "serde_json",
  "tauri",

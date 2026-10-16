@@ -23,6 +23,10 @@ serde = { version = "1", default-features = false, features = [
     "derive",
 ] }
 serde_json = { version = "1", default-features = false, features = ["std"] }
+# Version parsing for the update check: it compares the running version against the
+# published ones, so ordinary semver ordering (pre-releases included) is required.
+# Already in the tree through Tauri, so declaring it adds no second copy.
+semver = "1"
 log = { version = "0", default-features = false, features = ["std"] }
 # Pinned to match Tauri. Declared here so every crate links the same version:
 # a second copy doubles the generated bindings in the build and in the binary.
