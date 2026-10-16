@@ -19,6 +19,9 @@ const CONNECT_TIMEOUT: Duration = Duration::from_secs(15);
 /// while still failing a stalled transfer instead of hanging forever.
 const READ_TIMEOUT: Duration = Duration::from_secs(60);
 
+/// Sent with every request, in the form GitHub asks for.
+const USER_AGENT: &str = concat!("dwall/", env!("CARGO_PKG_VERSION"));
+
 /// Generic HTTP downloader for files.
 ///
 /// Provides pure technical download functionality without business logic.
@@ -33,7 +36,10 @@ pub struct HttpClient {
 fn build_client(network: Option<&dwall::config::Network>) -> DwallSettingsResult<Client> {
     let builder = reqwest::ClientBuilder::new()
         .connect_timeout(CONNECT_TIMEOUT)
-        .read_timeout(READ_TIMEOUT);
+        .read_timeout(READ_TIMEOUT)
+        // GitHub's API rejects requests without a `User-Agent`; sending one everywhere
+        // keeps that from being a per-call-site detail.
+        .user_agent(USER_AGENT);
 
     let builder = match network {
         Some(dwall::config::Network::Socks5 { host, port }) => {
@@ -145,6 +151,41 @@ impl HttpClient {
         file.flush().await?;
 
         Ok(written)
+    }
+
+    /// Fetches a small text response — an API answer, not a payload.
+    ///
+    /// Reads incrementally and gives up past `max_bytes`, so a mirror or a wrong URL
+    /// cannot make the process buffer something unbounded. Uses the same client as
+    /// every other request, so the configured proxy applies.
+    pub async fn get_text(&self, url: &str, max_bytes: usize) -> DwallSettingsResult<String> {
+        let mut response = self.current().get(url).send().await?;
+        response.error_for_status_ref()?;
+
+        if let Some(length) = response.content_length()
+            && length > max_bytes as u64
+        {
+            return Err(DwallSettingsError::Other(format!(
+                "{url} answered with {length} bytes, over the {max_bytes} byte limit"
+            )));
+        }
+
+        let mut body = Vec::new();
+
+        while let Some(chunk) = response.chunk().await? {
+            if body.len() + chunk.len() > max_bytes {
+                return Err(DwallSettingsError::Other(format!(
+                    "{url} exceeded the {max_bytes} byte limit"
+                )));
+            }
+
+            body.extend_from_slice(&chunk);
+        }
+
+        String::from_utf8(body).map_err(|e| {
+            error!(error = %e, "Response was not valid UTF-8");
+            DwallSettingsError::Other(format!("{url} did not answer with UTF-8: {e}"))
+        })
     }
 }
 

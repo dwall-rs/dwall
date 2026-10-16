@@ -24,6 +24,7 @@ mod setup;
 mod theme;
 mod thumbnail;
 mod tracker;
+mod update;
 mod window;
 
 #[macro_use]

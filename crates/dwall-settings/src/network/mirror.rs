@@ -230,6 +230,23 @@ mod tests {
         );
     }
 
+    /// A tagged release asset — the shape the update check uses for a pre-release —
+    /// is rewritten without asking the API for the tag.
+    #[tokio::test]
+    async fn resolve_rewrites_a_tagged_release_asset() {
+        let network =
+            mirror("https://ghproxy.cc/<owner>/<repo>/releases/download/<version>/<asset>");
+
+        assert_eq!(
+            MirrorUrlResolver::resolve(
+                network.as_ref(),
+                "https://github.com/dwall-rs/dwall/releases/download/v0.3.0-alpha.2/latest.json"
+            )
+            .await,
+            "https://ghproxy.cc/dwall-rs/dwall/releases/download/v0.3.0-alpha.2/latest.json"
+        );
+    }
+
     #[test]
     fn apply_template_keeps_the_release_url_shape() {
         let template = "https://ghproxy.cc/https://github.com/<owner>/<repo>/releases/download/<version>/<asset>";

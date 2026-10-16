@@ -200,6 +200,14 @@ fix(settings): identify the daemon by mutex and executable name
   `incremental = false`. Change it deliberately, not incidentally.
 - The version source of truth is `package.json`; the release workflow syncs it
   into `Cargo.toml`.
+- The update check has two paths, both in `check_for_updates_cmd`: a stable build
+  reads `releases/latest/download/latest.json`, which GitHub keeps free of
+  pre-releases; a pre-release build lists the releases through `api.github.com`
+  and compares them with `semver` (a stable release beats a pre-release, and
+  nothing older is ever offered), then reads that release's `latest.json`. Every
+  release — pre-release included — therefore has to carry a `latest.json` asset,
+  and the GitHub API rejects requests without a `User-Agent`, which `HttpClient`
+  now always sends.
 - The config file is `%APPDATA%\dwall\config.toml` and is shared by both
   binaries through `dwall::config` / `dwall::config::ConfigReader`. The daemon
   writes a commented default file when it is missing.
