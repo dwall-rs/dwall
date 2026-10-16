@@ -127,7 +127,24 @@ auto-start entry removed
 This adds one value to
 `HKCU\Software\Microsoft\Windows\CurrentVersion\Run` (value name `Dwall`,
 quoted command line). It is per-user, needs no administrator rights, and is the
-same entry the settings window's "start at login" switch manages.
+same entry the settings window's "start at login" switch manages — there is only
+ever one, so installing from a second copy replaces the first and says so:
+
+```console
+> dwall.exe --install-autostart
+replacing the existing auto-start entry: "C:\Program Files\Dwall Settings\dwall.exe"
+auto-start registered: "C:\tools\dwall\dwall.exe"
+```
+
+To see what is registered right now:
+
+```console
+> reg query "HKCU\Software\Microsoft\Windows\CurrentVersion\Run" /v Dwall
+```
+
+Values written before the command line was quoted are accepted when checking
+whether auto-start is enabled, so an older entry does not look "off". Install once
+from the copy you want to keep and it is rewritten in the quoted form.
 
 If you prefer a scheduled task (for example to add a delay, run only when a
 particular user is logged on, or restart it on failure), point the action at
