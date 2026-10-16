@@ -25,3 +25,16 @@ export const themeList = () => buildThemeList(catalogStore.themes);
 
 export const themeById = (id: string | undefined) =>
   findTheme(catalogStore.themes, id);
+
+/**
+ * Themes whose frames are on disk, so they can actually be applied.
+ *
+ * Everything that selects a theme works from this list: an uninstalled theme can be
+ * downloaded from the library, but it cannot be assigned or pooled before that.
+ */
+export const availableThemes = () =>
+  themeList().filter((theme) => !theme.needsDownload);
+
+/** Ids of the themes that can be applied. */
+export const availableThemeIds = () =>
+  availableThemes().map((theme) => theme.id);

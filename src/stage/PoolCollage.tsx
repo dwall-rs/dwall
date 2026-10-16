@@ -6,6 +6,7 @@ import { t } from "@/i18n";
 import { getRandomSelection } from "@/ipc";
 import { createMemo, createResource, Show } from "solid-js";
 import { ThemeThumbnail } from "~/scene/ThemeThumbnail";
+import { ThemeDownloadButton } from "~/scene/ThemeDownloadButton";
 import { collageLayout } from "./poolLayout";
 
 export function PoolCollage() {
@@ -41,6 +42,13 @@ export function PoolCollage() {
               <span class="text-[10px] font-semibold text-foreground">
                 {t("stage.stats.today")}
               </span>
+            </div>
+          </Show>
+          {/* A pool member that is not on disk never gets a turn, so the collage says so
+              and installs it from here. */}
+          <Show when={layout().themes[i].needsDownload}>
+            <div class="absolute bottom-2 right-2 z-10">
+              <ThemeDownloadButton themeId={layout().themes[i].id} />
             </div>
           </Show>
         </div>

@@ -12,4 +12,12 @@ source: string,
 /**
  * Remote URLs for catalog themes; absolute local paths for custom themes.
  */
-thumbnails: Array<string>, };
+thumbnails: Array<string>, 
+/**
+ * Whether the theme's frames are on disk.
+ *
+ * A catalog theme that is not installed yet is what the library offers to
+ * download; it is computed from the same lookup [`get_theme_wallpapers`] uses,
+ * so the library and the stage always agree on which themes are missing.
+ */
+installed: boolean, };

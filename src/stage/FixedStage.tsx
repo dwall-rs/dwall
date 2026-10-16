@@ -1,6 +1,7 @@
 // Responsibility: Fixed-mode stage orchestration — resolves the current theme (draft → config → first in the catalog), loads its wallpaper solar angles and the current solar position, and passes them to the pure presentation children.
 import { createMemo, createResource, Show } from "solid-js";
 import { themeById } from "@/store/catalog.selectors";
+import { catalogStore } from "@/store/catalog.store";
 import type { Wallpaper } from "@/models/types";
 import { getThemeWallpapers, matchWallpaper } from "@/ipc";
 import { t } from "@/i18n";
@@ -22,9 +23,11 @@ export function FixedStage() {
   const themeId = createMemo(() => themeForMon(scopeKey()) ?? "");
   const theme = createMemo(() => themeById(themeId()));
 
-  const [wallpapers, { refetch: refetchWallpapers }] = createResource(
-    themeId,
-    async (id): Promise<Wallpaper[]> => {
+  const [wallpapers] = createResource(
+    // Re-reads when the theme changes and whenever a download finishes, wherever it
+    // was started: installing the selected theme from the library must fill the stage.
+    () => ({ id: themeId(), revision: catalogStore.installedRevision }),
+    async ({ id }): Promise<Wallpaper[]> => {
       if (!id) return [];
       const angles = await getThemeWallpapers(id);
       return angles.map((a) => ({
@@ -100,12 +103,7 @@ export function FixedStage() {
                 {t("stage.notInstalled")}
               </div>
               <Show when={themeId()}>
-                {(id) => (
-                  <ThemeDownload
-                    themeId={id()}
-                    onInstalled={() => void refetchWallpapers()}
-                  />
-                )}
+                {(id) => <ThemeDownload themeId={id()} />}
               </Show>
             </div>
           </div>

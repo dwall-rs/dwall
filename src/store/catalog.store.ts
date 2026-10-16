@@ -14,12 +14,20 @@ interface CatalogState {
   status: "idle" | "loading" | "ready" | "error";
   themes: CatalogTheme[];
   monitors: DisplayMonitor[];
+  /**
+   * Bumped whenever a theme finishes downloading.
+   *
+   * Views that read a theme's frames from disk (the stage) key on it, so a download
+   * started anywhere — the library included — is visible everywhere it matters.
+   */
+  installedRevision: number;
 }
 
 const [catalogStore, setCatalogStore] = createStore<CatalogState>({
   status: "idle",
   themes: [],
   monitors: [],
+  installedRevision: 0,
 });
 
 const load = async () => {
@@ -41,4 +49,18 @@ const load = async () => {
   }
 };
 
-export { catalogStore, load };
+/**
+ * Records that `themeId`'s frames are on disk now.
+ *
+ * Called by the download store on success, which is the only thing that can make a
+ * theme newly installed without the catalog being reloaded.
+ */
+const markInstalled = (themeId: string) => {
+  const index = catalogStore.themes.findIndex((theme) => theme.id === themeId);
+  // A theme the catalog does not list can still have been downloaded (an id from the
+  // config, say); the revision still has to move so the stage re-reads its frames.
+  if (index >= 0) setCatalogStore("themes", index, "installed", true);
+  setCatalogStore("installedRevision", (revision) => revision + 1);
+};
+
+export { catalogStore, load, markInstalled };

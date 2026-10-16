@@ -7,6 +7,9 @@ import {
   onThemeDownloadProgress,
 } from "@/ipc";
 import { downloadPercent, isCancellation } from "@/models/download";
+import { t } from "@/i18n";
+import { toast } from "@/components/ui/toast";
+import { markInstalled } from "./catalog.store";
 import { settingsStore } from "./settings.store";
 
 interface DownloadState {
@@ -61,6 +64,8 @@ export const downloadTheme = async (themeId: string): Promise<boolean> => {
 
   try {
     await downloadThemeAndExtract(config, themeId);
+    // Tells every view that reads frames from disk that this theme has them now.
+    markInstalled(themeId);
     setDownloadStore({
       themeId: null,
       status: "idle",
@@ -71,11 +76,17 @@ export const downloadTheme = async (themeId: string): Promise<boolean> => {
   } catch (error) {
     // Cancelling is a user decision, not a failure: return to the idle button.
     const cancelled = isCancellation(error);
+    const message = cancelled ? null : String(error);
+    if (message) {
+      // The library shows a compact button with no room for a message, so the failure
+      // is reported here; the stage's install prompt repeats it next to the retry.
+      toast.error(t("stage.downloadFailed"), { description: message });
+    }
     setDownloadStore({
       themeId: cancelled ? null : themeId,
       status: cancelled ? "idle" : "failed",
       percent: null,
-      error: cancelled ? null : String(error),
+      error: message,
     });
     return false;
   } finally {

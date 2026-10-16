@@ -2,10 +2,10 @@
 import type { MonitorSpecificWallpapers } from "./MonitorSpecificWallpapers";
 
 /**
- * 壁纸切换模式
+ * Wallpaper switching mode.
  */
 export type WallpaperMode = { "mode": "fixed", monitor_specific_wallpapers: MonitorSpecificWallpapers, } | { "mode": "random", 
 /**
- * 随机池（None 表示使用所有可用主题）
+ * Random pool (`None` means use all available themes).
  */
 pool: Array<string> | null, };

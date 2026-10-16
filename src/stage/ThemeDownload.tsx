@@ -1,4 +1,4 @@
-// Responsibility: install affordance for a theme that is not on disk yet — start the download, show its progress, cancel it, or report a failure and retry.
+// Responsibility: install affordance for a theme that is not on disk yet — start the download, show its progress, cancel it, or report a failure and retry. The stage picks the result up from the catalog's install revision.
 import { Show } from "solid-js";
 
 import { Download, X } from "lucide-solid";
@@ -16,15 +16,9 @@ import {
 
 interface Props {
   themeId: string;
-  /** Called after a successful download, so the caller reloads the theme's frames. */
-  onInstalled: () => void;
 }
 
 export function ThemeDownload(props: Props) {
-  const start = async () => {
-    if (await downloadTheme(props.themeId)) props.onInstalled();
-  };
-
   const width = () =>
     downloadStore.percent === null ? "100%" : `${downloadStore.percent}%`;
 
@@ -33,7 +27,10 @@ export function ThemeDownload(props: Props) {
       <Show
         when={isDownloading(props.themeId)}
         fallback={
-          <Button onClick={() => void start()} class="px-6 py-2">
+          <Button
+            onClick={() => void downloadTheme(props.themeId)}
+            class="px-6 py-2"
+          >
             <Download class="size-3.5" />
             {t("stage.download")}
           </Button>
