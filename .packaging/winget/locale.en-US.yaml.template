@@ -1,0 +1,33 @@
+# yaml-language-server: $schema=https://aka.ms/winget-manifest.defaultLocale.1.10.0.schema.json
+# Rendered by .scripts/render-package-manifests.ps1 — edit the template, not a copy.
+PackageIdentifier: __IDENTIFIER__
+PackageVersion: __VERSION__
+PackageLocale: en-US
+Publisher: thep0y
+PublisherUrl: https://github.com/__REPOSITORY__
+PublisherSupportUrl: https://github.com/__REPOSITORY__/issues
+PackageName: Dwall Daemon
+PackageUrl: https://github.com/__REPOSITORY__
+License: AGPL-3.0-only
+LicenseUrl: https://github.com/__REPOSITORY__/blob/main/LICENSE
+Copyright: Copyright (C) 2025 thep0y. All rights reserved.
+ShortDescription: Solar-position dynamic wallpaper daemon, without the settings window
+Description: |-
+  The Dwall daemon on its own: it applies the wallpaper that matches the current
+  solar position and can register itself to start at sign-in. It needs no WebView2
+  runtime and ships no settings window.
+
+  Configuration lives in %APPDATA%\dwall\config.toml, which is created with
+  comments on the first run; `dwall --check-config` validates an edit, `dwall
+  --once` applies a single update cycle, and `dwall --install-autostart` registers
+  the daemon for sign-in. See docs/headless.md in the release archive.
+Moniker: dwall
+Tags:
+  - wallpaper
+  - dynamic-wallpaper
+  - solar
+  - daemon
+  - headless
+  - cli
+ManifestType: defaultLocale
+ManifestVersion: 1.10.0

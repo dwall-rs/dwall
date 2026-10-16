@@ -38,6 +38,38 @@ bun run build:daemon      # cargo build -p dwall --release --features build-scri
 
 The result is `target/release/dwall.exe` (about 600 KB).
 
+### Package managers
+
+winget and Scoop manifests are kept as templates under `.packaging/` and rendered
+from a release's own checksum, so a submission is a copy rather than four
+hand-edited files:
+
+```console
+> ./.scripts/package-daemon.ps1 -Version 0.2.5
+> ./.scripts/render-package-manifests.ps1 -Version 0.2.5 -Validate
+Rendering manifests for thep0y.Dwall 0.2.5 (Dwall_0.2.5_x64-daemon.zip)
+  dist-manifests\winget\thep0y.Dwall.yaml
+  dist-manifests\winget\thep0y.Dwall.installer.yaml
+  dist-manifests\winget\thep0y.Dwall.locale.en-US.yaml
+  dist-manifests\scoop\dwall.json
+  Scoop manifest parses
+Validating with C:\Users\you\AppData\Local\Microsoft\WindowsApps\winget.exe
+  清单验证成功。
+  winget manifest valid
+```
+
+- **winget**: copy `dist-manifests/winget/` to
+  `manifests/t/thep0y/Dwall/<version>/` in
+  [microsoft/winget-pkgs](https://github.com/microsoft/winget-pkgs) and open a pull
+  request (the archive installs as a portable package, exposing `dwall.exe` on
+  `PATH` as `dwall`).
+- **Scoop**: copy `dist-manifests/scoop/dwall.json` into a bucket, or submit it to
+  `ScoopInstaller/Extras`.
+
+Neither package is published in those repositories yet, so `winget install
+thep0y.Dwall` only works once the manifest has been merged; the archive above is
+what it installs.
+
 ## Configuration
 
 | | |

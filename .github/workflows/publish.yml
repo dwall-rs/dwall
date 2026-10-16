@@ -191,6 +191,13 @@ jobs:
           {
             echo "changelog<<EOF"
             echo "${{ steps.github_release_changelog.outputs.changelog != '' && steps.github_release_changelog.outputs.changelog || steps.fallback_changelog.outputs.changelog }}"
+            echo ""
+            echo "### Downloads"
+            echo ""
+            echo "- \`Dwall.Settings_${VERSION}_x64-setup.exe\` — settings window, with the daemon bundled in"
+            echo "- \`Dwall_${VERSION}_x64-daemon.zip\` — the daemon alone: portable, headless, no WebView2 (see \`docs/headless.md\`)"
+            echo ""
+            echo "Both are listed with their \`.sha256\`; the updater metadata is \`latest.json\`."
             echo "EOF"
           } >> $GITHUB_OUTPUT
 
@@ -306,6 +313,13 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           VERSION: ${{ needs.create-release.outputs.package_version }}
         run: gh release upload "v${VERSION}" dist-daemon/*.zip dist-daemon/*.zip.sha256 --clobber
+
+      # Rendered here so a stale template or a missing checksum surfaces during the
+      # release instead of halfway through a winget or Scoop submission. Run the
+      # same script with -Validate locally (`winget validate` is not guaranteed to
+      # exist on a runner).
+      - name: Render the winget and Scoop manifests
+        run: ./.scripts/render-package-manifests.ps1 -Version "${{ needs.create-release.outputs.package_version }}"
 
   publish-release:
     permissions:
