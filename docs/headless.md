@@ -9,22 +9,34 @@ configuration is managed by hand, by a dotfiles repository or by MDM/GPO.
 Unlike the settings app, the daemon has no WebView2 runtime requirement: it links
 only the Windows APIs it uses.
 
-> **Packaging note.** The daemon currently ships *inside* the settings installer
-> (`dwall.exe` next to `Dwall Settings.exe`). A standalone archive is the next
-> step; until then, copy the file out of an existing installation or build it
-> yourself (see [Getting the binary](#getting-the-binary)).
-
 ## Getting the binary
 
-Copy `dwall.exe` out of an existing install (usually
-`C:\Program Files\Dwall Settings\dwall.exe`), or build the shipped configuration:
+Download `Dwall_<version>_x64-daemon.zip` from the
+[releases page](https://github.com/dwall-rs/dwall/releases) and unpack it wherever
+you like: the archive holds the daemon, the licence, this document, the theme
+format and a checksum list, and all of the daemon's state is per-user rather than
+per-directory. A nightly archive (`Dwall_nightly_x64-daemon.zip`) is published with
+each nightly build and keeps that build's debug logging.
+
+Each archive is published next to a `.sha256` file, so a download can be verified
+before it is unpacked:
+
+```powershell
+Get-FileHash .\Dwall_0.2.5_x64-daemon.zip -Algorithm SHA256   # compare with the .sha256 asset
+```
+
+Other ways to get the same binary:
+
+- copy `dwall.exe` out of an existing installation (usually
+  `C:\Program Files\Dwall Settings\dwall.exe` — the installer ships it as a
+  resource of the settings app);
+- build the shipped configuration:
 
 ```sh
 bun run build:daemon      # cargo build -p dwall --release --features build-script,log-max-level-info
 ```
 
-The result is `target/release/dwall.exe` (about 600 KB). It can live anywhere; all
-of its state is per-user, not per-directory.
+The result is `target/release/dwall.exe` (about 600 KB).
 
 ## Configuration
 

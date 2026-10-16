@@ -213,6 +213,11 @@ fix(settings): identify the daemon by mutex and executable name
   a portable or headless copy lives wherever the user put it.
 - `crates/dwall/src/lazy.rs` must not panic: it runs from a GUI-subsystem process
   built with `panic = "abort"`, where a failure is invisible. Log and fall back.
+- The standalone daemon archive is produced by `.scripts/package-daemon.ps1`
+  (`Dwall_<version>_x64-daemon.zip` plus a `.sha256`), attached to releases by
+  `publish.yml` and to the nightly release by `nightly.yml`. It ships `dwall.exe`
+  together with `docs/headless.md` and `docs/custom-themes.md`, so keep those
+  documents accurate: they are the only documentation a headless install gets.
 - `crates/dwall-settings/build.rs` reads `DWALL_SKIP_BUILD`; CI's Rust job
   builds only the daemon and mocks `target/release/dwall.exe` before running
   clippy/tests.

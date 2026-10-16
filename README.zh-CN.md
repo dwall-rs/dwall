@@ -60,7 +60,7 @@ DWALL 的日志等级默认为 `info`，可通过环境变量 `DWALL_LOG` 调整
 
 ## 不依赖设置窗口单独运行守护进程
 
-`dwall.exe` 可以独立工作：它自行读取 `%APPDATA%\dwall\config.toml`（首次运行会生成带注释的默认配置），自行应用壁纸，也可以注册为登录自启。它不依赖 WebView2 运行时，因此在 LTSC / Server 镜像以及不想安装 GUI 的机器上同样可用。
+`dwall.exe` 可以独立工作：它自行读取 `%APPDATA%\dwall\config.toml`（首次运行会生成带注释的默认配置），自行应用壁纸，也可以注册为登录自启。它不依赖 WebView2 运行时，因此在 LTSC / Server 镜像以及不想安装 GUI 的机器上同样可用。每个版本会以 `Dwall_<version>_x64-daemon.zip` 形式单独发布。
 
 ```console
 dwall.exe --check-config         # 校验配置

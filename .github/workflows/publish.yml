@@ -295,6 +295,18 @@ jobs:
           updaterJsonPreferNsis: true
           args: --features log-max-level-info
 
+      # The same daemon the installer bundles, published on its own for portable
+      # and headless installs; the GUI and its WebView2 requirement stay out.
+      - name: Package the standalone daemon
+        run: ./.scripts/package-daemon.ps1 -Version "${{ needs.create-release.outputs.package_version }}"
+
+      - name: Attach the standalone daemon to the release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ needs.create-release.outputs.package_version }}
+        run: gh release upload "v${VERSION}" dist-daemon/*.zip dist-daemon/*.zip.sha256 --clobber
+
   publish-release:
     permissions:
       contents: write
