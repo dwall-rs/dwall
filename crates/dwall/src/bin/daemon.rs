@@ -319,14 +319,18 @@ fn install_autostart() -> ExitCode {
         }
     };
 
+    // The Run value is shared with the settings app and with every other copy, so
+    // replacing an entry that points somewhere else is worth saying out loud
+    // rather than overwriting it silently.
+    if !dwall::is_autostart_installed(&executable).unwrap_or(false)
+        && let Ok(Some(existing)) = dwall::registered_autostart_command()
+    {
+        println!("replacing the existing auto-start entry: {existing}");
+    }
+
     match dwall::install_autostart(&executable) {
         Ok(()) => {
-            println!(
-                "auto-start registered: {}",
-                dwall::registered_autostart_command()
-                    .unwrap_or_default()
-                    .unwrap_or_else(|| executable.display().to_string())
-            );
+            println!("auto-start registered: \"{}\"", executable.display());
             ExitCode::from(exit::SUCCESS)
         }
         Err(e) => {

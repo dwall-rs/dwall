@@ -157,6 +157,10 @@ painful, and a review of the branch cannot follow them.
 - If you already created several, offer to squash them before the conversation
   ends (with `git reset --soft <base>` plus one commit, or `git rebase -i`). Never
   rewrite commits that are already pushed without an explicit instruction.
+- **Re-check before every amend or rebase**: run `git log --oneline '@{u}..HEAD`
+  immediately beforehand, because the maintainer can push while you work. If the
+  target commit reached the remote in the meantime, add a new commit instead of
+  rewriting it and say what happened.
 - Do not push. Commit locally and leave pushing, force-pushing and PR updates to
   the maintainer.
 

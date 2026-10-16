@@ -114,6 +114,12 @@ mod tests {
     use super::*;
     use std::path::PathBuf;
 
+    // Deliberately no test that touches `HKCU\...\Run`: the value name is shared
+    // with the installed copy and with the settings app, so a test run could
+    // overwrite (or delete) the user's real auto-start entry. The parsing and
+    // comparison rules above are the parts worth pinning down; the registry calls
+    // themselves are exercised by hand with `dwall.exe --install-autostart`.
+
     #[test]
     fn the_stored_command_line_is_quoted() {
         let executable = PathBuf::from(r"C:\Program Files\Dwall\dwall.exe");
