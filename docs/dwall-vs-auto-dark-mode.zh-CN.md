@@ -1,70 +1,48 @@
-# DWALL 与自动深色模式：全面比较
+# DWALL 对比 Auto Dark Mode
 
-有关与 WinDynamicDesktop 的比较，请参见 [DWALL 与 WinDynamicDesktop](./dwall-vs-windynamicdesktop.zh-CN.md)。
+两者都是免费、开源的 Windows 应用，都会运行按用户的常驻引擎、切换系统浅色/深色主题，
+也都能设置每显示器壁纸。区别在于由什么驱动切换，以及它们触及 Windows 的多少部分。
 
-## 概述
+## 一览
 
-DWALL 和自动深色模式都旨在为 Windows 系统提供自动主题切换，但它们采用不同的方法来实现这一目标。本文档比较了这两种解决方案，以突出 DWALL 的独特优势。
+|            | DWALL                                                  | Auto Dark Mode                                                                      |
+| ---------- | ------------------------------------------------------ | ----------------------------------------------------------------------------------- |
+| 主要职责 | 依据太阳位置选择壁纸帧 | 按计划切换 Windows 深色/浅色主题 |
+| 切换信号 | 本地计算的太阳高度角/方位角（折射、海拔、极地纬度），或手动坐标 | 固定时间、来自 Windows 位置的日出日落时间、夜间模式状态、环境光传感器、热键、脚本 |
+| 壁纸 | 主题 = 绑定到太阳位置的帧，持续匹配；每显示器；可选锁屏 | 每个主题每台显示器一张图片，纯色或幻灯片；未有锁屏功能的文档 |
+| 还会更改 | 系统浅色/深色主题 | 应用/系统主题、主题色、鼠标光标、`.theme` 文件、任务栏/标题栏、灰度 |
+| 可扩展性 | 无 | 自定义脚本、条件（游戏、电池、夜间模式）、热键 |
+| 技术栈 | Rust 守护进程（无异步运行时）+ Tauri/SolidJS GUI | .NET 9：WinUI 3 GUI、基于 WinForms 的引擎、控制台 CLI 外壳 |
+| 占用 | 守护进程约 4 MB 私有内存，0.6 MB 可执行文件；无托盘图标 | 项目未有文档说明；托盘图标与命名管道命令服务器 |
+| CPU 架构 | x64 | x64、ARM64 |
+| 语言 | 6 | 31 |
+| 分发 | 安装程序 + 便携式守护进程压缩包；无商店页面 | GitHub、Microsoft Store（免费）、winget `ArminOsaj.AutoDarkMode`；Chocolatey/Scoop 条目为非官方 |
+| 系统要求 | Windows 10/11 x64；GUI 需要 WebView2 | Windows 10 22H2 或更高版本、Windows 11 |
+| CLI | `dwall.exe --check-config`、`--once`、`--install-autostart`、`--config` | `AutoDarkModeShell.exe`，通过引擎的命名管道发送命令 |
+| 许可证 | AGPL-3.0-only | GPL-3.0 |
 
-## 功能比较
+## 选择 DWALL，如果
 
-有关详细的功能比较表，请参见 [共享比较内容](./shared-comparison-content.zh-CN.md)。
+- 你希望壁纸本身跟随太阳，而不是在两种状态间翻转主题。
+- 常驻开销应只有几 MB，且没有托盘图标。
+- 你以无界面方式部署：便携式守护进程、一个配置文件，不需要 GUI 和 WebView2。
 
-## DWALL 的关键优势
+## 选择 Auto Dark Mode，如果
 
-### 1. 基于太阳的壁纸过渡
+- 你的目标是 Windows 个性化：主题色、光标、任务栏、`.theme` 文件。
+- 你需要太阳之外的调度 —— 夜间模式、环境光、电池或游戏条件、热键、自定义脚本。
+- 你需要 ARM64、Microsoft Store 安装，或 DWALL 所提供的六种语言之外的语言。
 
-与主要关注在浅色和深色主题之间切换的自动深色模式不同，DWALL 通过基于太阳实际位置改变壁纸提供更复杂的体验。这创造了一种更自然和沉浸式的体验，模仿了 macOS 的行为。
+## 各用一句话概括
 
-### 2. 超低资源消耗
+Auto Dark Mode 覆盖 Windows 的更多部分，且可脚本化；DWALL 有意收窄到太阳驱动的壁纸
+过渡，从而让常驻进程保持小巧。如果你只需要深色模式切换，请使用 Auto Dark Mode 或
+Windows 自带的计划功能；DWALL 关注的是壁纸。
 
-DWALL 专门设计为最小化资源使用：
+## 资料来源
 
-- 用于后台操作的独立守护进程
-- 设置 UI 与后台操作完全分离
-- 内存占用显著低于竞争解决方案
-- 无系统托盘集成以减少开销
-
-### 3. 科学对齐的壁纸集
-
-DWALL 提供预先配置的壁纸集，这些壁纸集与太阳运动科学对齐：
-
-- 每张壁纸都精确地定时到特定的太阳位置
-- 精心策划的集合确保最佳视觉体验
-- 消除了用户手动配置复杂定时系统的需要
-
-### 4. 高级多显示器支持
-
-有关通用多显示器支持功能，请参见 [共享比较内容](./shared-comparison-content.zh-CN.md)。
-
-### 5. 地理位置精度
-
-有关通用地理位置处理功能，请参见 [共享比较内容](./shared-comparison-content.zh-CN.md)。
-
-### 6. 强大的错误处理
-
-DWALL 实现了全面的错误处理：
-
-- 自动重试机制以应对失败的操作
-- 当服务不可用时优雅降级
-- 详细的日志记录以便故障排除
-
-## 自动深色模式的优势
-
-有关通用自动深色模式优势，请参见 [共享比较内容](./shared-comparison-content.zh-CN.md)。
-
-## 使用场景
-
-有关通用使用场景，请参见 [共享比较内容](./shared-comparison-content.zh-CN.md)。
-
-## 技术实现差异
-
-### DWALL 架构
-
-有关架构比较，请参见 [共享比较内容](./shared-comparison-content.zh-CN.md)。
-
-## 结论
-
-DWALL 和自动深色模式服务于类似的目的，但理念不同。DWALL 专注于提供轻量级、类似 macOS 的动态壁纸体验，同时对系统影响最小。自动深色模式提供了更传统的主题切换方法，具有更深入的 Windows 集成和可扩展性功能。
-
-对于寻求资源高效解决方案、具有科学对齐的壁纸过渡并模仿 macOS 行为的用户，DWALL 是更优的选择。对于需要更深入的 Windows 集成和自定义脚本功能的用户，自动深色模式可能更合适。
+上文关于 Auto Dark Mode 的事实来自该项目自己的资料 —— 仓库与发布元数据
+（github.com/AutoDarkMode/Windows-Auto-Night-Mode）、其 `docs/backend-flow.md`、
+`PRIVACY.md`、关于已知限制与故障排查的 wiki 页面，以及其 Microsoft Store 页面。
+DWALL 的数字是从本仓库的 release 构建实测的；方法见
+[technical-comparison.zh-CN.md](./technical-comparison.zh-CN.md)。

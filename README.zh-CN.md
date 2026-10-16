@@ -10,43 +10,57 @@
 
 # DWALL
 
-DWALL 是一款轻量级应用程序，旨在模拟 macOS 壁纸切换行为，通过基于太阳高度角和方位角动态更改 Windows 系统上的桌面背景。体验随着一天中太阳自然移动而无缝过渡的壁纸变化。
+一款 Windows 动态壁纸应用，跟随的是**太阳位置**而非时钟：它在本地计算太阳高度角与方位角，应用与之匹配的主题帧，并可选地让系统浅色/深色主题和锁屏随之切换。常驻部分是一个约 4 MB 的单线程 Rust 守护进程；设置窗口是独立进程，只在打开时运行。
 
-## 动机
+## 与其他方案对比
 
-面对现有的解决方案如 [WinDynamicDesktop](https://github.com/t1m0thyj/WinDynamicDesktop) 和 [AutoDarkMode](https://github.com/AutoDarkMode/Windows-Auto-Night-Mode)，您可能会疑惑为何需要另一个工具。虽然这些应用程序提供类似的功能，但它们作为独立项目运行，没有整合计划。此外，它们的资源消耗可能高于此类任务的理想水平。
+| | DWALL | [WinDynamicDesktop](https://github.com/t1m0thyj/WinDynamicDesktop) | [Auto Dark Mode](https://github.com/AutoDarkMode/Windows-Auto-Night-Mode) |
+| --- | --- | --- | --- |
+| 帧由何决定 | 太阳高度角/方位角匹配 | 昼夜与日出/日落时间 | ——（主题切换） |
+| 系统浅色/深色主题 | 依据太阳位置切换 | 不切换 | 切换 —— 其核心功能 |
+| 锁屏 | 是 | 是 | 未有文档说明 |
+| 每显示器主题 | 是 | 是 | 是 |
+| 脚本 / 自动化 | 无 | PowerShell 脚本、CLI | 脚本、条件、热键 |
+| 常驻开销 | ≈4 MB 守护进程，无托盘图标 | 未有文档说明；约 70 MB 应用带托盘图标 | 未有文档说明；托盘图标 |
+| 架构 / 语言 | x64 / 6 | x86、x64、ARM64 / 提供约 55 种 | x64、ARM64 / 31 |
+| 分发 | GitHub releases | GitHub、Microsoft Store、winget、Scoop、Chocolatey | GitHub、Microsoft Store、winget |
+| 许可证 | AGPL-3.0-only | MPL-2.0 | GPL-3.0 |
 
-认识到这一差距，DWALL 被开发为一种高效的替代方案。它可以根据太阳位置自动切换明暗主题并更改壁纸，同时在运行期间保持最小的内存使用量。对于寻求资源占用更少选项的用户，DWALL 提供了一个极具吸引力的选择。
-
-有关 DWALL 与其他解决方案的详细比较，请参阅我们的文档：
-
-- [DWALL vs Auto Dark Mode](./docs/dwall-vs-auto-dark-mode.zh-CN.md)
-- [DWALL vs WinDynamicDesktop](./docs/dwall-vs-windynamicdesktop.zh-CN.md)
+上表每条事实均来自其他项目自身的资料；完整对照表，以及它们更合适的情形，见 [docs/](./docs/README.zh-CN.md)。
 
 ## 特性
 
-- **基于太阳的调度：** 自动根据太阳路径调整壁纸。
-- **低资源占用：** 针对性能进行优化，对系统资源的影响最小。
-- **无缝集成：** 轻松融入您的工作流程，没有侵入性通知或设置。
+- **基于太阳的调度** —— 帧与太阳位置匹配；15 套主题目录中每套使用 5 到 24 帧。
+- **同步系统主题** —— 浅色/深色主题依据同一计算切换（可选）。
+- **锁屏** —— 可选地镜像壁纸的主题与帧。
+- **每显示器主题** —— 每台显示器可用不同主题，显示器变化时重新应用。
+- **每日随机主题** —— 可选地每天从你选定的主题池中抽取一个主题。
+- **可调刷新频率** —— 每 1 秒到 1 小时评估一次（默认 15 秒）。
+- **自定义主题** —— 一个包含 `theme.toml` 与图片的目录；见 [docs/custom-themes.md](./docs/custom-themes.md)。
+- **无界面模式** —— 同一个可执行文件可依据配置文件运行，并提供 CLI；见 [docs/headless.md](./docs/headless.md)。
+- **受限网络** —— 主题下载支持镜像模板与 SOCKS5。
+- **六种语言，无遥测** —— 英语、简体中文、繁体中文、香港中文、日语、韩语。
 
-## 用前须知
+## 系统要求
 
-本项目仍然处于开发阶段，可能存在一些问题。如果您在使用过程中遇到任何问题，请随时在 GitHub 页面上提出问题。
+64 位 Windows 10 或 11。设置窗口需要 WebView2 运行时（当前 Windows 已自带，安装程序也会处理）；守护进程既不需要 WebView2，也不需要管理员权限。不支持精简版 Windows 镜像。
 
-> [!WARNING]  
-> 本程序可能无法在精简版操作系统上运行，如果你使用的是精简版 Windows 操作系统，遇到错误时不需要提交 issue，安装官方 Windows 操作系统后再尝试运行本程序。
+## 安装
 
-## 使用步骤
+1. 从 [latest release](https://github.com/dwall-rs/dwall/releases/latest) 下载安装程序（`Dwall.Settings_<version>_x64-setup.exe`）并运行 —— 它按用户安装，无需管理员权限。
+2. 只要守护进程，或用于受管 / 无界面机器：请改用 `Dwall_<version>_x64-daemon.zip`，并按 [docs/headless.md](./docs/headless.md) 操作。
 
-1. 在 [releases](https://github.com/dwall-rs/dwall/releases/latest) 中下载最新的 DWALL 可执行文件。
-2. 运行 DWALL 可执行文件。
-3. 允许 DWALL 访问您的位置信息，或者在设置页面手动设置您的位置。
-4. 在侧边菜单中点击你想使用的壁纸，如果未下载，需要先点击“下载”按钮下载这套壁纸，如果下载完成则可以点击“应用”按钮使用这套壁纸。
-5. 如果你使用多个显示器，可以在显示器选择器中选择你想单独配置的显示器，然后重复第 4 步的操作。
+winget 与 Scoop 清单已备好，但尚未提交到这些仓库。
+
+## 使用
+
+1. 运行 DWALL 并允许位置访问，或在设置页面手动设置坐标。
+2. 在侧边栏中选择一个主题。尚未下载的主题会显示**下载**按钮；下载完成后用**应用**即可使用。
+3. 使用多台显示器时，在显示器选择器中选中相应显示器，并对每台显示器重复第 2 步。
+4. 可选地启用锁屏壁纸与系统浅色/深色切换。
+5. DWALL 会持续在后台运行 —— 没有托盘图标；设置窗口可从开始菜单再次启动。
 
 ## 截图
-
-以下是展示 DWALL 运行效果的两张截图：
 
 ![主页](images/home.avif)
 
@@ -54,72 +68,19 @@ DWALL 是一款轻量级应用程序，旨在模拟 macOS 壁纸切换行为，�
 
 ## 运行日志
 
-DWALL 的日志等级默认为 `info`，可通过环境变量 `DWALL_LOG` 调整：既支持纯等级（`DWALL_LOG=debug`），也支持 `env_logger` 风格（`DWALL_LOG=dwall=debug`）。需要注意，release 构建会把 `debug`/`trace` 语句整体编译掉，因此 release 只会输出 `info`、`warn`、`error`。
-
-守护进程的日志位于 `%LOCALAPPDATA%\com.thep0y.dwall\log\dwall.log`（可在设置页一键打开所在目录），每次启动会把上一份日志轮转到同级的 `backup` 目录。
-
-## 不依赖设置窗口单独运行守护进程
-
-`dwall.exe` 可以独立工作：它自行读取 `%APPDATA%\dwall\config.toml`（首次运行会生成带注释的默认配置），自行应用壁纸，也可以注册为登录自启。它不依赖 WebView2 运行时，因此在 LTSC / Server 镜像以及不想安装 GUI 的机器上同样可用。每个版本会以 `Dwall_<version>_x64-daemon.zip` 形式单独发布。
-
-```console
-dwall.exe --check-config         # 校验配置
-dwall.exe --once                 # 只执行一轮更新后退出
-dwall.exe --install-autostart    # 登录时自动启动
-```
-
-守护进程与设置窗口共用同一份配置文件，且每个会话只允许一个守护进程（它持有命名互斥体），因此独立副本与安装副本不会互相抢占桌面。主题下载、缩略图与更新仍由设置程序负责。
-
-完整流程、退出码与排障见 [docs/headless.md](docs/headless.md)。
+等级为 `info`；设置 `DWALL_LOG`（可直接写等级，如 `debug`，或写 `dwall=debug`）可更改。release 构建会把 `debug`/`trace` 语句编译掉，因此其中只可能出现 `info`、`warn` 和 `error`。守护进程写入 `%LOCALAPPDATA%\com.thep0y.dwall\log\dwall.log`，每次启动时把上一份文件轮转到 `backup\`；设置窗口可为你打开该目录。
 
 ## 常见问题
 
-### 1. 为什么设置和守护进程完全隔离？
+**为什么设置窗口和守护进程是两个独立进程？**
+它们最初是一个带托盘图标的单进程，而目标是把后台开销控制在几 MB，于是 GUI 工具包、webview 和 HTTP 客户端都被移入一个只在打开时存在的窗口。代价是没有 IPC：二者共享 `config.toml`，窗口靠轮询获取守护进程状态，而不是被通知。同样出于这个原因，这里没有托盘图标 —— 托盘进程的开销比它要控制的守护进程还大。
 
-最初的版本中，设置和守护进程是在同一个进程中运行的，同时支持通过任务栏托盘管理，但这会使得进程的内存占用较大（相比于其他同类型程序仍然要小很多），这不是我想要的结果，所以我设置和守护进程完全隔离，这样可以减少守护进程的内存占用，同时也使得进程的管理更加简单。
+**主题下载失败。** 壁纸集托管在 GitHub 上，部分网络无法访问。在设置页面中设置镜像模板，例如用前缀式代理 `https://ghproxy.cc/https://github.com/<owner>/<repo>/releases/download/<version>/<asset>`，或用替换主机名的镜像 `https://kkgithub.com/<owner>/<repo>/...`。缩略图来自同一主机，需要同样的设置。
 
-当然，这也带来了进程间通信的问题，目前的版本，设置进程（图形化程序）和守护进程没有实现进程间通信，二者交流的唯一途径是配置文件，因此设置窗口通过轮询获取守护进程的运行状态（启动失败时还会读取其日志尾部）。
+**可以使用自己的壁纸吗？** 可以 —— 自定义主题是一个包含 `theme.toml` 清单（schema 1）及其图片的目录。见 [docs/custom-themes.md](./docs/custom-themes.md)。精选套装仍是最省事的选择，因为它们每一帧都已与太阳轨迹对齐。
 
-### 2. 壁纸下载失败。
+**可以贡献一套壁纸吗？** 提交一个 issue 说明设计思路（以及图片的获取地址）；合适的套装会被加入精选目录。
 
-壁纸资源保存在 github 中，但一些国家和地区因为网络管制无法正常访问 github，如果不设置 Github 镜像模板，就会导致壁纸下载失败。你需要通过搜索引擎自行搜索可用的 Github 镜像站或加速站。假设你搜索到了一个可用的 github 加速站`https://ghproxy.cc`，可在设置页面中如下配置 Github 镜像模板：
+## 参与贡献与许可证
 
-```
-https://ghproxy.cc/https://github.com/<owner>/<repo>/releases/download/<version>/<asset>
-```
-
-如果你搜索到到的是一个 github 镜镜站`https://kkgithub.com/`，则需要如下配置 Github 镜像模板：
-
-```
-https://kkgithub.com/<owner>/<repo>/releases/download/<version>/<asset>
-```
-
-然后就可以正常下载壁纸了。
-
-### 3. 可以自定义壁纸吗？
-
-可以。自定义主题是一个包含 `theme.toml` 清单（schema 1）以及图片、缩略图目录的文件夹，放进自定义主题目录后即可在主题库中看到。清单格式（以及生成它的 *Dwall Maker* 工具）见 [docs/custom-themes.md](./docs/custom-themes.md)。
-
-内置成套壁纸仍然是最省事的选择：它们的每一帧都已与太阳轨迹对齐，无需自行调参即可获得正确效果。
-
-### 4. 我能设计与太阳位置完美匹配的成套壁纸，如何添加到 DWALL 中？
-
-你可以将制作好的壁纸上传到网盘当中，创建一个 issue 并说明设计思路，我们会在合适的时机将你的壁纸添加到 DWALL 中。
-
-### 5. 缩略图为什么加载失败？
-
-缩略图使用的是 Github 直链，部分地区对 Github 有网络管制，导致无法加载，你可以通过设置 Github 镜像模板来解决这个问题。
-
-### 6. 为什么不使用托盘管理后台进程？
-
-与第 1 个问题相同，托盘进程本身要比后台进程的内存占用还要大，考虑到这一点，我决定不使用托盘管理后台进程。
-
-## 制作壁纸
-
-壁纸制作是一个漫长且复杂的过程，具体制作方法可以参考：https://joshjet.substack.com/p/the-missing-macos-tahoe-dynamic-desktop
-
-不过，上面的制作方法并不严谨，若想制作与macOS完全一样的壁纸请参考本项目太角方位角和高度角的计算方法，根据你的拍摄地的地理坐标对每张照片进行角度标记。
-
----
-
-我们欢迎社区的贡献，以帮助改进 DWALL。如果您遇到任何问题或对新功能有建议，请随时在我们的 GitHub 页面上提出问题或提交拉取请求。
+欢迎提交 issue 和 pull request。DWALL 以 [AGPL-3.0-only](./LICENSE) 许可证发布；源代码位于 `crates/`（Rust）和 `src/`（前端），布局与约定见 [AGENTS.md](./AGENTS.md)。

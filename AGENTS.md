@@ -229,6 +229,10 @@ fix(settings): identify the daemon by mutex and executable name
   `Run` key would give a console window at sign-in. `--install-autostart` warns for
   a console build, `package-daemon.ps1` refuses to package one, and
   `DaemonLauncher` always passes `CREATE_NO_WINDOW`.
+- Comparison documents follow the writing rules in `docs/README.md`: cite the other
+  project's own repository, documentation or listing, measure DWALL's numbers from a
+  release build and say how, prefer no verdict over a favourable one. Never restate an
+  unsourced figure or a superlative.
 - `crates/dwall-settings/build.rs` reads `DWALL_SKIP_BUILD`; CI's Rust job
   builds only the daemon and mocks `target/release/dwall.exe` before running
   clippy/tests.
