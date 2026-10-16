@@ -416,7 +416,7 @@
 
 ### - [x] P2-33 / P2-34 / P2-36 / P2-37 一致性与文档
 
-> P2-34 ✅ `package.json` 的 `license` 由 `MIT` 改为 `AGPL-3.0`，与 `LICENSE` 及 workspace `Cargo.toml` 一致。
+> P2-34 ✅ `package.json` 的 `license` 由 `MIT` 改为 `AGPL-3.0`，与 `LICENSE` 及 workspace `Cargo.toml` 一致。（后续统一为现代 SPDX 写法 `AGPL-3.0-only`：`AGPL-3.0` 是已弃用标识符，且仓库内没有任何 "or later" 声明，故不改变授权范围。）
 > P2-37 ✅ README（中英）修正：运行日志等级与文件位置（默认 `info`、`DWALL_LOG` 支持的写法、release 编译掉 debug/trace、日志实际在 `%LOCALAPPDATA%\com.thep0y.dwall\log` 且有 backup 轮转）；FAQ#3 由"不支持自定义壁纸"改为自定义主题的正确说明（指向 `docs/custom-themes.md`）；FAQ#1 关于"设置端无法及时获知守护进程状态"的过时描述改为轮询 + 读日志尾部。`AGENTS.md` 修正：`crates/time` 不是"零依赖"、`--all-features` 会重写 `src/ipc/bindings/**`（需提交/跑 typegen）、设置 crate 的单测命令需 `--bins`、`check`/`fix` 脚本语义。
 > P2-36（部分）新增守护进程单测：`WallpaperSelector` 最近匹配/方位角环绕/NaN 不 panic/空表、`wallpaper_image_path` 的 1-based 与 `u8::MAX` 加宽、`DailyRandomThemeSelector::restore`；引擎级（含 `ThemeEngine` 泛型化）仍待办。
 > P2-33 未做：NSIS 语言列表（SimpChinese/English → 需加 Japanese/Korean/TradChinese）必须跑一次真实 bundle 才能验证语言名合法，属发布链路改动，留待有 NSIS 环境的批次。
