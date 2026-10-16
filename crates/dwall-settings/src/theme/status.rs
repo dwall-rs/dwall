@@ -4,7 +4,6 @@ use dwall::DWALL_CONFIG_DIR;
 use dwall::config::ConfigReader;
 
 use crate::error::DwallSettingsResult;
-use crate::process::find_process_by_path;
 
 /// Provides information about the current theme state
 pub struct ThemeStatusProvider;
@@ -12,7 +11,8 @@ pub struct ThemeStatusProvider;
 impl ThemeStatusProvider {
     /// Get the currently applied theme ID for a monitor
     pub fn get_current_theme_id(monitor_id: &str) -> DwallSettingsResult<Option<String>> {
-        if find_process_by_path(crate::daemon::daemon_path()?)?.is_none() {
+        // The config only reflects what is on screen while a daemon applies it.
+        if !crate::daemon::is_daemon_running()? {
             return Ok(None);
         }
 

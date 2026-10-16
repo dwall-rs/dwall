@@ -5,10 +5,10 @@ use std::time::Duration;
 use dwall::Config;
 use tokio::time::sleep;
 
-use crate::daemon::{DaemonLauncher, daemon_path, get_last_daemon_error, should_run};
+use crate::daemon::{DaemonLauncher, get_last_daemon_error, is_daemon_running, should_run};
 use crate::error::{DwallSettingsError, DwallSettingsResult};
 use crate::filesystem::validate_directory;
-use crate::process::{find_process_by_path, terminate_process};
+use crate::process::terminate_process;
 
 /// Orchestrates the theme application use case
 pub struct ThemeApplier;
@@ -22,7 +22,8 @@ impl ThemeApplier {
             "customized_themes_directory",
         )?;
 
-        match find_process_by_path(daemon_path()?) {
+        // Stop whichever daemon is running, wherever it was installed from.
+        match crate::process::find_daemon_process() {
             Ok(Some(pid)) => {
                 info!(pid = pid, "Stopping existing daemon");
                 terminate_process(pid)?;
@@ -52,9 +53,13 @@ impl ThemeApplier {
 
         sleep(Duration::from_millis(100)).await;
 
-        find_process_by_path(daemon_path()?)?.ok_or(DwallSettingsError::Daemon(
-            "Daemon process failed to start".to_string(),
-        ))?;
+        // The daemon claims its mutex before doing any work, so this is the startup
+        // handshake rather than a guess based on timing.
+        if !is_daemon_running()? {
+            return Err(DwallSettingsError::Daemon(
+                "Daemon process failed to start".to_string(),
+            ));
+        }
 
         Ok(())
     }

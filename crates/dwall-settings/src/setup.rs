@@ -5,7 +5,7 @@ use std::{env, path::PathBuf};
 use tauri::Manager;
 
 use crate::{
-    DAEMON_EXE_PATH, daemon::DaemonLauncher, network::HttpClient, process::find_process_by_path,
+    DAEMON_EXE_PATH, daemon::DaemonLauncher, network::HttpClient,
     theme::downloader::ThemeDownloader, thumbnail::ThumbnailCache, window::build_window,
 };
 
@@ -70,11 +70,12 @@ pub fn setup_app(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>>
     }
 
     tokio::spawn(async move {
-        let Ok(path) = crate::daemon::daemon_path() else {
-            return;
-        };
-        let _ = find_process_by_path(path)
-            .and_then(|pid| pid.map_or_else(|| DaemonLauncher::launch().map(|_| ()), |_| Ok(())));
+        // A daemon installed anywhere in this session counts, not only the copy
+        // next to this executable.
+        let already_running = crate::daemon::is_daemon_running().unwrap_or(false);
+        if !already_running && let Err(e) = DaemonLauncher::launch() {
+            error!(error = %e, "Failed to start the daemon");
+        }
     });
 
     info!("Application setup completed successfully");

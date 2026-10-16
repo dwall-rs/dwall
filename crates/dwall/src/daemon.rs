@@ -1,6 +1,7 @@
 //! Daemon process: watches the config, runs theme update cycles and handles
 //! random wallpaper mode.
 
+use std::path::{Path, PathBuf};
 use std::thread::sleep;
 use std::time::Duration;
 
@@ -8,7 +9,8 @@ use time::{Date, OffsetDateTime};
 
 use crate::DwallResult;
 use crate::config::{
-    Config, ConfigReader, ConfigWatcher, MonitorSpecificWallpapers, WallpaperMode,
+    Config, ConfigReader, ConfigWatcher, ConfigWriter, MonitorSpecificWallpapers, WallpaperMode,
+    config_path,
 };
 use crate::error::DwallError;
 use crate::lazy::DWALL_CONFIG_DIR;
@@ -21,6 +23,23 @@ const MAX_CONSECUTIVE_FAILURE_THRESHOLD: u8 = 3;
 
 /// Backoff before retrying a configuration read that failed.
 const CONFIG_RETRY_DELAY: Duration = Duration::from_secs(5);
+
+/// Builds the engine for one configuration generation.
+fn build_engine(config: &Config) -> DwallResult<ThemeEngine<'_>> {
+    let wallpaper_setter = WallpaperSetter::new().map_err(DwallError::WallpaperManager)?;
+    let monitor_provider = DisplayMonitorProvider::new();
+    let color_scheme_backend = ColorSchemeScheduler::new();
+    let position_provider =
+        GeographicPositionProvider::new(config.position_source(), Positioner::new());
+
+    Ok(ThemeEngine::new(
+        config,
+        wallpaper_setter,
+        monitor_provider,
+        color_scheme_backend,
+        position_provider,
+    ))
+}
 
 /// Runtime state for Random wallpaper mode
 struct RandomModeState {
@@ -43,9 +62,17 @@ pub struct DaemonApplication {
 }
 
 impl DaemonApplication {
-    /// Creates a new daemon application instance
+    /// Creates a new daemon application instance using the default config file.
     pub fn new() -> Self {
-        let config_path = DWALL_CONFIG_DIR.join("config.toml");
+        Self::with_config_path(config_path())
+    }
+
+    /// Creates a daemon application instance for a specific config file.
+    ///
+    /// `dwall --config <path>` uses this so a standalone install can keep several
+    /// independent configurations; the random-mode state file follows the config
+    /// file's directory.
+    pub fn with_config_path(config_path: PathBuf) -> Self {
         let config_watcher = ConfigWatcher::new(config_path);
 
         Self {
@@ -65,7 +92,7 @@ impl DaemonApplication {
         }
 
         loop {
-            let config = match ConfigReader::read_from_path(self.config_watcher.config_path()) {
+            let mut config = match self.load_config() {
                 Ok(config) => config,
                 Err(e) => {
                     // A hand-edited or half-written file must not kill the daemon:
@@ -80,30 +107,10 @@ impl DaemonApplication {
                     continue;
                 }
             };
-            let mut config = config;
 
-            match config.wallpaper_mode() {
-                WallpaperMode::Random { .. } => {
-                    self.handle_random_mode(&mut config)?;
-                }
-                WallpaperMode::Fixed { .. } => {
-                    // Fixed mode: clear random state if switching from random
-                    self.random_state = None;
-                }
-            }
+            self.apply_wallpaper_mode(&mut config)?;
 
-            let wallpaper_setter = WallpaperSetter::new().map_err(DwallError::WallpaperManager)?;
-            let monitor_provider = DisplayMonitorProvider::new();
-            let color_scheme_backend = ColorSchemeScheduler::new();
-            let position_provider =
-                GeographicPositionProvider::new(config.position_source(), Positioner::new());
-            let theme_engine = ThemeEngine::new(
-                &config,
-                wallpaper_setter,
-                monitor_provider,
-                color_scheme_backend,
-                position_provider,
-            );
+            let theme_engine = build_engine(&config)?;
 
             info!(
                 update_interval_seconds = config.interval(),
@@ -112,6 +119,60 @@ impl DaemonApplication {
 
             self.run_engine_loop(&theme_engine, &mut consecutive_failure_count)?;
         }
+    }
+
+    /// Applies exactly one update cycle and returns.
+    ///
+    /// Backs `dwall --once`, which makes the daemon usable from a script, a
+    /// scheduled task or a smoke test without leaving a process behind.
+    pub fn run_once(&mut self) -> DwallResult<()> {
+        let mut config = self.load_config()?;
+        self.apply_wallpaper_mode(&mut config)?;
+
+        build_engine(&config)?.run_once()?;
+
+        Ok(())
+    }
+
+    /// Reads the configuration, creating a documented default file on first run.
+    fn load_config(&self) -> DwallResult<Config> {
+        let path = self.config_watcher.config_path();
+
+        if !path.exists() {
+            match ConfigWriter.write_default(path) {
+                Ok(()) => info!(
+                    path = %path.display(),
+                    "Created a default configuration file"
+                ),
+                Err(e) => warn!(
+                    error = %e,
+                    path = %path.display(),
+                    "Failed to create a default configuration file"
+                ),
+            }
+        }
+
+        ConfigReader::read_from_path(path)
+    }
+
+    /// Applies the mode-specific preparation before a cycle.
+    fn apply_wallpaper_mode(&mut self, config: &mut Config) -> DwallResult<()> {
+        match config.wallpaper_mode() {
+            WallpaperMode::Random { .. } => self.handle_random_mode(config),
+            WallpaperMode::Fixed { .. } => {
+                // Fixed mode: clear random state if switching from random
+                self.random_state = None;
+                Ok(())
+            }
+        }
+    }
+
+    /// Directory holding the state file that accompanies the configuration.
+    fn state_dir(&self) -> PathBuf {
+        self.config_watcher
+            .config_path()
+            .parent()
+            .map_or_else(|| DWALL_CONFIG_DIR.clone(), Path::to_path_buf)
     }
 
     /// Handle Random wallpaper mode: select today's theme and always carry it in
@@ -159,7 +220,7 @@ impl DaemonApplication {
     ///
     /// Returns `true` when today's selection was restored.
     fn restore_persisted_selection(&mut self, config: &Config, today: &Date) -> DwallResult<bool> {
-        let selection = match crate::random_state::read() {
+        let selection = match crate::random_state::read_from(&self.state_dir()) {
             Ok(Some(selection)) => selection,
             Ok(None) => return Ok(false),
             Err(e) => {
@@ -212,6 +273,7 @@ impl DaemonApplication {
             return Ok(());
         }
 
+        let state_dir = self.state_dir();
         let state = self.random_state.get_or_insert_with(|| RandomModeState {
             selector: DailyRandomThemeSelector::new(),
             current_theme: None,
@@ -221,10 +283,10 @@ impl DaemonApplication {
             state.selector.mark_applied(today);
             state.current_theme = Some(theme_id.clone());
 
-            if let Err(e) = crate::random_state::write(&crate::random_state::RandomSelection::new(
-                today,
-                theme_id.clone(),
-            )) {
+            if let Err(e) = crate::random_state::write_to(
+                &state_dir,
+                &crate::random_state::RandomSelection::new(today, theme_id.clone()),
+            ) {
                 warn!(error = %e, "Failed to persist random selection");
             }
 

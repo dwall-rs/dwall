@@ -58,6 +58,20 @@ DWALL 的日志等级默认为 `info`，可通过环境变量 `DWALL_LOG` 调整
 
 守护进程的日志位于 `%LOCALAPPDATA%\com.thep0y.dwall\log\dwall.log`（可在设置页一键打开所在目录），每次启动会把上一份日志轮转到同级的 `backup` 目录。
 
+## 不依赖设置窗口单独运行守护进程
+
+`dwall.exe` 可以独立工作：它自行读取 `%APPDATA%\dwall\config.toml`（首次运行会生成带注释的默认配置），自行应用壁纸，也可以注册为登录自启。它不依赖 WebView2 运行时，因此在 LTSC / Server 镜像以及不想安装 GUI 的机器上同样可用。
+
+```console
+dwall.exe --check-config         # 校验配置
+dwall.exe --once                 # 只执行一轮更新后退出
+dwall.exe --install-autostart    # 登录时自动启动
+```
+
+守护进程与设置窗口共用同一份配置文件，且每个会话只允许一个守护进程（它持有命名互斥体），因此独立副本与安装副本不会互相抢占桌面。主题下载、缩略图与更新仍由设置程序负责。
+
+完整流程、退出码与排障见 [docs/headless.md](docs/headless.md)。
+
 ## 常见问题
 
 ### 1. 为什么设置和守护进程完全隔离？

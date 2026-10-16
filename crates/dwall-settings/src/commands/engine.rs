@@ -1,22 +1,18 @@
 //! Engine (daemon process) lifecycle commands.
 
-use crate::daemon::{DaemonLauncher, daemon_path};
+use crate::daemon::{DaemonLauncher, daemon_path, is_daemon_running};
 use crate::error::DwallSettingsResult;
-use crate::process::{find_process_by_path, terminate_process};
+use crate::process::{find_daemon_process, terminate_process};
 
 /// Whether the daemon process is currently running.
 ///
-/// Runs off the main thread: a synchronous command would block the window while
-/// the whole process list is enumerated.
+/// Runs off the main thread: the underlying check is a single `OpenMutex`, but the
+/// command still must not touch the window's event loop.
 #[tauri::command]
 pub async fn get_engine_status() -> DwallSettingsResult<bool> {
-    let path = daemon_path()?;
-    Ok(
-        tauri::async_runtime::spawn_blocking(move || find_process_by_path(path))
-            .await
-            .map_err(|e| crate::error::DwallSettingsError::Other(e.to_string()))??
-            .is_some(),
-    )
+    tauri::async_runtime::spawn_blocking(is_daemon_running)
+        .await
+        .map_err(|e| crate::error::DwallSettingsError::Other(e.to_string()))?
 }
 
 /// Start the daemon process
@@ -29,11 +25,13 @@ pub async fn start_engine() -> DwallSettingsResult<()> {
 }
 
 /// Stop the daemon process. Returns whether a process was actually terminated.
+///
+/// The daemon is located by executable name, so this also stops a portable or
+/// headless copy that was started outside this settings app.
 #[tauri::command]
 pub async fn stop_engine() -> DwallSettingsResult<bool> {
-    let path = daemon_path()?;
     tauri::async_runtime::spawn_blocking(move || -> DwallSettingsResult<bool> {
-        match find_process_by_path(path)? {
+        match find_daemon_process()? {
             Some(pid) => {
                 terminate_process(pid)?;
                 Ok(true)

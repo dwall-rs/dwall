@@ -37,6 +37,17 @@ pub(crate) fn should_run(config: &dwall::Config) -> bool {
     }
 }
 
+/// Whether a daemon is running.
+///
+/// Authoritative and cheap: the daemon holds a named mutex for its whole lifetime,
+/// so this is a single `OpenMutex` call instead of a process snapshot, and it is
+/// true for a daemon installed anywhere (the installer's copy next to this
+/// executable, a portable one, or a headless one in `C:\tools`). Use
+/// [`crate::process::find_daemon_process`] when the PID is needed as well.
+pub fn is_daemon_running() -> DwallSettingsResult<bool> {
+    Ok(dwall::daemon_is_running())
+}
+
 /// Launches the daemon process
 pub struct DaemonLauncher;
 
