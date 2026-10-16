@@ -26,7 +26,15 @@ pub fn build_window(
 ) -> Result<(), Box<dyn Error>> {
     let window_builder = WebviewWindowBuilder::new(app, label, WebviewUrl::default())
         .title(title)
-        .resizable(false)
+        // Resizable on purpose, even though the layout is designed for maximized use:
+        // Windows sizes a maximized window against the monitor's *work area* only when
+        // the window has a sizing frame. Without `WS_THICKFRAME` (what `resizable(false)`
+        // removes) it maximizes against the whole monitor, so with the taskbar docked
+        // left or right the window grows by the taskbar width and pushes its content off
+        // screen. Measured on a 200% DPI display with the taskbar on the left: client
+        // area 1536x937 (work area 1488x960) without the frame, 1488x937 with it. The
+        // inner minimum below keeps the layout's smallest tier intact.
+        .resizable(true)
         .maximizable(true)
         .transparent(true)
         .visible(cfg!(debug_assertions))
