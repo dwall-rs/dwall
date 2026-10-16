@@ -1,6 +1,6 @@
 // Responsibility: Candidate-pool status bar for random mode — three states: empty (destructive) / dirty (warning) / normal (muted).
 import { randomStore, isDirty } from "@/store/random.store";
-import { themeList } from "@/store/catalog.selectors";
+import { availableThemes } from "@/store/catalog.selectors";
 import { t } from "@/i18n";
 import { clsx } from "@/utils";
 import { createMemo } from "solid-js";
@@ -15,7 +15,9 @@ export function WriteNote() {
       : dirty()
         ? t("scope.randomDirty", {
             n: randomStore.selected.length,
-            excluded: themeList().length - randomStore.selected.length,
+            // Counted against what can be applied: an uninstalled theme is not excluded
+            // from the pool, it was never a candidate.
+            excluded: availableThemes().length - randomStore.selected.length,
           })
         : t("scope.randomNormal", { n: randomStore.selected.length }),
   );

@@ -2,9 +2,21 @@
 import type { CatalogTheme } from "@/ipc";
 import type { Theme } from "./types";
 
+/**
+ * A catalog entry as the UI model.
+ *
+ * Only a catalog theme can need downloading: a custom theme exists on disk by
+ * construction, and Rust decides whether a catalog theme's frames are there.
+ */
+const toTheme = (theme: CatalogTheme): Theme => ({
+  id: theme.id,
+  name: theme.name,
+  needsDownload: theme.source === "catalog" && !theme.installed,
+});
+
 /** Theme list (from the Rust catalog). */
 export const themeList = (themes: CatalogTheme[]): Theme[] =>
-  themes.map((t) => ({ id: t.id, name: t.name }));
+  themes.map(toTheme);
 
 /**
  * Look up a theme by id:
@@ -18,10 +30,12 @@ export const themeById = (
 ): Theme => {
   if (id) {
     const found = themes.find((t) => t.id === id);
-    return found ? { id: found.id, name: found.name } : { id, name: id };
+    // Not in the catalog means it cannot be downloaded from the library, whatever
+    // is on disk: the stage checks the frames itself before offering anything.
+    return found ? toTheme(found) : { id, name: id, needsDownload: false };
   }
   const first = themes[0];
   return first
-    ? { id: first.id, name: first.name }
-    : { id: "default", name: "—" };
+    ? toTheme(first)
+    : { id: "default", name: "—", needsDownload: false };
 };

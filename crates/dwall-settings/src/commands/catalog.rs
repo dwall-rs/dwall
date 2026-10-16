@@ -47,6 +47,12 @@ pub struct CatalogTheme {
     pub source: String,
     /// Remote URLs for catalog themes; absolute local paths for custom themes.
     pub thumbnails: Vec<String>,
+    /// Whether the theme's frames are on disk.
+    ///
+    /// A catalog theme that is not installed yet is what the library offers to
+    /// download; it is computed from the same lookup [`get_theme_wallpapers`] uses,
+    /// so the library and the stage always agree on which themes are missing.
+    pub installed: bool,
 }
 
 /// List the themes available for download, plus the installed custom themes.
@@ -64,6 +70,7 @@ pub fn get_theme_catalog() -> Vec<CatalogTheme> {
                 name: name.to_string(),
                 source: "catalog".to_string(),
                 thumbnails,
+                installed: is_installed(name),
             }
         })
         .collect();
@@ -96,6 +103,8 @@ fn custom_catalog_themes() -> Vec<CatalogTheme> {
                 name: manifest.theme.name.clone(),
                 source: "custom".to_string(),
                 thumbnails: local_thumbnails(&dir, manifest.image_format()),
+                // The directory and its manifest are what makes a custom theme exist.
+                installed: true,
             })
         })
         .collect()
@@ -147,6 +156,17 @@ fn installed_solar_angles(theme_id: &str) -> DwallSettingsResult<Vec<SolarAngle>
         return Ok(Vec::new());
     }
     Ok(read_solar_angles(&dir)?)
+}
+
+/// Whether a theme's frames are readable from disk.
+///
+/// A theme whose directory or `solar.json` cannot be read counts as not installed,
+/// which is exactly how the stage treats it: it would have no frames to show and
+/// would offer the download.
+fn is_installed(theme_id: &str) -> bool {
+    !installed_solar_angles(theme_id)
+        .unwrap_or_default()
+        .is_empty()
 }
 
 /// Wallpapers (with their target solar angles) for an installed theme.

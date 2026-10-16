@@ -1,7 +1,8 @@
 // Responsibility: root component, renders the shell only; holds no business state (state lives in the individual stores).
 import { AppShell } from "@/layout/AppShell";
 import { onCleanup, onMount } from "solid-js";
-import { catalogStore, load as loadCatalog } from "./store/catalog.store";
+import { load as loadCatalog } from "./store/catalog.store";
+import { availableThemeIds } from "./store/catalog.selectors";
 import { refresh as refreshEngine } from "./store/engine.store";
 import { syncFromConfig as syncFixed } from "./store/fixed.store";
 import { syncFromConfig as syncRandom } from "./store/random.store";
@@ -22,10 +23,8 @@ export default function App() {
 
     const config = settingsStore.config;
     syncFixed(config);
-    syncRandom(
-      config,
-      catalogStore.themes.map((t) => t.id),
-    );
+    // Only themes on disk can be applied, so only those can enter the pool.
+    syncRandom(config, availableThemeIds());
     if (config?.wallpaper_mode?.mode === "random") setMode("random");
   });
   return <AppShell />;

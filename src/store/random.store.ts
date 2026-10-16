@@ -2,6 +2,7 @@
 import { createStore } from "solid-js/store";
 
 import type { Config } from "@/models/config";
+import { seedPool } from "@/models/pool";
 import { applyWallpaperMode } from "./settings.store";
 
 interface RandomState {
@@ -21,13 +22,14 @@ const [randomStore, setRandomStore] = createStore<RandomState>({
 });
 
 /** Seed the candidate pool from the config (called once config + theme catalog are loaded). */
-const syncFromConfig = (config: Config | null, allIds: string[]) => {
+const syncFromConfig = (config: Config | null, availableIds: string[]) => {
   const mode = config?.wallpaper_mode;
   const pool = mode?.mode === "random" ? mode.pool : null;
-  // The pool in the config is the source of truth; drop theme ids no longer in the catalog (uninstalled).
-  const selected = pool ? pool.filter((id) => allIds.includes(id)) : allIds;
+  // Only themes whose frames are on disk can enter the pool; the library offers the
+  // download for the rest (see `models/pool`).
+  const selected = seedPool(pool, availableIds);
   setRandomStore({
-    selected: [...selected],
+    selected,
     saved: [...selected],
     applied: mode?.mode === "random",
     saving: false,

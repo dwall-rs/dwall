@@ -12,6 +12,8 @@ export type ResolvedTheme = "light" | "dark";
 export interface Theme {
   id: string;
   name: string;
+  /** In the catalog but not on disk yet, so the library offers to download it. */
+  needsDownload: boolean;
 }
 
 /** Wallpaper: target solar angle (image shown as a thumbnail, provided by the theme catalog). */

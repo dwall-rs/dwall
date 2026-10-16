@@ -1,12 +1,15 @@
 // Responsibility: Read-only summary figures for random mode — candidate pool / range / target / period.
 import { randomStore } from "@/store/random.store";
-import { themeList } from "@/store/catalog.selectors";
+import { availableThemes } from "@/store/catalog.selectors";
 import { t } from "@/i18n";
 import { clsx } from "@/utils";
 import { createMemo } from "solid-js";
 
 export function RandomStats() {
   const n = createMemo(() => randomStore.selected.length);
+  // The denominator is what can be applied: an uninstalled theme is not a candidate at
+  // all, so it is neither pooled nor "excluded".
+  const selectable = createMemo(() => availableThemes().length);
   const empty = createMemo(() => n() === 0);
   return (
     <div class="flex flex-wrap gap-7.5">
@@ -17,9 +20,9 @@ export function RandomStats() {
       />
       <Stat
         value={
-          n() === themeList().length
+          n() === selectable()
             ? t("stage.stats.all")
-            : t("stage.stats.exclude", { n: themeList().length - n() })
+            : t("stage.stats.exclude", { n: selectable() - n() })
         }
         label={t("stage.stats.range")}
         small
