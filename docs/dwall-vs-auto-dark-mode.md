@@ -1,70 +1,52 @@
-# DWALL vs Auto Dark Mode: A Comprehensive Comparison
+# DWALL vs Auto Dark Mode
 
-For a comparison with WinDynamicDesktop, see [DWALL vs WinDynamicDesktop](./dwall-vs-windynamicdesktop.md).
+Both are free, open-source Windows apps that run a per-user background engine, switch
+the system light/dark theme and can set per-monitor wallpapers. They differ in what
+drives the switch and how much of Windows they touch.
 
-## Overview
+## At a glance
 
-Both DWALL and Auto Dark Mode aim to provide automated theme switching on Windows systems, but they take different approaches to achieve this goal. This document compares the two solutions to highlight the unique advantages of DWALL.
+|            | DWALL                                                  | Auto Dark Mode                                                                      |
+| ---------- | ------------------------------------------------------ | ----------------------------------------------------------------------------------- |
+| Primary job | Wallpaper frames chosen by the sun's position          | Windows dark/light theme on a schedule                                              |
+| Switch signal | Solar altitude/azimuth computed locally (refraction, altitude, polar latitudes) or manual coordinates | Fixed times, sun times from Windows location, Night Light state, ambient-light sensor, hotkeys, scripts |
+| Wallpaper  | Theme = frames bound to sun positions, matched continuously; per-monitor; optional lock screen | One image per monitor per theme, solid colour or slideshow; no lock-screen feature documented |
+| Also changes | System light/dark theme                              | App/system theme, accent colour, mouse cursors, `.theme` files, taskbar/title bars, grayscale |
+| Extensibility | None                                                | Custom scripts, conditions (gaming, battery, Night Light), hotkeys                  |
+| Stack      | Rust daemon (no async runtime) + Tauri/SolidJS GUI     | .NET 9: WinUI 3 GUI, WinForms-based engine, console CLI shell                        |
+| Footprint  | Daemon ≈4 MB private, 0.6 MB exe; no tray icon         | Not documented by the project; tray icon and named-pipe command server               |
+| CPU architectures | x64                                              | x64, ARM64                                                                          |
+| Languages  | 6                                                      | 31                                                                                   |
+| Distribution | Installer + portable daemon archive; no Store listing | GitHub, Microsoft Store (free), winget `ArminOsaj.AutoDarkMode`; Chocolatey/Scoop entries are unofficial |
+| Requirements | Windows 10/11 x64; WebView2 for the GUI              | Windows 10 22H2 or newer, Windows 11                                                 |
+| CLI        | `dwall.exe --check-config`, `--once`, `--install-autostart`, `--config` | `AutoDarkModeShell.exe`, commands over the engine's named pipe       |
+| Licence    | AGPL-3.0-only                                          | GPL-3.0                                                                              |
 
-## Feature Comparison
+## Choose DWALL if
 
-See [shared comparison content](./shared-comparison-content.md) for a detailed feature comparison table.
+- You want the wallpaper itself to follow the sun, not a two-state theme flip.
+- The resident cost should be a few megabytes, with no tray icon.
+- You deploy headless: a portable daemon, a config file, no GUI and no WebView2.
 
-## Key Advantages of DWALL
+## Choose Auto Dark Mode if
 
-### 1. Solar-Based Wallpaper Transitions
+- Your goal is Windows personalisation: accent colour, cursors, taskbar, `.theme` files.
+- You need scheduling beyond the sun — Night Light, ambient light, battery or gaming
+  conditions, hotkeys, custom scripts.
+- You need ARM64, a Microsoft Store install, or a language other than the six DWALL ships.
 
-Unlike Auto Dark Mode which primarily focuses on switching between light and dark themes, DWALL provides a more sophisticated experience by changing wallpapers based on the actual position of the sun. This creates a more natural and immersive experience that mimics macOS behavior.
+## Both, in one line each
 
-### 2. Ultra-Low Resource Consumption
+Auto Dark Mode covers more of Windows and is scriptable; DWALL deliberately narrows to
+sun-driven wallpaper transitions so the always-on process stays small. If you only want
+dark-mode switching, use Auto Dark Mode or Windows' own schedule; DWALL is about the
+wallpaper.
 
-DWALL is specifically designed with minimal resource usage in mind:
+## Sources
 
-- Isolated daemon process for background operations
-- Settings UI completely separated from background operations
-- Memory footprint significantly lower than competing solutions
-- No system tray integration to reduce overhead
-
-### 3. Scientifically-Aligned Wallpaper Sets
-
-DWALL provides pre-configured wallpaper sets that are scientifically aligned with solar movements:
-
-- Each wallpaper is precisely timed to specific sun positions
-- Curated collections ensure optimal visual experience
-- Eliminates the need for users to manually configure complex timing systems
-
-### 4. Advanced Multi-Monitor Support
-
-See [shared comparison content](./shared-comparison-content.md) for common multi-monitor support features.
-
-### 5. Geographic Position Accuracy
-
-See [shared comparison content](./shared-comparison-content.md) for common geographic position handling features.
-
-### 6. Robust Error Handling
-
-DWALL implements comprehensive error handling:
-
-- Automatic retry mechanisms for failed operations
-- Graceful degradation when services are unavailable
-- Detailed logging for troubleshooting
-
-## Auto Dark Mode Strengths
-
-See [shared comparison content](./shared-comparison-content.md) for common Auto Dark Mode strengths.
-
-## Use Case Scenarios
-
-See [shared comparison content](./shared-comparison-content.md) for common use case scenarios.
-
-## Technical Implementation Differences
-
-### DWALL Architecture
-
-See [shared comparison content](./shared-comparison-content.md) for architecture comparisons.
-
-## Conclusion
-
-DWALL and Auto Dark Mode serve similar purposes but with different philosophies. DWALL focuses on providing a lightweight, macOS-like dynamic wallpaper experience with minimal system impact. Auto Dark Mode provides a more traditional approach to theme switching with deeper Windows integration and extensibility features.
-
-For users seeking a resource-efficient solution with scientifically-aligned wallpaper transitions that mimic macOS behavior, DWALL is the superior choice. For users who need deeper Windows integration and custom scripting capabilities, Auto Dark Mode may be more appropriate.
+Auto Dark Mode facts above come from that project's own material — repository and
+release metadata (github.com/AutoDarkMode/Windows-Auto-Night-Mode), its
+`docs/backend-flow.md`, `PRIVACY.md`, wiki pages on known limitations and
+troubleshooting, and its Microsoft Store listing. DWALL figures are measured from this
+repository's release build; see [technical-comparison.md](./technical-comparison.md)
+for how.
