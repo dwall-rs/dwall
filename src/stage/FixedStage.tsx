@@ -6,6 +6,7 @@ import { getThemeWallpapers, matchWallpaper } from "@/ipc";
 import { t } from "@/i18n";
 import {
   fixedStore,
+  isApplied,
   scopeKey,
   selectWallpaper,
   themeForMon,
@@ -14,13 +15,14 @@ import { useSolarPosition } from "@/hooks/useSolarPosition";
 import { ApplyRow } from "./ApplyRow";
 import { Preview } from "./Preview";
 import { SunPathPanel } from "./SunPathPanel";
+import { ThemeDownload } from "./ThemeDownload";
 import { WallpaperStrip } from "./WallpaperStrip";
 
 export function FixedStage() {
   const themeId = createMemo(() => themeForMon(scopeKey()) ?? "");
   const theme = createMemo(() => themeById(themeId()));
 
-  const [wallpapers] = createResource(
+  const [wallpapers, { refetch: refetchWallpapers }] = createResource(
     themeId,
     async (id): Promise<Wallpaper[]> => {
       if (!id) return [];
@@ -45,6 +47,8 @@ export function FixedStage() {
   );
 
   const list = createMemo(() => wallpapers() ?? []);
+  /** A theme is usable once its frames are on disk; the fallback below offers to install it. */
+  const installed = createMemo(() => list().length > 0);
   // One image may correspond to several solar positions; the list is deduplicated by image
   const unique = createMemo(() => {
     const seen = new Set<number>();
@@ -85,16 +89,24 @@ export function FixedStage() {
       </Show>
 
       <Show
-        when={list().length > 0}
+        when={installed()}
         fallback={
           <div class="flex min-h-0 flex-1 items-center justify-center rounded-2xl border border-border bg-card text-center">
-            <div class="space-y-1.5 px-6">
+            <div class="flex flex-col items-center gap-3 px-6">
               <div class="font-display text-[14px] font-bold">
                 {theme().name}
               </div>
               <div class="font-mono text-[11.5px] text-muted-foreground">
                 {t("stage.notInstalled")}
               </div>
+              <Show when={themeId()}>
+                {(id) => (
+                  <ThemeDownload
+                    themeId={id()}
+                    onInstalled={() => void refetchWallpapers()}
+                  />
+                )}
+              </Show>
             </div>
           </div>
         }
@@ -117,7 +129,11 @@ export function FixedStage() {
         />
       </Show>
 
-      <ApplyRow />
+      {/* Nothing to apply before the theme is installed — but a scope that is already
+          applied must keep its "stop" button even if the theme files are gone. */}
+      <Show when={installed() || isApplied(scopeKey())}>
+        <ApplyRow />
+      </Show>
     </div>
   );
 }

@@ -78,7 +78,13 @@ impl ThemeDownloader {
         create_dir_if_missing(&staging_dir).await?;
 
         let download_result = self
-            .download_with_retry(&asset_url, &temp_path, &cancel_flag, progress_emitter)
+            .download_with_retry(
+                &asset_url,
+                &temp_path,
+                &cancel_flag,
+                progress_emitter,
+                theme_id,
+            )
             .await;
 
         if let Err(e) = download_result {
@@ -136,11 +142,12 @@ impl ThemeDownloader {
         temp_path: &std::path::Path,
         cancel_flag: &Arc<AtomicBool>,
         progress_emitter: Option<&ProgressEmitter<'_, impl Runtime>>,
+        task_id: &str,
     ) -> DwallSettingsResult<()> {
         const MAX_RETRIES: u32 = 3;
 
         let progress_callback = progress_emitter
-            .map(|emitter| OwnedProgressEmitter::new(emitter.window()).throttled_callback());
+            .map(|emitter| OwnedProgressEmitter::new(emitter.window()).throttled_callback(task_id));
 
         for attempt in 0..MAX_RETRIES {
             if attempt > 0 {
