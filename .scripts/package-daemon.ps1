@@ -36,6 +36,29 @@ if (-not (Test-Path -LiteralPath $binary -PathType Leaf)) {
     throw "Daemon binary not found: $binary. Build it first (bun run build:daemon)."
 }
 
+# The daemon must stay a GUI-subsystem executable: a console application launched
+# from the `Run` key opens a console window at every logon. Release builds set
+# `windows_subsystem = "windows"`, so a debug binary reaching this point means the
+# release would be the one that flashes a window — fail instead of shipping it.
+function Get-PeSubsystem([string]$Path) {
+    $stream = [System.IO.File]::OpenRead($Path)
+    try {
+        $reader = New-Object System.IO.BinaryReader($stream)
+        $stream.Position = 0x3C
+        $peOffset = $reader.ReadInt32()
+        $stream.Position = $peOffset + 0x5C
+        return $reader.ReadUInt16()
+    }
+    finally {
+        $stream.Dispose()
+    }
+}
+
+$subsystem = Get-PeSubsystem $binary
+if ($subsystem -ne 2) {
+    throw "Refusing to package ${binary}: PE subsystem $subsystem is not WINDOWS_GUI (2), so auto-start would open a console window. Build the release profile (bun run build:daemon)."
+}
+
 $archiveName = "Dwall_${Version}_x64-daemon.zip"
 $outputRoot = Join-Path $repositoryRoot $OutputDirectory
 $stagingDirectory = Join-Path $outputRoot "staging"

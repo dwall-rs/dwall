@@ -328,6 +328,18 @@ fn install_autostart() -> ExitCode {
         println!("replacing the existing auto-start entry: {existing}");
     }
 
+    // A debug build is a console application, so the `Run` key would give it a
+    // console window at every logon; release builds are GUI-subsystem executables
+    // and stay silent. Say so rather than surprising someone at sign-in.
+    if dwall::executable_opens_console().unwrap_or(false) {
+        eprintln!(
+            "warning: this is a console build, so auto-starting it opens a console window at sign-in"
+        );
+        eprintln!(
+            "         use a release build (bun run build:daemon) for a windowless auto-start"
+        );
+    }
+
     match dwall::install_autostart(&executable) {
         Ok(()) => {
             println!("auto-start registered: \"{}\"", executable.display());

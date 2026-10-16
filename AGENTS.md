@@ -223,6 +223,12 @@ fix(settings): identify the daemon by mutex and executable name
   `publish.yml` too, so a stale template fails the release). They are submitted to
   those package repositories by hand; run the script with `-Validate` before
   submitting.
+- The daemon must stay windowless when it is auto-started: release builds are
+  GUI-subsystem executables (`windows_subsystem` is set for
+  `not(debug_assertions)`), while a debug build is a console application that the
+  `Run` key would give a console window at sign-in. `--install-autostart` warns for
+  a console build, `package-daemon.ps1` refuses to package one, and
+  `DaemonLauncher` always passes `CREATE_NO_WINDOW`.
 - `crates/dwall-settings/build.rs` reads `DWALL_SKIP_BUILD`; CI's Rust job
   builds only the daemon and mocks `target/release/dwall.exe` before running
   clippy/tests.
@@ -235,3 +241,7 @@ fix(settings): identify the daemon by mutex and executable name
   memory are the point.
 - Don't break the `dwall` public API without updating `dwall-settings` and
   `crates/dwall/tests/trait_mocks.rs`.
+- Don't give the daemon theme management. It reads `themes_directory` and
+  `customized_themes_directory` and nothing else; downloading, mirrors, unpacking
+  and thumbnails stay in `dwall-settings`, and a headless install deploys its
+  themes by hand.

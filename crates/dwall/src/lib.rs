@@ -37,8 +37,8 @@ pub use wallpaper::{WallpaperProvider, WallpaperSelector};
 #[cfg(windows)]
 pub use platform::{
     DaemonInstance, DisplayMonitor, DisplayMonitorProvider, Positioner, RegistryError, RegistryKey,
-    acquire_daemon_instance, daemon_is_running, install_autostart, is_autostart_installed,
-    registered_autostart_command, uninstall_autostart,
+    acquire_daemon_instance, daemon_is_running, executable_opens_console, install_autostart,
+    is_autostart_installed, registered_autostart_command, uninstall_autostart,
 };
 
 // Backwards compatibility aliases

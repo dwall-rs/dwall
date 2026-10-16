@@ -14,6 +14,7 @@ pub use windows::{
     monitor::{DisplayError, DisplayMonitor, DisplayMonitorProvider},
     registry::{RegistryError, RegistryKey},
     single_instance::{DaemonInstance, acquire_daemon_instance, daemon_is_running},
+    subsystem::executable_opens_console,
     wallpaper::WallpaperError,
 };
 

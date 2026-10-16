@@ -23,7 +23,7 @@
     "test": "vitest --run",
     "typegen": "cargo test -p dwall --features ts --lib export_bindings && cargo test -p dwall-settings --features typegen export_bindings"
   },
-  "license": "AGPL-3.0",
+  "license": "AGPL-3.0-only",
   "dependencies": {
     "@solid-primitives/i18n": "^2.2.1",
     "@tauri-apps/api": "^2.12.4",
