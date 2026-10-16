@@ -190,6 +190,14 @@ Values written before the command line was quoted are accepted when checking
 whether auto-start is enabled, so an older entry does not look "off". Install once
 from the copy you want to keep and it is rewritten in the quoted form.
 
+Starting this way is silent. Release builds are GUI-subsystem executables, so the
+`Run` entry never opens a console window, and the settings window launches the
+daemon with `CREATE_NO_WINDOW` for the same reason. A **debug** build (`cargo run
+-p dwall`, `bun run dev`) is a console application, which would open a console
+window at every logon, so `--install-autostart` warns when it is asked to register
+one. The release archives are checked to contain a GUI-subsystem executable before
+they are packaged.
+
 If you prefer a scheduled task (for example to add a delay, run only when a
 particular user is logged on, or restart it on failure), point the action at
 `dwall.exe` directly and do not also use the `Run` key.
@@ -203,7 +211,8 @@ packs) or `customized_themes_directory` (your own), or point those keys somewher
 else.
 
 Downloading themes, resolving GitHub mirrors and generating thumbnails live in the
-settings app — the daemon only reads theme directories. Headless installations
+settings app — the daemon only reads theme directories, by design: it stays offline
+and tiny, and a headless install deploys its themes itself. Headless installations
 therefore fetch a theme pack themselves (for example a release asset) and unpack it
 into `themes_directory`. Nothing else is required; the daemon picks the directory up
 on its next cycle.

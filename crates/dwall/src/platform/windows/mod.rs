@@ -5,4 +5,5 @@ pub mod geolocation;
 pub mod monitor;
 pub mod registry;
 pub mod single_instance;
+pub mod subsystem;
 pub mod wallpaper;
