@@ -311,6 +311,17 @@ jobs:
             ⚠️ This is a nightly build and may contain unstable features.
           args: --config crates/dwall-settings/tauri.debug.conf.json
 
+      # The nightly daemon keeps the verbose logging of the debug build, which is
+      # what a headless user tracking nightly fixes wants.
+      - name: Package the standalone daemon
+        run: ./.scripts/package-daemon.ps1 -Version nightly
+
+      - name: Attach the standalone daemon to the nightly release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release upload nightly dist-daemon/*.zip dist-daemon/*.zip.sha256 --clobber
+
   publish-nightly:
     permissions:
       contents: write

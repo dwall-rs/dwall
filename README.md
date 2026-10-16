@@ -60,7 +60,7 @@ The daemon writes to `%LOCALAPPDATA%\com.thep0y.dwall\log\dwall.log` (open the f
 
 ## Running the daemon without the settings window
 
-`dwall.exe` works on its own: it reads `%APPDATA%\dwall\config.toml` (creating a commented default file on first run), applies the wallpaper itself, and can register to start at sign-in. It needs no WebView2 runtime, so it is also usable on LTSC/Server images and other machines where the GUI is not wanted.
+`dwall.exe` works on its own: it reads `%APPDATA%\dwall\config.toml` (creating a commented default file on first run), applies the wallpaper itself, and can register to start at sign-in. It needs no WebView2 runtime, so it is also usable on LTSC/Server images and other machines where the GUI is not wanted. Releases publish it as `Dwall_<version>_x64-daemon.zip`.
 
 ```console
 dwall.exe --check-config         # validate the configuration
