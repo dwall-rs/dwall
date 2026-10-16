@@ -1,0 +1,27 @@
+{
+  "$schema": "https://raw.githubusercontent.com/ScoopInstaller/Scoop/master/schema.json",
+  "version": "__VERSION__",
+  "description": "Solar-position dynamic wallpaper daemon, without the settings window",
+  "homepage": "https://github.com/__REPOSITORY__",
+  "license": {
+    "identifier": "AGPL-3.0-only",
+    "url": "https://github.com/__REPOSITORY__/blob/main/LICENSE"
+  },
+  "architecture": {
+    "64bit": {
+      "url": "__URL__",
+      "hash": "__SHA256__"
+    }
+  },
+  "bin": [["dwall.exe", "dwall"]],
+  "checkver": {
+    "github": "https://github.com/__REPOSITORY__"
+  },
+  "autoupdate": {
+    "architecture": {
+      "64bit": {
+        "url": "https://github.com/__REPOSITORY__/releases/download/v$version/Dwall_$version_x64-daemon.zip"
+      }
+    }
+  }
+}

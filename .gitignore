@@ -1,6 +1,7 @@
 node_modules
 dist
 dist-daemon
+dist-manifests
 .DS_Store
 *.bak
 target

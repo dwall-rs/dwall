@@ -1,0 +1,19 @@
+# yaml-language-server: $schema=https://aka.ms/winget-manifest.installer.1.10.0.schema.json
+# Rendered by .scripts/render-package-manifests.ps1 — edit the template, not a copy.
+#
+# The archive holds the daemon on its own, so it installs as a portable package:
+# winget unpacks it and exposes dwall.exe on PATH as `dwall`.
+PackageIdentifier: __IDENTIFIER__
+PackageVersion: __VERSION__
+InstallerType: zip
+NestedInstallerType: portable
+NestedInstallerFiles:
+  - RelativeFilePath: dwall.exe
+    PortableCommandAlias: dwall
+Installers:
+  - Architecture: x64
+    InstallerUrl: __URL__
+    InstallerSha256: __SHA256__
+ReleaseDate: __DATE__
+ManifestType: installer
+ManifestVersion: 1.10.0

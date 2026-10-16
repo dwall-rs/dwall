@@ -309,6 +309,12 @@ jobs:
             🌙 **Nightly Build ${{ needs.create-nightly-release.outputs.build_date }}**
 
             ⚠️ This is a nightly build and may contain unstable features.
+
+            **Downloads**
+
+            - the settings window, with the daemon bundled in (NSIS installer)
+            - `Dwall_nightly_x64-daemon.zip` — the daemon alone: portable, headless,
+              no WebView2, and with this build's verbose logging
           args: --config crates/dwall-settings/tauri.debug.conf.json
 
       # The nightly daemon keeps the verbose logging of the debug build, which is

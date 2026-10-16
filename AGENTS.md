@@ -218,6 +218,11 @@ fix(settings): identify the daemon by mutex and executable name
   `publish.yml` and to the nightly release by `nightly.yml`. It ships `dwall.exe`
   together with `docs/headless.md` and `docs/custom-themes.md`, so keep those
   documents accurate: they are the only documentation a headless install gets.
+- The winget and Scoop manifests are templates in `.packaging/`, filled from a
+  release's checksum by `.scripts/render-package-manifests.ps1` (rendered in
+  `publish.yml` too, so a stale template fails the release). They are submitted to
+  those package repositories by hand; run the script with `-Validate` before
+  submitting.
 - `crates/dwall-settings/build.rs` reads `DWALL_SKIP_BUILD`; CI's Rust job
   builds only the daemon and mocks `target/release/dwall.exe` before running
   clippy/tests.
