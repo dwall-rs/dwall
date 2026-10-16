@@ -10,6 +10,12 @@ use crate::window::set_color_mode;
 pub fn show_window(app: AppHandle, label: &str) -> DwallSettingsResult<()> {
     if let Some(window) = app.get_webview_window(label) {
         window.show()?;
+        // Windows computes the maximized frame for a *visible* window. One created with
+        // `maximized(true)` while hidden carries the state but is shown at its restored
+        // size (measured: 1024x640 instead of the 1488x960 work area), so ask once more
+        // after showing: `maximize` issues `SW_MAXIMIZE`, which is what sizes the window
+        // against the work area with the taskbar on any edge.
+        window.maximize()?;
         window.set_focus()?;
     }
     Ok(())
