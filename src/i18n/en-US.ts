@@ -54,6 +54,10 @@ export const dict = {
 
   stage: {
     notInstalled: "This theme is not installed or has no wallpapers",
+    download: "Download",
+    downloading: "Downloading…",
+    cancelDownload: "Cancel",
+    downloadFailed: "Download failed:",
     applyTo: "Write this theme to {{ name }}",
     stop: "Stop",
     apply: "Apply this theme",

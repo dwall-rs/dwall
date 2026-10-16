@@ -1,6 +1,34 @@
 import { invoke } from "@tauri-apps/api/core";
+import { listen } from "@tauri-apps/api/event";
 
 import type { Config, CustomizedTheme, ImageFormat } from "./types";
+
+/** Progress of a running theme download, as reported by the `download-progress` event. */
+export interface ThemeDownloadProgress {
+  /** Identifies the download; the theme id. */
+  taskId: string;
+  downloadedBytes: number;
+  totalBytes: number;
+}
+
+/**
+ * Subscribes to theme download progress.
+ *
+ * Resolves to the unlisten function, so a caller that shows one download's
+ * progress can stop listening when it ends.
+ */
+export const onThemeDownloadProgress = async (
+  handler: (progress: ThemeDownloadProgress) => void,
+) =>
+  listen<{ task_id: string; downloaded_bytes: number; total_bytes: number }>(
+    "download-progress",
+    (event) =>
+      handler({
+        taskId: event.payload.task_id,
+        downloadedBytes: event.payload.downloaded_bytes,
+        totalBytes: event.payload.total_bytes,
+      }),
+  );
 
 export const validateTheme = async (
   themesDirectory: string,

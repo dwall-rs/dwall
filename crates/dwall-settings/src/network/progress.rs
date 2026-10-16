@@ -51,10 +51,16 @@ impl<R: Runtime + 'static> OwnedProgressEmitter<R> {
 
     /// Builds a download callback that reports at most once per percent.
     ///
-    /// Emitting per chunk would mean thousands of IPC messages for a large theme
-    /// archive.
-    pub fn throttled_callback(self) -> Arc<dyn Fn(u64, u64) + Send + Sync> {
+    /// `task_id` identifies the download to the window (the theme id today), so a
+    /// progress message can be attributed instead of being assumed to belong to
+    /// whichever download happens to be running. Emitting per chunk would mean
+    /// thousands of IPC messages for a large theme archive.
+    pub fn throttled_callback(
+        self,
+        task_id: impl Into<String>,
+    ) -> Arc<dyn Fn(u64, u64) + Send + Sync> {
         let last_percent = AtomicU64::new(u64::MAX);
+        let task_id = task_id.into();
 
         Arc::new(move |written: u64, total: u64| {
             if total == 0 {
@@ -67,7 +73,7 @@ impl<R: Runtime + 'static> OwnedProgressEmitter<R> {
             }
 
             let _ = self.emit_progress(DownloadProgress {
-                task_id: "theme",
+                task_id: &task_id,
                 downloaded_bytes: written,
                 total_bytes: total,
             });

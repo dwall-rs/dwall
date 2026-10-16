@@ -56,6 +56,10 @@ export const dict: RawDictionary = {
 
   stage: {
     notInstalled: "このテーマは未インストールか壁紙がありません",
+    download: "ダウンロード",
+    downloading: "ダウンロード中…",
+    cancelDownload: "キャンセル",
+    downloadFailed: "ダウンロードに失敗しました：",
     applyTo: "このテーマを{{ name }}に書き込み",
     stop: "停止",
     apply: "このテーマを適用",

@@ -53,6 +53,10 @@ export const dict: RawDictionary = {
 
   stage: {
     notInstalled: "该主题尚未安装或无壁纸",
+    download: "下载",
+    downloading: "下载中…",
+    cancelDownload: "取消",
+    downloadFailed: "下载失败：",
     applyTo: "将这套主题写配置到{{ name }}",
     stop: "停止",
     apply: "应用此套",
