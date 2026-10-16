@@ -36,7 +36,9 @@ pub use wallpaper::{WallpaperProvider, WallpaperSelector};
 // Re-export platform types
 #[cfg(windows)]
 pub use platform::{
-    DisplayMonitor, DisplayMonitorProvider, Positioner, RegistryError, RegistryKey,
+    DaemonInstance, DisplayMonitor, DisplayMonitorProvider, Positioner, RegistryError, RegistryKey,
+    acquire_daemon_instance, daemon_is_running, install_autostart, is_autostart_installed,
+    registered_autostart_command, uninstall_autostart,
 };
 
 // Backwards compatibility aliases

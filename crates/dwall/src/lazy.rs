@@ -1,33 +1,55 @@
-use std::{fs, path::PathBuf, sync::LazyLock};
+//! Lazily initialised per-user directories.
+//!
+//! These initialisers run on first access from every entry point, including a
+//! GUI-subsystem daemon whose panics are invisible (release builds are built with
+//! `panic = "abort"` and have no console). A profile directory that cannot be
+//! created or determined therefore degrades into a logged error plus a working
+//! fallback, never into a process that disappears without a trace; callers that
+//! genuinely need the directory fail later with a real error.
+
+use std::path::{Path, PathBuf};
+use std::sync::LazyLock;
+use std::{env, fs};
+
+/// Creates `path` (and its parents) when missing, logging instead of panicking.
+fn ensure_dir(path: &Path) {
+    if path.exists() {
+        debug!(path = %path.display(), "Directory already exists");
+        return;
+    }
+
+    match fs::create_dir_all(path) {
+        Ok(()) => info!(path = %path.display(), "Directory created successfully"),
+        Err(e) => error!(
+            error = %e,
+            path = %path.display(),
+            "Failed to create directory"
+        ),
+    }
+}
+
+/// Base directory for the temporary fallback, reported as an error.
+fn temp_base(kind: &str) -> PathBuf {
+    let path = env::temp_dir();
+
+    error!(
+        kind = kind,
+        path = %path.display(),
+        "Failed to determine the {kind} directory; falling back to the temporary directory"
+    );
+
+    path
+}
 
 /// Global configuration directory path
 ///
 /// Initialized lazily on first access. Creates the directory if it doesn't exist.
-///
-/// # Panics
-/// Panics if unable to determine user's config directory or create the dwall subdirectory.
-/// Consider using a Result-based approach for better error handling in production.
+/// Falls back to the temporary directory when the user profile cannot be resolved.
 pub static DWALL_CONFIG_DIR: LazyLock<PathBuf> = LazyLock::new(|| {
-    let config_dir = dirs::config_dir().expect("Failed to determine user config directory");
-
+    let config_dir = dirs::config_dir().unwrap_or_else(|| temp_base("config"));
     let app_config_dir = config_dir.join("dwall");
 
-    if !app_config_dir.exists() {
-        if let Err(e) = fs::create_dir(&app_config_dir) {
-            error!(error = e, "Failed to create config directory");
-            panic!("Failed to create config directory: {e}");
-        } else {
-            info!(
-                path = app_config_dir.display(),
-                "Config directory created successfully"
-            );
-        }
-    } else {
-        debug!(
-            path = %app_config_dir.display(),
-            "Config directory already exists"
-        );
-    }
+    ensure_dir(&app_config_dir);
 
     app_config_dir
 });
@@ -36,25 +58,11 @@ pub static DWALL_CONFIG_DIR: LazyLock<PathBuf> = LazyLock::new(|| {
 ///
 /// Initialized lazily on first access. Creates the directory if it doesn't exist.
 /// Uses the application bundle identifier for better organization.
-///
-/// # Panics
-/// Panics if unable to determine user's cache directory or create the dwall subdirectory.
 pub static DWALL_CACHE_DIR: LazyLock<PathBuf> = LazyLock::new(|| {
-    let cache_dir = dirs::cache_dir().expect("Failed to determine user cache directory");
-
+    let cache_dir = dirs::cache_dir().unwrap_or_else(|| temp_base("cache"));
     let dir = cache_dir.join("com.thep0y.dwall"); // bundle identifier
-    trace!(path = dir.display(), "Initializing cache directory");
 
-    if !dir.exists() {
-        if let Err(e) = fs::create_dir(&dir) {
-            error!(error = e, "Failed to create cache directory");
-            panic!("Failed to create cache directory: {e}");
-        } else {
-            info!(path = dir.display(), "Cache directory created successfully");
-        }
-    } else {
-        debug!(path = dir.display(), "Cache directory already exists");
-    }
+    ensure_dir(&dir);
 
     dir
 });
@@ -63,25 +71,10 @@ pub static DWALL_CACHE_DIR: LazyLock<PathBuf> = LazyLock::new(|| {
 ///
 /// Initialized lazily on first access. Creates the directory if it doesn't exist.
 /// Uses the application bundle identifier for better organization.
-///
-/// # Panics
-/// Panics if unable to determine user's log directory or create the dwall subdirectory.
 pub static DWALL_LOG_DIR: LazyLock<PathBuf> = LazyLock::new(|| {
     let log_dir = DWALL_CACHE_DIR.join("log");
 
-    if !log_dir.exists() {
-        if let Err(e) = fs::create_dir(&log_dir) {
-            error!(error = e, "Failed to create log directory");
-            panic!("Failed to create log directory: {e}");
-        } else {
-            info!(
-                path = log_dir.display(),
-                "Log directory created successfully"
-            );
-        }
-    } else {
-        debug!(path = log_dir.display(), "Log directory already exists");
-    }
+    ensure_dir(&log_dir);
 
     log_dir
 });

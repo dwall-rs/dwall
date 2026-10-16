@@ -58,6 +58,20 @@ DWALL's log level is `info` by default. You can change it with the `DWALL_LOG` e
 
 The daemon writes to `%LOCALAPPDATA%\com.thep0y.dwall\log\dwall.log` (open the folder from the settings window). Each start rotates the previous file into a `backup` subdirectory.
 
+## Running the daemon without the settings window
+
+`dwall.exe` works on its own: it reads `%APPDATA%\dwall\config.toml` (creating a commented default file on first run), applies the wallpaper itself, and can register to start at sign-in. It needs no WebView2 runtime, so it is also usable on LTSC/Server images and other machines where the GUI is not wanted.
+
+```console
+dwall.exe --check-config         # validate the configuration
+dwall.exe --once                 # apply one update cycle and exit
+dwall.exe --install-autostart    # start at sign-in
+```
+
+The daemon and the settings window share the same configuration file, and only one daemon runs per session (it holds a named mutex), so a headless copy and an installed one cannot fight over the desktop. Theme downloads, thumbnails and the updater stay in the settings app.
+
+See [docs/headless.md](docs/headless.md) for the full workflow, exit codes and troubleshooting.
+
 ## Frequently Asked Questions
 
 ### 1. Why are the settings and daemon processes completely isolated?

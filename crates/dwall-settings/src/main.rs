@@ -8,7 +8,7 @@ use tauri::{Manager, RunEvent};
 use tokio::sync::OnceCell;
 
 use crate::error::DwallSettingsResult;
-use crate::process::{find_process_by_path, terminate_process};
+use crate::process::{find_daemon_process, terminate_process};
 use crate::setup::setup_app;
 use crate::window::build_window;
 
@@ -104,7 +104,7 @@ async fn main() -> DwallSettingsResult<()> {
     if cfg!(debug_assertions) {
         builder.build(tauri::generate_context!())?.run(|_, event| {
             if let RunEvent::Exit = event {
-                match crate::daemon::daemon_path().and_then(find_process_by_path) {
+                match find_daemon_process() {
                     Ok(Some(pid)) => match terminate_process(pid) {
                         Ok(_) => debug!("Daemon process killed on exit"),
                         Err(e) => error!(error = %e, "Failed to kill daemon process on exit"),

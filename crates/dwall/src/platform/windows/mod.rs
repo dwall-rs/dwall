@@ -1,6 +1,8 @@
 pub mod async_operation;
+pub mod autostart;
 pub mod color_scheme;
 pub mod geolocation;
 pub mod monitor;
 pub mod registry;
+pub mod single_instance;
 pub mod wallpaper;

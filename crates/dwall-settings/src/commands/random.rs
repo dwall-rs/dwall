@@ -3,7 +3,6 @@
 use serde::Serialize;
 
 use crate::error::DwallSettingsResult;
-use crate::process::find_process_by_path;
 
 /// The theme drawn for a given local date in random mode.
 #[cfg_attr(feature = "typegen", derive(ts_rs::TS))]
@@ -19,10 +18,8 @@ pub struct RandomSelection {
 /// Today's random-mode selection, or `None` when the daemon isn't running.
 #[tauri::command]
 pub fn get_random_selection() -> DwallSettingsResult<Option<RandomSelection>> {
-    let Some(daemon_path) = crate::DAEMON_EXE_PATH.get() else {
-        return Ok(None);
-    };
-    if find_process_by_path(daemon_path)?.is_none() {
+    // The state file is written by the daemon; without one running it is stale.
+    if !crate::daemon::is_daemon_running()? {
         return Ok(None);
     }
 

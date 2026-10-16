@@ -533,6 +533,47 @@ impl ConfigWriter {
         write_atomically(config_path, toml_string.as_bytes())?;
         Ok(())
     }
+
+    /// Writes a commented default configuration, creating the parent directory.
+    ///
+    /// Used when the daemon starts without a configuration file: `ConfigReader`
+    /// would otherwise silently hand out an in-memory default, which leaves anyone
+    /// running the daemon without the settings window with no file to edit and no
+    /// documentation of the keys.
+    pub fn write_default(&self, config_path: &Path) -> DwallResult<()> {
+        let body = toml::to_string(&Config::default()).map_err(|e| {
+            error!(error = %e, "Failed to serialize the default configuration");
+            ConfigError::Serialization(e)
+        })?;
+
+        let contents = format!(
+            "# Dwall configuration\n\
+             #\n\
+             # Created automatically because no configuration file existed. Every key is\n\
+             # optional; a key that is missing falls back to the value shown here.\n\
+             #\n\
+             #   dwall.exe --check-config     validate an edit without applying anything\n\
+             #   dwall.exe --once             apply one update cycle and exit\n\
+             #\n\
+             # Logs: %LOCALAPPDATA%\\com.thep0y.dwall\\log\\dwall.log\n\
+             #       (set DWALL_LOG=debug for more detail)\n\
+             #\n\
+             # See docs/headless.md for the standalone workflow.\n\
+             \n{body}"
+        );
+
+        if let Some(parent) = config_path.parent() {
+            fs::create_dir_all(parent)?;
+        }
+
+        write_atomically(config_path, contents.as_bytes())?;
+        Ok(())
+    }
+}
+
+/// The default configuration file path (`%APPDATA%\dwall\config.toml`).
+pub fn config_path() -> PathBuf {
+    DWALL_CONFIG_DIR.join("config.toml")
 }
 
 /// Writes `contents` to `path` through a temporary file plus rename.

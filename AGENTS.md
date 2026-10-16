@@ -145,12 +145,47 @@ bun run build   # release: vite build + daemon release + tauri bundle
 
 ## Commits
 
-Use Conventional Commits in English, imperative mood. The release changelog is
-generated from these prefixes, so use them consistently:
+### One commit per conversation
+
+**Create at most one commit per conversation.** Do not split a session's work
+across several commits, however unrelated the parts look: stack them in the working
+tree and commit once. Several commits per conversation make the remote merge
+painful, and a review of the branch cannot follow them.
+
+- If the change set looks like it wants splitting, **ask** before committing; the
+  answer is a single commit unless the maintainer says otherwise.
+- If you already created several, offer to squash them before the conversation
+  ends (with `git reset --soft <base>` plus one commit, or `git rebase -i`). Never
+  rewrite commits that are already pushed without an explicit instruction.
+- Do not push. Commit locally and leave pushing, force-pushing and PR updates to
+  the maintainer.
+
+### Message format
+
+```text
+<type>(<scope>): <subject>
+```
+
+Use Conventional Commits in English, imperative mood, lowercase, no trailing
+period. The release changelog is generated from these prefixes, so use them
+consistently:
 
 `feat:`, `fix:`, `perf:`, `refactor:`, `chore:`, `style:`, `test:`, `ci:`.
 
-Example: `perf(dwall): bound solar cache and share angle lists`.
+- **Scope** names the area that changed — a crate (`dwall`, `settings`,
+  `logging`, `time`, `deps`) or a frontend feature (`layout`, `stage`, `library`,
+  `scene`, `style`, `settings`, `lib`) — matching the existing history.
+- **Subject only, no body.** History here is one line per commit; add a short body
+  (at most a few lines, no trailers) only when the *why* is not inferable from the
+  subject. Never add tool or `Co-authored-by` attribution lines.
+
+Examples:
+
+```text
+perf(dwall): bound solar cache and share angle lists
+fix(stage): mark today's theme on its own collage tile
+fix(settings): identify the daemon by mutex and executable name
+```
 
 ## Gotchas
 
@@ -162,7 +197,18 @@ Example: `perf(dwall): bound solar cache and share angle lists`.
 - The version source of truth is `package.json`; the release workflow syncs it
   into `Cargo.toml`.
 - The config file is `%APPDATA%\dwall\config.toml` and is shared by both
-  binaries through `dwall::config` / `dwall::config::ConfigReader`.
+  binaries through `dwall::config` / `dwall::config::ConfigReader`. The daemon
+  writes a commented default file when it is missing.
+- `dwall.exe` is also the headless control surface (`--check-config`, `--once`,
+  `--install-autostart`, `--config`); see `docs/headless.md`. Its exit codes are
+  part of that interface.
+- The daemon claims a per-session named mutex
+  (`Local\com.thep0y.dwall.daemon`) for its whole lifetime, so only one runs per
+  session. Never identify a daemon by its install path: the settings app checks
+  the mutex (`dwall::daemon_is_running`) and stops it by executable name, because
+  a portable or headless copy lives wherever the user put it.
+- `crates/dwall/src/lazy.rs` must not panic: it runs from a GUI-subsystem process
+  built with `panic = "abort"`, where a failure is invisible. Log and fall back.
 - `crates/dwall-settings/build.rs` reads `DWALL_SKIP_BUILD`; CI's Rust job
   builds only the daemon and mocks `target/release/dwall.exe` before running
   clippy/tests.
