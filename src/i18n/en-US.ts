@@ -144,6 +144,9 @@ export const dict = {
       save: "Save",
       lockScreen: "Set lock screen wallpaper too",
       lockScreenDesc: "Turn off to keep the lock screen unchanged.",
+      colorScheme: "Switch the system light/dark scheme",
+      colorSchemeDesc:
+        "Follows the sun instead of the clock: light after sunrise, dark after sunset (civil twilight, -6°), with a dead zone around the change.",
     },
 
     paths: {

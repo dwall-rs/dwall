@@ -146,6 +146,9 @@ export const dict: RawDictionary = {
       save: "保存",
       lockScreen: "ロック画面の壁紙も設定",
       lockScreenDesc: "ロック画面を変更したくない場合はオフにしてください。",
+      colorScheme: "システムのライト/ダークを自動で切り替える",
+      colorSchemeDesc:
+        "時刻ではなく太陽の位置に従います。日の出後はライト、日の入り後はダーク（市民薄明 -6°）で、切り替え付近には遊びがあり頻繁には反転しません。",
     },
 
     paths: {

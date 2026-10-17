@@ -98,6 +98,18 @@ const patchPosition = (
   );
 };
 
+/**
+ * Enables or disables the daemon's system light/dark switching.
+ *
+ * The daemon reads the flag from the config and reloads when the file changes, so the
+ * next cycle applies it. Turning it on also makes this window follow the system: the
+ * window appearance can only track the system if something is switching the system.
+ */
+const setAutoDetectColorScheme = (enabled: boolean) => {
+  patch({ auto_detect_color_scheme: enabled });
+  if (enabled) setMode("system");
+};
+
 export type NetworkType = "none" | "mirror" | "socks5";
 
 const networkType = (): NetworkType => {
@@ -218,6 +230,7 @@ export {
   patch,
   setPositionType,
   patchPosition,
+  setAutoDetectColorScheme,
   networkType,
   setNetworkType,
   patchSocks5,

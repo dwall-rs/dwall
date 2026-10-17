@@ -109,6 +109,15 @@ pub fn select_release<'a>(current: &Version, releases: &'a [Release]) -> Option<
     stable.or(prerelease).map(|(_, release)| release)
 }
 
+/// Where a pre-release build should update from.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PrereleaseSource {
+    /// The chosen release's updater manifest.
+    pub endpoint: String,
+    /// Its tag, which the manifest's asset URLs have to be pointed back at.
+    pub tag: String,
+}
+
 /// Updater manifest URL of the release a pre-release build should move to.
 ///
 /// `Ok(None)` means the build is up to date; an error is reported to the caller rather
@@ -117,7 +126,7 @@ pub fn select_release<'a>(current: &Version, releases: &'a [Release]) -> Option<
 pub async fn prerelease_endpoint(
     http_client: &HttpClient,
     current: &Version,
-) -> DwallSettingsResult<Option<String>> {
+) -> DwallSettingsResult<Option<PrereleaseSource>> {
     let body = http_client
         .get_text(RELEASES_API, RELEASES_API_MAX_BYTES)
         .await?;
@@ -127,18 +136,37 @@ pub async fn prerelease_endpoint(
         DwallSettingsError::Other(format!("release list is not valid JSON: {e}"))
     })?;
 
-    let endpoint = select_release(current, &releases)
-        .and_then(Release::updater_manifest)
-        .map(str::to_owned);
+    let source = select_release(current, &releases).and_then(|release| {
+        Some(PrereleaseSource {
+            endpoint: release.updater_manifest()?.to_owned(),
+            tag: release.tag_name.clone(),
+        })
+    });
 
-    match &endpoint {
-        Some(url) => {
-            info!(version = %current, endpoint = %url, "Newer release found for this pre-release")
-        }
+    match &source {
+        Some(source) => info!(
+            version = %current,
+            endpoint = %source.endpoint,
+            "Newer release found for this pre-release"
+        ),
         None => info!(version = %current, "No newer release for this pre-release"),
     }
 
-    Ok(endpoint)
+    Ok(source)
+}
+
+/// Points an updater manifest's asset URL at the release the manifest came from.
+///
+/// `tauri-action` writes every manifest with the `releases/latest/download/<asset>`
+/// route, which only resolves while that release is the newest *stable* one: for a
+/// pre-release it asks the newest stable release for an asset it does not have, and the
+/// install fails with 404. The manifest's signature covers the file, not the URL, so
+/// naming the release's own tag is enough to fetch the very bytes that were signed.
+pub fn retag_manifest_url(url: &str, tag: &str) -> String {
+    url.replace(
+        "/releases/latest/download/",
+        &format!("/releases/download/{tag}/"),
+    )
 }
 
 #[cfg(test)]
@@ -238,6 +266,25 @@ mod tests {
             selected("0.3.0-alpha.2", &releases),
             Some("0.3.0-alpha.3".to_string())
         );
+    }
+
+    /// The manifest `tauri-action` published for `v0.3.0-alpha.2` names its installer
+    /// under the `latest` route, which sends the download to the newest stable release.
+    #[test]
+    fn a_manifest_asset_url_is_pointed_back_at_its_own_release() {
+        let manifest_url = "https://github.com/dwall-rs/dwall/releases/latest/download/Dwall.Settings_0.3.0-alpha.2_x64-setup.exe";
+
+        assert_eq!(
+            retag_manifest_url(manifest_url, "v0.3.0-alpha.2"),
+            "https://github.com/dwall-rs/dwall/releases/download/v0.3.0-alpha.2/Dwall.Settings_0.3.0-alpha.2_x64-setup.exe"
+        );
+    }
+
+    #[test]
+    fn a_url_that_already_names_a_release_is_left_alone() {
+        let url = "https://github.com/dwall-rs/dwall/releases/download/v0.3.0/latest.json";
+
+        assert_eq!(retag_manifest_url(url, "v0.3.0"), url);
     }
 
     /// Parses a real answer from the releases API, so the field names stay the ones

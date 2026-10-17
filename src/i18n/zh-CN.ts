@@ -140,6 +140,9 @@ export const dict: RawDictionary = {
       save: "保存",
       lockScreen: "同时设置锁屏壁纸",
       lockScreenDesc: "若不希望锁屏与桌面同步更换，请关闭此项。",
+      colorScheme: "自动切换系统明暗色",
+      colorSchemeDesc:
+        "按太阳位置而非固定时刻切换：日出后为浅色、日落后为深色（民用曙暮光 -6°），切换点带死区避免来回抖动。",
     },
 
     paths: {

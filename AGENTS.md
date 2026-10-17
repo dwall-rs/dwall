@@ -208,6 +208,12 @@ fix(settings): identify the daemon by mutex and executable name
   release — pre-release included — therefore has to carry a `latest.json` asset,
   and the GitHub API rejects requests without a `User-Agent`, which `HttpClient`
   now always sends.
+- `tauri-action` writes every updater manifest with the
+  `releases/latest/download/<asset>` route, which only resolves while that release is the
+  newest *stable* one. A pre-release's manifest therefore has to be re-pointed at its own
+  tag before the download (`update::retag_manifest_url`), or the install asks the newest
+  stable release for an asset it does not have and fails with 404 — while the check, which
+  only reads the version, still looks fine.
 - The config file is `%APPDATA%\dwall\config.toml` and is shared by both
   binaries through `dwall::config` / `dwall::config::ConfigReader`. The daemon
   writes a commented default file when it is missing.

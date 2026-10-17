@@ -103,11 +103,11 @@ pub async fn check_for_updates_cmd<R: tauri::Runtime>(
     // against the release list instead, which lets it move to a newer pre-release or
     // back onto a released version (see `crate::update`).
     let current_version = webview.package_info().version.clone();
-    let endpoint = if current_version.pre.is_empty() {
-        update::LATEST_ENDPOINT.to_string()
+    let (endpoint, tag) = if current_version.pre.is_empty() {
+        (update::LATEST_ENDPOINT.to_string(), None)
     } else {
         match update::prerelease_endpoint(&http_client, &current_version).await? {
-            Some(endpoint) => endpoint,
+            Some(source) => (source.endpoint, Some(source.tag)),
             None => return Ok(None),
         }
     };
@@ -134,8 +134,15 @@ pub async fn check_for_updates_cmd<R: tauri::Runtime>(
     })? {
         None => Ok(None),
         Some(mut update) => {
-            let download_url =
-                MirrorUrlResolver::resolve(network.as_ref(), update.download_url.as_str()).await;
+            // A pre-release's manifest names its installer under the `latest` route, which
+            // would ask the newest stable release for it and 404; point it back at the
+            // release the manifest came from before any mirror rewrites the host.
+            let target = match &tag {
+                Some(tag) => update::retag_manifest_url(update.download_url.as_str(), tag),
+                None => update.download_url.to_string(),
+            };
+
+            let download_url = MirrorUrlResolver::resolve(network.as_ref(), target.as_str()).await;
 
             update.download_url = download_url
                 .parse()

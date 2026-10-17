@@ -5,6 +5,7 @@ import {
   patch,
   patchPosition,
   save,
+  setAutoDetectColorScheme,
   setPositionType,
   settingsStore,
 } from "@/store/settings.store";
@@ -175,6 +176,20 @@ export function EngineSection() {
               onCheckedChange={(checked) => {
                 patch({ lock_screen_wallpaper_enabled: checked });
                 void ok("lock");
+              }}
+            />
+          }
+        />
+        <SettingsRow
+          label={t("settings.engine.colorScheme")}
+          okShow={flash() === "scheme"}
+          desc={t("settings.engine.colorSchemeDesc")}
+          control={
+            <Switch
+              checked={settingsStore.config?.auto_detect_color_scheme}
+              onCheckedChange={(checked) => {
+                setAutoDetectColorScheme(checked);
+                void ok("scheme");
               }}
             />
           }
