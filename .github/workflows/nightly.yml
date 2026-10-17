@@ -9,6 +9,9 @@ on:
 env:
   CARGO_TERM_COLOR: always
   RUST_BACKTRACE: 1
+  # Incremental data is not part of the cached paths; leaving it on only grows the build
+  # directory (and prints a "could not be used" warning after a cache restore).
+  CARGO_INCREMENTAL: 0
 
 jobs:
   check-nightly-conditions:
@@ -288,11 +291,12 @@ jobs:
         uses: actions/cache@v5
         with:
           path: |
+            target/release/.fingerprint
             target/release/deps
             target/release/build
           key: ${{ runner.os }}-rust-release-${{ steps.rust-toolchain.outputs.cachekey }}-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: |
-            ${{ runner.os }}-rust-release-
+            ${{ runner.os }}-rust-release-${{ steps.rust-toolchain.outputs.cachekey }}-
 
       - name: install frontend dependencies
         run: bun install --frozen-lockfile

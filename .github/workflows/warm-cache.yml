@@ -23,6 +23,17 @@ on:
       - "bun.lockb"
   workflow_dispatch:
 
+  # The caches are keyed by the resolved toolchain, and a stable update changes that key
+  # without touching any file the path filters watch. Without a periodic run the newest
+  # caches would belong to the previous compiler, and every pull request would rebuild
+  # everything from scratch.
+  schedule:
+    # Runs weekly on Monday at 05:00 UTC (13:00 Beijing time)
+    - cron: "0 5 * * 1"
+
+env:
+  CARGO_INCREMENTAL: 0
+
 jobs:
   warm-frontend-cache:
     if: github.event_name != 'pull_request' || github.event.pull_request.merged == true
@@ -83,7 +94,7 @@ jobs:
             target/debug/build
           key: ${{ runner.os }}-rust-debug-${{ steps.rust-toolchain.outputs.cachekey }}-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: |
-            ${{ runner.os }}-rust-debug-
+            ${{ runner.os }}-rust-debug-${{ steps.rust-toolchain.outputs.cachekey }}-
 
       - name: Cache Rust release dependencies
         uses: actions/cache@v5
@@ -94,7 +105,7 @@ jobs:
             target/release/build
           key: ${{ runner.os }}-rust-release-${{ steps.rust-toolchain.outputs.cachekey }}-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: |
-            ${{ runner.os }}-rust-release-
+            ${{ runner.os }}-rust-release-${{ steps.rust-toolchain.outputs.cachekey }}-
 
       - name: Create mock dwall.exe
         run: |
