@@ -29,6 +29,8 @@ pub enum ThemeError {
     WallpaperImageMissing { path: String },
     #[error("No monitor-specific wallpaper configurations found")]
     MonitorWallpaperConfigurationMissing,
+    #[error("Every configured monitor failed to receive a wallpaper ({failed} attempted)")]
+    AllConfiguredMonitorsFailed { failed: usize },
     #[error("Theme manifest 'theme.toml' is missing in theme directory")]
     ThemeManifestMissing,
     #[error("Failed to parse theme manifest: {0}")]

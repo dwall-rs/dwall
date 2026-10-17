@@ -2,6 +2,7 @@
 //! random wallpaper mode.
 
 use std::path::{Path, PathBuf};
+use std::rc::Rc;
 use std::thread::sleep;
 use std::time::Duration;
 
@@ -79,8 +80,12 @@ fn failure_backoff(consecutive_failures: u32) -> Duration {
 
 /// Builds the engine for one configuration generation.
 fn build_engine(config: &Config) -> DwallResult<ThemeEngine<'_>> {
-    let wallpaper_setter = WallpaperSetter::new().map_err(DwallError::WallpaperManager)?;
-    let monitor_provider = DisplayMonitorProvider::new();
+    // One monitor provider, shared with the wallpaper setter: two independent caches
+    // meant the setter could still hold a pre-hot-plug snapshot after the engine had
+    // refreshed its own, and then fail to find the monitor it was asked for.
+    let monitor_provider = Rc::new(DisplayMonitorProvider::new());
+    let wallpaper_setter =
+        WallpaperSetter::new(Rc::clone(&monitor_provider)).map_err(DwallError::WallpaperManager)?;
     let color_scheme_backend = ColorSchemeScheduler::new();
     let position_provider =
         GeographicPositionProvider::new(config.position_source(), Positioner::new());

@@ -1,6 +1,8 @@
 //! Windows implementation of [`WallpaperProvider`].
 
-use std::{collections::HashMap, path::Path, time::Duration};
+use std::path::Path;
+use std::rc::Rc;
+use std::{collections::HashMap, time::Duration};
 
 use windows::{
     Foundation::Uri,
@@ -62,13 +64,18 @@ impl Drop for OwnedCoTaskMemString {
 /// Windows wallpaper setter with COM management
 pub(crate) struct WallpaperSetter {
     desktop_wallpaper: IDesktopWallpaper,
-    monitor_provider: DisplayMonitorProvider,
+    /// The engine's monitor provider, not a second one.
+    ///
+    /// A private snapshot meant a monitor attached after the engine refreshed its
+    /// own cache was missing here for up to the cache's five minutes, and the
+    /// lookup returned `MonitorNotFound` before any refresh could happen.
+    monitor_provider: Rc<DisplayMonitorProvider>,
     should_cleanup_com: bool,
 }
 
 impl WallpaperSetter {
     /// Creates a new WallpaperSetter instance
-    pub(crate) fn new() -> WallpaperResult<Self> {
+    pub(crate) fn new(monitor_provider: Rc<DisplayMonitorProvider>) -> WallpaperResult<Self> {
         let should_cleanup_com = unsafe {
             let result = CoInitialize(None);
             result.0 == 0
@@ -86,7 +93,7 @@ impl WallpaperSetter {
 
         Ok(Self {
             desktop_wallpaper,
-            monitor_provider: DisplayMonitorProvider::new(),
+            monitor_provider,
             should_cleanup_com,
         })
     }
@@ -107,7 +114,23 @@ impl WallpaperSetter {
             );
         }
 
-        let monitors = self.list_available_monitors()?;
+        // A monitor that is not in the snapshot may have been attached after it was
+        // taken (the shared provider hands the engine the same snapshot), so look
+        // again from a fresh enumeration before giving up on it. The refreshed list
+        // is owned here so the lookup below can borrow from either one.
+        let cached_monitors = self.list_available_monitors()?;
+        let refreshed_monitors;
+        let monitors = if cached_monitors.contains_key(monitor_id) {
+            &cached_monitors
+        } else {
+            warn!(
+                monitor_id = monitor_id,
+                "Monitor is not in the cached configuration, refreshing before applying"
+            );
+            refreshed_monitors = self.reload_monitor_configuration()?;
+            &refreshed_monitors
+        };
+
         let monitor = monitors.get(monitor_id).ok_or_else(|| {
             error!(
                 monitor_id = monitor_id,

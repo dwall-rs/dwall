@@ -58,7 +58,7 @@ path, so it does not see a daemon started with `--config` elsewhere.
 | Exit code | Meaning |
 | --- | --- |
 | 0 | Success, including "a daemon is already running". |
-| 1 | Fatal error while running. |
+| 1 | Fatal error while running, or `--once` could not apply a wallpaper to any configured monitor. |
 | 2 | Unusable command line. |
 | 3 | Invalid or unreadable configuration. |
 | 4 | Auto-start registration failed. |
@@ -187,6 +187,7 @@ release archive works today and is what it installs (as a portable package expos
 | --- | --- |
 | `--check-config` exits 3 | The parse error names the offending line; paths are validated too. |
 | Wallpaper never changes | The log's first lines: a missing theme directory, an empty monitor map and random mode with no themes all warn there. |
+| A monitor keeps failing | A configured theme that cannot be applied is an `ERROR` every cycle, and the daemon backs off — 5 s doubling to 5 minutes — until it works again. `--once` exits 1 in the same situation. A monitor with no theme configured is not an error. |
 | `--once` exits 5 | A daemon already runs; stop it from the settings window or Task Manager. |
 | Nothing on the console | Read the log file — and remember the shell caveat above. |
-| Wallpaper stops after an edit | A broken config is not fatal: the daemon keeps the previous configuration and retries every 5 s, logging each attempt. |
+| Wallpaper stops after an edit | A broken config is not fatal: the daemon keeps running and retries the file every 5 s, logging each attempt. It applies nothing while the file is unreadable, because a cycle needs a valid configuration. |
