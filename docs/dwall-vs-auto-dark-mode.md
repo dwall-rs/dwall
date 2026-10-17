@@ -38,9 +38,10 @@ drives the switch and how much of Windows they touch.
 ## Both, in one line each
 
 Auto Dark Mode covers more of Windows and is scriptable; DWALL deliberately narrows to
-sun-driven wallpaper transitions so the always-on process stays small. If you only want
-dark-mode switching, use Auto Dark Mode or Windows' own schedule; DWALL is about the
-wallpaper.
+sun-driven wallpaper transitions so the always-on process stays small. DWALL switches the
+system theme as well, but only from the solar position; if you want that switch on your own
+schedule — fixed times, Night Light, an ambient-light sensor — use Auto Dark Mode or
+Windows' own schedule.
 
 ## Sources
 
