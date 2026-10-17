@@ -122,6 +122,9 @@ export const dict: RawDictionary = {
       appearanceLabel: "外観",
       appearanceDesc:
         "ライト、ダーク、またはシステムに従う。システムに従うと自動で切り替わります。",
+      titleBar: "タイトルバーを Windows のテーマ色にする",
+      titleBarDesc:
+        "オフのときは Dwall の背景色でタイトルバーを描画し、ウィンドウと一体化します。色まで合わせられるのは Windows 11 のみで、Windows 10 はライト/ダークの同期までです。",
       languageLabel: "言語",
       languageDesc: "UIの言語。切り替えると即時反映されます。",
     },

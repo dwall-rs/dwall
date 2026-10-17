@@ -117,6 +117,9 @@ export const dict: RawDictionary = {
       appearanceLabel: "外觀 / Appearance",
       appearanceDesc:
         "選擇亮色、暗色，或跟隨系統。跟隨系統會即時監聽系統外觀變化自動切換。",
+      titleBar: "標題列跟隨 Windows 主題色",
+      titleBarDesc:
+        "關閉時以 Dwall 的背景色繪製標題列，與視窗融為一體。精確配色僅 Windows 11 生效；Windows 10 只能跟隨明暗，顏色仍由系統決定。",
       languageLabel: "語言 / Language",
       languageDesc: "介面語言，切換後立即生效。",
     },
