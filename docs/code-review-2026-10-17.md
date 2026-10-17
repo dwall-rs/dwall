@@ -355,9 +355,9 @@ P0（对应第 1、2 节的缺陷，写出来即回归网）：
 
 ---
 
-## 11. 修复记录：批次 1 / 批次 2（2026-10-17 本轮已实现）
+## 11. 修复记录：批次 1 / 2 / 3（2026-10-17 本轮已实现）
 
-只做了第 9 节的**批次 1（D1、D2+D3）与批次 2（S1、S2）**，其余批次未动。
+只做了第 9 节的**批次 1（D1、D2+D3）、批次 2（S1、S2）与批次 3（D5、D6、D4）**，其余批次未动。
 
 ### D1 ✅ 守护进程不再因持续失败而退出
 
@@ -387,6 +387,28 @@ P0（对应第 1、2 节的缺陷，写出来即回归网）：
 - 测试（7 个）：合法 legacy 主题通过；**多一个顶层文件导致嵌套的归档被拒绝**（S2 的原始故障模式）；空目录拒绝；缺帧图片拒绝；清单主题按自身 `image_format` 校验；无可用名字的 staging 拒绝；同路径复用 staging 时按新内容重新校验。
 - 兼容性实测：本机 `%APPDATA%\dwall\themes` 里的真实主题是 `solar.json` + `jpg/1..8.jpg`（10 帧含重复索引、8 张图全在），全部通过新校验 ✓。唯一的行为变化：**缺图的主题包会被整体拒绝**（此前会装上、并在太阳走到那一帧时报 warn）；这是"绝不删掉可用主题"的代价，且错误信息会指出缺失文件。
 
+### D5 ✅ 显示器缓存合一，热插拔立即生效
+
+- 根因是两个 `DisplayMonitorProvider`：引擎一个（[theme_engine.rs](../crates/dwall/src/theme_engine.rs)）、`WallpaperSetter` 自己又一个（原 [wallpaper.rs:89](../crates/dwall/src/platform/windows/wallpaper.rs#L89)）。引擎刷新后 setter 仍持旧快照 → `MonitorNotFound` 直接返回，不进入 refresh+retry。
+- [daemon.rs](../crates/dwall/src/daemon.rs) 的 `build_engine` 现在只建一个 `Rc<DisplayMonitorProvider>`，[WallpaperSetter::new](../crates/dwall/src/platform/windows/wallpaper.rs) 接收它，引擎与 setter 共用同一份快照（守护进程单线程，`Rc` 足够）。
+- 另外补了防御：`set_monitor_wallpaper_internal` 在快照里找不到显示器时先 `refresh_monitors()` 再查一次（只走失败路径，且用延迟初始化借用刷新后的表，不产生每周期克隆），把"缓存过期"从数分钟变成一次重试。
+
+### D6 ✅ 变化检测不再每周期全量枚举
+
+- [monitor.rs](../crates/dwall/src/platform/windows/monitor.rs)：新增 `DisplayConfigShape`（来自一次 `GetDisplayConfigBufferSizes`）与 `shape_forces_full_check()`——形状未变且距上次全量比对不足 60 s 时直接返回"未变化"，**不再做 `QueryDisplayConfig` + 每显示器 SetupAPI 枚举**；形状变化或 60 s 到期才走原来的键比对。语义依据：墙纸按设备路径寻址，分辨率变化不需要重新应用，插拔才会改变路径数；"数量与键都相同"的极小概率情形由 60 s 的兜底比对覆盖。
+- 缓存新增 `shape` / `last_full_check` 两个字段，由变化检测维护（`update()` 不碰它们——有测试钉住）。
+- 顺带修掉守护进程里**唯一一处错误完全不留痕**的地方：[theme_engine.rs](../crates/dwall/src/theme_engine.rs) 的 `has_configuration_changed().unwrap_or(false)` 现在会 `warn!`；并改正了 `CACHE_EXPIRY_SECONDS` 上那句已不成立的注释（"减少 90% API 调用"）。
+- 测试（7 个）：`the_first_check_always_enumerates`、`an_unchanged_shape_within_the_interval_skips_the_enumeration`、`attaching_or_detaching_a_monitor_forces_the_enumeration`、`a_changed_mode_count_forces_the_enumeration`、`the_full_comparison_still_runs_once_the_interval_elapses`、`the_monitor_cache_stops_serving_the_list_once_it_expires`、`refreshing_the_list_keeps_the_shape_check_intact`。
+
+### D4 ✅ 逐显示器失败计入周期结果
+
+- 原先 `process_monitors` 把每个显示器的错误降级成 `warn!` 后返回 `Ok(success_count)`，`process_theme_cycle` 永远 `Ok(())`，`run_once` 永远 `Ok(true)`——失败既不触发退避，也不进设置端会读的 ERROR 行。
+- [theme_engine.rs](../crates/dwall/src/theme_engine.rs)：拆出两个可测的纯函数——`monitor_targets()`（产出 `(显示器, 主题)` 目标，无配置的显示器跳过并 `debug!`）与 `apply_monitor_targets()`（统计 `applied`/`failed`，失败仍逐条 `warn!`）；**只有"配置过的显示器全部失败"才让周期失败**（新错误 `ThemeError::AllConfiguredMonitorsFailed { failed }`），且错误在颜色方案更新**之后**才返回，避免坏主题连带停掉日出日落切换。
+- 于是默认空配置（没有任何显示器主题）仍是 `Ok`、`--once` 依旧退出 0；只有"配了但应用不了"才是错误，并进入带退避的重试。
+- `ThemeEngine::run_once` 的返回类型由无意义的 `DwallResult<bool>`（永远 `Ok(true)`）改为 `DwallResult<()>`。
+- **文档同步**：[docs/headless.md](./headless.md) 的退出码表补上"`--once` 对所有已配置显示器都失败时退出 1"，故障排查表新增一行说明退避与 `--once` 行为，并把原文那句**错误**的"守护进程保留上一份配置"改成实际行为（继续运行并每 5 秒重试；配置不可读期间不应用任何墙纸）。
+- 测试（6 个）：`a_monitor_without_a_configured_theme_is_not_a_target`、`every_monitor_is_a_target_of_the_all_variant`、`a_configuration_without_a_monitor_map_has_no_targets`、`every_configured_monitor_failure_is_counted`、`one_successful_monitor_keeps_the_cycle_from_failing`、`nothing_to_do_is_not_a_failure`。
+
 ### 本轮验证命令与结果
 
 | 命令 | 结果 |
@@ -395,12 +417,12 @@ P0（对应第 1、2 节的缺陷，写出来即回归网）：
 | `cargo clippy -- -D warnings` / `cargo clippy -r -- -D warnings` | exit 0 / 0 |
 | `cargo clippy -r -p dwall --features build-script,log-max-level-info --all-targets -- -D warnings` | exit 0 |
 | `DWALL_SKIP_BUILD=1 cargo clippy -p dwall-settings --all-targets -- -D warnings` | exit 0 |
-| `DWALL_SKIP_BUILD=1 cargo test` | **239 passed / 0 failed**（本轮 +18：dwall 101→108、settings 25→36） |
+| `DWALL_SKIP_BUILD=1 cargo test` | **252 passed / 0 failed**（批次 1/2 后为 239；dwall 108→121） |
 | `bun run check`（tsgo + biome，385 文件） | exit 0，0 error / 0 warning |
-| `bun run test` | **32 passed**（本轮 +13） |
-| `bun run build:vite` | 成功；JS 231.3→232.6 KB、CSS 121.9→122.2 KB（新增错误面板与两条 i18n × 6 语言） |
+| `bun run test` | **32 passed** |
+| `bun run build:vite` | 成功；JS 231.3→232.6 KB、CSS 121.9→122.2 KB（批次 1/2 新增的错误面板与两条 i18n；批次 3 不涉及前端） |
 
 ### 仍未做（后续批次）
 
-D4（逐显示器失败计入阈值）、D5/D6（两个显示器缓存 + 每 15 s 枚举）、S3/S4/S5、`.zip` 泄漏、取消不重试、日志轮转上限与 `GetTimeZoneInformation` 缓存、设置端写盘顺序与会话过滤、第 8 节其余测试、第 9 节批次 8/9。
-另外本轮**没有**把守护进程的"最后一条 ERROR"暴露到设置端状态区（`get_engine_status` 目前只返回 `bool`）：D1 之后守护进程会带错误继续运行，用户想看到原因仍需点开日志目录——建议作为批次 5 的一项。
+S3/S4/S5、`.zip` 泄漏、取消不重试、日志轮转上限与 `GetTimeZoneInformation` 缓存、设置端写盘顺序与会话过滤（批次 6）、第 8 节其余测试（含 8.1 的 `ThemeEngine` 泛型化与 `bin/daemon.rs` 的退出码集成测试）、第 9 节批次 8/9（CI 门禁与 P3 清理）。
+另外仍**没有**把守护进程的"最后一条 ERROR"暴露到设置端状态区（`get_engine_status` 只返回 `bool`）：D1/D4 之后守护进程会带错误继续运行，用户想看到原因仍需点开日志目录——建议作为批次 5 的一项。

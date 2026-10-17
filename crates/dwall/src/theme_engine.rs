@@ -2,6 +2,7 @@
 
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
+use std::rc::Rc;
 
 use time::OffsetDateTime;
 
@@ -23,7 +24,8 @@ pub(crate) struct ThemeEngine<'a> {
     config: &'a Config,
     position_provider: GeographicPositionProvider<'a, Positioner>,
     wallpaper_setter: WallpaperSetter,
-    monitor_provider: DisplayMonitorProvider,
+    /// Shared with [`WallpaperSetter`], so both see one snapshot of the displays.
+    monitor_provider: Rc<DisplayMonitorProvider>,
     color_scheme_applier: ColorSchemeApplier<ColorSchemeScheduler>,
 }
 
@@ -31,7 +33,7 @@ impl<'a> ThemeEngine<'a> {
     pub(crate) fn new(
         config: &'a Config,
         wallpaper_setter: WallpaperSetter,
-        monitor_provider: DisplayMonitorProvider,
+        monitor_provider: Rc<DisplayMonitorProvider>,
         color_scheme_provider: ColorSchemeScheduler,
         position_provider: GeographicPositionProvider<'a, Positioner>,
     ) -> Self {
@@ -57,18 +59,25 @@ impl<'a> ThemeEngine<'a> {
     }
 
     /// Runs a single theme update cycle
-    pub(crate) fn run_once(&self) -> DwallResult<bool> {
+    pub(crate) fn run_once(&self) -> DwallResult<()> {
         let position = self.position_provider.get_current_position()?;
-        self.process_theme_cycle(&position)?;
-        Ok(true)
+        self.process_theme_cycle(&position)
     }
 
     /// Checks if monitor configuration has changed and reloads if necessary
     pub(crate) fn reload_if_monitors_changed(&self) -> bool {
-        let changed = self
-            .monitor_provider
-            .has_configuration_changed()
-            .unwrap_or(false);
+        let changed = match self.monitor_provider.has_configuration_changed() {
+            Ok(changed) => changed,
+            Err(e) => {
+                // The only place a monitor-enumeration failure used to disappear
+                // without a trace.
+                warn!(
+                    error = %e,
+                    "Failed to check the display configuration, keeping the current one"
+                );
+                false
+            }
+        };
 
         if changed {
             info!("Monitor configuration changed, reapplying wallpapers");
@@ -89,15 +98,23 @@ impl<'a> ThemeEngine<'a> {
         let solar_position = SolarPosition::new(position, &now);
         let available_monitors = self.monitor_provider.get_monitors()?;
 
-        let success_count = self.process_monitors(&available_monitors, &solar_position)?;
+        let outcome = apply_monitor_targets(
+            monitor_targets(
+                self.config.monitor_specific_wallpapers(),
+                &available_monitors,
+            ),
+            |monitor_id, theme_id| self.process_single(monitor_id, theme_id, &solar_position),
+        );
 
-        if success_count > 0
+        if outcome.applied > 0
             && let Some(theme_id) = self.get_first_configured_theme()
             && let Err(e) = self.process_lock_screen(&solar_position, &theme_id)
         {
             warn!(error = %e, theme_id = theme_id, "Failed to apply lock screen wallpaper");
         }
 
+        // Runs even when no wallpaper could be applied: the light/dark switch is
+        // driven by the sun and has nothing to do with a broken theme.
         self.color_scheme_applier.update_color_scheme(
             self.config,
             &now_local,
@@ -105,7 +122,10 @@ impl<'a> ThemeEngine<'a> {
             &solar_position,
         )?;
 
-        if success_count == 0 && !available_monitors.is_empty() {
+        if outcome.applied == 0 && outcome.failed == 0 && !available_monitors.is_empty() {
+            // Nothing was configured for these monitors, which is not a failure:
+            // a default configuration has no monitor map at all, and `dwall --once`
+            // has to keep exiting 0 there.
             warn!(
                 total_monitors = available_monitors.len(),
                 "No monitor received a wallpaper in this cycle"
@@ -113,55 +133,23 @@ impl<'a> ThemeEngine<'a> {
         }
 
         debug!(
-            successful_monitors = success_count,
+            successful_monitors = outcome.applied,
+            failed_monitors = outcome.failed,
             total_monitors = available_monitors.len(),
             "Theme cycle completed"
         );
 
-        Ok(())
-    }
-
-    /// Applies the wallpaper for every configured monitor, returning the count
-    /// of successes. Reuses the caller's monitor snapshot instead of re-querying.
-    fn process_monitors(
-        &self,
-        monitors: &HashMap<String, DisplayMonitor>,
-        solar_position: &SolarPosition,
-    ) -> DwallResult<usize> {
-        let configs = self.config.monitor_specific_wallpapers();
-        let mut success_count = 0;
-
-        for monitor_id in monitors.keys() {
-            let theme_id = match configs.as_ref().and_then(|c| c.get(monitor_id)) {
-                Some(id) => id.as_ref(),
-                None => {
-                    debug!(monitor_id = monitor_id, "No theme config, skipping");
-                    continue;
-                }
-            };
-
-            debug!(
-                monitor_id = monitor_id,
-                theme_id = theme_id,
-                "Processing wallpaper for monitor"
-            );
-
-            match self.process_single(monitor_id, theme_id, solar_position) {
-                Ok(()) => success_count += 1,
-                // Surface the reason: without this the only symptom of a broken
-                // theme is that the wallpaper stops changing.
-                Err(e) => {
-                    warn!(
-                        error = %e,
-                        monitor_id = monitor_id,
-                        theme_id = theme_id,
-                        "Failed to apply wallpaper for monitor"
-                    );
-                }
+        // Fail the cycle only now that everything else has run, so the caller's
+        // backoff and the log entry stand for "the wallpapers could not be
+        // applied" rather than "the whole update failed".
+        if outcome.every_configured_monitor_failed() {
+            return Err(ThemeError::AllConfiguredMonitorsFailed {
+                failed: outcome.failed,
             }
+            .into());
         }
 
-        Ok(success_count)
+        Ok(())
     }
 
     fn process_single(
@@ -280,5 +268,221 @@ impl<'a> ThemeEngine<'a> {
             Some(MonitorSpecificWallpapers::Individual(map)) => map.values().next().cloned(),
             None => None,
         }
+    }
+}
+
+/// What one pass over the configured monitors did.
+#[derive(Debug, Default, PartialEq, Eq)]
+struct MonitorPassOutcome {
+    /// Monitors that were given their wallpaper.
+    applied: usize,
+    /// Configured monitors whose wallpaper could not be applied.
+    failed: usize,
+}
+
+impl MonitorPassOutcome {
+    /// Whether nothing that was configured succeeded.
+    ///
+    /// Deliberately not "nothing was applied": a configuration that names no
+    /// monitor has nothing to do and is not a failure, which is what keeps
+    /// `dwall --once` on a default configuration exiting 0.
+    fn every_configured_monitor_failed(&self) -> bool {
+        self.applied == 0 && self.failed > 0
+    }
+}
+
+/// The (monitor, theme) pairs a cycle should apply, in monitor order.
+fn monitor_targets<'a>(
+    configs: Option<&'a MonitorSpecificWallpapers>,
+    monitors: &'a HashMap<String, DisplayMonitor>,
+) -> impl Iterator<Item = (&'a str, &'a str)> + 'a {
+    monitors.keys().filter_map(move |monitor_id| {
+        let Some(theme_id) = configs.and_then(|configs| configs.get(monitor_id)) else {
+            debug!(monitor_id = monitor_id, "No theme config, skipping");
+            return None;
+        };
+
+        debug!(
+            monitor_id = monitor_id,
+            theme_id = theme_id,
+            "Processing wallpaper for monitor"
+        );
+
+        Some((monitor_id.as_str(), theme_id.as_str()))
+    })
+}
+
+/// Applies `apply` to every target, counting successes and failures.
+fn apply_monitor_targets<'a, I, F>(targets: I, mut apply: F) -> MonitorPassOutcome
+where
+    I: IntoIterator<Item = (&'a str, &'a str)>,
+    F: FnMut(&str, &str) -> DwallResult<()>,
+{
+    let mut outcome = MonitorPassOutcome::default();
+
+    for (monitor_id, theme_id) in targets {
+        match apply(monitor_id, theme_id) {
+            Ok(()) => outcome.applied += 1,
+            // Surface the reason: without this the only symptom of a broken theme
+            // is that the wallpaper stops changing.
+            Err(e) => {
+                warn!(
+                    error = %e,
+                    monitor_id = monitor_id,
+                    theme_id = theme_id,
+                    "Failed to apply wallpaper for monitor"
+                );
+                outcome.failed += 1;
+            }
+        }
+    }
+
+    outcome
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::config::{MonitorSpecificWallpapers, WallpaperMode};
+
+    fn monitors(ids: &[&str]) -> HashMap<String, DisplayMonitor> {
+        ids.iter()
+            .enumerate()
+            .map(|(index, id)| {
+                (
+                    (*id).to_string(),
+                    DisplayMonitor::new_test(
+                        (*id).to_string(),
+                        format!("Display {}", index + 1),
+                        Some(index as u32),
+                    ),
+                )
+            })
+            .collect()
+    }
+
+    fn config_with(mode: WallpaperMode) -> Config {
+        let mut config = Config::default();
+        config.set_wallpaper_mode(mode);
+
+        config
+    }
+
+    fn individual(pairs: &[(&str, &str)]) -> WallpaperMode {
+        WallpaperMode::Fixed {
+            monitor_specific_wallpapers: MonitorSpecificWallpapers::Individual(
+                pairs
+                    .iter()
+                    .map(|(monitor, theme)| ((*monitor).to_string(), (*theme).to_string()))
+                    .collect(),
+            ),
+        }
+    }
+
+    fn targets(
+        config: &Config,
+        monitors: &HashMap<String, DisplayMonitor>,
+    ) -> Vec<(String, String)> {
+        monitor_targets(config.monitor_specific_wallpapers(), monitors)
+            .map(|(monitor, theme)| (monitor.to_string(), theme.to_string()))
+            .collect()
+    }
+
+    #[test]
+    fn a_monitor_without_a_configured_theme_is_not_a_target() {
+        let config = config_with(individual(&[("MON-A", "Big Sur")]));
+        let monitors = monitors(&["MON-A", "MON-B"]);
+
+        assert_eq!(
+            targets(&config, &monitors),
+            vec![("MON-A".to_string(), "Big Sur".to_string())]
+        );
+    }
+
+    #[test]
+    fn every_monitor_is_a_target_of_the_all_variant() {
+        let config = config_with(WallpaperMode::Fixed {
+            monitor_specific_wallpapers: MonitorSpecificWallpapers::All("Catalina".to_string()),
+        });
+        let monitors = monitors(&["MON-A", "MON-B"]);
+
+        let mut targets = targets(&config, &monitors);
+        targets.sort();
+
+        assert_eq!(
+            targets,
+            vec![
+                ("MON-A".to_string(), "Catalina".to_string()),
+                ("MON-B".to_string(), "Catalina".to_string()),
+            ]
+        );
+    }
+
+    #[test]
+    fn a_configuration_without_a_monitor_map_has_no_targets() {
+        let config = Config::default();
+        let monitors = monitors(&["MON-A"]);
+
+        assert!(targets(&config, &monitors).is_empty());
+    }
+
+    #[test]
+    fn every_configured_monitor_failure_is_counted() {
+        let outcome = apply_monitor_targets([("MON-A", "Broken"), ("MON-B", "Broken")], |_, _| {
+            Err(crate::error::DwallError::ThemeProcessing(
+                ThemeError::ThemeDirectoryNotFound("Broken".to_string()),
+            ))
+        });
+
+        assert_eq!(
+            outcome,
+            MonitorPassOutcome {
+                applied: 0,
+                failed: 2
+            }
+        );
+        assert!(outcome.every_configured_monitor_failed());
+    }
+
+    #[test]
+    fn one_successful_monitor_keeps_the_cycle_from_failing() {
+        let outcome =
+            apply_monitor_targets([("MON-A", "Broken"), ("MON-B", "Fine")], |_, theme| {
+                if theme == "Fine" {
+                    Ok(())
+                } else {
+                    Err(crate::error::DwallError::ThemeProcessing(
+                        ThemeError::ThemeDirectoryNotFound(theme.to_string()),
+                    ))
+                }
+            });
+
+        assert_eq!(
+            outcome,
+            MonitorPassOutcome {
+                applied: 1,
+                failed: 1
+            }
+        );
+        assert!(!outcome.every_configured_monitor_failed());
+    }
+
+    #[test]
+    fn nothing_to_do_is_not_a_failure() {
+        // An empty monitor map, or a configuration that names none, must not fail
+        // the cycle: `dwall --once` exits 0 in both cases.
+        let empty = apply_monitor_targets([], |_, _| Ok(()));
+        assert_eq!(empty, MonitorPassOutcome::default());
+        assert!(!empty.every_configured_monitor_failed());
+
+        let applied = apply_monitor_targets([("MON-A", "Big Sur")], |_, _| Ok(()));
+        assert_eq!(
+            applied,
+            MonitorPassOutcome {
+                applied: 1,
+                failed: 0
+            }
+        );
+        assert!(!applied.every_configured_monitor_failed());
     }
 }

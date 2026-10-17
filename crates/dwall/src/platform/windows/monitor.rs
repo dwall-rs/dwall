@@ -430,7 +430,11 @@ fn get_device_friendly_name(
 
 // ── Monitor provider ────────────────────────────────────────────────────────
 
-/// Cache expiration time: reduces API calls by 90% at negligible memory cost.
+/// Cache expiration time for the monitor list itself.
+///
+/// Only [`DisplayMonitorProvider::get_monitors`] is served from here (the wallpaper
+/// setter shares this provider); the change check reads the configuration shape
+/// instead of enumerating, so a hot-plug is not hidden behind this TTL.
 const CACHE_EXPIRY_SECONDS: u64 = 300; // 5 minutes
 
 /// Display monitor information with serialization support
@@ -479,6 +483,10 @@ struct MonitorInfoCache {
     data: HashMap<String, DisplayMonitor>,
     updated_at: Instant,
     expiry_duration: Duration,
+    /// Shape of the display configuration `data` was read from, when known.
+    shape: Option<DisplayConfigShape>,
+    /// When `data` was last compared against the system.
+    last_full_check: Instant,
 }
 
 impl MonitorInfoCache {
@@ -487,6 +495,8 @@ impl MonitorInfoCache {
             data: HashMap::new(),
             updated_at: Instant::now(),
             expiry_duration: Duration::from_secs(CACHE_EXPIRY_SECONDS),
+            shape: None,
+            last_full_check: Instant::now(),
         }
     }
 
@@ -541,7 +551,31 @@ impl MonitorProvider for DisplayMonitorProvider {
         Ok(monitors)
     }
 
+    /// Whether the monitors the daemon writes to have changed.
+    ///
+    /// The cycle calls this every iteration, and the previous version enumerated
+    /// every display device each time — a full `QueryDisplayConfig` plus a
+    /// `SetupDiGetDeviceInterfaceDetailW` per monitor, several thousand times a day
+    /// — while the comment above the cache claimed the calls were reduced by 90%.
+    /// The cheap shape query below answers the common case (nothing was plugged or
+    /// unplugged) with one `GetDisplayConfigBufferSizes` call, and the full
+    /// comparison still runs whenever the shape moves or the interval elapses.
     fn has_configuration_changed(&self) -> DwallResult<bool> {
+        let shape = display_configuration_shape()?;
+        let (cached_shape, since_full_check) = {
+            let cache = self.cache.borrow();
+            (cache.shape, cache.last_full_check.elapsed())
+        };
+
+        if !shape_forces_full_check(cached_shape, shape, since_full_check) {
+            debug!(
+                path_count = shape.path_count,
+                mode_count = shape.mode_count,
+                "Display configuration shape unchanged, skipping the enumeration"
+            );
+            return Ok(false);
+        }
+
         let current_monitors = fetch_system_monitors()?;
         let mut cache = self.cache.borrow_mut();
 
@@ -549,6 +583,12 @@ impl MonitorProvider for DisplayMonitorProvider {
             || current_monitors
                 .keys()
                 .any(|device_path| !cache.data.contains_key(device_path));
+
+        // Both are recorded whether or not anything changed: the shape is what the
+        // next cheap check compares against, and without the timestamp every cycle
+        // would enumerate again.
+        cache.shape = Some(shape);
+        cache.last_full_check = Instant::now();
 
         if changed {
             // Refresh the cache too: callers re-apply wallpapers right after this
@@ -558,6 +598,44 @@ impl MonitorProvider for DisplayMonitorProvider {
 
         Ok(changed)
     }
+}
+
+/// The display configuration as the cheap query reports it.
+///
+/// `GetDisplayConfigBufferSizes` counts the paths and modes without enumerating
+/// them, so reading it costs one call instead of the whole `QueryDisplayConfig` +
+/// SetupAPI walk. Attaching or detaching a monitor changes the path count, which is
+/// the only change this daemon acts on: a wallpaper is addressed by device path, so
+/// a resolution change on the same monitor needs no re-application.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct DisplayConfigShape {
+    path_count: u32,
+    mode_count: u32,
+}
+
+/// How long an unchanged shape may skip the full comparison.
+///
+/// A monitor swapped for one that leaves both counts identical is the case the
+/// cheap check cannot see, so the full comparison still runs periodically.
+const FULL_CONFIG_CHECK_INTERVAL: Duration = Duration::from_secs(60);
+
+/// Reads the display configuration shape without enumerating the devices.
+fn display_configuration_shape() -> DwallResult<DisplayConfigShape> {
+    let (path_count, mode_count) = get_buffer_sizes()?;
+
+    Ok(DisplayConfigShape {
+        path_count,
+        mode_count,
+    })
+}
+
+/// Whether the cheap shape check has to be backed by the full comparison.
+fn shape_forces_full_check(
+    cached: Option<DisplayConfigShape>,
+    current: DisplayConfigShape,
+    since_full_check: Duration,
+) -> bool {
+    cached != Some(current) || since_full_check >= FULL_CONFIG_CHECK_INTERVAL
 }
 
 thread_local! {
@@ -610,4 +688,99 @@ fn fetch_system_monitors() -> DwallResult<HashMap<String, DisplayMonitor>> {
     debug!("Found {} active monitor(s)", monitor_count);
 
     Ok(monitors)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn shape(path_count: u32, mode_count: u32) -> DisplayConfigShape {
+        DisplayConfigShape {
+            path_count,
+            mode_count,
+        }
+    }
+
+    #[test]
+    fn the_first_check_always_enumerates() {
+        // Nothing has been cached yet, so the shape cannot be compared.
+        assert!(shape_forces_full_check(None, shape(3, 8), Duration::ZERO));
+    }
+
+    #[test]
+    fn an_unchanged_shape_within_the_interval_skips_the_enumeration() {
+        assert!(!shape_forces_full_check(
+            Some(shape(3, 8)),
+            shape(3, 8),
+            Duration::from_secs(1)
+        ));
+    }
+
+    #[test]
+    fn attaching_or_detaching_a_monitor_forces_the_enumeration() {
+        // The path count is what changes on a hot-plug.
+        assert!(shape_forces_full_check(
+            Some(shape(2, 8)),
+            shape(3, 8),
+            Duration::from_secs(1)
+        ));
+    }
+
+    #[test]
+    fn a_changed_mode_count_forces_the_enumeration() {
+        assert!(shape_forces_full_check(
+            Some(shape(3, 8)),
+            shape(3, 9),
+            Duration::from_secs(1)
+        ));
+    }
+
+    #[test]
+    fn the_full_comparison_still_runs_once_the_interval_elapses() {
+        // A monitor swapped for one with an identical shape is only visible to the
+        // full comparison, so an unchanged shape must not skip it forever.
+        assert!(shape_forces_full_check(
+            Some(shape(3, 8)),
+            shape(3, 8),
+            FULL_CONFIG_CHECK_INTERVAL
+        ));
+        assert!(!shape_forces_full_check(
+            Some(shape(3, 8)),
+            shape(3, 8),
+            FULL_CONFIG_CHECK_INTERVAL - Duration::from_millis(1)
+        ));
+    }
+
+    #[test]
+    fn the_monitor_cache_stops_serving_the_list_once_it_expires() {
+        let mut cache = MonitorInfoCache::new();
+        assert!(!cache.is_valid(), "an empty cache must never be served");
+
+        cache.update(HashMap::from([(
+            "\\\\?\\DISPLAY#1".to_string(),
+            DisplayMonitor::new_test(
+                "\\\\?\\DISPLAY#1".to_string(),
+                "Display 1".to_string(),
+                Some(0),
+            ),
+        )]));
+        assert!(cache.is_valid());
+
+        cache.expiry_duration = Duration::ZERO;
+        assert!(!cache.is_valid(), "an expired cache must be refilled");
+    }
+
+    #[test]
+    fn refreshing_the_list_keeps_the_shape_check_intact() {
+        let mut cache = MonitorInfoCache::new();
+        cache.shape = Some(shape(3, 8));
+        let checked_at = cache.last_full_check;
+
+        cache.update(HashMap::new());
+
+        // `update` only swaps the data; the shape bookkeeping belongs to the change
+        // check, and losing it here would make every cycle enumerate again.
+        assert_eq!(cache.shape, Some(shape(3, 8)));
+        assert_eq!(cache.last_full_check, checked_at);
+    }
 }
