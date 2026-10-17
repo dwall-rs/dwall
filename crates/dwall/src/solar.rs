@@ -200,6 +200,17 @@ impl<'a, P: PositionProvider> GeographicPositionProvider<'a, P> {
     }
 }
 
+impl<P: PositionProvider> PositionProvider for GeographicPositionProvider<'_, P> {
+    fn get_current_position(&self) -> DwallResult<Position> {
+        Self::get_current_position(self)
+    }
+
+    /// Resolving a position is what this type does, so it asks the backend it wraps.
+    fn check_location_permission(&self) -> DwallResult<()> {
+        self.position_provider.check_location_permission()
+    }
+}
+
 // ── Solar position ──────────────────────────────────────────────────────────
 
 mod constants {

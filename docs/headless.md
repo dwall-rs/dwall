@@ -185,7 +185,7 @@ release archive works today and is what it installs (as a portable package expos
 
 | Symptom | Check |
 | --- | --- |
-| `--check-config` exits 3 | The parse error names the offending line; paths are validated too. |
+| `--check-config` exits 3 | The parse error names the offending line. A theme directory that does not exist is *reported* as `(missing)` and still exits 0, so a configuration can be checked before its themes are deployed. |
 | Wallpaper never changes | The log's first lines: a missing theme directory, an empty monitor map and random mode with no themes all warn there. |
 | A monitor keeps failing | A configured theme that cannot be applied is an `ERROR` every cycle, and the daemon backs off — 5 s doubling to 5 minutes — until it works again. `--once` exits 1 in the same situation. A monitor with no theme configured is not an error. |
 | `--once` exits 5 | A daemon already runs; stop it from the settings window or Task Manager. |

@@ -7,35 +7,53 @@ use std::rc::Rc;
 use time::OffsetDateTime;
 
 use crate::DwallResult;
-use crate::color_scheme::ColorSchemeApplier;
+use crate::color_scheme::{ColorSchemeApplier, ColorSchemeProvider};
 use crate::config::{Config, MonitorSpecificWallpapers};
 use crate::monitor::MonitorProvider;
-use crate::platform::{
-    ColorSchemeScheduler, DisplayMonitor, DisplayMonitorProvider, Positioner, WallpaperSetter,
-};
-use crate::solar::{GeographicPositionProvider, Position, SolarPosition};
+use crate::platform::DisplayMonitor;
+use crate::solar::{Position, PositionProvider, SolarPosition};
 use crate::theme::{
     ThemeError, get_theme_directory_path, load_cached_theme_data, wallpaper_image_path,
 };
 use crate::wallpaper::{WallpaperProvider, WallpaperSelector};
 
 /// Orchestrates the solar-based theme update cycle.
-pub(crate) struct ThemeEngine<'a> {
+///
+/// Generic over what it drives rather than fixed to the Windows backends, so the
+/// cycle — which monitor gets which theme, what happens when one of them fails, what
+/// the lock screen shows — can be tested against doubles. It used to take the
+/// concrete `WallpaperSetter`/`DisplayMonitorProvider`/`ColorSchemeScheduler`, which
+/// left the entire orchestration layer untestable: nothing outside
+/// [`crate::daemon`] could build one.
+pub(crate) struct ThemeEngine<'a, M, W, C, P>
+where
+    M: MonitorProvider,
+    W: WallpaperProvider,
+    C: ColorSchemeProvider,
+    P: PositionProvider,
+{
     config: &'a Config,
-    position_provider: GeographicPositionProvider<'a, Positioner>,
-    wallpaper_setter: WallpaperSetter,
-    /// Shared with [`WallpaperSetter`], so both see one snapshot of the displays.
-    monitor_provider: Rc<DisplayMonitorProvider>,
-    color_scheme_applier: ColorSchemeApplier<ColorSchemeScheduler>,
+    position_provider: P,
+    wallpaper_setter: W,
+    /// Shared with the wallpaper setter in production, so both see one snapshot of
+    /// the displays.
+    monitor_provider: Rc<M>,
+    color_scheme_applier: ColorSchemeApplier<C>,
 }
 
-impl<'a> ThemeEngine<'a> {
+impl<'a, M, W, C, P> ThemeEngine<'a, M, W, C, P>
+where
+    M: MonitorProvider,
+    W: WallpaperProvider,
+    C: ColorSchemeProvider,
+    P: PositionProvider,
+{
     pub(crate) fn new(
         config: &'a Config,
-        wallpaper_setter: WallpaperSetter,
-        monitor_provider: Rc<DisplayMonitorProvider>,
-        color_scheme_provider: ColorSchemeScheduler,
-        position_provider: GeographicPositionProvider<'a, Positioner>,
+        wallpaper_setter: W,
+        monitor_provider: Rc<M>,
+        color_scheme_provider: C,
+        position_provider: P,
     ) -> Self {
         info!(
             auto_detect_color_mode = config.auto_detect_color_scheme(),
@@ -94,6 +112,20 @@ impl<'a> ThemeEngine<'a> {
     /// Process theme cycle for the current geographic position
     pub(crate) fn process_theme_cycle(&self, position: &Position) -> DwallResult<()> {
         let now_local = OffsetDateTime::now_local()?;
+
+        self.process_theme_cycle_at(position, &now_local)
+    }
+
+    /// [`process_theme_cycle`](Self::process_theme_cycle) for an explicit local time.
+    ///
+    /// The frame a theme shows is chosen from the sun's position at that instant, so
+    /// testing the choice means naming the instant rather than depending on when the
+    /// test happens to run.
+    fn process_theme_cycle_at(
+        &self,
+        position: &Position,
+        now_local: &OffsetDateTime,
+    ) -> DwallResult<()> {
         let now = now_local.assume_utc();
         let solar_position = SolarPosition::new(position, &now);
         let available_monitors = self.monitor_provider.get_monitors()?;
@@ -117,7 +149,7 @@ impl<'a> ThemeEngine<'a> {
         // driven by the sun and has nothing to do with a broken theme.
         self.color_scheme_applier.update_color_scheme(
             self.config,
-            &now_local,
+            now_local,
             position,
             &solar_position,
         )?;
@@ -342,8 +374,343 @@ where
 
 #[cfg(test)]
 mod tests {
+    use std::cell::RefCell;
+    use std::collections::HashSet;
+    use std::fs;
+
     use super::*;
+    use crate::color_scheme::ColorScheme;
     use crate::config::{MonitorSpecificWallpapers, WallpaperMode};
+
+    // ── Doubles ─────────────────────────────────────────────────────────────
+    //
+    // The engine is generic over what it drives so these can stand in for the
+    // Windows backends. They record what they were asked to do rather than only
+    // answering, because what is under test is the *orchestration*: which monitor
+    // gets which theme, and what a failure in one of them changes for the others.
+
+    /// A theme's frames, expressed as the `solar.json` a legacy theme carries.
+    const TWO_FRAMES: &str = r#"[
+        {"index": 0, "altitude": -30.0, "azimuth": 0.0},
+        {"index": 1, "altitude": 30.0, "azimuth": 0.0}
+    ]"#;
+
+    fn scratch(name: &str) -> PathBuf {
+        let dir = std::env::temp_dir().join(format!("dwall_engine_{name}"));
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(&dir).unwrap();
+
+        dir
+    }
+
+    /// Writes a legacy theme: `solar.json` plus one image per frame.
+    fn write_theme(
+        themes_directory: &Path,
+        theme_id: &str,
+        frames: &str,
+        format: &str,
+        images: &[u32],
+    ) {
+        let theme_dir = themes_directory.join(theme_id);
+        fs::create_dir_all(theme_dir.join(format)).unwrap();
+        fs::write(theme_dir.join("solar.json"), frames).unwrap();
+
+        for index in images {
+            fs::write(
+                theme_dir.join(format).join(format!("{index}.{format}")),
+                "image",
+            )
+            .unwrap();
+        }
+    }
+
+    /// A configuration rooted in a scratch directory, built through `serde` because
+    /// the fields are private.
+    fn config_at(themes_directory: &Path, mode: WallpaperMode, lock_screen: bool) -> Config {
+        let json = format!(
+            r#"{{"themes_directory":{},"customized_themes_directory":{},"image_format":"jpeg","lock_screen_wallpaper_enabled":{}}}"#,
+            serde_json::to_string(&themes_directory.to_string_lossy()).unwrap(),
+            serde_json::to_string(&themes_directory.join("custom").to_string_lossy()).unwrap(),
+            lock_screen,
+        );
+
+        let mut config: Config = serde_json::from_str(&json).unwrap();
+        config.set_wallpaper_mode(mode);
+        config
+    }
+
+    struct StaticMonitors {
+        monitors: HashMap<String, DisplayMonitor>,
+    }
+
+    impl MonitorProvider for StaticMonitors {
+        fn get_monitors(&self) -> DwallResult<HashMap<String, DisplayMonitor>> {
+            Ok(self.monitors.clone())
+        }
+
+        fn refresh_monitors(&self) -> DwallResult<HashMap<String, DisplayMonitor>> {
+            Ok(self.monitors.clone())
+        }
+
+        fn has_configuration_changed(&self) -> DwallResult<bool> {
+            Ok(false)
+        }
+    }
+
+    /// What the cycle asked the wallpaper backend for.
+    ///
+    /// The state is shared rather than owned so the test keeps a handle while the
+    /// engine owns its own: the engine takes its providers by value.
+    #[derive(Default)]
+    struct WallpaperCalls {
+        applied: RefCell<Vec<(String, String)>>,
+        lock_screen: RefCell<Vec<String>>,
+        failing_monitors: HashSet<String>,
+        lock_screen_fails: bool,
+    }
+
+    #[derive(Clone, Default)]
+    struct RecordingWallpapers {
+        calls: Rc<WallpaperCalls>,
+    }
+
+    impl RecordingWallpapers {
+        fn failing_for(monitors: &[&str]) -> Self {
+            Self {
+                calls: Rc::new(WallpaperCalls {
+                    failing_monitors: monitors.iter().map(|id| (*id).to_string()).collect(),
+                    ..Default::default()
+                }),
+            }
+        }
+
+        fn failing_lock_screen() -> Self {
+            Self {
+                calls: Rc::new(WallpaperCalls {
+                    lock_screen_fails: true,
+                    ..Default::default()
+                }),
+            }
+        }
+
+        /// The image file names applied to `monitor_id`, in order.
+        fn images_for(&self, monitor_id: &str) -> Vec<String> {
+            self.calls
+                .applied
+                .borrow()
+                .iter()
+                .filter(|(monitor, _)| monitor == monitor_id)
+                .map(|(_, image)| image.clone())
+                .collect()
+        }
+
+        fn monitors_touched(&self) -> Vec<String> {
+            let mut monitors: Vec<String> = self
+                .calls
+                .applied
+                .borrow()
+                .iter()
+                .map(|(monitor, _)| monitor.clone())
+                .collect();
+            monitors.sort();
+            monitors.dedup();
+
+            monitors
+        }
+
+        fn lock_screen_images(&self) -> Vec<String> {
+            self.calls.lock_screen.borrow().clone()
+        }
+    }
+
+    impl WallpaperProvider for RecordingWallpapers {
+        fn set_monitor_wallpaper(&self, monitor_id: &str, image_path: &Path) -> DwallResult<()> {
+            if self.calls.failing_monitors.contains(monitor_id) {
+                return Err(ThemeError::WallpaperImageMissing {
+                    path: image_path.display().to_string(),
+                }
+                .into());
+            }
+
+            self.calls.applied.borrow_mut().push((
+                monitor_id.to_string(),
+                image_path
+                    .file_name()
+                    .unwrap_or_default()
+                    .to_string_lossy()
+                    .into_owned(),
+            ));
+
+            Ok(())
+        }
+
+        fn set_lock_screen_image(&self, image_path: &Path) -> DwallResult<()> {
+            if self.calls.lock_screen_fails {
+                return Err(ThemeError::WallpaperImageMissing {
+                    path: image_path.display().to_string(),
+                }
+                .into());
+            }
+
+            self.calls.lock_screen.borrow_mut().push(
+                image_path
+                    .file_name()
+                    .unwrap_or_default()
+                    .to_string_lossy()
+                    .into_owned(),
+            );
+
+            Ok(())
+        }
+    }
+
+    struct FixedPosition(Position);
+
+    impl PositionProvider for FixedPosition {
+        fn get_current_position(&self) -> DwallResult<Position> {
+            Ok(self.0)
+        }
+
+        fn check_location_permission(&self) -> DwallResult<()> {
+            Ok(())
+        }
+    }
+
+    /// Records the color schemes the cycle asked for.
+    #[derive(Clone, Default)]
+    struct RecordingScheme {
+        applied: Rc<RefCell<Vec<ColorScheme>>>,
+    }
+
+    impl RecordingScheme {
+        fn applied(&self) -> Vec<ColorScheme> {
+            self.applied.borrow().clone()
+        }
+    }
+
+    impl ColorSchemeProvider for RecordingScheme {
+        fn get_current_scheme(&self) -> DwallResult<ColorScheme> {
+            Ok(ColorScheme::Light)
+        }
+
+        fn set_color_scheme(&self, scheme: ColorScheme) -> DwallResult<()> {
+            self.applied.borrow_mut().push(scheme);
+
+            Ok(())
+        }
+    }
+
+    /// Everything one cycle needs, kept alive together.
+    struct Fixture {
+        config: Config,
+        wallpapers: RecordingWallpapers,
+        monitors: Rc<StaticMonitors>,
+        scheme: RecordingScheme,
+        position: Position,
+        directory: PathBuf,
+        themes_directory: PathBuf,
+    }
+
+    impl Fixture {
+        fn new(
+            name: &str,
+            monitors: &[&str],
+            mode: WallpaperMode,
+            themes: &[(&str, &[u32])],
+        ) -> Self {
+            let directory = scratch(name);
+            let themes_directory = directory.join("themes");
+            fs::create_dir_all(&themes_directory).unwrap();
+
+            for (theme_id, images) in themes {
+                write_theme(&themes_directory, theme_id, TWO_FRAMES, "jpg", images);
+            }
+
+            Self {
+                config: config_at(&themes_directory, mode, false),
+                wallpapers: RecordingWallpapers::default(),
+                monitors: Rc::new(StaticMonitors {
+                    monitors: tests::monitors(monitors),
+                }),
+                scheme: RecordingScheme::default(),
+                position: beijing(),
+                directory,
+                themes_directory,
+            }
+        }
+
+        fn fail_for(mut self, monitors: &[&str]) -> Self {
+            self.wallpapers = RecordingWallpapers::failing_for(monitors);
+
+            self
+        }
+
+        /// Rebuilds the configuration with the lock screen enabled, which is a field
+        /// without a setter.
+        fn with_lock_screen(mut self) -> Self {
+            self.config = config_at(
+                &self.themes_directory,
+                self.config.wallpaper_mode().clone(),
+                true,
+            );
+
+            self
+        }
+
+        fn engine(
+            &self,
+        ) -> ThemeEngine<'_, StaticMonitors, RecordingWallpapers, RecordingScheme, FixedPosition>
+        {
+            ThemeEngine::new(
+                &self.config,
+                self.wallpapers.clone(),
+                Rc::clone(&self.monitors),
+                self.scheme.clone(),
+                FixedPosition(self.position),
+            )
+        }
+
+        fn run(&self) -> DwallResult<()> {
+            self.engine()
+                .process_theme_cycle_at(&self.position, &summer_noon())
+        }
+
+        fn cleanup(&self) {
+            let _ = fs::remove_dir_all(&self.directory);
+        }
+    }
+
+    /// A position in Beijing.
+    fn beijing() -> Position {
+        Position::new(39.9, 116.4, 50.0).unwrap()
+    }
+
+    /// A local time with the offset `+08:00`.
+    fn local_time(hour: u8) -> OffsetDateTime {
+        OffsetDateTime::new(
+            2026,
+            time::Month::June,
+            21,
+            hour,
+            0,
+            0,
+            "+08:00".parse().unwrap(),
+        )
+        .unwrap()
+    }
+
+    /// Midday at the summer solstice: the sun is high above Beijing, so a theme's
+    /// daylight frame is the one selected.
+    fn summer_noon() -> OffsetDateTime {
+        local_time(12)
+    }
+
+    /// The same day at midnight, when the sun is well below the horizon.
+    fn summer_midnight() -> OffsetDateTime {
+        local_time(0)
+    }
+
+    // ── monitor_targets / apply_monitor_targets (pure) ──────────────────────
 
     fn monitors(ids: &[&str]) -> HashMap<String, DisplayMonitor> {
         ids.iter()
@@ -484,5 +851,304 @@ mod tests {
             }
         );
         assert!(!applied.every_configured_monitor_failed());
+    }
+
+    // ── The cycle, driven through the providers ─────────────────────────────
+
+    #[test]
+    fn every_configured_monitor_is_attempted_even_when_one_fails() {
+        let fixture = Fixture::new(
+            "one_fails",
+            &["MON-A", "MON-B"],
+            individual(&[("MON-A", "Broken"), ("MON-B", "Big Sur")]),
+            &[("Big Sur", &[1, 2])],
+        )
+        .fail_for(&["MON-A"]);
+
+        // MON-A's theme does not exist, so its wallpaper fails; that must not stop
+        // MON-B, which is the next target.
+        assert!(fixture.run().is_ok(), "one success keeps the cycle alive");
+        assert_eq!(fixture.wallpapers.monitors_touched(), vec!["MON-B"]);
+    }
+
+    #[test]
+    fn a_cycle_where_every_configured_monitor_fails_is_a_failure() {
+        let fixture = Fixture::new(
+            "all_fail",
+            &["MON-A", "MON-B"],
+            individual(&[("MON-A", "Missing One"), ("MON-B", "Missing Two")]),
+            &[],
+        );
+
+        // Before this, a per-monitor failure was only a warning and the cycle always
+        // reported success: a broken theme was neither retried with a backoff nor
+        // visible as an error.
+        let error = fixture.run().expect_err("nothing was applied");
+
+        assert!(
+            error.to_string().contains("2"),
+            "the error names how many monitors failed: {error}"
+        );
+    }
+
+    /// The other side of the same rule: a configuration that names no monitor has
+    /// nothing to do, which is not a failure — `dwall --once` has to keep exiting 0
+    /// on a default configuration.
+    #[test]
+    fn monitors_without_a_configured_theme_are_skipped_and_do_not_fail_the_cycle() {
+        let fixture = Fixture::new(
+            "skipped",
+            &["MON-A", "MON-B"],
+            individual(&[("MON-A", "Big Sur")]),
+            &[("Big Sur", &[1, 2])],
+        );
+
+        assert!(fixture.run().is_ok());
+        assert_eq!(
+            fixture.wallpapers.monitors_touched(),
+            vec!["MON-A"],
+            "MON-B has no theme configured and is left alone"
+        );
+    }
+
+    #[test]
+    fn a_missing_image_is_reported_per_monitor() {
+        // The theme has one frame declared but no image for it: the failure is
+        // attributed to the monitor that asked for it, and the other monitor with a
+        // working theme still gets its wallpaper.
+        let fixture = Fixture::new(
+            "missing_image",
+            &["MON-A", "MON-B"],
+            individual(&[("MON-A", "No Image"), ("MON-B", "Big Sur")]),
+            &[("No Image", &[]), ("Big Sur", &[1, 2])],
+        );
+
+        assert!(fixture.run().is_ok());
+        assert_eq!(fixture.wallpapers.monitors_touched(), vec!["MON-B"]);
+    }
+
+    #[test]
+    fn a_custom_theme_uses_its_manifest_image_format() {
+        let directory = scratch("manifest_format");
+        let themes_directory = directory.join("themes");
+        let custom_directory = directory.join("custom");
+        let theme_dir = custom_directory.join("My Theme");
+        fs::create_dir_all(&theme_dir).unwrap();
+        // A custom theme declares its frames and its format in `theme.toml`, and keeps
+        // its images under `images/` rather than under the format's name.
+        fs::write(
+            theme_dir.join("theme.toml"),
+            r#"schema = 1
+
+[theme]
+id = "my-theme"
+name = "My Theme"
+author = "tester"
+version = 1
+created_at = 1700000000
+image_format = "png"
+
+[solar]
+mode = "native"
+
+[[solar.frames]]
+index = 0
+altitude = -30.0
+azimuth = 0.0
+
+[[solar.frames]]
+index = 1
+altitude = 30.0
+azimuth = 0.0
+"#,
+        )
+        .unwrap();
+        fs::create_dir_all(theme_dir.join("images")).unwrap();
+        for index in [1, 2] {
+            fs::write(
+                theme_dir.join("images").join(format!("{index}.png")),
+                "image",
+            )
+            .unwrap();
+        }
+
+        let json = format!(
+            r#"{{"themes_directory":{},"customized_themes_directory":{},"image_format":"jpeg"}}"#,
+            serde_json::to_string(&themes_directory.to_string_lossy()).unwrap(),
+            serde_json::to_string(&custom_directory.to_string_lossy()).unwrap(),
+        );
+        let mut config: Config = serde_json::from_str(&json).unwrap();
+        config.set_wallpaper_mode(individual(&[("MON-A", "My Theme")]));
+
+        let wallpapers = RecordingWallpapers::default();
+        let engine = ThemeEngine::new(
+            &config,
+            wallpapers.clone(),
+            Rc::new(StaticMonitors {
+                monitors: tests::monitors(&["MON-A"]),
+            }),
+            RecordingScheme::default(),
+            FixedPosition(beijing()),
+        );
+
+        engine
+            .process_theme_cycle_at(&beijing(), &summer_noon())
+            .unwrap();
+
+        // The configuration says jpeg; the manifest says png, and the manifest wins.
+        assert_eq!(wallpapers.images_for("MON-A"), vec!["2.png".to_string()]);
+
+        let _ = fs::remove_dir_all(&directory);
+    }
+
+    #[test]
+    fn lock_screen_is_skipped_when_no_monitor_succeeded() {
+        let fixture = Fixture::new(
+            "lock_skipped",
+            &["MON-A"],
+            individual(&[("MON-A", "Missing")]),
+            &[],
+        )
+        .with_lock_screen();
+
+        assert!(fixture.run().is_err());
+        assert!(
+            fixture.wallpapers.lock_screen_images().is_empty(),
+            "the lock screen must not show a theme the desktop could not apply"
+        );
+
+        fixture.cleanup();
+    }
+
+    #[test]
+    fn lock_screen_theme_is_deterministic_for_a_multi_monitor_map() {
+        // Two monitors with different themes and the lock screen enabled: the lock
+        // screen has to pick the same theme every cycle, not whichever one the map
+        // happens to yield first.
+        for _ in 0..5 {
+            let fixture = Fixture::new(
+                "lock_deterministic",
+                &["MON-A", "MON-B"],
+                individual(&[("MON-A", "Alpha"), ("MON-B", "Beta")]),
+                &[("Alpha", &[1, 2]), ("Beta", &[1, 2])],
+            )
+            .with_lock_screen();
+
+            fixture.run().unwrap();
+
+            let applied = fixture.wallpapers.lock_screen_images();
+            assert_eq!(applied.len(), 1, "the lock screen is set once per cycle");
+            assert_eq!(
+                applied[0], "2.jpg",
+                "both themes declare the same frames, so the image name must match"
+            );
+
+            fixture.cleanup();
+        }
+    }
+
+    #[test]
+    fn a_failing_lock_screen_does_not_fail_the_cycle() {
+        let mut fixture = Fixture::new(
+            "lock_fails",
+            &["MON-A"],
+            individual(&[("MON-A", "Big Sur")]),
+            &[("Big Sur", &[1, 2])],
+        )
+        .with_lock_screen();
+        fixture.wallpapers = RecordingWallpapers::failing_lock_screen();
+
+        // The desktop wallpaper worked; a lock screen failure is a warning, not a
+        // failed cycle.
+        assert!(fixture.run().is_ok());
+
+        fixture.cleanup();
+    }
+
+    /// The light/dark switch follows the sun and must not depend on a theme being
+    /// applicable: the wallpaper can be broken while the scheme still works.
+    #[test]
+    fn the_color_scheme_is_updated_even_when_every_monitor_fails() {
+        let fixture = Fixture::new(
+            "scheme_survives",
+            &["MON-A"],
+            individual(&[("MON-A", "Missing")]),
+            &[],
+        );
+
+        assert!(fixture.run().is_err());
+        assert_eq!(
+            fixture.scheme.applied().len(),
+            1,
+            "the scheme update runs before the cycle is failed"
+        );
+
+        fixture.cleanup();
+    }
+
+    #[test]
+    fn the_image_format_comes_from_the_configuration_for_a_legacy_theme() {
+        let fixture = Fixture::new(
+            "legacy_format",
+            &["MON-A"],
+            individual(&[("MON-A", "Big Sur")]),
+            &[("Big Sur", &[1, 2])],
+        );
+
+        assert!(fixture.run().is_ok());
+        assert_eq!(
+            fixture.wallpapers.images_for("MON-A"),
+            vec!["2.jpg".to_string()],
+            "midday selects the second frame, named 1-based"
+        );
+
+        fixture.cleanup();
+    }
+
+    #[test]
+    fn the_frame_follows_the_sun_at_the_given_time() {
+        let fixture = Fixture::new(
+            "frames",
+            &["MON-A"],
+            individual(&[("MON-A", "Big Sur")]),
+            &[("Big Sur", &[1, 2])],
+        );
+        let engine = fixture.engine();
+
+        engine
+            .process_theme_cycle_at(&fixture.position, &summer_noon())
+            .unwrap();
+        engine
+            .process_theme_cycle_at(&fixture.position, &summer_midnight())
+            .unwrap();
+
+        // `TWO_FRAMES` declares altitude -30 then +30, and the files are 1-based:
+        // the high sun picks the second frame, the night picks the first.
+        assert_eq!(
+            fixture.wallpapers.images_for("MON-A"),
+            vec!["2.jpg".to_string(), "1.jpg".to_string()]
+        );
+
+        fixture.cleanup();
+    }
+
+    #[test]
+    fn the_all_variant_applies_one_theme_to_every_monitor() {
+        let fixture = Fixture::new(
+            "all_variant",
+            &["MON-A", "MON-B"],
+            WallpaperMode::Fixed {
+                monitor_specific_wallpapers: MonitorSpecificWallpapers::All("Big Sur".to_string()),
+            },
+            &[("Big Sur", &[1, 2])],
+        );
+
+        assert!(fixture.run().is_ok());
+        assert_eq!(
+            fixture.wallpapers.monitors_touched(),
+            vec!["MON-A", "MON-B"]
+        );
+
+        fixture.cleanup();
     }
 }
