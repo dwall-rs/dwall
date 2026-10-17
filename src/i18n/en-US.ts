@@ -109,6 +109,8 @@ export const dict = {
     subtitle: "preferences",
     unsaved: "Unsaved",
     saveFailed: "Save failed",
+    loadFailed: "Could not read the configuration",
+    retry: "Retry",
     discard: "Discard",
     save: "Save configuration",
     saving: "Saving…",

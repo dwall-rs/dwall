@@ -106,6 +106,8 @@ export const dict: RawDictionary = {
     subtitle: "preferences",
     unsaved: "未保存",
     saveFailed: "保存失败",
+    loadFailed: "无法读取配置",
+    retry: "重试",
     discard: "放弃",
     save: "保存配置",
     saving: "写入中…",

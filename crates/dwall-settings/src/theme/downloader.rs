@@ -1,6 +1,6 @@
 //! Theme download orchestration.
 
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::sync::atomic::AtomicBool;
 use std::time::Duration;
@@ -101,6 +101,22 @@ impl ThemeDownloader {
         .await;
 
         if let Err(e) = extract_result {
+            cleanup_dir(&staging_dir).await;
+            return Err(e);
+        }
+
+        // Extraction succeeding only means the archive unpacked. `archive::extract_zip`
+        // strips a single shared top-level directory and nothing else, so an archive
+        // carrying one stray top-level file leaves the theme one level down; and an
+        // archive can be complete enough to unpack while missing a frame image. Both
+        // are refused here, before the swap below deletes the installed copy.
+        if let Err(e) = verify_staged_theme(&staging_dir, config) {
+            error!(
+                theme_id = theme_id,
+                staging_dir = %staging_dir.display(),
+                error = %e,
+                "Downloaded archive is not a theme the daemon can apply, keeping the installed theme"
+            );
             cleanup_dir(&staging_dir).await;
             return Err(e);
         }
@@ -211,5 +227,193 @@ async fn cleanup_dir(dir: &std::path::Path) {
         && let Err(e) = fs::remove_dir_all(dir).await
     {
         warn!(dir = %dir.display(), error = %e, "Failed to clean up the staging directory");
+    }
+}
+
+/// Whether a staging directory holds a theme the daemon can actually apply.
+///
+/// Runs the daemon's own [`dwall::ThemeValidator`] against the staging directory,
+/// so "this download is accepted" and "the daemon can apply it" are the same
+/// question rather than two answers that can drift apart. The validator is
+/// addressed the way it expects — a themes directory plus a theme id — which the
+/// staging path already is (`<themes_directory>/<id>.staging`).
+fn verify_staged_theme(staging_dir: &Path, config: &dwall::Config) -> DwallSettingsResult<()> {
+    let Some(themes_directory) = staging_dir.parent() else {
+        return Err(DwallSettingsError::Other(format!(
+            "Staging directory has no parent: {}",
+            staging_dir.display()
+        )));
+    };
+
+    let Some(theme_identifier) = staging_dir.file_name().and_then(|name| name.to_str()) else {
+        return Err(DwallSettingsError::Other(format!(
+            "Staging directory has no usable name: {}",
+            staging_dir.display()
+        )));
+    };
+
+    // `customized = false`: a download always lands in `themes_directory`, whose
+    // layout the daemon reads as `<theme>/<image_format>/<n>.<ext>`.
+    //
+    // The uncached entry point matters here: `<id>.staging` is reused by every
+    // download of one theme, so the daemon's path-keyed parse cache would hand back
+    // the previous download's frames and image format.
+    dwall::ThemeValidator::validate_uncached(
+        themes_directory,
+        theme_identifier,
+        false,
+        config.image_format(),
+    )?;
+
+    Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use std::fs;
+    use std::path::PathBuf;
+
+    use super::*;
+
+    /// An empty scratch themes directory of its own, so the tests can run in
+    /// parallel without sharing a staging path.
+    fn scratch_themes_directory(name: &str) -> PathBuf {
+        let root = std::env::temp_dir().join(format!("dwall_downloader_{name}"));
+        let _ = fs::remove_dir_all(&root);
+        fs::create_dir_all(&root).unwrap();
+
+        root
+    }
+
+    fn config_for(themes_directory: &Path) -> dwall::Config {
+        dwall::Config::default().with_themes_directory(themes_directory)
+    }
+
+    fn write_solar_json(theme: &Path, frames: &str) {
+        fs::write(theme.join("solar.json"), frames).unwrap();
+    }
+
+    /// A legacy (`solar.json`) theme: images live under the config's format.
+    fn write_layered_theme(theme: &Path) {
+        fs::create_dir_all(theme.join("jpg")).unwrap();
+        write_solar_json(
+            theme,
+            r#"[{"index": 0, "altitude": 10.0, "azimuth": 20.0}]"#,
+        );
+        fs::write(theme.join("jpg").join("1.jpg"), b"image").unwrap();
+    }
+
+    #[test]
+    fn a_staged_legacy_theme_is_accepted() {
+        let root = scratch_themes_directory("accept");
+        let staging = root.join("Demo.staging");
+        write_layered_theme(&staging);
+
+        assert!(verify_staged_theme(&staging, &config_for(&root)).is_ok());
+    }
+
+    /// The extractor only strips a top-level directory when *every* entry shares
+    /// it, so a release asset that gains one top-level file (`README.md`,
+    /// `LICENSE`) unpacks to `<staging>/<Theme>/solar.json`. Accepting that would
+    /// delete the working theme and leave a directory the daemon cannot read.
+    #[test]
+    fn a_stray_top_level_file_does_not_make_the_nested_theme_valid() {
+        let root = scratch_themes_directory("nested");
+        let staging = root.join("Demo.staging");
+        fs::create_dir_all(&staging).unwrap();
+        fs::write(staging.join("README.md"), b"# release notes").unwrap();
+        write_layered_theme(&staging.join("Demo"));
+
+        assert!(verify_staged_theme(&staging, &config_for(&root)).is_err());
+    }
+
+    #[test]
+    fn an_empty_staging_directory_is_rejected() {
+        let root = scratch_themes_directory("empty");
+        let staging = root.join("Demo.staging");
+        fs::create_dir_all(&staging).unwrap();
+
+        assert!(verify_staged_theme(&staging, &config_for(&root)).is_err());
+    }
+
+    #[test]
+    fn a_theme_missing_a_frame_image_is_rejected() {
+        let root = scratch_themes_directory("missing_image");
+        let staging = root.join("Demo.staging");
+        fs::create_dir_all(staging.join("jpg")).unwrap();
+        write_solar_json(
+            &staging,
+            r#"[{"index": 0, "altitude": 10.0, "azimuth": 20.0},
+                {"index": 1, "altitude": 40.0, "azimuth": 90.0}]"#,
+        );
+        fs::write(staging.join("jpg").join("1.jpg"), b"image").unwrap();
+
+        assert!(verify_staged_theme(&staging, &config_for(&root)).is_err());
+    }
+
+    #[test]
+    fn a_staged_manifest_theme_uses_its_own_image_format() {
+        let root = scratch_themes_directory("manifest");
+        let staging = root.join("Demo.staging");
+        fs::create_dir_all(staging.join("png")).unwrap();
+        fs::write(
+            staging.join("theme.toml"),
+            r#"
+schema = 1
+
+[theme]
+id = "demo"
+name = "Demo"
+author = "alice"
+version = 1
+created_at = 1700000000
+image_format = "png"
+
+[solar]
+mode = "native"
+
+[[solar.frames]]
+index = 0
+altitude = 10.0
+azimuth = 20.0
+"#,
+        )
+        .unwrap();
+        fs::write(staging.join("png").join("1.png"), b"image").unwrap();
+
+        assert!(verify_staged_theme(&staging, &config_for(&root)).is_ok());
+    }
+
+    #[test]
+    fn a_staging_directory_without_a_usable_name_is_rejected() {
+        let root = scratch_themes_directory("no_name");
+
+        assert!(verify_staged_theme(&root, &config_for(&root)).is_err());
+    }
+
+    /// `<id>.staging` is reused by every download of one theme, so the second
+    /// download has to be judged on its own files. The daemon's validator reads
+    /// through a path-keyed cache, and its entry from the first check would
+    /// otherwise decide the second.
+    #[test]
+    fn reusing_a_staging_directory_revalidates_its_new_contents() {
+        let root = scratch_themes_directory("reused");
+        let staging = root.join("Demo.staging");
+
+        // First download: one frame with its image.
+        write_layered_theme(&staging);
+        assert!(verify_staged_theme(&staging, &config_for(&root)).is_ok());
+
+        // Second download into the same path: two frames, one image missing.
+        fs::remove_dir_all(&staging).unwrap();
+        fs::create_dir_all(staging.join("jpg")).unwrap();
+        write_solar_json(
+            &staging,
+            r#"[{"index": 0, "altitude": 10.0, "azimuth": 20.0},
+                {"index": 1, "altitude": 40.0, "azimuth": 90.0}]"#,
+        );
+        fs::write(staging.join("jpg").join("1.jpg"), b"image").unwrap();
+
+        assert!(verify_staged_theme(&staging, &config_for(&root)).is_err());
     }
 }

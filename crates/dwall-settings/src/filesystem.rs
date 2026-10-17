@@ -57,6 +57,24 @@ pub fn validate_theme_id(theme_id: &str) -> DwallSettingsResult<()> {
     Ok(())
 }
 
+/// Validates the two theme roots a configuration carries.
+///
+/// Both roots are used for recursive filesystem operations: the downloader clears
+/// and extracts under `themes_directory`, and the migration command copies a tree
+/// and removes the source. Every command that acts on a renderer-supplied
+/// configuration therefore has to validate them the same way — keeping the two
+/// calls in one place is what stops a new command (or an old one that forgot) from
+/// being the single path that writes under an unchecked root.
+pub fn validate_theme_roots(config: &dwall::Config) -> DwallSettingsResult<()> {
+    validate_directory(config.themes_directory(), "themes_directory")?;
+    validate_directory(
+        config.customized_themes_directory(),
+        "customized_themes_directory",
+    )?;
+
+    Ok(())
+}
+
 // ── Generic operations ──────────────────────────────────────────────────────
 
 /// Creates directories if they don't exist
@@ -265,5 +283,66 @@ mod tests {
             validate_directory_move(&source, &source.join("inner")),
             Err(DirectoryMoveError::CopyFailed(_))
         ));
+    }
+
+    // ── validate_theme_roots ────────────────────────────────────────────────
+
+    /// A configuration whose two theme roots are exactly what the renderer sent.
+    ///
+    /// Built through `serde` because the fields are private: this is the same path
+    /// a Tauri command argument takes.
+    fn config_with_roots(themes: &str, customized: &str) -> dwall::Config {
+        let json = format!(
+            r#"{{"themes_directory":{},"customized_themes_directory":{}}}"#,
+            serde_json::to_string(themes).unwrap(),
+            serde_json::to_string(customized).unwrap(),
+        );
+
+        serde_json::from_str(&json).unwrap()
+    }
+
+    fn absolute_pair() -> (String, String) {
+        let root = std::env::temp_dir();
+
+        (
+            root.join("themes").to_string_lossy().into_owned(),
+            root.join("customize").to_string_lossy().into_owned(),
+        )
+    }
+
+    #[test]
+    fn validate_theme_roots_accepts_absolute_directories() {
+        let (themes, customized) = absolute_pair();
+
+        assert!(validate_theme_roots(&config_with_roots(&themes, &customized)).is_ok());
+    }
+
+    /// `download_theme_cmd` used to skip this check and go straight to
+    /// `remove_dir_all` + extraction under whatever root the renderer sent.
+    #[test]
+    fn validate_theme_roots_rejects_a_relative_themes_directory() {
+        let (_, customized) = absolute_pair();
+
+        assert!(validate_theme_roots(&config_with_roots("themes", &customized)).is_err());
+    }
+
+    #[test]
+    fn validate_theme_roots_rejects_a_relative_customized_directory() {
+        let (themes, _) = absolute_pair();
+
+        assert!(validate_theme_roots(&config_with_roots(&themes, "customize")).is_err());
+    }
+
+    #[test]
+    fn validate_theme_roots_rejects_a_parent_dir_component() {
+        let (themes, _) = absolute_pair();
+        let escaping = std::env::temp_dir()
+            .join("..")
+            .join("elsewhere")
+            .to_string_lossy()
+            .into_owned();
+
+        assert!(validate_theme_roots(&config_with_roots(&themes, &escaping)).is_err());
+        assert!(validate_theme_roots(&config_with_roots(&escaping, &themes)).is_err());
     }
 }

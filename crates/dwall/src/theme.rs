@@ -250,6 +250,44 @@ impl ThemeValidator {
         is_customized: bool,
         image_format: &ImageFormat,
     ) -> DwallResult<()> {
+        Self::validate_with(
+            themes_directory,
+            theme_identifier,
+            is_customized,
+            image_format,
+            load_cached_theme_data,
+        )
+    }
+
+    /// Validates a solar theme directory, reading its files instead of the cache.
+    ///
+    /// [`validate`](Self::validate) reuses the daemon's parse cache, which is keyed
+    /// by path. A caller that has just replaced the *contents* of a directory under
+    /// an unchanged path — the settings app checking a freshly extracted staging
+    /// directory, which reuses `<id>.staging` for every download of that theme —
+    /// would otherwise be shown the previous download's frames and image format.
+    pub fn validate_uncached(
+        themes_directory: &Path,
+        theme_identifier: &str,
+        is_customized: bool,
+        image_format: &ImageFormat,
+    ) -> DwallResult<()> {
+        Self::validate_with(
+            themes_directory,
+            theme_identifier,
+            is_customized,
+            image_format,
+            |theme_directory| Ok(Rc::new(read_theme_data(theme_directory)?)),
+        )
+    }
+
+    fn validate_with(
+        themes_directory: &Path,
+        theme_identifier: &str,
+        is_customized: bool,
+        image_format: &ImageFormat,
+        load_theme_data: impl Fn(&Path) -> DwallResult<Rc<ThemeData>>,
+    ) -> DwallResult<()> {
         trace!(
             theme_id = theme_identifier,
             themes_directory = %themes_directory.display(),
@@ -267,7 +305,7 @@ impl ThemeValidator {
             return Err(ThemeError::ThemeDirectoryNotFound(theme_identifier.to_string()).into());
         }
 
-        let theme_data = load_cached_theme_data(&theme_directory_path)?;
+        let theme_data = load_theme_data(&theme_directory_path)?;
 
         // Manifest themes: enforce the documented angle ranges (solar.json is trusted).
         if theme_data.image_format.is_some() {
