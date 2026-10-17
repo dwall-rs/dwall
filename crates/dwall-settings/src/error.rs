@@ -27,6 +27,13 @@ pub enum DwallSettingsError {
     NulError(#[from] std::ffi::NulError),
     #[error("Failed to spawn daemon: {0}")]
     Daemon(String),
+    /// The user cancelled the download.
+    ///
+    /// A variant of its own so the retry loop can tell "the user asked us to stop"
+    /// from "the transfer failed", which used to be a string comparison. The message
+    /// is what the renderer matches on (`isCancellation`), so it stays as it was.
+    #[error("Download cancelled")]
+    Cancelled,
     #[error(transparent)]
     Thumbnail(#[from] ThumbnailError),
     #[error(transparent)]

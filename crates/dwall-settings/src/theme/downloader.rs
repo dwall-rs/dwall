@@ -93,12 +93,7 @@ impl ThemeDownloader {
             return Err(e);
         }
 
-        let extract_result = async {
-            self.finalize_download(&temp_path, &zip_path).await?;
-            archive::extract_zip(&zip_path, &staging_dir).await?;
-            archive::remove_file(&zip_path).await
-        }
-        .await;
+        let extract_result = stage_archive(&temp_path, &zip_path, &staging_dir).await;
 
         if let Err(e) = extract_result {
             cleanup_dir(&staging_dir).await;
@@ -189,6 +184,10 @@ impl ThemeDownloader {
                 .await
             {
                 Ok(_) => return Ok(()),
+                // A cancelled download is the user's decision, not a failure to
+                // retry: the cancellation flag is still set, so the next attempt
+                // would abort on its first chunk and the wait would be pointless.
+                Err(e) if !is_retryable(&e) => return Err(e),
                 Err(e) if attempt < MAX_RETRIES - 1 => {
                     warn!(error = %e, "Download failed, will retry");
                 }
@@ -201,15 +200,6 @@ impl ThemeDownloader {
         ))
     }
 
-    async fn finalize_download(
-        &self,
-        temp_path: &std::path::Path,
-        final_path: &std::path::Path,
-    ) -> DwallSettingsResult<()> {
-        fs::rename(temp_path, final_path).await?;
-        Ok(())
-    }
-
     async fn handle_download_error(&self, temp_path: &std::path::Path) {
         // Keep a non-empty partial file: the next attempt resumes it with a range
         // request. Only a zero-byte leftover is useless.
@@ -219,6 +209,42 @@ impl ThemeDownloader {
             let _ = fs::remove_file(temp_path).await;
         }
     }
+}
+
+/// Whether a failed attempt is worth trying again.
+///
+/// The cancellation message is part of the renderer contract
+/// (`isCancellation` in `src/models/download.ts` matches this text), so it is
+/// pinned by a test rather than left to whoever edits the variant next.
+fn is_retryable(error: &DwallSettingsError) -> bool {
+    !matches!(error, DwallSettingsError::Cancelled)
+}
+
+/// Moves the finished download into place, extracts it, and clears the archive.
+///
+/// The archive is removed on both paths: it used to be the last statement of the
+/// extraction chain, so a failed extraction left `themes/<id>.zip` behind — the
+/// largest file the app writes, in a directory nothing else cleans.
+async fn stage_archive(
+    temp_path: &std::path::Path,
+    zip_path: &std::path::Path,
+    staging_dir: &std::path::Path,
+) -> DwallSettingsResult<()> {
+    let extraction = async {
+        fs::rename(temp_path, zip_path).await?;
+        archive::extract_zip(zip_path, staging_dir).await
+    }
+    .await;
+
+    if let Err(e) = archive::remove_file(zip_path).await {
+        warn!(
+            zip_path = %zip_path.display(),
+            error = %e,
+            "Failed to remove the downloaded archive"
+        );
+    }
+
+    extraction
 }
 
 /// Best-effort removal of a staging directory.
@@ -415,5 +441,104 @@ azimuth = 20.0
         fs::write(staging.join("jpg").join("1.jpg"), b"image").unwrap();
 
         assert!(verify_staged_theme(&staging, &config_for(&root)).is_err());
+    }
+
+    // ── stage_archive ───────────────────────────────────────────────────────
+
+    /// Builds a zip archive at `path` from `(name, contents)` pairs.
+    fn write_zip(path: &Path, entries: &[(&str, &[u8])]) {
+        use std::io::Write;
+        use zip::CompressionMethod;
+        use zip::write::SimpleFileOptions;
+
+        let file = fs::File::create(path).unwrap();
+        let mut writer = zip::ZipWriter::new(file);
+        let options = SimpleFileOptions::default().compression_method(CompressionMethod::Deflated);
+
+        for (name, contents) in entries {
+            writer.start_file(*name, options).unwrap();
+            writer.write_all(contents).unwrap();
+        }
+
+        writer.finish().unwrap();
+    }
+
+    fn runtime() -> tokio::runtime::Runtime {
+        tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .unwrap()
+    }
+
+    #[test]
+    fn a_staged_archive_is_extracted_and_the_archive_is_removed() {
+        let root = scratch_themes_directory("stage_ok");
+        let temp_path = root.join("Demo.zip.tmp");
+        let zip_path = root.join("Demo.zip");
+        let staging = root.join("Demo.staging");
+        fs::create_dir_all(&staging).unwrap();
+        write_zip(
+            &temp_path,
+            &[("Demo/solar.json", b"[]"), ("Demo/jpg/1.jpg", b"x")],
+        );
+
+        runtime()
+            .block_on(stage_archive(&temp_path, &zip_path, &staging))
+            .unwrap();
+
+        assert!(staging.join("solar.json").is_file());
+        assert!(
+            !zip_path.exists(),
+            "the intermediate archive must not survive"
+        );
+        assert!(!temp_path.exists());
+    }
+
+    /// The leak this closes: `remove_file` used to be the last statement of the
+    /// extraction chain, so a failed extraction left the archive behind forever.
+    #[test]
+    fn a_failed_extraction_still_removes_the_archive() {
+        let root = scratch_themes_directory("stage_corrupt");
+        let temp_path = root.join("Demo.zip.tmp");
+        let zip_path = root.join("Demo.zip");
+        let staging = root.join("Demo.staging");
+        fs::create_dir_all(&staging).unwrap();
+        // Not a zip at all: `extract_zip` fails after the rename.
+        fs::write(&temp_path, b"<html>not a zip</html>").unwrap();
+
+        let result = runtime().block_on(stage_archive(&temp_path, &zip_path, &staging));
+
+        assert!(result.is_err());
+        assert!(
+            !zip_path.exists(),
+            "a failed extraction must not leave the archive on disk"
+        );
+    }
+
+    // ── is_retryable ────────────────────────────────────────────────────────
+
+    #[test]
+    fn a_cancelled_download_is_not_retried() {
+        assert!(!is_retryable(&DwallSettingsError::Cancelled));
+    }
+
+    #[test]
+    fn an_ordinary_failure_is_retried() {
+        assert!(is_retryable(&DwallSettingsError::Other(
+            "connection reset".to_string()
+        )));
+        assert!(is_retryable(&DwallSettingsError::Io(
+            std::io::Error::other("disk full")
+        )));
+    }
+
+    /// The renderer decides "the user cancelled" by matching this text
+    /// (`isCancellation`), so the variant's message is part of the contract.
+    #[test]
+    fn the_cancellation_message_stays_what_the_renderer_matches() {
+        assert_eq!(
+            DwallSettingsError::Cancelled.to_string(),
+            "Download cancelled"
+        );
     }
 }

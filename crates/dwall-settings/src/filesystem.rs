@@ -173,7 +173,7 @@ fn validate_directory_move(source: &Path, destination: &Path) -> Result<(), Dire
     }
 
     // Moving a directory into itself would copy forever and then delete the copy.
-    if destination.starts_with(source) {
+    if is_inside(destination, source) {
         return Err(DirectoryMoveError::CopyFailed(std::io::Error::new(
             std::io::ErrorKind::InvalidInput,
             "Destination is inside the source directory",
@@ -192,6 +192,59 @@ fn validate_directory_move(source: &Path, destination: &Path) -> Result<(), Dire
     }
 
     Ok(())
+}
+
+/// Whether `destination` is `source` or lives inside it.
+///
+/// `Path::starts_with` compares components without regard to case, and Windows
+/// paths are case-insensitive: moving `D:\Themes` to `d:\themes\new` passed the
+/// check, so `copy_dir` recursed into the directory it had just created inside the
+/// source and the final `remove_dir_all(source)` deleted the destination with it.
+/// The comparison is therefore case-folded, and against the resolved forms as well
+/// so a junction or an 8.3 name cannot hide the same relationship.
+fn is_inside(destination: &Path, source: &Path) -> bool {
+    if comparable_components(destination).starts_with(&comparable_components(source)) {
+        return true;
+    }
+
+    match (resolved_form(source), resolved_form(destination)) {
+        (Some(source), Some(destination)) => {
+            comparable_components(&destination).starts_with(&comparable_components(&source))
+        }
+        _ => false,
+    }
+}
+
+/// The path's components, case-folded, for comparison.
+fn comparable_components(path: &Path) -> Vec<String> {
+    path.components()
+        .map(|component| component.as_os_str().to_string_lossy().to_lowercase())
+        .collect()
+}
+
+/// The path with its longest existing prefix resolved, or `None` when even that
+/// fails (a missing drive, an unreadable parent).
+///
+/// The destination usually does not exist yet, so it cannot be canonicalised
+/// directly; resolving the part that does and appending the rest is what makes the
+/// comparison see through junctions.
+fn resolved_form(path: &Path) -> Option<PathBuf> {
+    let mut existing = path;
+    let mut remaining: Vec<&std::ffi::OsStr> = Vec::new();
+
+    loop {
+        if let Ok(canonical) = existing.canonicalize() {
+            let mut resolved = canonical;
+            for component in remaining.iter().rev() {
+                resolved.push(component);
+            }
+
+            return Some(resolved);
+        }
+
+        remaining.push(existing.file_name()?);
+        existing = existing.parent()?;
+    }
 }
 
 async fn perform_directory_move(
@@ -344,5 +397,72 @@ mod tests {
 
         assert!(validate_theme_roots(&config_with_roots(&themes, &escaping)).is_err());
         assert!(validate_theme_roots(&config_with_roots(&escaping, &themes)).is_err());
+    }
+
+    // ── is_inside ───────────────────────────────────────────────────────────
+
+    #[test]
+    fn a_destination_below_the_source_is_inside_it() {
+        assert!(is_inside(
+            Path::new(r"D:\Themes\new"),
+            Path::new(r"D:\Themes")
+        ));
+        assert!(is_inside(Path::new(r"D:\Themes"), Path::new(r"D:\Themes")));
+    }
+
+    /// The case that used to be missed, and cost the destination: the copy
+    /// recursed into a directory it had just created inside the source, and the
+    /// removal at the end deleted both.
+    #[test]
+    fn the_comparison_ignores_case_like_windows_does() {
+        assert!(is_inside(
+            Path::new(r"d:\themes\new"),
+            Path::new(r"D:\Themes")
+        ));
+        assert!(is_inside(
+            Path::new(r"D:\THEMES\New"),
+            Path::new(r"d:\themes")
+        ));
+    }
+
+    #[test]
+    fn a_sibling_with_a_shared_prefix_is_not_inside() {
+        // Component-wise, so `Themes2` is not inside `Themes`.
+        assert!(!is_inside(
+            Path::new(r"D:\Themes2"),
+            Path::new(r"D:\Themes")
+        ));
+        assert!(!is_inside(
+            Path::new(r"D:\Other\Themes"),
+            Path::new(r"D:\Themes")
+        ));
+        assert!(!is_inside(Path::new(r"E:\Themes"), Path::new(r"D:\Themes")));
+    }
+
+    #[test]
+    fn a_real_destination_below_a_real_source_is_refused() {
+        // The end-to-end shape of the bug: both paths exist on disk, with the
+        // destination nested in the source.
+        let source = std::env::temp_dir().join("dwall_move_guard");
+        let destination = source.join("inner");
+        let _ = std::fs::remove_dir_all(&source);
+        std::fs::create_dir_all(&source).unwrap();
+
+        assert!(matches!(
+            validate_directory_move(&source, &destination),
+            Err(DirectoryMoveError::CopyFailed(_))
+        ));
+
+        let _ = std::fs::remove_dir_all(&source);
+    }
+
+    /// The same guard, through the entry point the command uses, with the case
+    /// difference that used to slip past it.
+    #[test]
+    fn validate_directory_move_refuses_a_case_varied_destination() {
+        assert!(matches!(
+            validate_directory_move(Path::new(r"D:\Themes"), Path::new(r"d:\themes\new")),
+            Err(DirectoryMoveError::CopyFailed(_))
+        ));
     }
 }

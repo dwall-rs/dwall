@@ -156,12 +156,16 @@ impl ThumbnailCache {
     }
 
     /// Build the image path for a cache key
+    ///
+    /// One path per key, so the lock table and the file name agree: the key is
+    /// `(theme, serial, url)` and the name carries all three.
     fn build_image_path(&self, cache_key: &CacheKey) -> PathBuf {
         let extension = get_url_extension(&cache_key.url).unwrap_or("jpg");
 
         ThemePathResolver::cached_image_path(
             &cache_key.theme_id,
             cache_key.serial_number,
+            &cache_key.url,
             extension,
         )
     }
