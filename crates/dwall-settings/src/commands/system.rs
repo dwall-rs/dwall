@@ -96,7 +96,16 @@ pub async fn check_for_updates_cmd<R: tauri::Runtime>(
     http_client: tauri::State<'_, HttpClient>,
     network: Option<dwall::config::Network>,
 ) -> DwallSettingsResult<Option<Metadata>> {
-    debug!(network = ?network, "Checking for updates");
+    // Which kind of network setting is in play, not its value: the mirror template
+    // and the proxy address are the user's own configuration.
+    debug!(
+        proxy_configured = matches!(network, Some(dwall::config::Network::Socks5 { .. })),
+        mirror_configured = matches!(
+            network,
+            Some(dwall::config::Network::GitHubMirrorTemplate(_))
+        ),
+        "Checking for updates"
+    );
 
     // GitHub keeps pre-releases out of `releases/latest`, so a stable build reads that
     // manifest and can only be offered a stable version. A pre-release build compares

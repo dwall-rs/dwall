@@ -17,6 +17,7 @@ export const dict: RawDictionary = {
       start: "엔진 시작",
       stop: "엔진 종료",
       confirmStop: "종료할까요?",
+      lastError: "최근 오류:",
       altitude: "고도",
       azimuth: "방위",
     },

@@ -24,7 +24,14 @@ pub async fn write_config_file(
     // renderer sent before persisting it.
     validate_theme_roots(&config)?;
 
-    debug!(config = ?config, "Writing config file");
+    // Not the whole configuration: it carries the user's coordinates, the proxy
+    // address and the profile directory names.
+    debug!(
+        interval_seconds = config.interval(),
+        image_format = ?config.image_format(),
+        proxy_configured = config.network().is_some(),
+        "Writing config file"
+    );
     let config_path = dwall::DWALL_CONFIG_DIR.join("config.toml");
     let writer = ConfigWriter;
     writer.write_to_path(&config_path, &config)?;

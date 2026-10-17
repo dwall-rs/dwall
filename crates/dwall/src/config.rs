@@ -502,15 +502,20 @@ impl ConfigReader {
 
         config.validate()?;
 
-        // Deliberately not the whole struct: it carries the user's exact
-        // coordinates and network/proxy settings.
+        // Deliberately not the whole struct, at any level: it carries the user's
+        // exact coordinates, the network/proxy settings and the profile directory
+        // names, and the log directory is one click away in the settings window.
+        // (A `debug!(config = ?config)` used to sit here and undid that.)
         info!(
             interval_seconds = config.interval(),
             image_format = ?config.image_format(),
             auto_detect_color_scheme = config.auto_detect_color_scheme(),
+            lock_screen_wallpaper_enabled = config.lock_screen_wallpaper_enabled(),
+            random_wallpaper_mode = matches!(config.wallpaper_mode(), WallpaperMode::Random { .. }),
+            manual_position = matches!(config.position_source(), PositionSource::Manual { .. }),
+            proxy_configured = config.network().is_some(),
             "Configuration loaded successfully"
         );
-        debug!(config = ?config, "Loaded configuration values");
 
         Ok(config)
     }
