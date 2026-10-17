@@ -4,7 +4,7 @@
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
 use std::thread::sleep;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use time::{Date, OffsetDateTime};
 
@@ -32,6 +32,46 @@ const FAILURE_BACKOFF_MAX: Duration = Duration::from_secs(300);
 
 /// Backoff before retrying a configuration read that failed.
 const CONFIG_RETRY_DELAY: Duration = Duration::from_secs(5);
+
+/// How long the daemon sleeps before re-checking the configuration file.
+///
+/// The file used to be checked once per cycle, at the top of the loop, so a setting
+/// saved in the window waited out the whole interval before the daemon even looked
+/// at it: the machine this was measured on runs `interval = 600`, i.e. up to ten
+/// minutes. Only "apply theme" restarts the daemon, so every other setting depended
+/// on that check.
+const CONFIG_POLL_INTERVAL: Duration = Duration::from_secs(1);
+
+/// Waits up to `duration`, returning early when the configuration file changed.
+///
+/// The wait is sliced so the file is re-checked every [`CONFIG_POLL_INTERVAL`]
+/// instead of once per cycle; a metadata call per second is free next to the
+/// wallpaper updates the cycle performs.
+fn wait_for_config_change(config_watcher: &ConfigWatcher, duration: Duration) -> bool {
+    let deadline = Instant::now() + duration;
+
+    while let Some(remaining) = deadline.checked_duration_since(Instant::now()) {
+        sleep(CONFIG_POLL_INTERVAL.min(remaining));
+
+        match config_watcher.has_changed() {
+            Ok(true) => {
+                info!("Configuration file change detected while waiting, reloading configuration");
+                return true;
+            }
+            Ok(false) => {}
+            Err(e) => {
+                // A transient metadata failure must not end the wait.
+                warn!(
+                    error = %e,
+                    path = %config_watcher.config_path().display(),
+                    "Failed to check the configuration file while waiting"
+                );
+            }
+        }
+    }
+
+    false
+}
 
 /// Follows a run of failed update cycles and decides when to try again.
 ///
@@ -440,7 +480,11 @@ impl DaemonApplication {
 
             theme_engine.reload_if_monitors_changed();
 
-            sleep(next_interval);
+            // `continue` rather than sleeping and then re-checking: the top of the
+            // loop records the new modification time and rebuilds the engine.
+            if wait_for_config_change(&self.config_watcher, next_interval) {
+                continue;
+            }
         }
     }
 }
@@ -532,5 +576,91 @@ mod tests {
             let backoff = failure_backoff(failures);
             assert!(backoff >= FAILURE_BACKOFF_BASE);
         }
+    }
+
+    // ── wait_for_config_change ──────────────────────────────────────────────
+
+    /// A watcher over a scratch config file, with its modification time recorded.
+    fn watcher_for(name: &str) -> (ConfigWatcher, PathBuf) {
+        let dir = std::env::temp_dir().join(format!("dwall_daemon_wait_{name}"));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+
+        let path = dir.join("config.toml");
+        std::fs::write(&path, "interval = 600\n").unwrap();
+
+        let mut watcher = ConfigWatcher::new(path.clone());
+        watcher.update_modified_time().unwrap();
+
+        (watcher, path)
+    }
+
+    #[test]
+    fn the_wait_ends_after_the_duration_when_nothing_changes() {
+        let (watcher, path) = watcher_for("quiet");
+        let dir = path.parent().unwrap().to_path_buf();
+        let started = Instant::now();
+
+        assert!(!wait_for_config_change(
+            &watcher,
+            Duration::from_millis(250)
+        ));
+        assert!(started.elapsed() >= Duration::from_millis(250));
+
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    /// The regression test for the latency: with `interval = 600` a saved setting
+    /// used to wait out the whole interval, because the file was only checked at the
+    /// top of the loop.
+    #[test]
+    fn a_change_during_the_wait_ends_it_early() {
+        let (watcher, path) = watcher_for("changed");
+        let dir = path.parent().unwrap().to_path_buf();
+
+        let writer = std::thread::spawn(move || {
+            // Long enough that the wait is already sleeping, short enough that a
+            // missed slice would be visible against the 30s timeout below.
+            sleep(Duration::from_millis(150));
+            std::fs::write(&path, "interval = 30\n").unwrap();
+        });
+
+        let started = Instant::now();
+        let changed = wait_for_config_change(&watcher, Duration::from_secs(30));
+        let elapsed = started.elapsed();
+
+        writer.join().unwrap();
+
+        assert!(changed, "the wait has to notice the change");
+        assert!(
+            elapsed < Duration::from_secs(10),
+            "the wait must not run out the interval: {elapsed:?}"
+        );
+
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    /// A configuration file that disappears is a change too, and the same wait
+    /// notices it.
+    #[test]
+    fn a_removed_configuration_file_ends_the_wait() {
+        let (watcher, path) = watcher_for("removed");
+        let dir = path.parent().unwrap().to_path_buf();
+
+        let remover = std::thread::spawn(move || {
+            sleep(Duration::from_millis(150));
+            std::fs::remove_file(&path).unwrap();
+        });
+
+        let started = Instant::now();
+        let changed = wait_for_config_change(&watcher, Duration::from_secs(30));
+        let elapsed = started.elapsed();
+
+        remover.join().unwrap();
+
+        assert!(changed);
+        assert!(elapsed < Duration::from_secs(10), "{elapsed:?}");
+
+        let _ = std::fs::remove_dir_all(&dir);
     }
 }

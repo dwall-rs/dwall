@@ -7,7 +7,7 @@ use crate::autostart::AutoStartProvider;
 use crate::error::{DwallSettingsError, DwallSettingsResult};
 use crate::filesystem::{move_directory, validate_directory};
 use crate::network::{HttpClient, MirrorUrlResolver};
-use crate::process::{find_daemon_process, terminate_process};
+use crate::process::stop_daemon;
 use crate::update;
 
 #[tauri::command]
@@ -54,17 +54,9 @@ pub async fn move_directory_cmd(
 
 #[tauri::command]
 pub async fn kill_daemon_cmd() -> DwallSettingsResult<Option<u32>> {
-    tauri::async_runtime::spawn_blocking(move || -> DwallSettingsResult<Option<u32>> {
-        match find_daemon_process()? {
-            Some(pid) => {
-                terminate_process(pid)?;
-                Ok(Some(pid))
-            }
-            None => Ok(None),
-        }
-    })
-    .await
-    .map_err(|e| crate::error::DwallSettingsError::Other(e.to_string()))?
+    tauri::async_runtime::spawn_blocking(stop_daemon)
+        .await
+        .map_err(|e| crate::error::DwallSettingsError::Other(e.to_string()))?
 }
 
 #[tauri::command]
