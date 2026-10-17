@@ -355,9 +355,9 @@ P0（对应第 1、2 节的缺陷，写出来即回归网）：
 
 ---
 
-## 11. 修复记录：批次 1 / 2 / 3（2026-10-17 本轮已实现）
+## 11. 修复记录：批次 1 / 2 / 3 / 4（2026-10-17 本轮已实现）
 
-只做了第 9 节的**批次 1（D1、D2+D3）、批次 2（S1、S2）与批次 3（D5、D6、D4）**，其余批次未动。
+只做了第 9 节的**批次 1（D1、D2+D3）、批次 2（S1、S2）、批次 3（D5、D6、D4）与批次 4（S3、S4、S5、`.zip` 泄漏、取消不重试）**，其余批次未动。
 
 ### D1 ✅ 守护进程不再因持续失败而退出
 
@@ -409,6 +409,30 @@ P0（对应第 1、2 节的缺陷，写出来即回归网）：
 - **文档同步**：[docs/headless.md](./headless.md) 的退出码表补上"`--once` 对所有已配置显示器都失败时退出 1"，故障排查表新增一行说明退避与 `--once` 行为，并把原文那句**错误**的"守护进程保留上一份配置"改成实际行为（继续运行并每 5 秒重试；配置不可读期间不应用任何墙纸）。
 - 测试（6 个）：`a_monitor_without_a_configured_theme_is_not_a_target`、`every_monitor_is_a_target_of_the_all_variant`、`a_configuration_without_a_monitor_map_has_no_targets`、`every_configured_monitor_failure_is_counted`、`one_successful_monitor_keeps_the_cycle_from_failing`、`nothing_to_do_is_not_a_failure`。
 
+### S3 ✅ 缩略图：锁的 key 与文件名一致
+
+- 根因：下载锁按 `(theme, serial, url)`（[store.rs](../crates/dwall-settings/src/thumbnail/store.rs)），而落盘路径只按 `(theme, serial)`（原 [paths.rs:44](../crates/dwall-settings/src/theme/paths.rs#L44)）——同一张缩略图的两个镜像 URL 走两把锁、写同一个文件（并发写坏 + 30 天内无法失效）。
+- 现在 [paths.rs](../crates/dwall-settings/src/theme/paths.rs) 的 `cached_image_path` 接收 URL，文件名带 16 位 FNV-1a 指纹：`<serial>-<fingerprint>.<ext>`，key 与文件名一一对应。选 FNV-1a 而非 `DefaultHasher` 是因为文件名要在跨运行/跨工具链时保持稳定（变了也只是缓存失效，不会出错）。旧文件成为孤儿，由 30 天过期与 100 MB 上限回收。
+- 测试（4 个）：同 URL 恒等、**两个 URL 两个文件**（翻转验证：改回旧实现时该测试失败）、文件名保留 serial 与扩展名、指纹稳定且随 URL 变化。
+
+### S4 ✅ 解压：限制真正写出的字节
+
+- [archive.rs](../crates/dwall-settings/src/archive.rs) 重写为逐条目解压：`enclosed_name()` 清洗路径、`zip.root_dir(root_dir_common_filter)` 复用 crate 自己的"共同顶层目录"判定（布局与原来完全一致），每个条目经 `copy_bounded()` 写入，**写入前**先比较上限，超出即中止并删除已写的半个文件。
+- 原来的"8 GiB"只是把中央目录**声明**的大小相加后交给 crate 的解压器，而 crate 只对压缩输入做 `take`（我在 vendored 源码里确认了 `types.rs:275`、`read/stream.rs:254` 都只按 `compressed_size` 截断），解压输出没有任何上限——声明 16 字节、实际 64 KiB 的归档能照写。
+- 顺带：符号链接条目跳过（不再依赖 crate 的 symlink 处理），过滤器排除的垃圾条目（`.DS_Store`/`Thumbs.db`/`__MACOSX/**`）不落盘，`remove_file` 对"文件已不存在"不再报错。
+- 测试（14 个）：共同根目录被剥壳、多一个顶层文件则不剥壳（S2 依赖的布局）、垃圾条目不落盘、多级目录按需创建、**声明值撒谎不影响实际上限**（断言错误来自写入上限而非声明检查；翻转验证：旧实现会写满 64 KiB）、超过预算在写入前拒绝、条目数上限、非 zip 载荷、缺失文件、`copy_bounded` 边界、路径映射与跳过规则、`remove_file` 幂等。
+
+### S5 ✅ 目录迁移：大小写不敏感 + 解析真实路径
+
+- [filesystem.rs](../crates/dwall-settings/src/filesystem.rs) 新增 `is_inside()`：先按**大小写折叠**的组件比较，再对"已存在前缀 canonicalize + 拼接剩余组件"的解析形式比较（因此 junction / 8.3 名也挡得住）。原来的 `destination.starts_with(source)` 对大小写敏感：`D:\Themes` → `d:\themes\new` 通过检查，`copy_dir` 递归进自己在源目录里新建的目录，最后的 `remove_dir_all(source)` 连目标一起删掉。
+- 测试（4 个）：子路径/自身判定、**大小写差异被拒**（走 `validate_directory_move` 真实入口，翻转验证：旧实现下失败）、共享前缀的兄弟目录不算内部、磁盘上真实嵌套被拒。
+
+### `.zip` 泄漏 ✅ + 取消不重试 ✅
+
+- [downloader.rs](../crates/dwall-settings/src/theme/downloader.rs)：`remove_file(zip_path)` 原本是解压链的最后一句，解压失败即提前返回，`themes/<id>.zip`（应用写出的最大文件，且没有任何清理路径会碰它）永久留在盘上。现在抽成可测的 `stage_archive()`：改名 → 解压 → **无论成败都清理解压包**。
+- 新增 `DwallSettingsError::Cancelled` 变体（[error.rs](../crates/dwall-settings/src/error.rs)），[client.rs](../crates/dwall-settings/src/network/client.rs) 取消时返回它，重试循环用 `is_retryable()` 判断——取消不再被当成可重试失败（此前会再发最多 2 次请求 + 2 秒等待）。变体的文案保持 `"Download cancelled"`，因为前端 `isCancellation`（[src/models/download.ts](../src/models/download.ts)）就是按这段文本判断的，并用测试钉住。
+- 测试（5 个）：解压成功且解压包被删除、**解压失败也不留解压包**、取消不可重试、普通错误可重试、取消文案与前端契约一致。
+
 ### 本轮验证命令与结果
 
 | 命令 | 结果 |
@@ -417,12 +441,13 @@ P0（对应第 1、2 节的缺陷，写出来即回归网）：
 | `cargo clippy -- -D warnings` / `cargo clippy -r -- -D warnings` | exit 0 / 0 |
 | `cargo clippy -r -p dwall --features build-script,log-max-level-info --all-targets -- -D warnings` | exit 0 |
 | `DWALL_SKIP_BUILD=1 cargo clippy -p dwall-settings --all-targets -- -D warnings` | exit 0 |
-| `DWALL_SKIP_BUILD=1 cargo test` | **252 passed / 0 failed**（批次 1/2 后为 239；dwall 108→121） |
+| `DWALL_SKIP_BUILD=1 cargo test` | **279 passed / 0 failed**（批次 1/2 后 239，批次 3 后 252；dwall 121、settings 63） |
 | `bun run check`（tsgo + biome，385 文件） | exit 0，0 error / 0 warning |
 | `bun run test` | **32 passed** |
-| `bun run build:vite` | 成功；JS 231.3→232.6 KB、CSS 121.9→122.2 KB（批次 1/2 新增的错误面板与两条 i18n；批次 3 不涉及前端） |
+| `bun run build:vite` | 成功；JS 231.3→232.6 KB、CSS 121.9→122.2 KB（批次 1/2 新增的错误面板与两条 i18n；批次 3/4 不涉及前端） |
 
 ### 仍未做（后续批次）
 
-S3/S4/S5、`.zip` 泄漏、取消不重试、日志轮转上限与 `GetTimeZoneInformation` 缓存、设置端写盘顺序与会话过滤（批次 6）、第 8 节其余测试（含 8.1 的 `ThemeEngine` 泛型化与 `bin/daemon.rs` 的退出码集成测试）、第 9 节批次 8/9（CI 门禁与 P3 清理）。
+日志轮转上限与 `GetTimeZoneInformation` 缓存、去掉 `debug!(?config)`（批次 5）、设置端写盘顺序与会话过滤（批次 6）、第 8 节其余测试（含 8.1 的 `ThemeEngine` 泛型化与 `bin/daemon.rs` 的退出码集成测试）、第 9 节批次 8/9（CI 门禁与 P3 清理）。
 另外仍**没有**把守护进程的"最后一条 ERROR"暴露到设置端状态区（`get_engine_status` 只返回 `bool`）：D1/D4 之后守护进程会带错误继续运行，用户想看到原因仍需点开日志目录——建议作为批次 5 的一项。
+批次 4 未处理的相邻项（原报告 2.2 表）：镜像的稳定版通道自废（M1）、续传无 `If-Range`/校验和（M2）、下载与缩略图无并发上限（M3）、缩略图锁表无上限与 100 MB 上限只在未命中时执行（M4）、asset protocol `**/*`（M5）、渲染层可传的 URL/路径（M6）、"读取续命"无效（M7）。

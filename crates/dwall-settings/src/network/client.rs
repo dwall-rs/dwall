@@ -137,7 +137,7 @@ impl HttpClient {
             if let Some(cancel) = cancel_flag
                 && cancel.load(Ordering::Relaxed)
             {
-                return Err(DwallSettingsError::Other("Download cancelled".to_string()));
+                return Err(DwallSettingsError::Cancelled);
             }
 
             file.write_all(&chunk).await?;

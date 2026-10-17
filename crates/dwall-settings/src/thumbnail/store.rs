@@ -9,6 +9,11 @@ use crate::error::DwallSettingsResult;
 use crate::thumbnail::cleanup::Cleanup;
 
 /// Cache key for identifying cached items
+///
+/// It identifies the *resource*, URL included, and
+/// [`crate::theme::paths::ThemePathResolver::cached_image_path`] derives the file
+/// name from all three fields: a key that mapped to a different file than the lock
+/// did allowed two concurrent downloads to write one path.
 #[derive(Hash, Eq, PartialEq, Clone, Debug)]
 pub(crate) struct CacheKey {
     pub(crate) theme_id: String,
