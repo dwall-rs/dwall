@@ -106,6 +106,8 @@ export const dict: RawDictionary = {
     subtitle: "preferences",
     unsaved: "未儲存",
     saveFailed: "儲存失敗",
+    loadFailed: "無法讀取設定",
+    retry: "重試",
     discard: "放棄",
     save: "儲存設定",
     saving: "寫入中…",

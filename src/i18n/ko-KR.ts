@@ -110,6 +110,8 @@ export const dict: RawDictionary = {
     subtitle: "preferences",
     unsaved: "저장 안 됨",
     saveFailed: "저장 실패",
+    loadFailed: "설정을 불러오지 못했습니다",
+    retry: "다시 시도",
     discard: "취소",
     save: "설정 저장",
     saving: "저장 중…",

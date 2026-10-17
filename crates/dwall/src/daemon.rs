@@ -19,10 +19,63 @@ use crate::solar::GeographicPositionProvider;
 use crate::theme::{DailyRandomThemeSelector, filter_themes_by_pool, is_theme_directory};
 use crate::theme_engine::ThemeEngine;
 
-const MAX_CONSECUTIVE_FAILURE_THRESHOLD: u8 = 3;
+/// Backoff before retrying a cycle that failed.
+const FAILURE_BACKOFF_BASE: Duration = Duration::from_secs(5);
+
+/// Ceiling for the failure backoff.
+///
+/// A condition that never clears (location access denied, the location service
+/// off, a wedged shell) must not turn into an ever-widening gap, so the wait
+/// stops growing here and the daemon keeps trying every few minutes.
+const FAILURE_BACKOFF_MAX: Duration = Duration::from_secs(300);
 
 /// Backoff before retrying a configuration read that failed.
 const CONFIG_RETRY_DELAY: Duration = Duration::from_secs(5);
+
+/// Follows a run of failed update cycles and decides when to try again.
+///
+/// A failed cycle used to terminate the daemon once it had repeated three times.
+/// Every realistic cause of that failure is persistent rather than fatal —
+/// location access denied (the default position source is automatic), the
+/// location service switched off, a shell that stopped answering — so exiting
+/// converted "the wallpaper is not updating right now" into "the wallpaper never
+/// updates again until someone starts the daemon by hand", with no supervisor to
+/// do it. Cycles therefore keep running: the failure count only drives the
+/// backoff and the log.
+#[derive(Debug, Default)]
+struct CycleFailureTracker {
+    consecutive: u32,
+}
+
+impl CycleFailureTracker {
+    /// Records a successful cycle, returning to the configured cadence.
+    fn record_success(&mut self) {
+        self.consecutive = 0;
+    }
+
+    /// Records a failed cycle and returns how long to wait before the next one.
+    fn record_failure(&mut self) -> Duration {
+        self.consecutive = self.consecutive.saturating_add(1);
+        failure_backoff(self.consecutive)
+    }
+
+    /// How many cycles have failed in a row.
+    fn consecutive_failures(&self) -> u32 {
+        self.consecutive
+    }
+}
+
+/// Exponential backoff for `consecutive_failures` (1-based), capped at
+/// [`FAILURE_BACKOFF_MAX`].
+fn failure_backoff(consecutive_failures: u32) -> Duration {
+    // Cap the exponent before shifting so a run of failures that lasts for days
+    // cannot overflow the shift or the multiplication.
+    let doublings = consecutive_failures.saturating_sub(1).min(16);
+
+    FAILURE_BACKOFF_BASE
+        .saturating_mul(1u32 << doublings)
+        .min(FAILURE_BACKOFF_MAX)
+}
 
 /// Builds the engine for one configuration generation.
 fn build_engine(config: &Config) -> DwallResult<ThemeEngine<'_>> {
@@ -83,8 +136,6 @@ impl DaemonApplication {
 
     /// Runs the daemon application
     pub fn run(&mut self) -> DwallResult<()> {
-        let mut consecutive_failure_count = 0;
-
         // Establish the baseline modification time so the first loop iteration does
         // not report a change that never happened.
         if let Err(e) = self.config_watcher.update_modified_time() {
@@ -101,6 +152,7 @@ impl DaemonApplication {
                     error!(
                         error = %e,
                         path = %self.config_watcher.config_path().display(),
+                        retry_in_seconds = CONFIG_RETRY_DELAY.as_secs(),
                         "Failed to read configuration, retrying"
                     );
                     sleep(CONFIG_RETRY_DELAY);
@@ -117,7 +169,7 @@ impl DaemonApplication {
                 "Starting daemon with config change detection"
             );
 
-            self.run_engine_loop(&theme_engine, &mut consecutive_failure_count)?;
+            self.run_engine_loop(&theme_engine)?;
         }
     }
 
@@ -330,13 +382,13 @@ impl DaemonApplication {
         Ok(themes)
     }
 
-    /// Runs the engine loop until config changes or max failures reached
-    fn run_engine_loop(
-        &mut self,
-        theme_engine: &ThemeEngine<'_>,
-        consecutive_failure_count: &mut u8,
-    ) -> DwallResult<()> {
+    /// Runs the engine loop until the configuration changes.
+    fn run_engine_loop(&mut self, theme_engine: &ThemeEngine<'_>) -> DwallResult<()> {
         let update_interval = Duration::from_secs(theme_engine.update_interval().into());
+
+        // A configuration change rebuilds the engine, which resets this: the user
+        // editing the configuration is the most likely fix, so retry promptly.
+        let mut failures = CycleFailureTracker::default();
 
         loop {
             let config_changed = match self.config_watcher.has_changed() {
@@ -360,30 +412,30 @@ impl DaemonApplication {
                 return Ok(());
             }
 
-            match theme_engine.run_once() {
+            let next_interval = match theme_engine.run_once() {
                 Ok(_) => {
-                    *consecutive_failure_count = 0;
+                    failures.record_success();
+                    update_interval
                 }
                 Err(e) => {
-                    *consecutive_failure_count += 1;
+                    // Keep running: see `CycleFailureTracker`. The backoff keeps a
+                    // persistently failing cycle from being retried at the full
+                    // configured rate, and the count makes a repeating error
+                    // distinguishable from a one-off.
+                    let backoff = failures.record_failure();
                     error!(
                         error = %e,
-                        consecutive_failures = *consecutive_failure_count,
-                        "Theme update cycle failed"
+                        consecutive_failures = failures.consecutive_failures(),
+                        retry_in_seconds = backoff.as_secs(),
+                        "Theme update cycle failed, retrying"
                     );
-                    if *consecutive_failure_count >= MAX_CONSECUTIVE_FAILURE_THRESHOLD {
-                        error!(
-                            consecutive_failures = *consecutive_failure_count,
-                            "Maximum consecutive failures reached, terminating daemon"
-                        );
-                        std::process::exit(1);
-                    }
+                    backoff
                 }
-            }
+            };
 
             theme_engine.reload_if_monitors_changed();
 
-            sleep(update_interval);
+            sleep(next_interval);
         }
     }
 }
@@ -391,5 +443,89 @@ impl DaemonApplication {
 impl Default for DaemonApplication {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn the_backoff_starts_at_the_base_delay() {
+        assert_eq!(failure_backoff(1), FAILURE_BACKOFF_BASE);
+    }
+
+    #[test]
+    fn the_backoff_doubles_per_consecutive_failure() {
+        assert_eq!(failure_backoff(2), FAILURE_BACKOFF_BASE * 2);
+        assert_eq!(failure_backoff(3), FAILURE_BACKOFF_BASE * 4);
+        assert_eq!(failure_backoff(4), FAILURE_BACKOFF_BASE * 8);
+    }
+
+    #[test]
+    fn the_backoff_stops_growing_at_the_ceiling() {
+        // 5s doubling reaches the 300s ceiling on the seventh failure.
+        assert_eq!(failure_backoff(6), Duration::from_secs(160));
+        assert_eq!(failure_backoff(7), FAILURE_BACKOFF_MAX);
+        assert_eq!(failure_backoff(64), FAILURE_BACKOFF_MAX);
+        assert_eq!(failure_backoff(u32::MAX), FAILURE_BACKOFF_MAX);
+    }
+
+    #[test]
+    fn a_successful_cycle_resets_the_failure_run() {
+        let mut tracker = CycleFailureTracker::default();
+
+        assert_eq!(tracker.record_failure(), FAILURE_BACKOFF_BASE);
+        assert_eq!(tracker.record_failure(), FAILURE_BACKOFF_BASE * 2);
+        assert_eq!(tracker.consecutive_failures(), 2);
+
+        tracker.record_success();
+        assert_eq!(tracker.consecutive_failures(), 0);
+        assert_eq!(tracker.record_failure(), FAILURE_BACKOFF_BASE);
+    }
+
+    /// The previous policy called `std::process::exit(1)` here, which turned a
+    /// denied location permission — the default position source, and a condition
+    /// that never clears on its own — into a daemon that stayed dead until someone
+    /// started it by hand. There is deliberately no terminating state left: the
+    /// third failure, and the three-thousandth, are just another retry.
+    #[test]
+    fn three_consecutive_failures_no_longer_end_the_run() {
+        let mut tracker = CycleFailureTracker::default();
+
+        for _ in 0..3 {
+            assert!(tracker.record_failure() >= FAILURE_BACKOFF_BASE);
+        }
+        assert_eq!(tracker.consecutive_failures(), 3);
+
+        // Still retrying, and the delay is bounded by the ceiling.
+        let fourth = tracker.record_failure();
+        assert_eq!(tracker.consecutive_failures(), 4);
+        assert!(fourth >= FAILURE_BACKOFF_BASE && fourth <= FAILURE_BACKOFF_MAX);
+    }
+
+    #[test]
+    fn a_failure_run_that_lasts_for_days_neither_panics_nor_overflows() {
+        let mut tracker = CycleFailureTracker::default();
+
+        // A week at the 300s ceiling is a few thousand cycles; the count must
+        // saturate rather than wrap (which would reset the log and the backoff).
+        for _ in 0..10_000 {
+            let backoff = tracker.record_failure();
+            assert!(
+                backoff >= FAILURE_BACKOFF_BASE && backoff <= FAILURE_BACKOFF_MAX,
+                "backoff {backoff:?} outside [{FAILURE_BACKOFF_BASE:?}, {FAILURE_BACKOFF_MAX:?}]"
+            );
+        }
+
+        assert_eq!(tracker.consecutive_failures(), 10_000);
+    }
+
+    #[test]
+    fn the_capped_backoff_is_never_shorter_than_the_base_delay() {
+        for failures in 1..=1_000 {
+            let backoff = failure_backoff(failures);
+            assert!(backoff >= FAILURE_BACKOFF_BASE);
+        }
     }
 }

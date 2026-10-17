@@ -4,7 +4,7 @@ use dwall::config::{ConfigReader, ConfigWriter};
 use tauri::State;
 
 use crate::error::DwallSettingsResult;
-use crate::filesystem::validate_directory;
+use crate::filesystem::validate_theme_roots;
 use crate::theme::downloader::ThemeDownloader;
 use crate::thumbnail::ThumbnailCache;
 
@@ -22,11 +22,7 @@ pub async fn write_config_file(
 ) -> DwallSettingsResult<()> {
     // These paths drive recursive filesystem operations, so validate what the
     // renderer sent before persisting it.
-    validate_directory(config.themes_directory(), "themes_directory")?;
-    validate_directory(
-        config.customized_themes_directory(),
-        "customized_themes_directory",
-    )?;
+    validate_theme_roots(&config)?;
 
     debug!(config = ?config, "Writing config file");
     let config_path = dwall::DWALL_CONFIG_DIR.join("config.toml");

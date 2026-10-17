@@ -7,7 +7,7 @@ use tokio::time::sleep;
 
 use crate::daemon::{DaemonLauncher, get_last_daemon_error, is_daemon_running, should_run};
 use crate::error::{DwallSettingsError, DwallSettingsResult};
-use crate::filesystem::validate_directory;
+use crate::filesystem::validate_theme_roots;
 use crate::process::terminate_process;
 
 /// Orchestrates the theme application use case
@@ -16,11 +16,7 @@ pub struct ThemeApplier;
 impl ThemeApplier {
     /// Apply a theme configuration by restarting the daemon
     pub async fn apply(config: Config) -> DwallSettingsResult<()> {
-        validate_directory(config.themes_directory(), "themes_directory")?;
-        validate_directory(
-            config.customized_themes_directory(),
-            "customized_themes_directory",
-        )?;
+        validate_theme_roots(&config)?;
 
         // Stop whichever daemon is running, wherever it was installed from.
         match crate::process::find_daemon_process() {

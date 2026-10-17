@@ -6,7 +6,6 @@ import { createStore, produce } from "solid-js/store";
 import type {
   Config,
   PositionSource,
-  PositionSourceAutomatic,
   PositionSourceManual,
   WallpaperMode,
 } from "@/models/config";
@@ -45,15 +44,41 @@ const [settingsStore, setSettingsStore] = createStore<SettingsState>({
   saving: false,
 });
 
+/**
+ * A deep copy of a configuration, for the "saved" snapshot.
+ *
+ * A shallow copy is not enough: `setStore` merges into the existing object rather
+ * than replacing it, so any object still shared with the draft is updated in place
+ * by the next edit. `load` used to store the very same object as both the draft and
+ * the snapshot, which made `isConfigDirty` permanently false on a freshly opened
+ * window — the header's Save and Discard buttons never enabled.
+ */
+const snapshot = (config: Config): Config =>
+  JSON.parse(JSON.stringify(config)) as Config;
+
+/**
+ * Reads the configuration into the draft.
+ *
+ * Also the retry path behind the settings view's error panel: a failed read used
+ * to leave the page looking like an empty but working form, with `config` staying
+ * `null` forever and nothing to click to try again.
+ */
 const load = async () => {
-  setSettingsStore("status", "loading");
+  setSettingsStore((prev) => ({
+    ...prev,
+    status: "loading",
+    error: null,
+    saveError: null,
+  }));
+
   try {
     const cfg = await readConfigFile();
     setSettingsStore((prev) => ({
       ...prev,
       config: cfg,
-      saved: cfg,
+      saved: snapshot(cfg),
       status: "ready",
+      error: null,
     }));
   } catch (e) {
     setSettingsStore((prev) => ({
@@ -64,11 +89,24 @@ const load = async () => {
   }
 };
 
+/**
+ * Merges a partial config into the draft.
+ *
+ * Does nothing while the configuration is missing: the sections used to be
+ * rendered before the load finished, and a click then turned `config` into `{}`
+ * (the path-scoped setter stores whatever the updater returns), which made every
+ * later `config.position_source.type` read throw. Callers only ever run from a
+ * rendered setting, and those now wait for the load, so this is the second guard.
+ */
 const patch = (p: Partial<Config>) => {
-  setSettingsStore("config", (prev) => (prev ? { ...prev, ...p } : {}));
+  if (!settingsStore.config) return;
+
+  setSettingsStore("config", (prev) => (prev ? { ...prev, ...p } : prev));
 };
 
 const setPositionType = (t: PositionSource["type"]) => {
+  if (!settingsStore.config) return;
+
   setSettingsStore("config", (prev) =>
     prev
       ? {
@@ -82,16 +120,25 @@ const setPositionType = (t: PositionSource["type"]) => {
                 }
               : { type: "MANUAL", latitude: 0, longitude: 0, altitude: 875 },
         }
-      : {},
+      : prev,
   );
 };
 
-const patchPosition = (
-  p: Partial<PositionSourceAutomatic | PositionSourceManual>,
-) => {
-  setSettingsStore("config", (prev) =>
-    prev ? { ...prev, position_source: { ...prev.position_source, ...p } } : {},
-  );
+/**
+ * Updates the manual coordinates.
+ *
+ * Only meaningful in manual mode, and only the manual fields are ever patched
+ * here, so the patch is applied to that variant explicitly: spreading the
+ * `PositionSource` union would widen it into a shape neither variant accepts (and
+ * would slip coordinates into the automatic variant).
+ */
+const patchPosition = (p: Partial<PositionSourceManual>) => {
+  const current = settingsStore.config?.position_source;
+  if (current?.type !== "MANUAL") return;
+
+  setSettingsStore("config", {
+    position_source: { ...current, ...p },
+  });
 };
 
 /**
@@ -130,10 +177,12 @@ const setNetworkType = (t: NetworkType) => {
 };
 
 const patchSocks5 = (p: Partial<Socks5>) => {
+  if (!settingsStore.config) return;
+
   setSettingsStore("config", (prev) =>
     prev && isSocks5(prev.network)
       ? { ...prev, network: { ...prev.network, ...p } }
-      : {},
+      : prev,
   );
 };
 
@@ -151,7 +200,7 @@ const save = async () => {
     await writeConfigFile(settingsStore.config);
     setSettingsStore(
       produce((settings) => {
-        settings.saved = { ...settings.config } as Config;
+        settings.saved = snapshot(settings.config as Config);
         settings.saving = false;
       }),
     );
@@ -183,7 +232,7 @@ const applyWallpaperMode = async (mode: WallpaperMode) => {
     void refreshEngine();
     setSettingsStore(
       produce((s) => {
-        s.saved = { ...next } as Config;
+        s.saved = snapshot(next);
         s.saveError = null;
       }),
     );
@@ -197,7 +246,7 @@ const applyWallpaperMode = async (mode: WallpaperMode) => {
 
 const discard = () =>
   setSettingsStore((s) =>
-    s.saved ? { config: { ...s.saved }, saveError: null } : {},
+    s.saved ? { config: snapshot(s.saved), saveError: null } : {},
   );
 
 /** Move the themes directory to `dir` (when it changed) and persist the config. */

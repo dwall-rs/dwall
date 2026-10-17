@@ -3,7 +3,7 @@
 use tauri::State;
 
 use crate::error::DwallSettingsResult;
-use crate::filesystem::validate_theme_id;
+use crate::filesystem::{validate_theme_id, validate_theme_roots};
 use crate::network::progress::ProgressEmitter;
 use crate::theme::downloader::ThemeDownloader;
 
@@ -16,6 +16,11 @@ pub async fn download_theme_cmd<R: tauri::Runtime>(
 ) -> DwallSettingsResult<()> {
     // The id becomes a directory name and the downloader clears it before writing.
     validate_theme_id(theme_id)?;
+
+    // The roots become the parent directories of `remove_dir_all` and the
+    // extraction target, so they get the same validation as every other command
+    // that acts on a renderer-supplied configuration.
+    validate_theme_roots(&config)?;
 
     let progress_emitter = ProgressEmitter::new(&window);
     downloader
