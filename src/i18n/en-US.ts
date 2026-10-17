@@ -15,6 +15,7 @@ export const dict = {
       start: "Start engine",
       stop: "Stop engine",
       confirmStop: "Confirm stop?",
+      lastError: "Last error:",
       altitude: "alt",
       azimuth: "az",
     },

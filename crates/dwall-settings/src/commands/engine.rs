@@ -15,6 +15,20 @@ pub async fn get_engine_status() -> DwallSettingsResult<bool> {
         .map_err(|e| crate::error::DwallSettingsError::Other(e.to_string()))?
 }
 
+/// The daemon's most recent error line, when it has one.
+///
+/// A running daemon no longer means a working one: a failed cycle is retried with a
+/// backoff instead of ending the process, so the status area needs the reason to be
+/// able to say anything useful.
+#[tauri::command]
+pub async fn get_daemon_last_error() -> DwallSettingsResult<Option<String>> {
+    tauri::async_runtime::spawn_blocking(|| {
+        crate::daemon::get_last_daemon_error(&dwall::DWALL_LOG_DIR)
+    })
+    .await
+    .map_err(|e| crate::error::DwallSettingsError::Other(e.to_string()))
+}
+
 /// Start the daemon process
 #[tauri::command]
 pub async fn start_engine() -> DwallSettingsResult<()> {

@@ -355,9 +355,9 @@ P0（对应第 1、2 节的缺陷，写出来即回归网）：
 
 ---
 
-## 11. 修复记录：批次 1 / 2 / 3 / 4（2026-10-17 本轮已实现）
+## 11. 修复记录：批次 1 / 2 / 3 / 4 / 5（2026-10-17 本轮已实现）
 
-只做了第 9 节的**批次 1（D1、D2+D3）、批次 2（S1、S2）、批次 3（D5、D6、D4）与批次 4（S3、S4、S5、`.zip` 泄漏、取消不重试）**，其余批次未动。
+只做了第 9 节的**批次 1（D1、D2+D3）、批次 2（S1、S2）、批次 3（D5、D6、D4）、批次 4（S3、S4、S5、`.zip` 泄漏、取消不重试）与批次 5（日志轮转上限、时区偏移缓存、去掉整份配置 dump、暴露守护进程最后一条 ERROR）**，其余批次未动。
 
 ### D1 ✅ 守护进程不再因持续失败而退出
 
@@ -433,6 +433,13 @@ P0（对应第 1、2 节的缺陷，写出来即回归网）：
 - 新增 `DwallSettingsError::Cancelled` 变体（[error.rs](../crates/dwall-settings/src/error.rs)），[client.rs](../crates/dwall-settings/src/network/client.rs) 取消时返回它，重试循环用 `is_retryable()` 判断——取消不再被当成可重试失败（此前会再发最多 2 次请求 + 2 秒等待）。变体的文案保持 `"Download cancelled"`，因为前端 `isCancellation`（[src/models/download.ts](../src/models/download.ts)）就是按这段文本判断的，并用测试钉住。
 - 测试（5 个）：解压成功且解压包被删除、**解压失败也不留解压包**、取消不可重试、普通错误可重试、取消文案与前端契约一致。
 
+### 批次 5 ✅ 日志：轮转上限、偏移缓存、去掉整份配置的 dump、暴露守护进程最后一条 ERROR
+
+- **`backup/` 无上限增长**（[logging/src/lib.rs](../crates/logging/src/lib.rs)）：每次启动都把当前日志轮转成 `backup/<stem>_<unix>.log`，而没有任何清理——设置端每次应用主题都会重启守护进程，计划任务里 `--once` 每分钟一次就是每天 1,440 个文件。轮转逻辑抽成 `rotate_log_file()` + `prune_backups()`（`with_file_path` 只在 release 编译，抽出来才可测），只保留最新 `MAX_BACKUP_LOGS`（5）份、按名字里的时间戳排序删最旧的，其它 stem 与无关文件不动；同一秒内的两次启动会把时间戳 +1 直到名字不冲突（原来会直接覆盖掉上一份日志）。清理失败只打一行 stderr 警告，不让守护进程因为清理失败而起不来。测试（5 个）：日志不存在时不动、轮转把旧文件移进 `backup/`、只保留最新 5 份且不碰其它文件、不足上限时不动、连续 15 次轮转后目录仍只有 5 份（翻转验证：把 prune 短路后前两个测试失败，输出里能看到 15 份未被清理）。
+- **`GetTimeZoneInformation` 逐条调用**（[time/src/offset.rs](../crates/time/src/offset.rs)）：`Offset::local_offset()` 原来每次都走系统调用，而 logger 每写一条记录都要本地时间——debug 级别的守护进程一个周期就有好几条。现在 `CachedOffset` 缓存 60 秒（夏令时/时区变更在这个窗口内被发现，远短于守护进程的更新周期），锁中毒时退化为直接查询，绝不让日志记录因为缓存失败而写不出来。测试（3 个）：窗口内只读一次、边界处重新读取、初始为空。
+- **整份配置进日志**（[dwall/src/config.rs](../crates/dwall/src/config.rs)、[commands/config.rs](../crates/dwall-settings/src/commands/config.rs)、[commands/system.rs](../crates/dwall-settings/src/commands/system.rs)）：`debug!(config = ?config)` 会把精确坐标、代理地址、配置与日志目录（含用户名）整份写进日志，而日志目录在设置窗口里一键可达；`config.rs` 里那句 info! 上面的注释刚说"故意不打印整个结构体"，下面这行就把注释否掉了。改成只打印非敏感的派生事实（interval、图片格式、是否随机模式、是否手动定位、是否配了代理/镜像、是否启用锁屏壁纸），三个文件一致。
+- **守护进程最后一条 ERROR 暴露到设置端**（[daemon.rs](../crates/dwall-settings/src/daemon.rs)、[commands/engine.rs](../crates/dwall-settings/src/commands/engine.rs)、[main.rs](../crates/dwall-settings/src/main.rs)、[src/ipc/engine.ts](../src/ipc/engine.ts)、[src/store/engine.store.ts](../src/store/engine.store.ts)、[src/layout/EngineStatus.tsx](../src/layout/EngineStatus.tsx)）：D1/D4 之后守护进程会带错误继续运行，状态区只显示"运行中"就是在骗人；现在新增 `get_daemon_last_error` 命令，状态轮询在守护进程运行时一并读取最后一条 ERROR 行并在状态区用 warning 色显示（可截断、`title` 里给全文），停止后清空。顺带修掉这个读取本身的两个问题：原来 `read_to_end` 把整份日志读进内存（日志可以无限增长，正是这一批在修的东西），现在只读尾部 `LOG_TAIL_BYTES`（64 KiB，覆盖一周以上的失败记录），并且丢掉被窗口切半的那一行，避免把半条记录当成"最后的错误"。6 个语言都加了 `app.engine.lastError`。测试：Rust 6 个（缺文件、无错误、取最新一条、只搜尾部、行长跨界、半行不报错；翻转验证：把"只读尾部"改回全量读时后三个失败）、前端 7 个（运行中带错误、运行中无错误、停止后清空且不再读日志、查询失败提示、启动、二次确认停止后清空、停止失败保持运行）。
+
 ### 本轮验证命令与结果
 
 | 命令 | 结果 |
@@ -441,13 +448,12 @@ P0（对应第 1、2 节的缺陷，写出来即回归网）：
 | `cargo clippy -- -D warnings` / `cargo clippy -r -- -D warnings` | exit 0 / 0 |
 | `cargo clippy -r -p dwall --features build-script,log-max-level-info --all-targets -- -D warnings` | exit 0 |
 | `DWALL_SKIP_BUILD=1 cargo clippy -p dwall-settings --all-targets -- -D warnings` | exit 0 |
-| `DWALL_SKIP_BUILD=1 cargo test` | **279 passed / 0 failed**（批次 1/2 后 239，批次 3 后 252；dwall 121、settings 63） |
-| `bun run check`（tsgo + biome，385 文件） | exit 0，0 error / 0 warning |
-| `bun run test` | **32 passed** |
-| `bun run build:vite` | 成功；JS 231.3→232.6 KB、CSS 121.9→122.2 KB（批次 1/2 新增的错误面板与两条 i18n；批次 3/4 不涉及前端） |
+| `DWALL_SKIP_BUILD=1 cargo test` | **293 passed / 0 failed**（批次 1/2 后 239、批次 3 后 252、批次 4 后 279；dwall 121、settings 69、logging 8、time 83） |
+| `bun run check`（tsgo + biome，386 文件） | exit 0，0 error / 0 warning |
+| `bun run test` | **39 passed**（批次 1/2 的 32 + 批次 5 的 engine store 7 个） |
+| `bun run build:vite` | 成功；JS 232.6→233.2 KB、CSS 122.2→122.3 KB（批次 5 的状态区错误行与六条 i18n） |
 
 ### 仍未做（后续批次）
 
-日志轮转上限与 `GetTimeZoneInformation` 缓存、去掉 `debug!(?config)`（批次 5）、设置端写盘顺序与会话过滤（批次 6）、第 8 节其余测试（含 8.1 的 `ThemeEngine` 泛型化与 `bin/daemon.rs` 的退出码集成测试）、第 9 节批次 8/9（CI 门禁与 P3 清理）。
-另外仍**没有**把守护进程的"最后一条 ERROR"暴露到设置端状态区（`get_engine_status` 只返回 `bool`）：D1/D4 之后守护进程会带错误继续运行，用户想看到原因仍需点开日志目录——建议作为批次 5 的一项。
+设置端写盘顺序与会话过滤（批次 6）、第 8 节其余测试（含 8.1 的 `ThemeEngine` 泛型化与 `bin/daemon.rs` 的退出码集成测试）、第 9 节批次 8/9（CI 门禁与 P3 清理）。
 批次 4 未处理的相邻项（原报告 2.2 表）：镜像的稳定版通道自废（M1）、续传无 `If-Range`/校验和（M2）、下载与缩略图无并发上限（M3）、缩略图锁表无上限与 100 MB 上限只在未命中时执行（M4）、asset protocol `**/*`（M5）、渲染层可传的 URL/路径（M6）、"读取续命"无效（M7）。

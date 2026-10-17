@@ -2,7 +2,12 @@
 
 import { createStore } from "solid-js/store";
 
-import { getEngineStatus, startEngine, stopEngine } from "@/ipc";
+import {
+  getDaemonLastError,
+  getEngineStatus,
+  startEngine,
+  stopEngine,
+} from "@/ipc";
 import { toast } from "@/components/ui/toast";
 import { t } from "@/i18n";
 import { logger } from "@/utils";
@@ -18,12 +23,20 @@ const notifyFailure = (action: string, error: unknown) => {
 
 interface EngineState {
   running: boolean;
+  /**
+   * The daemon's last error line, or null when it has none.
+   *
+   * The daemon keeps running after a failed cycle, so "running" alone no longer
+   * says whether the wallpapers are actually being applied.
+   */
+  lastError: string | null;
   pending: boolean; // "Stop" already clicked once, awaiting second confirmation
   pendingTimer: ReturnType<typeof setTimeout> | undefined;
 }
 
 const [engineStore, setEngineStore] = createStore<EngineState>({
   running: false,
+  lastError: null,
   pending: false,
   pendingTimer: undefined,
 });
@@ -31,7 +44,16 @@ const [engineStore, setEngineStore] = createStore<EngineState>({
 /** In sync with the real daemon state */
 const refresh = async () => {
   try {
-    setEngineStore("running", await getEngineStatus());
+    const running = await getEngineStatus();
+    setEngineStore("running", running);
+
+    // Only a running daemon has a log worth reading, and the check runs every few
+    // seconds.
+    if (running) {
+      setEngineStore("lastError", await getDaemonLastError());
+    } else {
+      setEngineStore("lastError", null);
+    }
   } catch (e) {
     notifyFailure("query engine status", e);
   }
@@ -46,6 +68,7 @@ const toggle = async () => {
         await stopEngine();
         setEngineStore({
           running: false,
+          lastError: null,
           pending: false,
           pendingTimer: undefined,
         });

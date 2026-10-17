@@ -17,6 +17,7 @@ export const dict: RawDictionary = {
       start: "エンジンを起動",
       stop: "エンジンを停止",
       confirmStop: "停止しますか？",
+      lastError: "最新のエラー：",
       altitude: "高度",
       azimuth: "方位",
     },

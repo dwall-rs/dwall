@@ -85,24 +85,7 @@ impl Logger {
     pub fn with_file_path(mut self, path: std::path::PathBuf) -> std::io::Result<Self> {
         use std::fs::OpenOptions;
 
-        if path.exists() {
-            let backup_dir = path
-                .parent()
-                .unwrap_or_else(|| std::path::Path::new("."))
-                .join("backup");
-
-            std::fs::create_dir_all(&backup_dir)?;
-
-            let timestamp = std::time::SystemTime::now()
-                .duration_since(std::time::UNIX_EPOCH)
-                .map(|d| d.as_secs())
-                .unwrap_or(0);
-
-            let stem = path.file_stem().and_then(|s| s.to_str()).unwrap_or("app");
-
-            let bak_name = format!("{stem}_{timestamp}.log");
-            std::fs::rename(&path, backup_dir.join(bak_name))?;
-        }
+        rotate_log_file(&path)?;
 
         // The previous file was just rotated into `backup/`, so this starts a fresh
         // log; `truncate` states that intent (without it, a file that survived the
@@ -331,6 +314,114 @@ pub fn __fmt_key(key: &'static str) -> &'static str {
     key
 }
 
+/// How many rotated logs are kept next to the current one.
+///
+/// Every process start rotates the live file into `backup/`, and the settings app
+/// restarts the daemon on every theme application, so an uncapped directory grows
+/// without bound — a scheduled `--once` every minute would add 1,440 files a day.
+///
+/// Only release builds rotate (see [`Logger::with_file_path`]), hence the lint
+/// allowance in debug builds; the tests below use it in both profiles.
+#[cfg_attr(debug_assertions, allow(dead_code))]
+const MAX_BACKUP_LOGS: usize = 5;
+
+/// Moves the live log into `backup/` and prunes the oldest backups.
+///
+/// Split out of [`Logger::with_file_path`] (which release builds alone compile) so
+/// the rotation policy is testable.
+#[cfg_attr(debug_assertions, allow(dead_code))]
+fn rotate_log_file(path: &std::path::Path) -> std::io::Result<()> {
+    if !path.exists() {
+        return Ok(());
+    }
+
+    let backup_dir = path
+        .parent()
+        .unwrap_or_else(|| std::path::Path::new("."))
+        .join("backup");
+
+    std::fs::create_dir_all(&backup_dir)?;
+
+    let timestamp = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_secs())
+        .unwrap_or(0);
+
+    let stem = path.file_stem().and_then(|s| s.to_str()).unwrap_or("app");
+
+    // Two starts within the same second would otherwise pick the same name and the
+    // rename would overwrite the earlier log; bumping keeps the name parseable by
+    // the prune below and the file unique.
+    let mut timestamp = timestamp;
+    let mut backup_path = backup_dir.join(format!("{stem}_{timestamp}.log"));
+    while backup_path.exists() {
+        timestamp += 1;
+        backup_path = backup_dir.join(format!("{stem}_{timestamp}.log"));
+    }
+
+    std::fs::rename(path, backup_path)?;
+
+    // Best effort: a log directory that cannot be pruned must not stop the daemon
+    // from logging at all. `eprintln` because this runs before `init()` installs the
+    // logger, so a `warn!` would go nowhere.
+    if let Err(e) = prune_backups(&backup_dir, stem) {
+        eprintln!(
+            "warning: failed to prune old logs in {}: {e}",
+            backup_dir.display()
+        );
+    }
+
+    Ok(())
+}
+
+/// Keeps the newest [`MAX_BACKUP_LOGS`] backups for `stem`, deleting the rest.
+#[cfg_attr(debug_assertions, allow(dead_code))]
+fn prune_backups(backup_dir: &std::path::Path, stem: &str) -> std::io::Result<usize> {
+    let prefix = format!("{stem}_");
+    let mut backups: Vec<(u64, std::path::PathBuf)> = Vec::new();
+
+    for entry in std::fs::read_dir(backup_dir)? {
+        let entry = entry?;
+        let name = entry.file_name();
+        let name = name.to_string_lossy();
+
+        // `<stem>_<unix seconds>.log`, so the timestamps sort as numbers and a file
+        // from another program is left alone.
+        let Some(timestamp) = name
+            .strip_prefix(&prefix)
+            .and_then(|rest| rest.strip_suffix(".log"))
+            .and_then(|stamp| stamp.parse::<u64>().ok())
+        else {
+            continue;
+        };
+
+        backups.push((timestamp, entry.path()));
+    }
+
+    if backups.len() <= MAX_BACKUP_LOGS {
+        return Ok(0);
+    }
+
+    backups.sort_by_key(|(timestamp, _)| *timestamp);
+
+    let mut pruned = 0;
+    for (_, path) in backups.iter().take(backups.len() - MAX_BACKUP_LOGS) {
+        match std::fs::remove_file(path) {
+            Ok(()) => pruned += 1,
+            // A locked or already removed file is not worth failing over.
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => {}
+            Err(e) => {
+                return Err(std::io::Error::new(
+                    e.kind(),
+                    format!("failed to remove {}: {e}", path.display()),
+                ));
+            }
+        }
+    }
+
+    Ok(pruned)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -369,5 +460,128 @@ mod tests {
 
         let plain = Logger::default().with_level(LevelFilter::Error);
         assert_eq!(plain.effective_max_level(), LevelFilter::Error);
+    }
+
+    // ── Log rotation ─────────────────────────────────────────────────────────
+
+    fn scratch(name: &str) -> std::path::PathBuf {
+        let dir = std::env::temp_dir().join(format!("dwall_logging_{name}"));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+
+        dir
+    }
+
+    fn backup_names(log_path: &std::path::Path) -> Vec<String> {
+        let backup_dir = log_path.parent().unwrap().join("backup");
+        let mut names: Vec<String> = std::fs::read_dir(&backup_dir)
+            .unwrap()
+            .map(|entry| entry.unwrap().file_name().to_string_lossy().into_owned())
+            .collect();
+        names.sort();
+
+        names
+    }
+
+    #[test]
+    fn a_missing_log_file_is_not_rotated() {
+        let dir = scratch("missing");
+        let log_path = dir.join("dwall.log");
+
+        rotate_log_file(&log_path).unwrap();
+
+        assert!(!log_path.parent().unwrap().join("backup").exists());
+        assert!(!log_path.exists());
+
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn the_previous_log_is_moved_into_the_backup_directory() {
+        let dir = scratch("rotate");
+        let log_path = dir.join("dwall.log");
+        std::fs::write(&log_path, "previous run").unwrap();
+
+        rotate_log_file(&log_path).unwrap();
+
+        let names = backup_names(&log_path);
+        assert_eq!(names.len(), 1, "unexpected backups: {names:?}");
+        assert!(names[0].starts_with("dwall_") && names[0].ends_with(".log"));
+        assert!(!log_path.exists(), "the live file is moved, not copied");
+
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    /// The policy this adds: the directory used to grow by one file per process
+    /// start, forever.
+    #[test]
+    fn only_the_newest_backups_are_kept() {
+        let dir = scratch("prune");
+        let log_path = dir.join("dwall.log");
+        let backup_dir = dir.join("backup");
+        std::fs::create_dir_all(&backup_dir).unwrap();
+
+        for timestamp in 1..=(MAX_BACKUP_LOGS as u64 + 4) {
+            std::fs::write(backup_dir.join(format!("dwall_{timestamp}.log")), "old").unwrap();
+        }
+
+        // A different stem, and a file that only looks similar, must survive.
+        std::fs::write(backup_dir.join("dwall-settings_1.log"), "other").unwrap();
+        std::fs::write(backup_dir.join("notes.txt"), "keep me").unwrap();
+
+        let pruned = prune_backups(&backup_dir, "dwall").unwrap();
+
+        assert_eq!(pruned, 4, "the four oldest dwall backups are removed");
+        assert_eq!(
+            backup_names(&log_path),
+            vec![
+                "dwall-settings_1.log".to_string(),
+                "dwall_5.log".to_string(),
+                "dwall_6.log".to_string(),
+                "dwall_7.log".to_string(),
+                "dwall_8.log".to_string(),
+                "dwall_9.log".to_string(),
+                "notes.txt".to_string(),
+            ],
+            "only the newest dwall backups survive, and nothing else is touched"
+        );
+
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn a_directory_of_backups_is_left_alone_when_it_fits() {
+        let dir = scratch("fits");
+        let backup_dir = dir.join("backup");
+        std::fs::create_dir_all(&backup_dir).unwrap();
+
+        for timestamp in 1..=MAX_BACKUP_LOGS as u64 {
+            std::fs::write(backup_dir.join(format!("dwall_{timestamp}.log")), "old").unwrap();
+        }
+
+        assert_eq!(prune_backups(&backup_dir, "dwall").unwrap(), 0);
+        assert_eq!(backup_names(&dir.join("dwall.log")).len(), MAX_BACKUP_LOGS);
+
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn rotation_keeps_the_backup_count_bounded_across_restarts() {
+        let dir = scratch("repeated");
+        let log_path = dir.join("dwall.log");
+
+        for run in 0..(MAX_BACKUP_LOGS * 3) {
+            std::fs::write(&log_path, format!("run {run}")).unwrap();
+            rotate_log_file(&log_path).unwrap();
+        }
+
+        let names = backup_names(&log_path);
+        assert_eq!(
+            names.len(),
+            MAX_BACKUP_LOGS,
+            "rotation must not grow the directory without bound: {names:?}"
+        );
+
+        let _ = std::fs::remove_dir_all(&dir);
     }
 }

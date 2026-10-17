@@ -93,6 +93,7 @@ async fn main() -> DwallSettingsResult<()> {
             commands::solar::get_solar_path,
             commands::app::get_app_info,
             commands::engine::get_engine_status,
+            commands::engine::get_daemon_last_error,
             commands::engine::start_engine,
             commands::engine::stop_engine,
             commands::mirror::mirror_url,

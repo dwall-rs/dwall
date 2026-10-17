@@ -5,12 +5,23 @@ mod unix;
 mod windows;
 
 use std::fmt;
+use std::sync::{OnceLock, RwLock};
+use std::time::{Duration, Instant};
 
 pub use self::error::ParseOffsetError;
 #[cfg(unix)]
 pub use self::unix::system_utc_offset_secs;
 #[cfg(windows)]
 pub use self::windows::system_utc_offset_secs;
+
+/// How long a read offset stays usable before the system is asked again.
+///
+/// The query is a syscall (`GetTimeZoneInformation` on Windows, `localtime_r` on
+/// Unix) and the logger asks for the local time on every record — several times per
+/// update cycle at `debug` level. A daylight-saving transition or a time-zone change
+/// is picked up within this window, which is far shorter than the daemon's own
+/// update interval.
+const OFFSET_CACHE_TTL: Duration = Duration::from_secs(60);
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Offset {
@@ -21,12 +32,54 @@ pub struct Offset {
 impl Offset {
     pub fn local_offset() -> Self {
         Self {
-            seconds: system_utc_offset_secs(),
+            seconds: cached_system_utc_offset_secs(),
         }
     }
 
     pub const fn seconds(&self) -> i32 {
         self.seconds
+    }
+}
+
+/// The system offset, re-read at most once per [`OFFSET_CACHE_TTL`].
+fn cached_system_utc_offset_secs() -> i32 {
+    static CACHE: OnceLock<RwLock<CachedOffset>> = OnceLock::new();
+
+    let cache = CACHE.get_or_init(|| RwLock::new(CachedOffset::default()));
+
+    if let Ok(mut cache) = cache.write() {
+        return cache.get(system_utc_offset_secs);
+    }
+
+    // A poisoned lock is not worth failing a log record over: fall back to the raw
+    // query, which is what this cache exists to avoid, not to replace.
+    system_utc_offset_secs()
+}
+
+/// A value that is re-read only when it has gone stale.
+#[derive(Debug, Default)]
+struct CachedOffset {
+    value: Option<(i32, Instant)>,
+}
+
+impl CachedOffset {
+    /// Returns the cached value, asking `read` for a new one once it expires.
+    fn get(&mut self, read: impl FnOnce() -> i32) -> i32 {
+        self.get_at(Instant::now(), read)
+    }
+
+    /// [`get`](Self::get) with the clock supplied, so the expiry is testable.
+    fn get_at(&mut self, now: Instant, read: impl FnOnce() -> i32) -> i32 {
+        if let Some((seconds, read_at)) = self.value
+            && now.duration_since(read_at) < OFFSET_CACHE_TTL
+        {
+            return seconds;
+        }
+
+        let seconds = read();
+        self.value = Some((seconds, now));
+
+        seconds
     }
 }
 
@@ -125,6 +178,8 @@ fn digit(b: u8) -> Option<u8> {
 mod tests {
     use super::Offset;
     use super::ParseOffsetError;
+    use super::{CachedOffset, OFFSET_CACHE_TTL};
+    use std::time::{Duration, Instant};
 
     // =========================================================
     // 1. Roundtrip consistency from_seconds / seconds
@@ -546,5 +601,62 @@ mod tests {
                 s
             );
         }
+    }
+
+    // ── CachedOffset ─────────────────────────────────────────────────────────
+
+    #[test]
+    fn the_offset_is_read_once_within_the_ttl() {
+        use std::cell::Cell;
+
+        let mut cache = CachedOffset::default();
+        let reads = Cell::new(0);
+        let start = Instant::now();
+
+        let read = || {
+            reads.set(reads.get() + 1);
+            3600
+        };
+
+        assert_eq!(cache.get_at(start, read), 3600);
+        assert_eq!(cache.get_at(start + Duration::from_secs(1), read), 3600);
+        assert_eq!(
+            reads.get(),
+            1,
+            "a cached offset must not ask the system again"
+        );
+    }
+
+    #[test]
+    fn the_offset_is_reread_once_the_ttl_elapses() {
+        use std::cell::Cell;
+
+        let mut cache = CachedOffset::default();
+        let offset = Cell::new(3600);
+        let start = Instant::now();
+
+        assert_eq!(cache.get_at(start, || offset.get()), 3600);
+
+        offset.set(7200);
+
+        // Still inside the window: the daylight-saving transition or the time-zone
+        // change is not picked up yet.
+        assert_eq!(
+            cache.get_at(start + OFFSET_CACHE_TTL - Duration::from_millis(1), || {
+                offset.get()
+            }),
+            3600
+        );
+
+        // At the boundary the system is asked again.
+        assert_eq!(
+            cache.get_at(start + OFFSET_CACHE_TTL, || offset.get()),
+            7200
+        );
+    }
+
+    #[test]
+    fn the_cache_starts_empty() {
+        assert_eq!(CachedOffset::default().value, None);
     }
 }
