@@ -62,6 +62,9 @@ tauri-plugin-process = "2"
 windows = { workspace = true, features = [
     "Win32_System_Registry",
     "Win32_System_Diagnostics_ToolHelp",
+    # `ProcessIdToSessionId`: the daemon's mutex is session-local, so the process the
+    # settings app may stop is the one in its own session.
+    "Win32_System_RemoteDesktop",
     "Win32_System_ProcessStatus",
     "Win32_Graphics_Dwm",
     "Wdk_System_SystemServices",

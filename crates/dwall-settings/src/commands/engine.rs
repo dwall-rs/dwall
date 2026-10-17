@@ -2,7 +2,7 @@
 
 use crate::daemon::{DaemonLauncher, daemon_path, is_daemon_running};
 use crate::error::DwallSettingsResult;
-use crate::process::{find_daemon_process, terminate_process};
+use crate::process::stop_daemon;
 
 /// Whether the daemon process is currently running.
 ///
@@ -40,18 +40,14 @@ pub async fn start_engine() -> DwallSettingsResult<()> {
 
 /// Stop the daemon process. Returns whether a process was actually terminated.
 ///
-/// The daemon is located by executable name, so this also stops a portable or
-/// headless copy that was started outside this settings app.
+/// The daemon is located by executable name and session, so this also stops a
+/// portable or headless copy that was started outside this settings app — and it
+/// waits for the process to really exit, because its mutex is what the next start
+/// has to claim.
 #[tauri::command]
 pub async fn stop_engine() -> DwallSettingsResult<bool> {
-    tauri::async_runtime::spawn_blocking(move || -> DwallSettingsResult<bool> {
-        match find_daemon_process()? {
-            Some(pid) => {
-                terminate_process(pid)?;
-                Ok(true)
-            }
-            None => Ok(false),
-        }
+    tauri::async_runtime::spawn_blocking(|| -> DwallSettingsResult<bool> {
+        Ok(stop_daemon()?.is_some())
     })
     .await
     .map_err(|e| crate::error::DwallSettingsError::Other(e.to_string()))?

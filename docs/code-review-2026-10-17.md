@@ -355,9 +355,9 @@ P0（对应第 1、2 节的缺陷，写出来即回归网）：
 
 ---
 
-## 11. 修复记录：批次 1 / 2 / 3 / 4 / 5（2026-10-17 本轮已实现）
+## 11. 修复记录：批次 1 / 2 / 3 / 4 / 5 / 6（2026-10-17 本轮已实现）
 
-只做了第 9 节的**批次 1（D1、D2+D3）、批次 2（S1、S2）、批次 3（D5、D6、D4）、批次 4（S3、S4、S5、`.zip` 泄漏、取消不重试）与批次 5（日志轮转上限、时区偏移缓存、去掉整份配置 dump、暴露守护进程最后一条 ERROR）**，其余批次未动。
+只做了第 9 节的**批次 1（D1、D2+D3）、批次 2（S1、S2）、批次 3（D5、D6、D4）、批次 4（S3、S4、S5、`.zip` 泄漏、取消不重试）、批次 5（日志轮转上限、时区偏移缓存、去掉整份配置 dump、暴露守护进程最后一条 ERROR）与批次 6（配置生效延迟、写盘顺序、会话过滤与 PID 复用、停止后等待退出）**，其余批次未动。
 
 ### D1 ✅ 守护进程不再因持续失败而退出
 
@@ -440,6 +440,16 @@ P0（对应第 1、2 节的缺陷，写出来即回归网）：
 - **整份配置进日志**（[dwall/src/config.rs](../crates/dwall/src/config.rs)、[commands/config.rs](../crates/dwall-settings/src/commands/config.rs)、[commands/system.rs](../crates/dwall-settings/src/commands/system.rs)）：`debug!(config = ?config)` 会把精确坐标、代理地址、配置与日志目录（含用户名）整份写进日志，而日志目录在设置窗口里一键可达；`config.rs` 里那句 info! 上面的注释刚说"故意不打印整个结构体"，下面这行就把注释否掉了。改成只打印非敏感的派生事实（interval、图片格式、是否随机模式、是否手动定位、是否配了代理/镜像、是否启用锁屏壁纸），三个文件一致。
 - **守护进程最后一条 ERROR 暴露到设置端**（[daemon.rs](../crates/dwall-settings/src/daemon.rs)、[commands/engine.rs](../crates/dwall-settings/src/commands/engine.rs)、[main.rs](../crates/dwall-settings/src/main.rs)、[src/ipc/engine.ts](../src/ipc/engine.ts)、[src/store/engine.store.ts](../src/store/engine.store.ts)、[src/layout/EngineStatus.tsx](../src/layout/EngineStatus.tsx)）：D1/D4 之后守护进程会带错误继续运行，状态区只显示"运行中"就是在骗人；现在新增 `get_daemon_last_error` 命令，状态轮询在守护进程运行时一并读取最后一条 ERROR 行并在状态区用 warning 色显示（可截断、`title` 里给全文），停止后清空。顺带修掉这个读取本身的两个问题：原来 `read_to_end` 把整份日志读进内存（日志可以无限增长，正是这一批在修的东西），现在只读尾部 `LOG_TAIL_BYTES`（64 KiB，覆盖一周以上的失败记录），并且丢掉被窗口切半的那一行，避免把半条记录当成"最后的错误"。6 个语言都加了 `app.engine.lastError`。测试：Rust 6 个（缺文件、无错误、取最新一条、只搜尾部、行长跨界、半行不报错；翻转验证：把"只读尾部"改回全量读时后三个失败）、前端 7 个（运行中带错误、运行中无错误、停止后清空且不再读日志、查询失败提示、启动、二次确认停止后清空、停止失败保持运行）。
 
+### 批次 6 ✅ 配置生效延迟、写盘顺序、会话过滤与等待退出
+
+- **配置变更最长等一个 `interval`**（[dwall/src/daemon.rs](../crates/dwall/src/daemon.rs)）：`has_changed()` 只在循环顶部检查，之后跑一个周期再 `sleep(interval)`；而设置窗口的"保存"只写文件、不重启守护进程（只有"应用主题"会重启），**本机真实配置 `interval = 600`**，即改一个非"应用"类设置最长 10 分钟才生效。现在把等待切成 `CONFIG_POLL_INTERVAL`（1 s）的片，每片检查一次配置文件，发现变化就 `continue`（回到循环顶部由原有逻辑记录 mtime 并重载），因此退避期间（最长 300 s）改配置也能在 1 s 内被拾起。每秒一次 `fs::metadata` 相对周期内的墙纸操作可以忽略。
+- **写盘顺序**（[theme/applier.rs](../crates/dwall-settings/src/theme/applier.rs)）：原来先 `terminate_process` 再 `write_to_path`，写盘校验失败就留下一个已经停掉的引擎、用户只看到"保存失败"。现在先写配置再停守护进程；而且停不下来不再是致命错误（配置在 1 s 内会被守护进程自己读到），只记一条 ERROR 继续。
+- **会话过滤 + PID 复用**（[process.rs](../crates/dwall-settings/src/process.rs)）：守护进程的互斥体是会话级的（`Local\`），而进程扫描是全机的——多用户/RDP/快速切换时会杀掉**别的会话**的守护进程，而本会话的状态显示"未运行"。现在新增 `is_our_daemon(image_name, process_session, our_session)`，用 `ProcessIdToSessionId` 过滤本会话；取不到本会话时退化为按名字匹配并 `warn!`（宁可找得到，也不要因为探测失败而完全看不到守护进程）。另外修掉 TOCTOU：PID 来自快照，`OpenProcess` 之后 PID 可能已被复用，因此 `terminate_process` 在**句柄上**用 `QueryFullProcessImageNameW` 复核映像名，不匹配就返回 `Ok(false)`（"那个 PID 已经不是守护进程了"），不再误杀无关进程。
+- **停止→启动没有等待**（[process.rs](../crates/dwall-settings/src/process.rs)、[theme/applier.rs](../crates/dwall-settings/src/theme/applier.rs)）：`TerminateProcess` 只是"请求"，它在进程真正退出前就返回，而守护进程持有的互斥体要到退出才释放；原来紧接着启动新进程 + `sleep(100ms)` + 查互斥体，旧进程还在时新进程会以 `ERROR_ALREADY_EXISTS` 直接退出 → "应用主题"间歇失败，还报误导性的 `Daemon process failed to start`。现在统一走 `stop_daemon()`（查找 → 句柄复核 → 终止 → `wait_for_exit`，上限 5 s，超时只 `warn!`），启动侧用 `wait_until(START_TIMEOUT=5s, 50ms)` 轮询互斥体取代固定睡眠。四处调用点（`apply`、`stop_engine`、`kill_daemon_cmd`、debug 构建的退出钩子）都改成走这一个入口，`kill_daemon_cmd` 的返回语义（被杀掉的 PID）不变。
+- 依赖：`dwall-settings` 增加 `Win32_System_RemoteDesktop`（`ProcessIdToSessionId`）；同属 `Threading` 的 `PROCESS_SYNCHRONIZE`/`QueryFullProcessImageNameW` 原本就有。
+- 测试（13 个）：`wait_for_config_change` 3 个（无变化时按时结束、**等待期间的变化会提前结束等待**、配置文件被删除也算变化；翻转验证：把切片等待换成"睡满整个 interval 再检查一次"，前者的耗时从约 1 s 变成 **30.0004 s** 并失败——正是 `interval = 600` 时 10 分钟那条路径）；`is_our_daemon` 3 个（同会话同名匹配、**别的会话不算**、别的可执行文件不算；会话那条已翻转验证）；`session_id_of` 2 个（本进程能取到会话、PID 0 取不到）；`wait_until` 3 个（首次即真、轮询到第 3 次为真、超时放弃）；`wait_for_exit` 2 个（**对自身进程必然超时**、已被回收的 PID 视为已退出）。
+- **本批未验证**：`stop_daemon`/`apply` 的编排顺序（先写盘、等待退出、轮询启动）没有单元测试——它直接操作真实配置文件与真实进程，只能靠代码审阅；跨会话行为同样需要第二个会话/RDP 才能实测（报告第 10 节已列为未验证项）。
+
 ### 本轮验证命令与结果
 
 | 命令 | 结果 |
@@ -448,12 +458,14 @@ P0（对应第 1、2 节的缺陷，写出来即回归网）：
 | `cargo clippy -- -D warnings` / `cargo clippy -r -- -D warnings` | exit 0 / 0 |
 | `cargo clippy -r -p dwall --features build-script,log-max-level-info --all-targets -- -D warnings` | exit 0 |
 | `DWALL_SKIP_BUILD=1 cargo clippy -p dwall-settings --all-targets -- -D warnings` | exit 0 |
-| `DWALL_SKIP_BUILD=1 cargo test` | **293 passed / 0 failed**（批次 1/2 后 239、批次 3 后 252、批次 4 后 279；dwall 121、settings 69、logging 8、time 83） |
+| `DWALL_SKIP_BUILD=1 cargo test` | **306 passed / 0 failed**（批次 1/2 后 239、批次 3 后 252、批次 4 后 279、批次 5 后 293；dwall 124、settings 79、logging 8、time 83） |
 | `bun run check`（tsgo + biome，386 文件） | exit 0，0 error / 0 warning |
-| `bun run test` | **39 passed**（批次 1/2 的 32 + 批次 5 的 engine store 7 个） |
-| `bun run build:vite` | 成功；JS 232.6→233.2 KB、CSS 122.2→122.3 KB（批次 5 的状态区错误行与六条 i18n） |
+| `bun run test` | **39 passed**（批次 6 不涉及前端） |
+| `bun run build:vite` | 成功；JS 233.2 KB、CSS 122.3 KB（与批次 5 相同） |
+
+第 6 节的**二进制体积数字对本批（乃至批次 3–6）尚未重新测量**：`dwall.exe` 与 `dwall-settings.exe` 都改过（本批还给 settings 加了一个 `windows` feature），表里的 632,832 B / 4,234,240 B 仍是 10/17 那次 release 构建的结果，需要时应重新构建再更新，不要直接引用。
 
 ### 仍未做（后续批次）
 
-设置端写盘顺序与会话过滤（批次 6）、第 8 节其余测试（含 8.1 的 `ThemeEngine` 泛型化与 `bin/daemon.rs` 的退出码集成测试）、第 9 节批次 8/9（CI 门禁与 P3 清理）。
-批次 4 未处理的相邻项（原报告 2.2 表）：镜像的稳定版通道自废（M1）、续传无 `If-Range`/校验和（M2）、下载与缩略图无并发上限（M3）、缩略图锁表无上限与 100 MB 上限只在未命中时执行（M4）、asset protocol `**/*`（M5）、渲染层可传的 URL/路径（M6）、"读取续命"无效（M7）。
+第 8 节其余测试（含 8.1 的 `ThemeEngine` 泛型化与 `bin/daemon.rs` 的退出码集成测试）、第 9 节批次 8/9（CI 门禁与 P3 清理）。
+批次 4 未处理的相邻项（原报告 2.2 表）：镜像的稳定版通道自废（M1）、续传无 `If-Range`/校验和（M2）、下载与缩略图无并发上限（M3）、缩略图锁表无上限与 100 MB 上限只在未命中时执行（M4）、asset protocol `**/*`（M5）、渲染层可传的 URL/路径（M6）、"读取续命"无效（M7）；另外"应用此主题会静默提交所有未保存的编辑"（[settings.store.ts:173-196](../src/store/settings.store.ts#L173-L196)）仍未处理，它属于前端语义而非本批的生命周期问题。
