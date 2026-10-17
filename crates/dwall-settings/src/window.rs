@@ -10,7 +10,8 @@ use windows::{
     Win32::{
         Foundation::{HWND, STATUS_SUCCESS},
         Graphics::Dwm::{
-            DWMWA_CAPTION_COLOR, DWMWA_USE_IMMERSIVE_DARK_MODE, DwmSetWindowAttribute,
+            DWMWA_CAPTION_COLOR, DWMWA_COLOR_DEFAULT, DWMWA_USE_IMMERSIVE_DARK_MODE,
+            DwmSetWindowAttribute,
         },
         System::SystemInformation::OSVERSIONINFOW,
     },
@@ -47,25 +48,53 @@ pub fn build_window(
     }
 }
 
-/// Sets the window's titlebar color mode based on the system version
-pub fn set_color_mode(window_handle: HWND, color_mode: ColorScheme) -> DwallSettingsResult<()> {
+/// Applies the window's title bar appearance.
+///
+/// Windows 11 (build 22000+) can paint the caption with an arbitrary colour, which is what
+/// makes the title bar match Dwall's own background; `follow_windows_theme` hands the
+/// caption back to Windows instead. Windows 10 has no caption-colour attribute at all —
+/// only the immersive dark-mode switch — so there the caption follows the light/dark side
+/// of the app while its colour stays the system's.
+pub fn set_color_mode(
+    window_handle: HWND,
+    color_mode: ColorScheme,
+    follow_windows_theme: bool,
+) -> DwallSettingsResult<()> {
     if is_windows_11_or_newer() {
-        set_windows_11_caption_color(window_handle, &color_mode)
+        set_windows_11_caption_color(window_handle, &color_mode, follow_windows_theme)
+    } else if follow_windows_theme {
+        // The caption colour was never touched for this window, so there is nothing to
+        // hand back to the system.
+        Ok(())
     } else {
         set_legacy_dark_mode(window_handle, &color_mode)
     }
 }
 
+/// Caption colours of the two appearances: the window's own background, so the title bar
+/// and the window read as one surface. Taken from the frontend's `--background` token
+/// (`src/index.css`): light `oklch(1 0 0)` and dark `oklch(0.145 0 0)`, in sRGB.
+const LIGHT_CAPTION_COLOR: u32 = color_ref(0xFF_FF_FF);
+const DARK_CAPTION_COLOR: u32 = color_ref(0x0A_0A_0A);
+
+/// Converts an `0xRRGGBB` colour to the `COLORREF` (`0x00BBGGRR`) DWM expects.
+const fn color_ref(rgb: u32) -> u32 {
+    ((rgb & 0xFF) << 16) | (rgb & 0xFF_00) | ((rgb >> 16) & 0xFF)
+}
+
 fn set_windows_11_caption_color(
     window_handle: HWND,
     color_mode: &ColorScheme,
+    follow_windows_theme: bool,
 ) -> DwallSettingsResult<()> {
-    const DARK_CAPTION_COLOR: u32 = 0x171717;
-    const LIGHT_CAPTION_COLOR: u32 = 0xFAFAFA;
-
-    let caption_color = match color_mode {
-        ColorScheme::Dark => DARK_CAPTION_COLOR,
-        ColorScheme::Light => LIGHT_CAPTION_COLOR,
+    let caption_color = if follow_windows_theme {
+        // `DWMWA_COLOR_DEFAULT` tells DWM to use the colour the Windows theme asks for.
+        DWMWA_COLOR_DEFAULT
+    } else {
+        match color_mode {
+            ColorScheme::Dark => DARK_CAPTION_COLOR,
+            ColorScheme::Light => LIGHT_CAPTION_COLOR,
+        }
     };
 
     unsafe {
@@ -109,4 +138,22 @@ fn is_windows_11_or_newer() -> bool {
     }
 
     os_version_info.dwBuildNumber >= 22000
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_colour_is_reordered_into_a_colorref() {
+        assert_eq!(color_ref(0x11_22_33), 0x0033_2211);
+    }
+
+    #[test]
+    fn the_caption_colours_are_the_window_background() {
+        // Neutral values, so writing them either way looks the same: this pins that the
+        // literals are the sRGB form of `--background` and not a leftover of the old palette.
+        assert_eq!(LIGHT_CAPTION_COLOR, 0x00FF_FFFF);
+        assert_eq!(DARK_CAPTION_COLOR, 0x000A_0A0A);
+    }
 }

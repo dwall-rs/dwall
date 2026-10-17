@@ -67,12 +67,17 @@ pub async fn open_log_dir() -> DwallSettingsResult<()> {
     Ok(())
 }
 
+/// Paints the window's title bar for `color_mode`.
+///
+/// `follow_windows_theme` hands the caption back to Windows instead of matching Dwall's
+/// background; see [`set_color_mode`](crate::window::set_color_mode) for what each Windows
+/// version supports.
 #[tauri::command]
 pub async fn set_titlebar_color_mode(
     window: WebviewWindow,
     color_mode: ColorScheme,
+    follow_windows_theme: bool,
 ) -> DwallSettingsResult<()> {
     let hwnd = window.hwnd()?;
-    set_color_mode(hwnd, color_mode)?;
-    Ok(())
+    set_color_mode(hwnd, color_mode, follow_windows_theme)
 }

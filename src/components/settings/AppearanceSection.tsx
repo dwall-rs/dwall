@@ -1,12 +1,22 @@
-// Responsibility: Appearance & language group — three options + palette + language. Note: "follow the system" is the "System" option among the three.
+// Responsibility: Appearance & language group — three options + palette + title bar + language. Note: "follow the system" is the "System" option among the three.
 import { SettingsGroup } from "./SettingsGroup";
 import { SettingsRow } from "./SettingsRow";
 import { ThemeSegmented } from "./ThemeSegmented";
 import { LanguageRow } from "./LanguageRow";
+import { Switch } from "@/components/ui/switch";
+import { patch, save, settingsStore } from "@/store/settings.store";
 import { t } from "@/i18n";
 import { Sparkles } from "lucide-solid";
+import { createSignal } from "solid-js";
 
 export function AppearanceSection() {
+  const [flash, setFlash] = createSignal<string | null>(null);
+  const ok = async (key: string) => {
+    setFlash(key);
+    await save();
+    setFlash(null);
+  };
+
   return (
     <SettingsGroup
       icon={<Sparkles class="size-3.25" />}
@@ -18,6 +28,22 @@ export function AppearanceSection() {
           label={t("settings.appearance.appearanceLabel")}
           desc={t("settings.appearance.appearanceDesc")}
           control={<ThemeSegmented />}
+        />
+        <SettingsRow
+          label={t("settings.appearance.titleBar")}
+          okShow={flash() === "titleBar"}
+          desc={t("settings.appearance.titleBarDesc")}
+          control={
+            <Switch
+              checked={
+                settingsStore.config?.title_bar_color_follows_windows_theme
+              }
+              onCheckedChange={(checked) => {
+                patch({ title_bar_color_follows_windows_theme: checked });
+                void ok("titleBar");
+              }}
+            />
+          }
         />
         <SettingsRow
           label={t("settings.appearance.languageLabel")}

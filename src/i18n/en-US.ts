@@ -120,6 +120,9 @@ export const dict = {
       appearanceLabel: "Appearance",
       appearanceDesc:
         "Choose light, dark, or follow the system. Following the system switches automatically.",
+      titleBar: "Title bar follows the Windows theme",
+      titleBarDesc:
+        "Off: the title bar is painted with Dwall's background colour, so it matches the window. Matching the colour needs Windows 11; Windows 10 follows the light/dark side only.",
       languageLabel: "Language",
       languageDesc: "Interface language; takes effect immediately.",
     },

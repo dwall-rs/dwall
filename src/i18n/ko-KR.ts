@@ -121,6 +121,9 @@ export const dict: RawDictionary = {
       appearanceLabel: "모양",
       appearanceDesc:
         "라이트, 다크 또는 시스템을 선택하세요. 시스템은 자동으로 전환됩니다.",
+      titleBar: "제목 표시줄을 Windows 테마 색으로",
+      titleBarDesc:
+        "끄면 Dwall 배경색으로 제목 표시줄을 그려 창과 하나로 보입니다. 색까지 맞추는 것은 Windows 11에서만 되고, Windows 10은 밝기 모드만 따라갑니다.",
       languageLabel: "언어",
       languageDesc: "인터페이스 언어이며 즉시 적용됩니다.",
     },
