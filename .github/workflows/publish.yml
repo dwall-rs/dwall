@@ -317,8 +317,10 @@ jobs:
       # Rendered here so a stale template or a missing checksum surfaces during the
       # release instead of halfway through a winget or Scoop submission. Run the
       # same script with -Validate locally (`winget validate` is not guaranteed to
-      # exist on a runner).
+      # exist on a runner). Stable channel only: a pre-release is dropped as soon as
+      # the next one exists, so a manifest rendered from it would point at nothing.
       - name: Render the winget and Scoop manifests
+        if: ${{ github.event.inputs.release_channel == 'stable' }}
         run: ./.scripts/render-package-manifests.ps1 -Version "${{ needs.create-release.outputs.package_version }}"
 
   publish-release:
@@ -344,6 +346,26 @@ jobs:
               release_id: process.env.release_id,
               draft: false,
             })
+
+      # A pre-release is a one-off test build: the updater only ever offers the newest one,
+      # and an older installer left on the releases page is something people install by
+      # mistake. Tags are kept, so any dropped build stays reproducible from source.
+      - name: Drop older pre-releases
+        if: ${{ github.event.inputs.release_channel != 'stable' }}
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          KEEP_TAG: v${{ needs.create-release.outputs.package_version }}
+        run: |
+          gh release list --repo "$GITHUB_REPOSITORY" --exclude-drafts --limit 100 \
+            --json tagName,isPrerelease --jq '.[] | select(.isPrerelease) | .tagName' |
+          while read -r tag; do
+            if [ -z "$tag" ] || [ "$tag" = "$KEEP_TAG" ]; then
+              continue
+            fi
+            echo "Dropping the older pre-release $tag"
+            gh release delete "$tag" --repo "$GITHUB_REPOSITORY" --yes
+          done
 
       - name: Create release summary
         run: |

@@ -214,6 +214,12 @@ fix(settings): identify the daemon by mutex and executable name
   tag before the download (`update::retag_manifest_url`), or the install asks the newest
   stable release for an asset it does not have and fails with 404 — while the check, which
   only reads the version, still looks fine.
+- Only the newest pre-release is kept: `publish.yml` drops the older ones as soon as a new
+  pre-release is published (the tags stay, so the source is still reproducible), because
+  the updater never offers an older one and a stale installer left on the releases page is
+  what people install by mistake. Stable releases are all kept — the download counts show
+  older ones are still in use. The winget and Scoop manifests are rendered for the stable
+  channel only, so a submitted manifest can never point at a dropped pre-release.
 - The config file is `%APPDATA%\dwall\config.toml` and is shared by both
   binaries through `dwall::config` / `dwall::config::ConfigReader`. The daemon
   writes a commented default file when it is missing.
