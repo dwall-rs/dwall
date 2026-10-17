@@ -220,6 +220,14 @@ fix(settings): identify the daemon by mutex and executable name
   what people install by mistake. Stable releases are all kept — the download counts show
   older ones are still in use. The winget and Scoop manifests are rendered for the stable
   channel only, so a submitted manifest can never point at a dropped pre-release.
+- Rust caches are keyed by `dtolnay/rust-toolchain`'s `cachekey`, which is a hash of the
+  resolved compiler, and the `restore-keys` prefixes keep it: cargo's fingerprints include
+  the compiler, so artifacts from another rustc are unusable — restoring them only costs a
+  ~600 MB download and a full rebuild. A stable update changes that key without touching
+  any file the path filters watch, which is why `warm-cache.yml` also runs weekly: it is
+  the only job that saves a *debug* cache, and publish/nightly only ever save the release
+  one. Every Rust cache also lists `target/<profile>/.fingerprint` next to `deps` and
+  `build`; without it cargo cannot tell a restored artifact is fresh and rebuilds anyway.
 - The config file is `%APPDATA%\dwall\config.toml` and is shared by both
   binaries through `dwall::config` / `dwall::config::ConfigReader`. The daemon
   writes a commented default file when it is missing.
