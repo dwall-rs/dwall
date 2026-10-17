@@ -22,7 +22,6 @@ import { toast } from "@/components/ui/toast";
 import { t } from "@/i18n";
 import { logger } from "@/utils";
 import { refresh as refreshEngine } from "./engine.store";
-import { setMode, themeStore } from "./theme.store";
 
 const log = logger.child("settings");
 
@@ -56,9 +55,6 @@ const load = async () => {
       saved: cfg,
       status: "ready",
     }));
-    // Seed the appearance from the persisted preference: auto_detect ⇄ follow the system
-    if (cfg.auto_detect_color_scheme) setMode("system");
-    else if (themeStore.mode === "system") setMode("light");
   } catch (e) {
     setSettingsStore((prev) => ({
       ...prev,
@@ -102,12 +98,12 @@ const patchPosition = (
  * Enables or disables the daemon's system light/dark switching.
  *
  * The daemon reads the flag from the config and reloads when the file changes, so the
- * next cycle applies it. Turning it on also makes this window follow the system: the
- * window appearance can only track the system if something is switching the system.
+ * next cycle applies it. It is deliberately independent of this window's own appearance:
+ * the appearance control owns that, and the window can only follow the system if the user
+ * picks "System" there.
  */
 const setAutoDetectColorScheme = (enabled: boolean) => {
   patch({ auto_detect_color_scheme: enabled });
-  if (enabled) setMode("system");
 };
 
 export type NetworkType = "none" | "mirror" | "socks5";

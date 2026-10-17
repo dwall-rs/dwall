@@ -12,9 +12,9 @@ English | <a href="./README.zh-CN.md">简体中文</a>
 
 A Windows dynamic-wallpaper app that follows the **sun's position**, not a clock: it
 computes solar altitude and azimuth locally and applies the theme frame that matches,
-optionally moving the system light/dark theme and lock screen with it. The always-on
-part is a single-threaded Rust daemon of about 4 MB; the settings window is a separate
-process that only runs while it is open.
+moving the system light/dark theme and the lock screen with it (the theme switch is on by
+default and can be turned off). The always-on part is a single-threaded Rust daemon of
+about 4 MB; the settings window is a separate process that only runs while it is open.
 
 ## How it compares
 
@@ -36,7 +36,7 @@ the cases where they are the better choice are in [docs/](./docs/README.md).
 ## Features
 
 - **Solar scheduling** — frames are matched to the sun's position; the 15-theme catalogue uses 5 to 24 frames per theme.
-- **System theme with it** — light/dark is switched on the same calculation (optional).
+- **System theme with it** — light/dark is switched on the same calculation (on by default; the switch is in the settings page).
 - **Lock screen** — optionally mirrors the wallpaper's theme and frame.
 - **Per-monitor themes** — a different theme per display, reapplied when monitors change.
 - **Daily random theme** — optionally draw one theme per day from a pool you choose.
@@ -66,10 +66,10 @@ winget and Scoop manifests are prepared but not submitted to those repositories 
 
 1. Run DWALL and allow location access, or set coordinates manually in the settings page.
 2. Pick a theme in the sidebar. Themes that are not downloaded yet show a **Download**
-   button; once downloaded, **Apply** uses it.
+   button and cannot be picked until it finishes; once downloaded, **Apply** uses it.
 3. With several monitors, select the display in the monitor selector and repeat step 2
    for each one.
-4. Optionally enable the lock-screen wallpaper and the system light/dark switch.
+4. Optionally enable the lock-screen wallpaper.
 5. DWALL keeps running in the background — there is no tray icon; the settings window is
    started again from the Start menu.
 

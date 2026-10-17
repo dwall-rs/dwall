@@ -36,8 +36,8 @@ The first run writes a **commented default file** there, so there is always
 something to edit; every key is optional and falls back to its default. It covers
 wallpaper mode (`fixed` per monitor, or `random` with an optional pool drawn daily),
 the theme directories, the update interval in seconds (default 15, range 1–3600),
-image format, system light/dark switching, lock-screen wallpaper and the position
-source (automatic via Windows Geolocator, or manual coordinates).
+image format, system light/dark switching (on by default), lock-screen wallpaper and
+the position source (automatic via Windows Geolocator, or manual coordinates).
 
 `--config` also moves `random_selection.json` next to the chosen file, so
 independent configurations coexist. The settings window always uses the default
