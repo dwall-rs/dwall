@@ -141,6 +141,9 @@ export const dict: RawDictionary = {
       save: "儲存",
       lockScreen: "同時設定鎖定畫面桌布",
       lockScreenDesc: "若不希望鎖定畫面與桌面同步更換，請關閉此項。",
+      colorScheme: "自動切換系統明暗色",
+      colorSchemeDesc:
+        "依太陽位置而非固定時刻切換：日出後為淺色、日落後為深色（民用曙暮光 -6°），切換點帶死區避免反覆跳動。",
     },
 
     paths: {

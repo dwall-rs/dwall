@@ -145,6 +145,9 @@ export const dict: RawDictionary = {
       save: "저장",
       lockScreen: "잠금 화면 배경도 설정",
       lockScreenDesc: "잠금 화면을 바꾸지 않으려면 끄세요.",
+      colorScheme: "시스템 밝기 모드 자동 전환",
+      colorSchemeDesc:
+        "시각이 아니라 태양 위치를 따릅니다. 일출 후에는 라이트, 일몰 후에는 다크(시민 박명 -6°)이며, 전환 지점에는 여유를 두어 자주 뒤집히지 않습니다.",
     },
 
     paths: {
