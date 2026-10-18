@@ -12,6 +12,7 @@ pub mod theme_manifest;
 pub mod utils;
 pub mod wallpaper;
 
+mod schedule;
 mod theme_engine;
 
 #[macro_use]

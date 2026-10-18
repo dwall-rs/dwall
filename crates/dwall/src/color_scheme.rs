@@ -437,6 +437,37 @@ fn cached_daylight_state(
 }
 
 impl<T: ColorSchemeProvider> ColorSchemeApplier<T> {
+    /// The scheme the applier would choose at `now`, without applying anything.
+    ///
+    /// Split out of [`update_color_scheme`](Self::update_color_scheme) so the schedule
+    /// can ask the same question about a future instant. A schedule that decided
+    /// differently from the cycle would wake at the wrong times, which is worse than
+    /// having no schedule at all.
+    pub(crate) fn scheme_at(
+        &self,
+        now: &OffsetDateTime,
+        geographic_position: &Position,
+        solar_position: &SolarPosition,
+        current_scheme: ColorScheme,
+    ) -> ColorScheme {
+        let threshold_config = cached_threshold(geographic_position);
+        let daylight_state =
+            cached_daylight_state(geographic_position, now.date(), &threshold_config);
+
+        determine_color_scheme_with_hysteresis(
+            solar_position,
+            &current_scheme,
+            &threshold_config,
+            now,
+            &daylight_state,
+        )
+    }
+
+    /// The scheme the system is showing now, as far as this applier can tell.
+    pub(crate) fn current_scheme(&self) -> DwallResult<ColorScheme> {
+        self.color_scheme_provider.get_current_scheme()
+    }
+
     /// Updates the system color scheme based on the current solar position.
     pub(crate) fn update_color_scheme(
         &self,
@@ -449,17 +480,12 @@ impl<T: ColorSchemeProvider> ColorSchemeApplier<T> {
             return Ok(());
         }
 
-        let threshold_config = cached_threshold(geographic_position);
-        let daylight_state =
-            cached_daylight_state(geographic_position, now.date(), &threshold_config);
-
         let current_color_scheme = self.color_scheme_provider.get_current_scheme()?;
-        let solar_based_color_scheme = determine_color_scheme_with_hysteresis(
-            solar_position,
-            &current_color_scheme,
-            &threshold_config,
+        let solar_based_color_scheme = self.scheme_at(
             now,
-            &daylight_state,
+            geographic_position,
+            solar_position,
+            current_color_scheme,
         );
 
         debug!(
