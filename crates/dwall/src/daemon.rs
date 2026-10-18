@@ -40,7 +40,13 @@ const CONFIG_RETRY_DELAY: Duration = Duration::from_secs(5);
 /// at it: the machine this was measured on runs `interval = 600`, i.e. up to ten
 /// minutes. Only "apply theme" restarts the daemon, so every other setting depended
 /// on that check.
-const CONFIG_POLL_INTERVAL: Duration = Duration::from_secs(1);
+///
+/// Five seconds rather than one: the wait is also what the schedule uses, so a shorter
+/// slice is a wakeup the daemon does not need — reading a file's modification time per
+/// second kept every configuration awake at 1 Hz no matter how rarely the wallpapers
+/// changed. Saving a setting still takes effect well within the time it takes to look
+/// at the window.
+const CONFIG_POLL_INTERVAL: Duration = Duration::from_secs(5);
 
 /// Waits up to `duration`, returning early when the configuration file changed.
 ///
@@ -441,8 +447,6 @@ impl DaemonApplication {
 
     /// Runs the engine loop until the configuration changes.
     fn run_engine_loop(&mut self, theme_engine: &PlatformEngine<'_>) -> DwallResult<()> {
-        let update_interval = Duration::from_secs(theme_engine.update_interval().into());
-
         // A configuration change rebuilds the engine, which resets this: the user
         // editing the configuration is the most likely fix, so retry promptly.
         let mut failures = CycleFailureTracker::default();
@@ -472,7 +476,9 @@ impl DaemonApplication {
             let next_interval = match theme_engine.run_once() {
                 Ok(_) => {
                     failures.record_success();
-                    update_interval
+                    // The interval is the ceiling, not the schedule: a frame or
+                    // light/dark change due sooner is met at the instant it happens.
+                    theme_engine.next_wait()
                 }
                 Err(e) => {
                     // Keep running: see `CycleFailureTracker`. The backoff keeps a

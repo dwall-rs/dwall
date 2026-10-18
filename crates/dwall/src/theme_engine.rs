@@ -1,13 +1,15 @@
 //! Theme update engine: applies wallpapers and color scheme for a single cycle.
 
+use std::cell::Cell;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
+use std::time::Duration;
 
 use time::OffsetDateTime;
 
 use crate::DwallResult;
-use crate::color_scheme::{ColorSchemeApplier, ColorSchemeProvider};
+use crate::color_scheme::{ColorScheme, ColorSchemeApplier, ColorSchemeProvider};
 use crate::config::{Config, MonitorSpecificWallpapers};
 use crate::monitor::MonitorProvider;
 use crate::platform::DisplayMonitor;
@@ -39,6 +41,11 @@ where
     /// the displays.
     monitor_provider: Rc<M>,
     color_scheme_applier: ColorSchemeApplier<C>,
+    /// The position the last cycle ran with.
+    ///
+    /// The schedule needs the same position the cycle used; asking the provider again
+    /// would re-read the location sensor just to decide when to wake up.
+    last_position: Cell<Option<Position>>,
 }
 
 impl<'a, M, W, C, P> ThemeEngine<'a, M, W, C, P>
@@ -68,6 +75,7 @@ where
             wallpaper_setter,
             monitor_provider,
             color_scheme_applier: ColorSchemeApplier::new(color_scheme_provider),
+            last_position: Cell::new(None),
         }
     }
 
@@ -129,6 +137,11 @@ where
         let now = now_local.assume_utc();
         let solar_position = SolarPosition::new(position, &now);
         let available_monitors = self.monitor_provider.get_monitors()?;
+
+        // Recorded before anything can fail: the schedule only needs to know which
+        // position the daemon is reasoning about, and a failed wallpaper write does not
+        // change that.
+        self.last_position.set(Some(*position));
 
         let outcome = apply_monitor_targets(
             monitor_targets(
@@ -301,6 +314,109 @@ where
             None => None,
         }
     }
+
+    /// The image index every configured monitor would show at `solar_position`.
+    ///
+    /// Read-only: nothing is applied, and the selection goes through the same
+    /// [`WallpaperSelector`] the cycle uses. `None` means the question cannot be
+    /// answered right now (a theme directory that moved, a monitor list that could not
+    /// be read) — the caller then falls back to its plain interval instead of guessing.
+    fn selected_images(&self, solar_position: &SolarPosition) -> Option<Vec<u8>> {
+        let monitors = self.monitor_provider.get_monitors().ok()?;
+        let mut images = Vec::new();
+
+        for (_, theme_id) in monitor_targets(self.config.monitor_specific_wallpapers(), &monitors) {
+            let (theme_dir, _) = get_theme_directory_path(self.config, theme_id);
+            let theme_data = load_cached_theme_data(&theme_dir).ok()?;
+
+            images.push(WallpaperSelector::find_closest_image(
+                theme_data.angles.as_slice(),
+                solar_position.altitude(),
+                solar_position.azimuth(),
+            )?);
+        }
+
+        Some(images)
+    }
+
+    /// How long until the daemon's output would change, within `horizon`.
+    ///
+    /// "Output" is both what the monitors show and the light/dark scheme, combined into
+    /// one state so the loop wakes for whichever comes first. `None` when nothing
+    /// changes inside the window, or when the state cannot be evaluated; the caller
+    /// keeps its interval, so a missing answer only costs precision.
+    pub(crate) fn next_event_within(
+        &self,
+        now_local: &OffsetDateTime,
+        horizon: Duration,
+    ) -> Option<Duration> {
+        let position = self.last_position.get()?;
+        let current_scheme = self.current_scheme_for_schedule();
+
+        crate::schedule::next_change(now_local, horizon, |at| {
+            self.output_at(&position, at, current_scheme)
+        })
+    }
+
+    /// The daemon's output at `at`, as one comparable value.
+    ///
+    /// Kept separate from the search so a test can compare the schedule against a
+    /// second-by-second scan of the very same function — the search must find the first
+    /// change of *this* state, not of a re-implementation of it.
+    fn output_at(
+        &self,
+        position: &Position,
+        at: &OffsetDateTime,
+        current_scheme: Option<ColorScheme>,
+    ) -> Option<(Vec<u8>, Option<ColorScheme>)> {
+        let solar_position = SolarPosition::new(position, &at.assume_utc());
+        let images = self.selected_images(&solar_position)?;
+        let scheme = current_scheme.map(|current_scheme| {
+            self.color_scheme_applier
+                .scheme_at(at, position, &solar_position, current_scheme)
+        });
+
+        Some((images, scheme))
+    }
+
+    /// The scheme the schedule measures changes against: the one the system shows now.
+    ///
+    /// `None` when the light/dark switch is off, or when the current scheme cannot be
+    /// read — the schedule then only watches the wallpapers.
+    fn current_scheme_for_schedule(&self) -> Option<ColorScheme> {
+        if !self.config.auto_detect_color_scheme() {
+            return None;
+        }
+
+        self.color_scheme_applier.current_scheme().ok()
+    }
+
+    /// The wait the loop should use now that a cycle has finished.
+    ///
+    /// The interval stays the ceiling: it is the period after which the daemon
+    /// recomputes everything anyway, which is what bounds the damage from a clock jump,
+    /// a suspended machine, a theme edited on disk or a position that moved. The
+    /// schedule only trims the wait when a change is due sooner.
+    pub(crate) fn next_wait(&self) -> Duration {
+        let interval = Duration::from_secs(self.update_interval().into());
+
+        let Ok(now_local) = OffsetDateTime::now_local() else {
+            return interval;
+        };
+
+        scheduled_wait(interval, self.next_event_within(&now_local, interval))
+    }
+}
+
+/// The wait for a finished cycle: the schedule's answer if it is closer, else the
+/// interval, and never zero.
+///
+/// A zero wait would run the cycle again immediately, which is what a change that is
+/// already due would otherwise produce.
+fn scheduled_wait(interval: Duration, event: Option<Duration>) -> Duration {
+    event.map_or(interval, |event| {
+        event.clamp(crate::schedule::MIN_WAIT, interval)
+    })
 }
 
 /// What one pass over the configured monitors did.
@@ -393,6 +509,18 @@ mod tests {
     const TWO_FRAMES: &str = r#"[
         {"index": 0, "altitude": -30.0, "azimuth": 0.0},
         {"index": 1, "altitude": 30.0, "azimuth": 0.0}
+    ]"#;
+
+    /// Frames whose boundary sits at 71° of altitude, which the summer sun above
+    /// Beijing crosses again about fifty minutes after local noon.
+    const MIDDAY_FRAMES: &str = r#"[
+        {"index": 0, "altitude": 68.0, "azimuth": 0.0},
+        {"index": 1, "altitude": 74.0, "azimuth": 0.0}
+    ]"#;
+
+    /// A theme with one frame: its image can never change.
+    const ONE_FRAME: &str = r#"[
+        {"index": 0, "altitude": 0.0, "azimuth": 0.0}
     ]"#;
 
     fn scratch(name: &str) -> PathBuf {
@@ -618,12 +746,28 @@ mod tests {
             mode: WallpaperMode,
             themes: &[(&str, &[u32])],
         ) -> Self {
+            Self::new_with_frames(name, monitors, mode, themes, TWO_FRAMES)
+        }
+
+        /// [`new`](Self::new) with the frames every theme declares.
+        ///
+        /// A test that needs other frames has to hand them over here rather than
+        /// rewriting `solar.json` afterwards: the theme cache is invalidated on the
+        /// file's modification time, which has a one-second resolution, so a rewrite in
+        /// the same second keeps serving the old angles.
+        fn new_with_frames(
+            name: &str,
+            monitors: &[&str],
+            mode: WallpaperMode,
+            themes: &[(&str, &[u32])],
+            frames: &str,
+        ) -> Self {
             let directory = scratch(name);
             let themes_directory = directory.join("themes");
             fs::create_dir_all(&themes_directory).unwrap();
 
             for (theme_id, images) in themes {
-                write_theme(&themes_directory, theme_id, TWO_FRAMES, "jpg", images);
+                write_theme(&themes_directory, theme_id, frames, "jpg", images);
             }
 
             Self {
@@ -655,6 +799,30 @@ mod tests {
             );
 
             self
+        }
+
+        /// Rebuilds the configuration with the light/dark switch off, so a schedule
+        /// test only has the wallpapers to watch.
+        fn without_color_scheme(mut self) -> Self {
+            self.config = self.config_with_extra(r#""auto_detect_color_scheme":false"#);
+
+            self
+        }
+
+        /// The fixture's configuration plus raw JSON keys, through `serde` again
+        /// because those fields have no setter.
+        fn config_with_extra(&self, extra: &str) -> Config {
+            let json = format!(
+                r#"{{"themes_directory":{},"customized_themes_directory":{},"image_format":"jpeg","lock_screen_wallpaper_enabled":false,{extra}}}"#,
+                serde_json::to_string(&self.themes_directory.to_string_lossy()).unwrap(),
+                serde_json::to_string(&self.themes_directory.join("custom").to_string_lossy())
+                    .unwrap(),
+            );
+
+            let mut config: Config = serde_json::from_str(&json).unwrap();
+            config.set_wallpaper_mode(self.config.wallpaper_mode().clone());
+
+            config
         }
 
         fn engine(
@@ -1147,6 +1315,243 @@ azimuth = 0.0
         assert_eq!(
             fixture.wallpapers.monitors_touched(),
             vec!["MON-A", "MON-B"]
+        );
+
+        fixture.cleanup();
+    }
+
+    // ── Solar event schedule ────────────────────────────────────────────────
+    //
+    // The schedule exists so a frame or light/dark change is applied at the instant it
+    // happens instead of up to one interval later. What has to hold is that it finds
+    // the *first* change of exactly the state the cycle produces, so these compare it
+    // against a second-by-second scan of the same function rather than against
+    // hand-picked times.
+
+    /// The first second at which the daemon's output differs from what it is at `now`.
+    fn first_change_second_by_second(
+        engine: &ThemeEngine<
+            '_,
+            StaticMonitors,
+            RecordingWallpapers,
+            RecordingScheme,
+            FixedPosition,
+        >,
+        position: &Position,
+        now: &OffsetDateTime,
+        horizon: Duration,
+    ) -> Option<u64> {
+        let current_scheme = engine.current_scheme_for_schedule();
+        let initial = engine.output_at(position, now, current_scheme);
+
+        for second in 1..=horizon.as_secs() {
+            let at = now.add_seconds(second).unwrap();
+
+            if engine.output_at(position, &at, current_scheme) != initial {
+                return Some(second);
+            }
+        }
+
+        None
+    }
+
+    #[test]
+    fn the_schedule_finds_the_first_change_a_second_by_second_scan_finds() {
+        let fixture = Fixture::new(
+            "schedule_matches",
+            &["MON-A"],
+            individual(&[("MON-A", "Big Sur")]),
+            &[("Big Sur", &[1, 2])],
+        );
+        let engine = fixture.engine();
+
+        // Twelve hours from midday: the sun crosses this theme's frame boundary at
+        // sunset, well beyond six hours, and the light/dark threshold shortly after.
+        let horizon = Duration::from_secs(12 * 3600);
+        let now = summer_noon();
+
+        engine
+            .process_theme_cycle_at(&fixture.position, &now)
+            .unwrap();
+
+        let scheduled = engine.next_event_within(&now, horizon);
+        let scanned = first_change_second_by_second(&engine, &fixture.position, &now, horizon);
+
+        assert_eq!(
+            scheduled,
+            scanned.map(Duration::from_secs),
+            "the schedule has to agree with a second-by-second scan of the same state"
+        );
+        assert!(scheduled.is_some(), "something changes within twelve hours");
+
+        fixture.cleanup();
+    }
+
+    #[test]
+    fn the_schedule_agrees_with_the_scan_from_midnight_too() {
+        let fixture = Fixture::new(
+            "schedule_midnight",
+            &["MON-A"],
+            individual(&[("MON-A", "Big Sur")]),
+            &[("Big Sur", &[1, 2])],
+        );
+        let engine = fixture.engine();
+
+        let horizon = Duration::from_secs(6 * 3600);
+        let now = summer_midnight();
+
+        engine
+            .process_theme_cycle_at(&fixture.position, &now)
+            .unwrap();
+
+        assert_eq!(
+            engine.next_event_within(&now, horizon),
+            first_change_second_by_second(&engine, &fixture.position, &now, horizon)
+                .map(Duration::from_secs)
+        );
+
+        fixture.cleanup();
+    }
+
+    #[test]
+    fn a_single_frame_theme_without_the_color_switch_schedules_nothing() {
+        let fixture = Fixture::new_with_frames(
+            "schedule_one_frame",
+            &["MON-A"],
+            individual(&[("MON-A", "Single")]),
+            &[("Single", &[1])],
+            ONE_FRAME,
+        )
+        .without_color_scheme();
+        let engine = fixture.engine();
+        let now = summer_noon();
+
+        engine
+            .process_theme_cycle_at(&fixture.position, &now)
+            .unwrap();
+
+        assert_eq!(
+            engine.next_event_within(&now, Duration::from_secs(24 * 3600)),
+            None,
+            "one frame and no light/dark switch means nothing ever changes"
+        );
+
+        fixture.cleanup();
+    }
+
+    #[test]
+    fn a_theme_that_disappeared_schedules_nothing() {
+        let fixture = Fixture::new(
+            "schedule_missing_theme",
+            &["MON-A"],
+            individual(&[("MON-A", "Big Sur")]),
+            &[("Big Sur", &[1, 2])],
+        );
+        let engine = fixture.engine();
+        let now = summer_noon();
+
+        engine
+            .process_theme_cycle_at(&fixture.position, &now)
+            .unwrap();
+
+        std::fs::remove_dir_all(fixture.themes_directory.join("Big Sur")).unwrap();
+
+        assert_eq!(
+            engine.next_event_within(&now, Duration::from_secs(3600)),
+            None,
+            "an unreadable theme is not a reason to wake early"
+        );
+
+        fixture.cleanup();
+    }
+
+    /// The interval stays the ceiling: with the default fifteen seconds and the next
+    /// change hours away, the loop waits its interval.
+    #[test]
+    fn the_wait_is_the_interval_when_no_change_is_due_sooner() {
+        let fixture = Fixture::new(
+            "schedule_capped",
+            &["MON-A"],
+            individual(&[("MON-A", "Big Sur")]),
+            &[("Big Sur", &[1, 2])],
+        );
+        let engine = fixture.engine();
+
+        engine
+            .process_theme_cycle_at(&fixture.position, &summer_noon())
+            .unwrap();
+
+        assert_eq!(engine.next_wait(), Duration::from_secs(15));
+
+        fixture.cleanup();
+    }
+
+    // ── scheduled_wait (pure) ───────────────────────────────────────────────
+
+    #[test]
+    fn a_closer_change_shortens_the_wait() {
+        assert_eq!(
+            scheduled_wait(Duration::from_secs(600), Some(Duration::from_secs(300))),
+            Duration::from_secs(300)
+        );
+    }
+
+    #[test]
+    fn a_change_beyond_the_interval_cannot_extend_the_wait() {
+        assert_eq!(
+            scheduled_wait(Duration::from_secs(60), Some(Duration::from_secs(600))),
+            Duration::from_secs(60)
+        );
+    }
+
+    #[test]
+    fn a_change_that_is_already_due_does_not_produce_a_zero_wait() {
+        assert_eq!(
+            scheduled_wait(Duration::from_secs(600), Some(Duration::ZERO)),
+            crate::schedule::MIN_WAIT
+        );
+    }
+
+    #[test]
+    fn no_scheduled_change_means_the_plain_interval() {
+        assert_eq!(
+            scheduled_wait(Duration::from_secs(600), None),
+            Duration::from_secs(600)
+        );
+    }
+
+    /// The frame boundary of `MIDDAY_FRAMES` sits at 71°, which Beijing's summer sun
+    /// crosses again a bit over an hour after local noon — inside the longest interval
+    /// the configuration allows, so this is the case the schedule exists for.
+    #[test]
+    fn an_event_inside_a_short_horizon_is_reported() {
+        let fixture = Fixture::new_with_frames(
+            "schedule_inside",
+            &["MON-A"],
+            individual(&[("MON-A", "Midday")]),
+            &[("Midday", &[1, 2])],
+            MIDDAY_FRAMES,
+        )
+        .without_color_scheme();
+        let engine = fixture.engine();
+        let now = summer_noon();
+
+        engine
+            .process_theme_cycle_at(&fixture.position, &now)
+            .unwrap();
+
+        let horizon = Duration::from_secs(90 * 60);
+        let scheduled = engine.next_event_within(&now, horizon);
+
+        assert_eq!(
+            scheduled,
+            first_change_second_by_second(&engine, &fixture.position, &now, horizon)
+                .map(Duration::from_secs),
+            "the schedule has to agree with the scan inside a short horizon too"
+        );
+        assert!(
+            scheduled.is_some_and(|event| event < horizon),
+            "the sun crosses this theme's frame boundary within ninety minutes of noon"
         );
 
         fixture.cleanup();

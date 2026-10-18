@@ -41,13 +41,16 @@ the position source (automatic via Windows Geolocator, or manual coordinates).
 
 Two of those keys are worth knowing the reasoning behind:
 
-- **`interval`** (default 15) is how far the wallpaper may lag the sun. Over a year at
-  latitudes 0–65° the sun's altitude moves at most 0.0233°/s, so 15 seconds means the
-  applied frame is at most 0.35° of altitude behind — a tenth of the way from one frame
-  to the closest neighbour in the tightest real theme. 30 seconds doubles that to a
-  fifth, and 60 to two fifths, which starts to show at every frame switch. Going below
-  15 buys almost nothing: a 24-frame theme at the equator has frames that last 15
-  seconds, and one of those passing unnoticed is invisible next to its neighbours.
+- **`interval`** (default 15) is how long the daemon waits before it recomputes
+  everything anyway. The wallpaper itself no longer follows it: after every cycle the
+  daemon works out when the sun will next change what it would apply — the frame
+  boundary of each configured theme plus the light/dark threshold — and sleeps exactly
+  until then, so the switch happens at the instant it should rather than up to an
+  interval late. A large `interval` therefore costs nothing in accuracy (with
+  `interval = 600` the frame used to change up to ten minutes late), and a small one
+  costs nothing in wakeups. What the interval still buys is the worst case: a clock
+  jump, a machine resumed from sleep, a theme edited on disk or a position that moved
+  are all picked up within one interval, so it should stay comfortably below a day.
 - **`position_source.cache_minutes`** (default 30, only for automatic coordinates) is
   how long a location reading is reused. The daemon cannot tell whether the machine
   moved, so this trades accuracy for how often Windows reads the location sensor — a
@@ -56,7 +59,8 @@ Two of those keys are worth knowing the reasoning behind:
   0.5–2.9% of the day; the same reading after 450 km (900 km/h) reaches 4–30%, so on a
   flight the wallpaper is visibly wrong until the next refresh. Set it to 10 or 15 on a
   laptop that travels; the refresh itself is cheap (245 forced readings added 0.2 MB and
-  ten handles, and each took about 0.2 s).
+  ten handles, and each took about 0.2 s). Manual coordinates avoid location access
+  altogether.
 
 `--config` also moves `random_selection.json` next to the chosen file, so
 independent configurations coexist. The settings window always uses the default

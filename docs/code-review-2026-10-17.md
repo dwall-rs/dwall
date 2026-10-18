@@ -392,9 +392,9 @@ P0（对应第 1、2 节的缺陷，写出来即回归网）：
 
 ---
 
-## 11. 修复记录：批次 1 ~ 11（2026-10-17 ~ 10-18 本轮已实现）
+## 11. 修复记录：批次 1 ~ 12（2026-10-17 ~ 10-18 本轮已实现）
 
-只做了第 9 节的**批次 1（D1、D2+D3）、批次 2（S1、S2）、批次 3（D5、D6、D4）、批次 4（S3、S4、S5、`.zip` 泄漏、取消不重试）、批次 5（日志轮转上限、时区偏移缓存、去掉整份配置 dump、暴露守护进程最后一条 ERROR）、批次 6（配置生效延迟、写盘顺序、会话过滤与 PID 复用、停止后等待退出）、批次 7（8.1 的 `ThemeEngine` 泛型化与配置目录参数化 + 29 个测试）、批次 8（第 8 节测试的 theme/color_scheme/config/solar 部分 + 四个缓存与校验缺陷）、批次 9（第 8 节的 utils/random_state/settings network+thumbnail 部分 + 缩略图缓存永不续命）、批次 10（体积重测 + 守护进程内存实测与 12 处文档修正）与批次 11（`interval`/`cache_minutes` 两个默认值的推导 + 否证位置刷新假设）**，其余批次未动。
+只做了第 9 节的**批次 1（D1、D2+D3）、批次 2（S1、S2）、批次 3（D5、D6、D4）、批次 4（S3、S4、S5、`.zip` 泄漏、取消不重试）、批次 5（日志轮转上限、时区偏移缓存、去掉整份配置 dump、暴露守护进程最后一条 ERROR）、批次 6（配置生效延迟、写盘顺序、会话过滤与 PID 复用、停止后等待退出）、批次 7（8.1 的 `ThemeEngine` 泛型化与配置目录参数化 + 29 个测试）、批次 8（第 8 节测试的 theme/color_scheme/config/solar 部分 + 四个缓存与校验缺陷）、批次 9（第 8 节的 utils/random_state/settings network+thumbnail 部分 + 缩略图缓存永不续命）、批次 10（体积重测 + 守护进程内存实测与 12 处文档修正）、批次 11（`interval`/`cache_minutes` 两个默认值的推导 + 否证位置刷新假设）与批次 12（按需唤醒的太阳事件调度 + 配置轮询 5 秒）**，其余批次未动。
 
 ### D1 ✅ 守护进程不再因持续失败而退出
 
@@ -479,7 +479,7 @@ P0（对应第 1、2 节的缺陷，写出来即回归网）：
 
 ### 批次 6 ✅ 配置生效延迟、写盘顺序、会话过滤与等待退出
 
-- **配置变更最长等一个 `interval`**（[dwall/src/daemon.rs](../crates/dwall/src/daemon.rs)）：`has_changed()` 只在循环顶部检查，之后跑一个周期再 `sleep(interval)`；而设置窗口的"保存"只写文件、不重启守护进程（只有"应用主题"会重启），**本机真实配置 `interval = 600`**，即改一个非"应用"类设置最长 10 分钟才生效。现在把等待切成 `CONFIG_POLL_INTERVAL`（1 s）的片，每片检查一次配置文件，发现变化就 `continue`（回到循环顶部由原有逻辑记录 mtime 并重载），因此退避期间（最长 300 s）改配置也能在 1 s 内被拾起。每秒一次 `fs::metadata` 相对周期内的墙纸操作可以忽略。
+- **配置变更最长等一个 `interval`**（[dwall/src/daemon.rs](../crates/dwall/src/daemon.rs)）：`has_changed()` 只在循环顶部检查，之后跑一个周期再 `sleep(interval)`；而设置窗口的"保存"只写文件、不重启守护进程（只有"应用主题"会重启），**本机真实配置 `interval = 600`**，即改一个非"应用"类设置最长 10 分钟才生效。现在把等待切成 `CONFIG_POLL_INTERVAL` 的片（本批先设 1 s，**批次 12 按"少唤醒"的要求放宽到 5 s**），每片检查一次配置文件，发现变化就 `continue`（回到循环顶部由原有逻辑记录 mtime 并重载），因此退避期间（最长 300 s）改配置也能在一个切片内被拾起。每片一次 `fs::metadata` 相对周期内的墙纸操作可以忽略。
 - **写盘顺序**（[theme/applier.rs](../crates/dwall-settings/src/theme/applier.rs)）：原来先 `terminate_process` 再 `write_to_path`，写盘校验失败就留下一个已经停掉的引擎、用户只看到"保存失败"。现在先写配置再停守护进程；而且停不下来不再是致命错误（配置在 1 s 内会被守护进程自己读到），只记一条 ERROR 继续。
 - **会话过滤 + PID 复用**（[process.rs](../crates/dwall-settings/src/process.rs)）：守护进程的互斥体是会话级的（`Local\`），而进程扫描是全机的——多用户/RDP/快速切换时会杀掉**别的会话**的守护进程，而本会话的状态显示"未运行"。现在新增 `is_our_daemon(image_name, process_session, our_session)`，用 `ProcessIdToSessionId` 过滤本会话；取不到本会话时退化为按名字匹配并 `warn!`（宁可找得到，也不要因为探测失败而完全看不到守护进程）。另外修掉 TOCTOU：PID 来自快照，`OpenProcess` 之后 PID 可能已被复用，因此 `terminate_process` 在**句柄上**用 `QueryFullProcessImageNameW` 复核映像名，不匹配就返回 `Ok(false)`（"那个 PID 已经不是守护进程了"），不再误杀无关进程。
 - **停止→启动没有等待**（[process.rs](../crates/dwall-settings/src/process.rs)、[theme/applier.rs](../crates/dwall-settings/src/theme/applier.rs)）：`TerminateProcess` 只是"请求"，它在进程真正退出前就返回，而守护进程持有的互斥体要到退出才释放；原来紧接着启动新进程 + `sleep(100ms)` + 查互斥体，旧进程还在时新进程会以 `ERROR_ALREADY_EXISTS` 直接退出 → "应用主题"间歇失败，还报误导性的 `Daemon process failed to start`。现在统一走 `stop_daemon()`（查找 → 句柄复核 → 终止 → `wait_for_exit`，上限 5 s，超时只 `warn!`），启动侧用 `wait_until(START_TIMEOUT=5s, 50ms)` 轮询互斥体取代固定睡眠。四处调用点（`apply`、`stop_engine`、`kill_daemon_cmd`、debug 构建的退出钩子）都改成走这一个入口，`kill_daemon_cmd` 的返回语义（被杀掉的 PID）不变。
@@ -570,16 +570,38 @@ P0（对应第 1、2 节的缺陷，写出来即回归网）：
 - **顺带发现的真实缺陷（未改，等你定）**：`GeographicPositionProvider::get_cached_position` 只缓存**成功**的位置（[solar.rs:169-179](../crates/dwall/src/solar.rs#L169-L179)）：定位服务被关闭时缓存永远为空，于是每个周期都重试一次，而单次调用最坏要等 `RequestAccessAsync` 10 秒 + `GetGeopositionAsync` 30 秒；目前只靠批次 1 的周期退避（5 s → 300 s）把重试频率压住，期间**壁纸完全不更新**。可选修法：失败也做负缓存，或者回退到"最后一次成功的位置"（内存里一个 `Position`，不落盘、不增加线程）并记一条 warn——后者能把"完全不更新"变成"用略旧的位置继续跟随太阳"，但会让设置窗口的"最后一条 ERROR"不再显示定位问题，属于产品取舍。
 - **前端重复的默认值（P3，未改）**：[EngineSection.tsx:82](../src/components/settings/EngineSection.tsx#L82) 里 `patch({ interval: v || 15 })` 把 15 又写了一遍；今天与 Rust 一致，但 Rust 改默认值时它会静默不一致。
 
+### 批次 12 ✅ 按需唤醒：切换发生在太阳真正跨过帧边界的那一刻
+
+用户提出的方案，采纳了其中的"调度层"部分（**不新增模式、不动 UI**），另外按题意把配置轮询从 1 秒放宽到 5 秒。
+
+- **新增 [schedule.rs](../crates/dwall/src/schedule.rs)**（纯函数，10 个测试）：`next_change(now, horizon, state)` 用 30 秒粗扫找出"状态与此刻不同"的那一步，再二分到秒。它**不重新实现任何判断**——调用方传入的就是周期里那个函数在将来时刻的取值，因此调度不可能与实际行为不一致。两个刻意接受的取舍写在注释里：同一扫描步内"变了又变回来"会被漏掉（这正是"最短 15 秒的帧不值得为它醒来"的表达），以及状态无法求值时**放弃**（返回 `None`，调用方退回普通 interval），绝不去猜。
+- **判断逻辑抽成可复用的一处**：[ColorSchemeApplier::scheme_at](../crates/dwall/src/color_scheme.rs) 从 `update_color_scheme` 里拆出来（只判断不施加），`update_color_scheme` 改为"先 `scheme_at` 再 `set_color_scheme`"；[ThemeEngine::output_at](../crates/dwall/src/theme_engine.rs) 把"每个显示器的帧 + 当前浅色/深色决定"合成一个可比状态，`selected_images` 走的就是周期用的同一个 `WallpaperSelector::find_closest_image`。
+- **循环**（[daemon.rs](../crates/dwall/src/daemon.rs)）：成功的一轮结束后等待 `min(下一事件, interval)`（`scheduled_wait`，下限 1 秒，避免"已经到期"变成零等待空转）；失败仍走原来的退避。`interval` 从"精度"变成"**重算上限**"：时钟跳变、睡眠跨过事件、主题被改、位置移动，最坏仍在一个 interval 内被纠正。
+- **配置轮询 1 s → 5 s**：批次 6 把它设成 1 秒，于是**无论 `interval` 多大，守护进程都每秒醒一次**——这正是调度层想省的唤醒。改成 5 秒后唤醒降到 1/5，而"保存设置"仍在 5 秒内生效。
+- **收益的诚实范围**：`interval = 600`（本机真实配置）时，换帧与浅色/深色切换从"最长晚 10 分钟"变成**准时**；默认 15 秒时本来就只有 ≤15 秒的误差，所以对默认配置主要是"少醒"而不是"更准"。用户原本关心的"不再读定位"**不在本批**：那由 `cache_minutes`（上限 1440＝一天一次）或 `PositionSource::Manual`（完全不碰定位 API）达成。
+
+**新增测试（+20，全仓 409 → 429）**：
+
+| 位置 | 用例 |
+| --- | --- |
+| `schedule.rs`（+10） | 找到视界内首个变化、**二分到秒**（137 秒处返回 137）、恒定时返回 None、变化在视界外返回 None、状态无法求值时返回 None、**首次成功后再失败也放弃**、同一扫描步内"变了又变回来"不报告（钉住分辨率）、**跨过恢复后仍能找到下一个变化**、零视界不报告、等待不短于 1 秒 |
+| `theme_engine.rs`（+6） | **与逐秒暴力扫描完全一致**（正午 12 小时、午夜 6 小时两轮，比较的是同一个 `output_at` 而不是重写的判断）、单帧主题 + 关掉浅色切换时**永远没有事件**、主题目录消失时不排程（不猜）、无更早事件时等待＝interval、**90 分钟内的事件确实被找到**（帧边界在 71°，北京夏至太阳约 64 分钟后跨过） |
+| `theme_engine.rs`（+4，纯函数） | 更近的事件缩短等待、**超出 interval 的事件不能延长等待**、**已经到期不会变成零等待**（下限 1 秒）、没有事件时用普通 interval |
+
+**翻转验证**：把 `scheduled_wait` 改回"永远返回 interval"，`a_closer_change_shortens_the_wait`（`left: 600s, right: 300s`）与 `a_change_that_is_already_due_does_not_produce_a_zero_wait`（`left: 600s, right: 1s`）失败 ✓
+
+**顺手记下的测试陷阱**：批次 8 的主题缓存按**秒级 mtime** 失效，所以测试里"写完 `solar.json` 立刻跑周期"会继续用旧角度（我第一版就踩了）。现在 fixture 增了 `new_with_frames`，一开始就写入指定帧，注释里写明原因。
+
 ### 本轮验证命令与结果
 
 | 命令 | 结果 |
 | --- | --- |
 | `cargo fmt --all -- --check` | exit 0 |
-| `cargo clippy -- -D warnings` / `cargo clippy -r -- -D warnings` | exit 0 / 0 |
+| `cargo clippy -- -D warnings` / `cargo clippy -r -- -D warnings`（均含 `--all-targets`） | exit 0 / 0 |
 | `cargo clippy -r -p dwall --features build-script,log-max-level-info --all-targets -- -D warnings` | exit 0 |
 | `DWALL_SKIP_BUILD=1 cargo clippy -p dwall-settings --all-targets -- -D warnings` | exit 0 |
-| `DWALL_SKIP_BUILD=1 cargo test` | **409 passed / 0 failed**（批次 1/2 后 239、3 后 252、4 后 279、5 后 293、6 后 306、7 后 335、8 后 376、9 后 407；dwall lib **189**、bin 5、headless_cli 5、trait_mocks 8、settings 111、logging 8、time 83） |
-| `bun run check`（tsgo + biome，386 文件） | exit 0，0 error / 0 warning（批次 9–11 不涉及前端） |
+| `DWALL_SKIP_BUILD=1 cargo test` | **429 passed / 0 failed**（批次 1/2 后 239、3 后 252、4 后 279、5 后 293、6 后 306、7 后 335、8 后 376、9 后 407、10 后 409；dwall lib **209**、bin 5、headless_cli 5、trait_mocks 8、settings 111、logging 8、time 83） |
+| `bun run check`（tsgo + biome，386 文件） | exit 0，0 error / 0 warning（批次 11/12 不涉及前端） |
 | `bun run test` | **39 passed** |
 | `.scripts/measure-daemon-memory.ps1`（批次 10） | 6 轮测量：静息 2.84–2.97 MB / 268–286 句柄（两个二进制各 2 轮）、换过壁纸后 4.20–7.65 MB / 359–465 句柄（2 轮）、用户真实 13.7 小时 7.51 MB / 427 句柄；每轮 5 分钟 ≈300 周期，原始样本在 `%TEMP%\dwall_memtest\samples-*.csv` |
 
