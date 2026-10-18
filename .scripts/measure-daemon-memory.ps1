@@ -57,6 +57,8 @@ param(
     [ValidateSet('steady', 'apply')]
     [string]$Mode = 'steady',
 
+    [switch]$RefreshPositionEveryCycle,
+
     [string[]]$Binaries = @(),
 
     [int]$Samples = 20,
@@ -127,6 +129,8 @@ $wallpaperMode = if ($Mode -eq 'apply') {
     "[wallpaper_mode]`nmode = `"random`"`npool = [`"$Theme`"]"
 }
 
+$refreshPosition = if ($RefreshPositionEveryCycle) { 'true' } else { 'false' }
+
 @"
 title_bar_color_follows_windows_theme = false
 image_format = "jpeg"
@@ -138,7 +142,7 @@ interval = 1
 
 [position_source]
 type = "AUTOMATIC"
-update_on_each_calculation = false
+update_on_each_calculation = $refreshPosition
 cache_minutes = 30
 
 $wallpaperMode
@@ -185,11 +189,16 @@ function Measure-Daemon {
     # on screen is already `-Theme`, and the two states differ by several megabytes.
     $applied = 0
     $lockScreen = 0
+    $geolocations = 0
     if (Test-Path -LiteralPath $daemonLog -PathType Leaf) {
         $lines = Get-Content -LiteralPath $daemonLog |
             Where-Object { $_ -match '^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})' -and $matches[1] -ge $startedAt }
         $applied = ($lines | Select-String -Pattern 'Applied wallpaper' -SimpleMatch | Measure-Object).Count
         $lockScreen = ($lines | Select-String -Pattern 'lock screen' -SimpleMatch | Measure-Object).Count
+        # The altitude warning is the only per-reading line that survives the release
+        # log level, and it only fires when the device reports altitude 0 — a cross-check
+        # for the position refreshes, not a general geolocation counter.
+        $geolocations = ($lines | Select-String -Pattern 'barometric pressure sensor' -SimpleMatch | Measure-Object).Count
     }
 
     # Every row carries it: the summary groups the rows after the plateau cut, so a
@@ -197,6 +206,7 @@ function Measure-Daemon {
     foreach ($row in $rows) {
         $row | Add-Member -NotePropertyName AppliedWallpapers -NotePropertyValue $applied
         $row | Add-Member -NotePropertyName LockScreenLines -NotePropertyValue $lockScreen
+        $row | Add-Member -NotePropertyName GeolocationWarnings -NotePropertyValue $geolocations
     }
 
     return $rows
@@ -226,10 +236,11 @@ $all |
         $threads = $_.Group.Threads | Measure-Object -Minimum -Maximum
         $applied = $_.Group[0].AppliedWallpapers
         $lockScreen = $_.Group[0].LockScreenLines
-        '{0,-28} private {1:N2}–{2:N2} MB (avg {3:N2})  handles {4}–{5}  threads {6}–{7}  working set {8:N1} MB  applied {9}  lock-screen lines {10}' -f `
+        $geolocations = $_.Group[0].GeolocationWarnings
+        '{0,-28} private {1:N2}–{2:N2} MB (avg {3:N2})  handles {4}–{5}  threads {6}–{7}  working set {8:N1} MB  applied {9}  lock-screen lines {10}  geolocation warnings {11}' -f `
             $_.Name, $private.Minimum, $private.Maximum, $private.Average, `
             $handles.Minimum, $handles.Maximum, $threads.Minimum, $threads.Maximum, `
-            ($_.Group.WorkingSetMB | Measure-Object -Average).Average, $applied, $lockScreen
+            ($_.Group.WorkingSetMB | Measure-Object -Average).Average, $applied, $lockScreen, $geolocations
     }
 
 Write-Host ''

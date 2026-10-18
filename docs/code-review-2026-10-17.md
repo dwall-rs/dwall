@@ -200,7 +200,7 @@
 - 剩余的三处严格意义上的违规：`MONITOR_FRIENDLY_NAMES_CACHE` 无上限（2.1）；瞬时分配方面每周期有 2 次显示器 `HashMap` 克隆 + 1 次 `canonicalize` + 每个显示器几条 `PathBuf`/`format!`（D6 的枚举频率放大了这些）；typed cache 的 `SolarPosition` 槽位从未使用（死槽）。
 - 设置端才是内存与线程的大头（Tauri + WebView2 + 两个 tokio 运行时），但只在窗口打开时存在，符合产品定位。
 
-**留待确认（未验证）**：4.2 MB 与 7.6 MB 这两个"换过壁纸"的平台值之间还差 3 MB，最可能是**位置刷新次数**（真实配置 30 分钟刷新一次，13.7 小时里约 27 次 WinRT `Geolocator` 调用；我的 5 分钟运行只调用 1 次），但我没有做过"高频位置刷新"的对照实验，所以这只是最可能的解释，不是结论。
+**留待确认（未验证）**：4.2 MB 与 7.6 MB 这两个"换过壁纸"的平台值之间还差 3 MB。原来的猜测是**位置刷新次数**，已实测**否定**：把 `update_on_each_calculation` 设成 `true` 让每个周期都强制读一次定位（245 个周期 = 245 次真实 WinRT 读数），平台值是 **3.08 MB / 285–287 句柄 / 23.4 MB 工作集**——只比只读一次高 0.2 MB、多 10 个句柄，每次调用约 0.22 秒。所以差值在**换壁纸那条路径**里（两次"应用过"的运行分别是 7.6 MB 与 4.2 MB，两者都应用了两次，差别只在于一个是随机模式换主题、另一个是固定模式），我没有再做第三轮去分离它，因为它不影响结论：静息 ~3 MB、应用过之后 4–8 MB。
 
 ---
 
@@ -388,13 +388,13 @@ P0（对应第 1、2 节的缺陷，写出来即回归网）：
 - **本机 `/target` 与 `dist/` 已在 10/18 10:36–10:39 重新构建并实测**（第 6.1 节），源码是含批次 1–9 的工作树 + 未提交的版本号改动；**NSIS 安装包没有重测**（打包需要 CI 才有的 updater 签名私钥）。不同 `--features` 组合的体积差异仍未单独测量。
 - **daemon 二进制的逐 crate 体积占比没有测量**（需要 `cargo bloat` + 重建）；第 6.2 节的排序只是按依赖权重的推测（已标注）。
 - 前端专项评审里的**运行时行为**结论（toast 流、抽屉聚焦、Solid store 语义）我逐项复核了关键链条（D2/D3 与死 CSS 已实测），其余为源码级推断。
-- 内存采样已在 10/18 重做（第 5 节）：已安装的 0.3.0-alpha.4 与工作树构建各两轮、同一协议、每轮 5 分钟 ≈300 周期，并由日志自证本轮是否真的换过壁纸。**仍未验证**的是：4.2 MB 与 7.6 MB 两个"换过壁纸"平台值之间的 3 MB 差值（最可能是位置刷新次数的差别），以及真实节奏（interval=600）下更长时间（数周）的走势——300 个周期覆盖的是"两天工作量"，不是日历时间。
+- 内存采样已在 10/18 重做（第 5 节）：已安装的 0.3.0-alpha.4 与工作树构建各两轮、同一协议、每轮 5 分钟 ≈300 周期，并由日志自证本轮是否真的换过壁纸。**"位置刷新次数造成 3 MB 差值"这个猜测已被实测否定**（5.4 节：245 次强制定位只多 0.2 MB / 10 句柄）；仍**未验证**的是真实节奏（interval=600）下数周的走势——300 个周期覆盖的是"两天工作量"，不是日历时间。
 
 ---
 
-## 11. 修复记录：批次 1 ~ 10（2026-10-17 ~ 10-18 本轮已实现）
+## 11. 修复记录：批次 1 ~ 11（2026-10-17 ~ 10-18 本轮已实现）
 
-只做了第 9 节的**批次 1（D1、D2+D3）、批次 2（S1、S2）、批次 3（D5、D6、D4）、批次 4（S3、S4、S5、`.zip` 泄漏、取消不重试）、批次 5（日志轮转上限、时区偏移缓存、去掉整份配置 dump、暴露守护进程最后一条 ERROR）、批次 6（配置生效延迟、写盘顺序、会话过滤与 PID 复用、停止后等待退出）、批次 7（8.1 的 `ThemeEngine` 泛型化与配置目录参数化 + 29 个测试）、批次 8（第 8 节测试的 theme/color_scheme/config/solar 部分 + 四个缓存与校验缺陷）、批次 9（第 8 节的 utils/random_state/settings network+thumbnail 部分 + 缩略图缓存永不续命）与批次 10（体积重测 + 守护进程内存实测与 12 处文档修正）**，其余批次未动。
+只做了第 9 节的**批次 1（D1、D2+D3）、批次 2（S1、S2）、批次 3（D5、D6、D4）、批次 4（S3、S4、S5、`.zip` 泄漏、取消不重试）、批次 5（日志轮转上限、时区偏移缓存、去掉整份配置 dump、暴露守护进程最后一条 ERROR）、批次 6（配置生效延迟、写盘顺序、会话过滤与 PID 复用、停止后等待退出）、批次 7（8.1 的 `ThemeEngine` 泛型化与配置目录参数化 + 29 个测试）、批次 8（第 8 节测试的 theme/color_scheme/config/solar 部分 + 四个缓存与校验缺陷）、批次 9（第 8 节的 utils/random_state/settings network+thumbnail 部分 + 缩略图缓存永不续命）、批次 10（体积重测 + 守护进程内存实测与 12 处文档修正）与批次 11（`interval`/`cache_minutes` 两个默认值的推导 + 否证位置刷新假设）**，其余批次未动。
 
 ### D1 ✅ 守护进程不再因持续失败而退出
 
@@ -562,6 +562,14 @@ P0（对应第 1、2 节的缺陷，写出来即回归网）：
 - **顺带更正的一处我自己的错误**：原文说 GUI 二进制里链接了两套 `toml`；`cargo tree -i toml@0.8.2` 显示它只经 `system-deps` 作为 Linux 目标的 build-dependency 存在，Windows 目标下不可达（6.2 节已更正并撤回该例子）。
 - **方法学上的自我修正**：测量脚本第一版把 `$Samples` 参数与局部 `$samples` 撞在一起（PowerShell 变量名大小写不敏感），第一次冒烟测试还留下了两个游离守护进程占住互斥体——两者都已修掉，并在脚本里写明了原因。
 
+### 批次 11 ✅ 把"随手定的两个数"变成有出处的数（并否证了我自己上一轮的猜测）
+
+- **否证**:上一轮我在 5.4 节把"4.2 与 7.6 MB 之间的 3 MB"归因于位置刷新次数，并说"最可能"。实测把它**否定**了：`update_on_each_calculation = true` 让 245 个周期各做一次真实定位，平台值 3.08 MB / 285–287 句柄（只读一次是 2.84–2.94 MB / 269–281），每次调用约 0.22 秒。差值在换壁纸那条路径里，与定位无关。
+- **`interval` 的推导**（[config.rs](../crates/dwall/src/config.rs)）：原来那句注释（"赤道上方位角 0.1° 约 12 秒、高度角约 24 秒"）与它自己的 `FIXME`（"这只是粗略估计"）一起被我删掉——用 crate 自己的 `SolarPosition` 扫一年 × 纬度 0–65°，实测最坏是**高度角 0.0233 °/s（0.1° 用 4.3 秒）**、**方位角 0.1183 °/s（0.1° 用 0.8 秒，发生在赤道正午太阳过天顶时）**，原注释分别差了 5.6× 与 15×。真正该对齐的量不是 0.1°，而是**帧间距**：实测本机主题的最近帧距是 0.0529（24 帧的 Minya Konka；16 帧的 Earth View 是 0.0673），而 15 秒的滞后在选帧度量上是 **0.0053 = 最近帧距的 10%**，30 秒就是 20%。**结论：15 秒保留**，但理由换成可复算的，并新增两个测试把它钉住：`the_default_interval_keeps_the_frame_within_a_tenth_of_its_neighbour`（按 crate 自己的太阳代码重算最坏角速度，断言滞后 ≤ 最近帧距的 1/6）与 `the_default_configuration_is_accepted_by_validation`（默认值就是文档里的值，并且能过 `validate`）。**翻转验证**：改成 30 秒后该测试失败，报 `lag 0.0101 … more than a sixth of the tightest frame spacing (0.05)` ✓
+- **`cache_minutes` 的推导**：默认仍是 **30 分钟**，但换成了具名常量 `DEFAULT_POSITION_CACHE_MINUTES` 并写明依据——用真实主题对一整天逐点比较"真实位置选的帧"与"位移后选的帧"：**50 km（100 km/h × 30 min）只让 0.5–2.9% 的时段落到相邻帧**，这是主导场景；**450 km（900 km/h × 30 min）达 4–30%**，即坐飞机时相机会明显不对，直到下次刷新。刷新成本不是约束（245 次强制读数 +0.2 MB / +10 句柄、每次 0.22 s），真正的约束是**位置传感器读数次数与失败暴露**（平台自身缓存只覆盖 60 秒，`MAX_GEOPOSITION_AGE`），所以没有理由再拉长，也没有足够理由缩短——把这段权衡写进了 [docs/headless.md](headless.md)（无界面用户唯一的文档），并说明"常在移动中的笔记本可设 10–15 分钟"。
+- **顺带发现的真实缺陷（未改，等你定）**：`GeographicPositionProvider::get_cached_position` 只缓存**成功**的位置（[solar.rs:169-179](../crates/dwall/src/solar.rs#L169-L179)）：定位服务被关闭时缓存永远为空，于是每个周期都重试一次，而单次调用最坏要等 `RequestAccessAsync` 10 秒 + `GetGeopositionAsync` 30 秒；目前只靠批次 1 的周期退避（5 s → 300 s）把重试频率压住，期间**壁纸完全不更新**。可选修法：失败也做负缓存，或者回退到"最后一次成功的位置"（内存里一个 `Position`，不落盘、不增加线程）并记一条 warn——后者能把"完全不更新"变成"用略旧的位置继续跟随太阳"，但会让设置窗口的"最后一条 ERROR"不再显示定位问题，属于产品取舍。
+- **前端重复的默认值（P3，未改）**：[EngineSection.tsx:82](../src/components/settings/EngineSection.tsx#L82) 里 `patch({ interval: v || 15 })` 把 15 又写了一遍；今天与 Rust 一致，但 Rust 改默认值时它会静默不一致。
+
 ### 本轮验证命令与结果
 
 | 命令 | 结果 |
@@ -570,8 +578,8 @@ P0（对应第 1、2 节的缺陷，写出来即回归网）：
 | `cargo clippy -- -D warnings` / `cargo clippy -r -- -D warnings` | exit 0 / 0 |
 | `cargo clippy -r -p dwall --features build-script,log-max-level-info --all-targets -- -D warnings` | exit 0 |
 | `DWALL_SKIP_BUILD=1 cargo clippy -p dwall-settings --all-targets -- -D warnings` | exit 0 |
-| `DWALL_SKIP_BUILD=1 cargo test` | **407 passed / 0 failed**（批次 1/2 后 239、3 后 252、4 后 279、5 后 293、6 后 306、7 后 335、8 后 376；dwall lib 187、bin 5、headless_cli 5、trait_mocks 8、settings 111、logging 8、time 83） |
-| `bun run check`（tsgo + biome，386 文件） | exit 0，0 error / 0 warning（批次 9/10 不涉及前端） |
+| `DWALL_SKIP_BUILD=1 cargo test` | **409 passed / 0 failed**（批次 1/2 后 239、3 后 252、4 后 279、5 后 293、6 后 306、7 后 335、8 后 376、9 后 407；dwall lib **189**、bin 5、headless_cli 5、trait_mocks 8、settings 111、logging 8、time 83） |
+| `bun run check`（tsgo + biome，386 文件） | exit 0，0 error / 0 warning（批次 9–11 不涉及前端） |
 | `bun run test` | **39 passed** |
 | `.scripts/measure-daemon-memory.ps1`（批次 10） | 6 轮测量：静息 2.84–2.97 MB / 268–286 句柄（两个二进制各 2 轮）、换过壁纸后 4.20–7.65 MB / 359–465 句柄（2 轮）、用户真实 13.7 小时 7.51 MB / 427 句柄；每轮 5 分钟 ≈300 周期，原始样本在 `%TEMP%\dwall_memtest\samples-*.csv` |
 
