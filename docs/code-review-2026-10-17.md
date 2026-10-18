@@ -355,9 +355,9 @@ P0（对应第 1、2 节的缺陷，写出来即回归网）：
 
 ---
 
-## 11. 修复记录：批次 1 / 2 / 3 / 4 / 5 / 6 / 7 / 8（2026-10-17 ~ 10-18 本轮已实现）
+## 11. 修复记录：批次 1 ~ 9（2026-10-17 ~ 10-18 本轮已实现）
 
-只做了第 9 节的**批次 1（D1、D2+D3）、批次 2（S1、S2）、批次 3（D5、D6、D4）、批次 4（S3、S4、S5、`.zip` 泄漏、取消不重试）、批次 5（日志轮转上限、时区偏移缓存、去掉整份配置 dump、暴露守护进程最后一条 ERROR）、批次 6（配置生效延迟、写盘顺序、会话过滤与 PID 复用、停止后等待退出）、批次 7（8.1 的 `ThemeEngine` 泛型化与配置目录参数化 + 29 个测试）与批次 8（第 8 节测试的 theme/color_scheme/config/solar 部分 + 它们挖出的四个缓存与校验缺陷）**，其余批次未动。
+只做了第 9 节的**批次 1（D1、D2+D3）、批次 2（S1、S2）、批次 3（D5、D6、D4）、批次 4（S3、S4、S5、`.zip` 泄漏、取消不重试）、批次 5（日志轮转上限、时区偏移缓存、去掉整份配置 dump、暴露守护进程最后一条 ERROR）、批次 6（配置生效延迟、写盘顺序、会话过滤与 PID 复用、停止后等待退出）、批次 7（8.1 的 `ThemeEngine` 泛型化与配置目录参数化 + 29 个测试）、批次 8（第 8 节测试的 theme/color_scheme/config/solar 部分 + 四个缓存与校验缺陷）与批次 9（第 8 节的 utils/random_state/settings network+thumbnail 部分 + 缩略图缓存永不续命）**，其余批次未动。
 
 ### D1 ✅ 守护进程不再因持续失败而退出
 
@@ -493,6 +493,29 @@ P0（对应第 1、2 节的缺陷，写出来即回归网）：
 
 **仍未做的第 8 节测试**：`platform/windows/{async_operation,geolocation,monitor}.rs`(`TimeSpan` 换算、`poll` 注入闭包、显示器缓存 TTL/友好名缓存上限)、`random_state`/`lazy`/`utils.rs` 的 `unreachable!` 与 TTL、settings 的 `network/{client,tasks,progress}`（`std::net::TcpListener` 做 HTTP 夹具）、`thumbnail/{cleanup,storage}`、`update.rs`、`setup.rs` 与其余 `commands/*`；`solar.rs` 的 NOAA 金值对照（需要外部参考数据）也未做。
 
+### 批次 9 ✅ 第 8 节测试（utils / random_state / settings 的 network 与 thumbnail），并修掉缩略图缓存"永不续命"
+
+- **缩略图缓存从来不续命**（2.2 表 M7，[storage.rs](../crates/dwall-settings/src/thumbnail/storage.rs)、[cleanup.rs](../crates/dwall-settings/src/thumbnail/cleanup.rs)）：过期判断读的是**修改时间**，而"读取续命"只是 `File::open` 一下——那只会动**访问时间**，而 Windows（Vista 起）默认根本不维护访问时间。结果是**每天在用的缩略图也会在下载满 30 天后被清掉**，整个缓存按下载时间整体老化。现在真的把修改时间设为当前时间。
+- **进度条可能报出天文数字**（[progress.rs](../crates/dwall-settings/src/network/progress.rs)）：`written.saturating_mul(100) / total` 在服务器发得比声明的多时并不封顶——`u64::MAX / 7` 会算出 `2635249153387078802`% 。前端 `downloadPercent` 里的 `Math.min(100, …)` 把它盖住了，所以此前看不出来。现在 `written >= total` 直接报 100%。这条是**我写测试时撞出来的**（第一次跑就失败，`left: Some(2635249153387078802)`）。
+- 顺带把两处硬编码目录改成参数（与批次 7 同一手法）：`Cleanup::cleanup_expired_in(dir)` / `enforce_size_limit_in(dir, max_bytes)`，否则清理策略只能对着用户真实缓存测。
+
+**新增测试（+31，全仓 376 → 407）**：
+
+| 文件 | 用例 |
+| --- | --- |
+| `dwall/src/utils.rs`（+4） | 空缓存返回 None、**条目到 TTL 就过期**、类型之间不串槽（写 `Position` 读 `SolarPosition` 为 None）、同类型二次写入取最后一次 |
+| `dwall/src/random_state.rs`（+6） | `date_key_pads_single_digit_months_and_days`（含 `999-09-09`）、选择由日期键构造、文件不存在→None、**读写往返**、**损坏 JSON 是错误而不是空状态**（否则会让同一天重抽一次）、写入会创建目录 |
+| `settings/src/network/tasks.rs`（+5） | 重复任务被拒（错误里带主题名）、不同任务可并行、取消会置位标志、**取消不存在的任务是 noop**、移除后可重新添加（且新旗标与旧旗标互不影响） |
+| `settings/src/network/progress.rs`（+5） | 无 total 不发进度、**每个百分比只发一次**、最后一个分片必定上报、**计数超过总量仍报 100%**、首个字节就报 0% 且不重复 |
+| `settings/src/thumbnail/cleanup.rs`（+7） | 缓存目录不存在不是错误、**超 30 天的文件被删且只删它**、**触碰过的文件不在过期集合里**、空主题目录被删（含本来就空的）、未超限不动、**从最旧开始删到刚好达标**（断言字节数与保留的文件）、目录大小是各主题目录之和 |
+| `settings/src/thumbnail/store.rs`（+4） | 同 key 返回同一把锁、不同 key 不同锁、清表后拿到新锁、**第二次下载会等第一次释放**（真起线程 + 50 ms 观察未完成）。后两个测试用一把进程内的测试锁串行化：锁表是进程全局的，`clear_cache` 会放飞另一个测试正持有的 guard（第一次跑就被这个坑到了） |
+
+**翻转验证**：`touching_a_file_keeps_it_out_of_the_expiry_set`（改回 `File::open` 后 `left: 10, right: 0` ✓）、`a_written_count_beyond_the_total_still_reports_a_hundred`（加上 `written >= total` 分支前即失败 ✓）。
+
+**关于报告建议的 `the_cache_rejects_an_unregistered_type_instead_of_aborting`**：这条**写不出来**，而且不是因为缺测试——`Cacheable` 只由 `define_cache!` 宏为已注册类型实现，而槽位来自同一次宏展开，所以要构造一个"未注册类型"必须先给它加宏表项（那就是已注册）。`unreachable!` 是**构造上不可达**的，我在那里补了注释说明这一点，而不是为了测试把它改成不 panic 的写法（一个"兜底槽位"会让不同类型共用一个槽，静默失去缓存语义）。
+
+**仍未做的第 8 节测试**：`platform/windows/{async_operation,geolocation,monitor}.rs`（`poll` 注入闭包、`TimeSpan` 换算、显示器缓存 TTL 与友好名缓存上限）、`update.rs`、`setup.rs` 与其余 `commands/*`、`solar.rs` 的 NOAA 金值对照（需要外部参考数据，我没有编造数值）。
+
 ### 本轮验证命令与结果
 
 | 命令 | 结果 |
@@ -501,13 +524,13 @@ P0（对应第 1、2 节的缺陷，写出来即回归网）：
 | `cargo clippy -- -D warnings` / `cargo clippy -r -- -D warnings` | exit 0 / 0 |
 | `cargo clippy -r -p dwall --features build-script,log-max-level-info --all-targets -- -D warnings` | exit 0 |
 | `DWALL_SKIP_BUILD=1 cargo clippy -p dwall-settings --all-targets -- -D warnings` | exit 0 |
-| `DWALL_SKIP_BUILD=1 cargo test` | **376 passed / 0 failed**（批次 1/2 后 239、3 后 252、4 后 279、5 后 293、6 后 306、7 后 335；dwall lib 177、bin 5、headless_cli 5、trait_mocks 8、settings 90、logging 8、time 83） |
-| `bun run check`（tsgo + biome，386 文件） | exit 0，0 error / 0 warning（批次 8 不涉及前端） |
+| `DWALL_SKIP_BUILD=1 cargo test` | **407 passed / 0 failed**（批次 1/2 后 239、3 后 252、4 后 279、5 后 293、6 后 306、7 后 335、8 后 376；dwall lib 187、bin 5、headless_cli 5、trait_mocks 8、settings 111、logging 8、time 83） |
+| `bun run check`（tsgo + biome，386 文件） | exit 0，0 error / 0 warning（批次 9 不涉及前端） |
 | `bun run test` | **39 passed** |
 
-第 6 节的**二进制体积数字对本批（乃至批次 3–8）尚未重新测量**：两个 exe 都改过，表里的 632,832 B / 4,234,240 B 仍是 10/17 那次 release 构建的结果，需要时应重新构建再更新，不要直接引用。
+第 6 节的**二进制体积数字对本批（乃至批次 3–9）尚未重新测量**：两个 exe 都改过，表里的 632,832 B / 4,234,240 B 仍是 10/17 那次 release 构建的结果，需要时应重新构建再更新，不要直接引用。
 
 ### 仍未做（后续批次）
 
-第 8 节其余测试（见批次 8 一节末尾的清单：平台层的 `async_operation`/`geolocation`/`monitor`、`random_state`/`lazy`/`utils` 的 `unreachable!` 与 TTL、settings 的 `network/*`、`thumbnail/{cleanup,storage}`、`update.rs`、`setup.rs` 与其余 `commands/*`、NOAA 金值对照）、第 9 节批次 8/9（CI 门禁与 P3 清理）。
+第 8 节其余测试（见批次 9 一节末尾的清单：平台层的 `async_operation`/`geolocation`/`monitor`、`update.rs`、`setup.rs` 与其余 `commands/*`、NOAA 金值对照）、第 9 节批次 8/9（CI 门禁与 P3 清理）。
 批次 4 未处理的相邻项（原报告 2.2 表）：镜像的稳定版通道自废（M1）、续传无 `If-Range`/校验和（M2）、下载与缩略图无并发上限（M3）、缩略图锁表无上限与 100 MB 上限只在未命中时执行（M4）、asset protocol `**/*`（M5）、渲染层可传的 URL/路径（M6）、"读取续命"无效（M7）；另外"应用此主题会静默提交所有未保存的编辑"（[settings.store.ts:173-196](../src/store/settings.store.ts#L173-L196)）仍未处理，它属于前端语义而非生命周期问题。

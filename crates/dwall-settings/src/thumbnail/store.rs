@@ -100,3 +100,99 @@ pub(crate) async fn initialize_cache() -> DwallSettingsResult<()> {
 
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn key(theme_id: &str, url: &str) -> CacheKey {
+        CacheKey {
+            theme_id: theme_id.to_string(),
+            serial_number: 1,
+            url: url.to_string(),
+        }
+    }
+
+    fn block_on<F: std::future::Future>(future: F) -> F::Output {
+        tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .unwrap()
+            .block_on(future)
+    }
+
+    /// The lock table is process-wide, so each test uses keys of its own.
+    #[test]
+    fn the_same_key_returns_the_same_lock() {
+        let first = block_on(lock_for(key("store-same", "https://a/1.jpg")));
+        let second = block_on(lock_for(key("store-same", "https://a/1.jpg")));
+
+        assert!(Arc::ptr_eq(&first, &second));
+    }
+
+    #[test]
+    fn different_keys_get_different_locks() {
+        let one = block_on(lock_for(key("store-diff", "https://a/1.jpg")));
+        let two = block_on(lock_for(key("store-diff", "https://a/2.jpg")));
+
+        assert!(!Arc::ptr_eq(&one, &two));
+    }
+
+    /// The two tests that touch the whole table at once take a lock of their own:
+    /// clearing it releases the guard another test is holding.
+    static TABLE_WIDE_TEST: std::sync::Mutex<()> = std::sync::Mutex::new(());
+
+    fn table_wide_test_guard() -> std::sync::MutexGuard<'static, ()> {
+        TABLE_WIDE_TEST
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
+    }
+
+    /// Clearing the table is what makes the next download take a fresh lock instead
+    /// of queueing behind a guard nobody holds any more.
+    #[test]
+    fn clearing_the_table_forgets_the_locks() {
+        let _serialised = table_wide_test_guard();
+
+        let before = block_on(lock_for(key("store-clear", "https://a/1.jpg")));
+
+        let cleared = block_on(clear_cache());
+        assert!(cleared >= 1, "the key that was just taken is counted");
+
+        let after = block_on(lock_for(key("store-clear", "https://a/1.jpg")));
+        assert!(!Arc::ptr_eq(&before, &after));
+    }
+
+    /// Holding the guard is what serialises two downloads of one thumbnail; the
+    /// second `lock_for_download` has to wait for the first to drop.
+    #[test]
+    fn a_second_download_waits_for_the_first() {
+        let _serialised = table_wide_test_guard();
+
+        let (_, guard) = block_on(lock_for_download(key("store-single", "https://a/1.jpg")));
+
+        let waited = std::thread::spawn(move || {
+            let runtime = tokio::runtime::Builder::new_current_thread()
+                .enable_all()
+                .build()
+                .unwrap();
+
+            runtime.block_on(async {
+                let (_lock, _guard) =
+                    lock_for_download(key("store-single", "https://a/1.jpg")).await;
+
+                true
+            })
+        });
+
+        // The waiting task cannot finish while the guard is held.
+        std::thread::sleep(std::time::Duration::from_millis(50));
+        assert!(
+            !waited.is_finished(),
+            "the second download must queue behind the first"
+        );
+
+        drop(guard);
+        assert!(waited.join().unwrap());
+    }
+}
