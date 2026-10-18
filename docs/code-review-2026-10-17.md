@@ -392,9 +392,9 @@ P0（对应第 1、2 节的缺陷，写出来即回归网）：
 
 ---
 
-## 11. 修复记录：批次 1 ~ 12（2026-10-17 ~ 10-18 本轮已实现）
+## 11. 修复记录：批次 1 ~ 13（2026-10-17 ~ 10-18 本轮已实现）
 
-只做了第 9 节的**批次 1（D1、D2+D3）、批次 2（S1、S2）、批次 3（D5、D6、D4）、批次 4（S3、S4、S5、`.zip` 泄漏、取消不重试）、批次 5（日志轮转上限、时区偏移缓存、去掉整份配置 dump、暴露守护进程最后一条 ERROR）、批次 6（配置生效延迟、写盘顺序、会话过滤与 PID 复用、停止后等待退出）、批次 7（8.1 的 `ThemeEngine` 泛型化与配置目录参数化 + 29 个测试）、批次 8（第 8 节测试的 theme/color_scheme/config/solar 部分 + 四个缓存与校验缺陷）、批次 9（第 8 节的 utils/random_state/settings network+thumbnail 部分 + 缩略图缓存永不续命）、批次 10（体积重测 + 守护进程内存实测与 12 处文档修正）、批次 11（`interval`/`cache_minutes` 两个默认值的推导 + 否证位置刷新假设）与批次 12（按需唤醒的太阳事件调度 + 配置轮询 5 秒）**，其余批次未动。
+只做了第 9 节的**批次 1（D1、D2+D3）、批次 2（S1、S2）、批次 3（D5、D6、D4）、批次 4（S3、S4、S5、`.zip` 泄漏、取消不重试）、批次 5（日志轮转上限、时区偏移缓存、去掉整份配置 dump、暴露守护进程最后一条 ERROR）、批次 6（配置生效延迟、写盘顺序、会话过滤与 PID 复用、停止后等待退出）、批次 7（8.1 的 `ThemeEngine` 泛型化与配置目录参数化 + 29 个测试）、批次 8（第 8 节测试的 theme/color_scheme/config/solar 部分 + 四个缓存与校验缺陷）、批次 9（第 8 节的 utils/random_state/settings network+thumbnail 部分 + 缩略图缓存永不续命）、批次 10（体积重测 + 守护进程内存实测与 12 处文档修正）、批次 11（`interval`/`cache_minutes` 两个默认值的推导 + 否证位置刷新假设）、批次 12（按需唤醒的太阳事件调度 + 配置轮询 5 秒）与批次 13（自动定位不可用时以退出码 6 明确停止，不做位置兜底）**，其余批次未动。
 
 ### D1 ✅ 守护进程不再因持续失败而退出
 
@@ -592,6 +592,28 @@ P0（对应第 1、2 节的缺陷，写出来即回归网）：
 
 **顺手记下的测试陷阱**：批次 8 的主题缓存按**秒级 mtime** 失效，所以测试里"写完 `solar.json` 立刻跑周期"会继续用旧角度（我第一版就踩了）。现在 fixture 增了 `new_with_frames`，一开始就写入指定帧，注释里写明原因。
 
+### 批次 13 ✅ 自动定位不可用就停下并说明原因（**否掉"用最后一次位置兜底"**）
+
+用户的产品决定：定位服务关闭、或没给 daemon 定位权限、且用户用的是自动模式时，daemon 不该启动或必须退出，并把原因写进日志；**不允许**回退到最后一次成功的位置。
+
+- **分类只有一个地方**（[error.rs](../crates/dwall/src/error.rs) `DwallError::location_unavailable`）：`GeolocationAccess(Denied | Unspecified)`，以及 WinRT 调用直接返回的 `E_ACCESSDENIED`（0x80070005）。**超时、传感器忙、Shell 不响应不算**——这正是批次 1（D1）要解决的问题：开机自启时定位服务可能还没起来，那时退出会让守护进程**无声消失且无人重启**。
+- **循环里的唯一例外**（[daemon.rs](../crates/dwall/src/daemon.rs) `cycle_failure`）：`Stop` 直接返回错误交给调用方，其余照旧退避重试。D1 的注释一并改写，说明"持续失败不再终止"与"用户主动关掉定位则停下"是两件事。
+- **退出码 6**（[bin/daemon.rs](../crates/dwall/src/bin/daemon.rs) `exit::LOCATION_UNAVAILABLE`）：`--once` 与常驻模式共用一条路径（`exit_code_for`），日志写一条 ERROR，控制台也打印；`--help` 与 [docs/headless.md](headless.md) 同步（Troubleshooting 增一行，另加"什么情况下 daemon 会停下"一节）。设置窗口的"最后一条 ERROR"（批次 5）因此能直接显示这句话。
+- **错误文案改成可执行的指引**（[solar.rs](../crates/dwall/src/solar.rs)）：`Denied` → "Allow desktop apps in Settings → Privacy & security → Location, or set `[position_source] type = \"MANUAL\"`…"；`Unspecified` → "The Windows location service is off…"。这条消息同时进日志、进设置窗口、进控制台，所以它必须自己说清怎么修。
+- **不回退**：`last_position`（批次 12 为调度引入）只用于**计算下一次事件**，从不参与位置解析 ✓ 没有实现任何兜底。
+
+**新增测试（+9）**：
+
+| 位置 | 用例 |
+| --- | --- |
+| `daemon.rs`（+5） | 被拒绝 → `Stop`、服务关闭 → `Stop`、`E_ACCESSDENIED` → `Stop`、**瞬时失败仍然退避重试**（超时、1053 服务忙）、只有定位类错误被归类 |
+| `bin/daemon.rs`（+3） | 缺定位→退出码 6（Denied 与 Unspecified 都算）、其他失败→退出码 1、**`--help` 必须列出全部退出码**（7 个，逐个核对格式） |
+| `theme_engine.rs`（+1） | **整条链路**都归类正确：`DeniedPosition` 假实现 → `GeographicPositionProvider` → 周期，返回的错误 `location_unavailable()` 为真（daemon 就是据此决定的） |
+
+**翻转验证**：把 `location_unavailable` 改成恒假，`a_denied_location_stops_the_daemon`、`a_switched_off_location_service_stops_the_daemon`、`only_the_location_errors_are_classified_as_unavailable` 三个测试失败（`assertion failed: denied().location_unavailable()`）✓
+
+**与 D1 的关系（写进注释以免后人误改回去）**：D1 修的是"**无声**地死"——无日志、无退出码语义、且自启后不会恢复；本批是"**有意**地停"——明确退出码、日志里给出要改的设置、设置窗口可见、用户改完设置即可重新启动。两者的判据（瞬时 vs 用户决定）不同，所以能共存。
+
 ### 本轮验证命令与结果
 
 | 命令 | 结果 |
@@ -600,8 +622,8 @@ P0（对应第 1、2 节的缺陷，写出来即回归网）：
 | `cargo clippy -- -D warnings` / `cargo clippy -r -- -D warnings`（均含 `--all-targets`） | exit 0 / 0 |
 | `cargo clippy -r -p dwall --features build-script,log-max-level-info --all-targets -- -D warnings` | exit 0 |
 | `DWALL_SKIP_BUILD=1 cargo clippy -p dwall-settings --all-targets -- -D warnings` | exit 0 |
-| `DWALL_SKIP_BUILD=1 cargo test` | **429 passed / 0 failed**（批次 1/2 后 239、3 后 252、4 后 279、5 后 293、6 后 306、7 后 335、8 后 376、9 后 407、10 后 409；dwall lib **209**、bin 5、headless_cli 5、trait_mocks 8、settings 111、logging 8、time 83） |
-| `bun run check`（tsgo + biome，386 文件） | exit 0，0 error / 0 warning（批次 11/12 不涉及前端） |
+| `DWALL_SKIP_BUILD=1 cargo test` | **438 passed / 0 failed**（批次 1/2 后 239、3 后 252、4 后 279、5 后 293、6 后 306、7 后 335、8 后 376、9 后 407、10 后 409、12 后 429；dwall lib **213**、bin 8、headless_cli 5、trait_mocks 8、settings 111、logging 8、time 83） |
+| `bun run check`（tsgo + biome，386 文件） | exit 0，0 error / 0 warning（批次 11–13 不涉及前端） |
 | `bun run test` | **39 passed** |
 | `.scripts/measure-daemon-memory.ps1`（批次 10） | 6 轮测量：静息 2.84–2.97 MB / 268–286 句柄（两个二进制各 2 轮）、换过壁纸后 4.20–7.65 MB / 359–465 句柄（2 轮）、用户真实 13.7 小时 7.51 MB / 427 句柄；每轮 5 分钟 ≈300 周期，原始样本在 `%TEMP%\dwall_memtest\samples-*.csv` |
 

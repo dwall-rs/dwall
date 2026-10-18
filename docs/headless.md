@@ -86,6 +86,22 @@ path, so it does not see a daemon started with `--config` elsewhere.
 | 3 | Invalid or unreadable configuration. |
 | 4 | Auto-start registration failed. |
 | 5 | `--once` refused: a daemon already runs. |
+| 6 | **No location.** `[position_source] type = "AUTOMATIC"` is in use, but Windows has location switched off or has denied it for this app, so the daemon has no position to compute the sun from. It stops instead of guessing one; the log line names the setting that fixes it. |
+
+### What makes the daemon stop
+
+The daemon is built to keep running: a failed cycle, an unplugged monitor, a shell that
+does not answer, a location service that is still starting after sign-in — all of those
+are retried with an exponential backoff (5 s doubling to 300 s), because a daemon that
+disappears at logon is worse than one that keeps trying, and nothing would start it
+again.
+
+The single exception is exit code 6. Automatic coordinates with location switched off is
+not a failure to retry but the user's own setting, and the alternative — carrying on with
+the last position the daemon happened to see — would silently track the wrong sun for a
+machine that moved. It stops, writes the reason (with the setting to change) to the log,
+and the settings window shows that line as the engine's last error until you either allow
+location or switch to `[position_source] type = "MANUAL"` and start it again.
 
 ### Invoking it from a shell
 
@@ -212,5 +228,6 @@ release archive works today and is what it installs (as a portable package expos
 | Wallpaper never changes | The log's first lines: a missing theme directory, an empty monitor map and random mode with no themes all warn there. |
 | A monitor keeps failing | A configured theme that cannot be applied is an `ERROR` every cycle, and the daemon backs off — 5 s doubling to 5 minutes — until it works again. `--once` exits 1 in the same situation. A monitor with no theme configured is not an error. |
 | `--once` exits 5 | A daemon already runs; stop it from the settings window or Task Manager. |
+| Exits 6, "location access was denied" / "location service is off" | Turn location on for desktop apps (Settings → Privacy & security → Location), or set `[position_source] type = "MANUAL"` with coordinates and start the daemon again. It will not fall back to the last position it saw — a machine that moved would follow the wrong sun, so it stops and says so instead. |
 | Nothing on the console | Read the log file — and remember the shell caveat above. |
 | Wallpaper stops after an edit | A broken config is not fatal: the daemon keeps running and retries the file every 5 s, logging each attempt. It applies nothing while the file is unreadable, because a cycle needs a valid configuration. |

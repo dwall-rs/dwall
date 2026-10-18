@@ -67,6 +67,32 @@ pub enum DwallError {
     Logger(#[from] log::SetLoggerError),
 }
 
+impl DwallError {
+    /// Whether the daemon has no location to work from because of the user's settings.
+    ///
+    /// Only automatic coordinates can produce this, and it is a decision rather than a
+    /// failure to retry: the daemon must not guess a position (a fallback to the last
+    /// one it saw would quietly track the wrong sun for a machine that moved), so it
+    /// stops and lets the log, the exit code and the settings window say why.
+    ///
+    /// The transient failures that used to kill the daemon are *not* included: a
+    /// timeout or a busy sensor is retried with a backoff, because a daemon that
+    /// disappears at sign-in, before the location service is ready, is worse than one
+    /// that keeps trying.
+    pub fn location_unavailable(&self) -> bool {
+        /// `E_ACCESSDENIED`, which is what the WinRT calls report when location access
+        /// is switched off for the app (`HRESULT_FROM_WIN32(ERROR_ACCESS_DENIED)`).
+        const E_ACCESSDENIED: u32 = 0x8007_0005;
+
+        match self {
+            Self::GeolocationAccess(GeolocationAccessError::Denied)
+            | Self::GeolocationAccess(GeolocationAccessError::Unspecified) => true,
+            Self::Windows(e) => e.code().0 as u32 == E_ACCESSDENIED,
+            _ => false,
+        }
+    }
+}
+
 /// Configuration-related errors
 #[derive(Debug, thiserror::Error)]
 pub enum ConfigError {

@@ -83,12 +83,15 @@ fn wait_for_config_change(config_watcher: &ConfigWatcher, duration: Duration) ->
 ///
 /// A failed cycle used to terminate the daemon once it had repeated three times.
 /// Every realistic cause of that failure is persistent rather than fatal —
-/// location access denied (the default position source is automatic), the
-/// location service switched off, a shell that stopped answering — so exiting
-/// converted "the wallpaper is not updating right now" into "the wallpaper never
-/// updates again until someone starts the daemon by hand", with no supervisor to
-/// do it. Cycles therefore keep running: the failure count only drives the
-/// backoff and the log.
+/// a shell that stopped answering, a location service that is still starting after
+/// sign-in — so exiting converted "the wallpaper is not updating right now" into "the
+/// wallpaper never updates again until someone starts the daemon by hand", with no
+/// supervisor to do it. Cycles therefore keep running: the failure count only drives
+/// the backoff and the log.
+///
+/// The one exception is [`DwallError::location_unavailable`]: there the position is not
+/// missing by accident but switched off by the user, and the daemon deliberately stops
+/// instead of guessing where it is. See [`cycle_failure`].
 #[derive(Debug, Default)]
 struct CycleFailureTracker {
     consecutive: u32,
@@ -135,6 +138,31 @@ type PlatformEngine<'a> = ThemeEngine<
     ColorSchemeScheduler,
     GeographicPositionProvider<'a, Positioner>,
 >;
+
+/// What the loop does with a failed cycle.
+#[derive(Debug, PartialEq, Eq)]
+enum CycleFailure {
+    /// Retry after the backoff: the failure is transient or environmental.
+    Retry(Duration),
+    /// Stop the daemon and let the caller report why.
+    Stop,
+}
+
+/// Classifies a failed cycle.
+///
+/// A missing location is the one failure the daemon does not retry: the user either
+/// turned the location service off, denied it for this app, or is on manual coordinates
+/// that failed to parse — in every case there is no position to fall back on, and
+/// guessing one (the last position it saw) would silently follow the wrong sun. Stopping
+/// with the error, the exit code and the log line is the honest answer, and the settings
+/// window can start the daemon again once the setting changes.
+fn cycle_failure(error: &DwallError, backoff: Duration) -> CycleFailure {
+    if error.location_unavailable() {
+        return CycleFailure::Stop;
+    }
+
+    CycleFailure::Retry(backoff)
+}
 
 /// Builds the engine for one configuration generation.
 fn build_engine(config: &Config) -> DwallResult<PlatformEngine<'_>> {
@@ -481,18 +509,26 @@ impl DaemonApplication {
                     theme_engine.next_wait()
                 }
                 Err(e) => {
-                    // Keep running: see `CycleFailureTracker`. The backoff keeps a
-                    // persistently failing cycle from being retried at the full
-                    // configured rate, and the count makes a repeating error
-                    // distinguishable from a one-off.
+                    // Keep running unless the user has switched the position off: see
+                    // `cycle_failure`. The backoff keeps a persistently failing cycle
+                    // from being retried at the full configured rate, and the count
+                    // makes a repeating error distinguishable from a one-off.
                     let backoff = failures.record_failure();
-                    error!(
-                        error = %e,
-                        consecutive_failures = failures.consecutive_failures(),
-                        retry_in_seconds = backoff.as_secs(),
-                        "Theme update cycle failed, retrying"
-                    );
-                    backoff
+
+                    match cycle_failure(&e, backoff) {
+                        // The caller logs the reason and turns it into an exit code.
+                        CycleFailure::Stop => return Err(e),
+                        CycleFailure::Retry(delay) => {
+                            error!(
+                                error = %e,
+                                consecutive_failures = failures.consecutive_failures(),
+                                retry_in_seconds = delay.as_secs(),
+                                "Theme update cycle failed, retrying"
+                            );
+
+                            delay
+                        }
+                    }
                 }
             };
 
@@ -516,6 +552,85 @@ impl Default for DaemonApplication {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::solar::GeolocationAccessError;
+
+    // ── cycle_failure ───────────────────────────────────────────────────────
+
+    fn denied() -> DwallError {
+        GeolocationAccessError::Denied.into()
+    }
+
+    #[test]
+    fn a_denied_location_stops_the_daemon() {
+        assert_eq!(
+            cycle_failure(&denied(), FAILURE_BACKOFF_BASE),
+            CycleFailure::Stop
+        );
+    }
+
+    #[test]
+    fn a_switched_off_location_service_stops_the_daemon() {
+        let error: DwallError = GeolocationAccessError::Unspecified.into();
+
+        assert_eq!(
+            cycle_failure(&error, FAILURE_BACKOFF_MAX),
+            CycleFailure::Stop
+        );
+    }
+
+    #[test]
+    fn an_access_denied_hresult_stops_the_daemon() {
+        let error = DwallError::Windows(windows::core::Error::from_hresult(
+            windows::core::HRESULT::from_win32(5),
+        ));
+
+        assert_eq!(
+            cycle_failure(&error, FAILURE_BACKOFF_BASE),
+            CycleFailure::Stop
+        );
+    }
+
+    /// The failures the daemon used to die from silently keep being retried: a
+    /// location service that is not up yet at sign-in must not end the run.
+    #[test]
+    fn a_transient_failure_is_retried_with_the_backoff() {
+        for error in [
+            DwallError::AsyncTimeout(Duration::from_secs(30)),
+            DwallError::Windows(windows::core::Error::from_hresult(
+                windows::core::HRESULT::from_win32(1053),
+            )),
+            GeolocationAccessError::Denied.into(),
+        ] {
+            let retried = cycle_failure(&error, Duration::from_secs(20));
+
+            if error.location_unavailable() {
+                assert_eq!(retried, CycleFailure::Stop);
+            } else {
+                assert_eq!(retried, CycleFailure::Retry(Duration::from_secs(20)));
+            }
+        }
+    }
+
+    #[test]
+    fn only_the_location_errors_are_classified_as_unavailable() {
+        assert!(denied().location_unavailable());
+        assert!(
+            DwallError::Windows(windows::core::Error::from_hresult(
+                windows::core::HRESULT::from_win32(5)
+            ))
+            .location_unavailable()
+        );
+        assert!(
+            !DwallError::Windows(windows::core::Error::from_hresult(
+                windows::core::HRESULT::from_win32(1053)
+            ))
+            .location_unavailable(),
+            "a busy service is not the user's decision"
+        );
+        assert!(!DwallError::AsyncTimeout(Duration::from_secs(30)).location_unavailable());
+    }
+
+    // ── failure_backoff ─────────────────────────────────────────────────────
 
     #[test]
     fn the_backoff_starts_at_the_base_delay() {
