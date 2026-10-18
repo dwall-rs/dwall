@@ -355,9 +355,9 @@ P0（对应第 1、2 节的缺陷，写出来即回归网）：
 
 ---
 
-## 11. 修复记录：批次 1 / 2 / 3 / 4 / 5 / 6 / 7（2026-10-17 本轮已实现）
+## 11. 修复记录：批次 1 / 2 / 3 / 4 / 5 / 6 / 7 / 8（2026-10-17 ~ 10-18 本轮已实现）
 
-只做了第 9 节的**批次 1（D1、D2+D3）、批次 2（S1、S2）、批次 3（D5、D6、D4）、批次 4（S3、S4、S5、`.zip` 泄漏、取消不重试）、批次 5（日志轮转上限、时区偏移缓存、去掉整份配置 dump、暴露守护进程最后一条 ERROR）、批次 6（配置生效延迟、写盘顺序、会话过滤与 PID 复用、停止后等待退出）与批次 7（8.1 的 `ThemeEngine` 泛型化与配置目录参数化 + 被它们解锁的 29 个测试）**，其余批次未动。
+只做了第 9 节的**批次 1（D1、D2+D3）、批次 2（S1、S2）、批次 3（D5、D6、D4）、批次 4（S3、S4、S5、`.zip` 泄漏、取消不重试）、批次 5（日志轮转上限、时区偏移缓存、去掉整份配置 dump、暴露守护进程最后一条 ERROR）、批次 6（配置生效延迟、写盘顺序、会话过滤与 PID 复用、停止后等待退出）、批次 7（8.1 的 `ThemeEngine` 泛型化与配置目录参数化 + 29 个测试）与批次 8（第 8 节测试的 theme/color_scheme/config/solar 部分 + 它们挖出的四个缓存与校验缺陷）**，其余批次未动。
 
 ### D1 ✅ 守护进程不再因持续失败而退出
 
@@ -471,6 +471,28 @@ P0（对应第 1、2 节的缺陷，写出来即回归网）：
 
 **未做的 8.1 之外的第 8 节测试**（仍然待办）：`theme.rs` 的 `ThemeValidator`（0 测试）与太阳缓存逐出、`color_scheme.rs` 的跨日重算与 23.5/45/66.5 边界与极昼极夜、`solar.rs` 的 NOAA 金值对照、`config.rs` 的 `write_default` 往返与 watcher、`platform/windows/{async_operation,geolocation,monitor}.rs`、`random_state`/`lazy`/`utils`、settings 的 `network/{client,tasks,progress}`、`thumbnail/{cleanup,storage}`、`theme/{paths,download_url,status}`、`update.rs`、`setup.rs` 与其余 `commands/*`。
 
+### 批次 8 ✅ 第 8 节测试（theme / color_scheme / config / solar），并修掉它们挖出的四个缓存与校验缺陷
+
+按报告第 8 节的优先级继续补测试。写测试的过程里挖出四个真实缺陷，都已修：
+
+- **主题数据缓存不随文件失效**（P3-9，[theme.rs](../crates/dwall/src/theme.rs)）：`SOLAR_CACHE` 只以目录为键，重新下载/编辑过的主题在守护进程整个生命周期里都读到旧帧。现在缓存项记录数据来源文件（`theme.toml` 或 `solar.json`）与它的 mtime，读取时比对，不一致就丢弃重读。注意这也覆盖"后来才出现 `theme.toml`"的情况（来源文件本身变了）。
+- **随机模式可能抽到已被删除的主题**（P3-5b，[theme.rs](../crates/dwall/src/theme.rs)）：一轮洗牌结果留在内存里，期间主题被删掉（设置端会替换主题目录）时 `select_next` 仍会返回它，于是下一个周期以"主题目录不存在"失败。现在跳过已不存在的条目（保留本轮顺序），本轮耗尽后重新洗牌。
+- **派生值缓存不随输入失效**（P3-1，[color_scheme.rs](../crates/dwall/src/color_scheme.rs)、[utils.rs](../crates/dwall/src/utils.rs)）：`utils` 的缓存只按**类型**做键，因此 `ThresholdConfig` 在用户搬家（或改手动坐标）后仍按旧纬度生效，`DaylightState` 会跨日沿用昨天的判定最长 24 小时。现在两者都连同输入（位置 / 日期）一起缓存并在读取时比对——`CachedThreshold`、`CachedDaylightState` 两个新缓存项。为了让"到底有没有重算"可观测，加了**线程局部**的计数器（和缓存本身一样是线程局部的），测试用增量断言。
+- **`cache_minutes` 无校验可让守护进程静默消失**（2.1 表 P2，[config.rs](../crates/dwall/src/config.rs)、[solar.rs](../crates/dwall/src/solar.rs)、[utils.rs](../crates/dwall/src/utils.rs)）：TTL 由 `60 * cache_minutes` 秒算出，手改 `config.toml` 写一个极大值会让乘法溢出、再让 `Instant + Duration` panic —— 而 release 是 `panic = "abort"` + GUI 子系统，**没有任何痕迹**。现在 `Config::validate` 校验 `cache_minutes ≤ 1440`（错误信息明确指出是缓存设置而不是坐标，0 仍然合法＝每次都重读）；另外两层防御：TTL 计算用 `saturating_mul` 并封顶一年，`utils` 的缓存项改用 `checked_add`，未经验证的配置再也不会让进程 abort。
+
+**新增测试（+41，全仓 335 → 376）**：
+
+| 文件 | 用例 |
+| --- | --- |
+| `theme.rs`（+18） | 校验器 9 个：合法 legacy 主题、目录不存在、缺帧图片、无帧主题、**重复帧索引合法**（真实主题就是这样）、manifest 主题用自身格式、高度超范围、方位角 360、legacy 角度被信任；缓存 6 个：**`cached_theme_data_is_invalidated_when_solar_json_changes`**、内容不变时复用（`Rc::ptr_eq` 证明命中）、后来出现 manifest 会重读、容量上限、容量处淘汰最旧、命中会把条目移到队尾；`a_manifest_theme_wins_over_solar_json`；选择 2 个：**`select_next_skips_a_theme_removed_after_the_round_started`**（直接把洗牌顺序写死，不依赖随机种子）、一轮内每个主题只出现一次 |
+| `color_scheme.rs`（+12） | 缓存 5 个：阈值同位置复用、**位置变化就重算**、同一天同位置的状态复用、**跨日必须重算**（并检查缓存项里的日期已更新）、位置变化重算状态；纬度边界 3 个：**23.5 / 45 / 66.5 三处分支**、阈值永不出 `[-12, -4.5]`、南北半球对称；真实地点 4 个：斯瓦尔巴 6 月极昼、Alert 12 月极夜、**极夜的本地时钟回落**（7 点前暗 / 7–18 亮 / 18 点后暗）、中纬度四个节气都是 `Normal` |
+| `config.rs`（+7） | `validate_rejects_an_out_of_range_cache_minutes`（断言错误信息指向缓存设置）、`validate_accepts_the_documented_cache_minutes`（0/1/30/1440）、`the_default_configuration_round_trips`（`write_default` → `read_from_path` 相等）、`the_default_configuration_documents_its_keys`、TOML 往返、`the_startup_baseline_is_not_a_change`、`config_watcher_reports_appeared_disappeared_and_modified`（出现/修改/消失三种） |
+| `solar.rs`（+4） | TTL 随配置分钟数换算、**TTL 被封顶**（`u64::MAX` 也不会 panic）、0 分钟缓存每次都问后端、有窗口时复用已读到的值 |
+
+**翻转验证**（把这些修复改回旧行为，对应测试确实失败）：主题缓存失效、随机选择跳过已删主题、两个派生缓存的输入校验、`cache_minutes` 校验，共 8 个测试逐一确认过。
+
+**仍未做的第 8 节测试**：`platform/windows/{async_operation,geolocation,monitor}.rs`(`TimeSpan` 换算、`poll` 注入闭包、显示器缓存 TTL/友好名缓存上限)、`random_state`/`lazy`/`utils.rs` 的 `unreachable!` 与 TTL、settings 的 `network/{client,tasks,progress}`（`std::net::TcpListener` 做 HTTP 夹具）、`thumbnail/{cleanup,storage}`、`update.rs`、`setup.rs` 与其余 `commands/*`；`solar.rs` 的 NOAA 金值对照（需要外部参考数据）也未做。
+
 ### 本轮验证命令与结果
 
 | 命令 | 结果 |
@@ -479,13 +501,13 @@ P0（对应第 1、2 节的缺陷，写出来即回归网）：
 | `cargo clippy -- -D warnings` / `cargo clippy -r -- -D warnings` | exit 0 / 0 |
 | `cargo clippy -r -p dwall --features build-script,log-max-level-info --all-targets -- -D warnings` | exit 0 |
 | `DWALL_SKIP_BUILD=1 cargo clippy -p dwall-settings --all-targets -- -D warnings` | exit 0 |
-| `DWALL_SKIP_BUILD=1 cargo test` | **335 passed / 0 failed**（批次 1/2 后 239、3 后 252、4 后 279、5 后 293、6 后 306；dwall lib 136、bin 5、headless_cli 5、trait_mocks 8、settings 90、logging 8、time 83） |
-| `bun run check`（tsgo + biome，386 文件） | exit 0，0 error / 0 warning（批次 7 不涉及前端） |
+| `DWALL_SKIP_BUILD=1 cargo test` | **376 passed / 0 failed**（批次 1/2 后 239、3 后 252、4 后 279、5 后 293、6 后 306、7 后 335；dwall lib 177、bin 5、headless_cli 5、trait_mocks 8、settings 90、logging 8、time 83） |
+| `bun run check`（tsgo + biome，386 文件） | exit 0，0 error / 0 warning（批次 8 不涉及前端） |
 | `bun run test` | **39 passed** |
 
-第 6 节的**二进制体积数字对本批（乃至批次 3–7）尚未重新测量**：`dwall.exe` 与 `dwall-settings.exe` 都改过（本批还给 settings 加了一个 `windows` feature），表里的 632,832 B / 4,234,240 B 仍是 10/17 那次 release 构建的结果，需要时应重新构建再更新，不要直接引用。
+第 6 节的**二进制体积数字对本批（乃至批次 3–8）尚未重新测量**：两个 exe 都改过，表里的 632,832 B / 4,234,240 B 仍是 10/17 那次 release 构建的结果，需要时应重新构建再更新，不要直接引用。
 
 ### 仍未做（后续批次）
 
-第 8 节其余测试（见批次 7 一节末尾的清单：`ThemeValidator`、太阳缓存逐出、跨日重算与阈值边界、NOAA 金值对照、`config.rs` 的 `write_default`/watcher、平台层的 `async_operation`/`geolocation`/`monitor`、settings 的 `network/*`、`thumbnail/{cleanup,storage}`、`update.rs`、`setup.rs`）、第 9 节批次 8/9（CI 门禁与 P3 清理）。
+第 8 节其余测试（见批次 8 一节末尾的清单：平台层的 `async_operation`/`geolocation`/`monitor`、`random_state`/`lazy`/`utils` 的 `unreachable!` 与 TTL、settings 的 `network/*`、`thumbnail/{cleanup,storage}`、`update.rs`、`setup.rs` 与其余 `commands/*`、NOAA 金值对照）、第 9 节批次 8/9（CI 门禁与 P3 清理）。
 批次 4 未处理的相邻项（原报告 2.2 表）：镜像的稳定版通道自废（M1）、续传无 `If-Range`/校验和（M2）、下载与缩略图无并发上限（M3）、缩略图锁表无上限与 100 MB 上限只在未命中时执行（M4）、asset protocol `**/*`（M5）、渲染层可传的 URL/路径（M6）、"读取续命"无效（M7）；另外"应用此主题会静默提交所有未保存的编辑"（[settings.store.ts:173-196](../src/store/settings.store.ts#L173-L196)）仍未处理，它属于前端语义而非生命周期问题。

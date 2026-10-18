@@ -327,7 +327,116 @@ impl<T: ColorSchemeProvider> ColorSchemeApplier<T> {
             color_scheme_provider,
         }
     }
+}
 
+// ── Cached derivations ──────────────────────────────────────────────────────
+
+/// The threshold configuration together with the position it was computed from.
+///
+/// Both this and [`CachedDaylightState`] exist because the cache in
+/// [`crate::utils`] is keyed by *type* alone. Storing only the value meant a cached
+/// derivation stayed valid for its whole TTL regardless of its inputs: the threshold
+/// survived the user moving (or editing their manual coordinates), and the daylight
+/// state detected for one day was still served on the next one, where the sun's
+/// path — and so the state — has moved on.
+#[derive(Debug, Clone, Copy)]
+pub(crate) struct CachedThreshold {
+    pub(crate) position: Position,
+    pub(crate) config: ThresholdConfig,
+}
+
+/// The daylight state together with the inputs it was detected from.
+#[derive(Debug, Clone, Copy)]
+pub(crate) struct CachedDaylightState {
+    pub(crate) position: Position,
+    pub(crate) date: Date,
+    pub(crate) state: DaylightState,
+}
+
+/// How long a derived value may stay cached before it is recomputed.
+///
+/// The inputs are checked on every read, so this is only a ceiling for a value whose
+/// inputs never change.
+const DERIVED_TTL: Duration = Duration::from_hours(24);
+
+/// How many times a value was really recomputed on this thread.
+///
+/// Thread-local, like the cache it measures, so a test observes its own work.
+#[cfg(test)]
+mod counters {
+    use std::cell::Cell;
+
+    thread_local! {
+        pub(super) static THRESHOLDS: Cell<u32> = const { Cell::new(0) };
+        pub(super) static DAYLIGHT_STATES: Cell<u32> = const { Cell::new(0) };
+    }
+
+    pub(super) fn bump(counter: &'static std::thread::LocalKey<Cell<u32>>) {
+        counter.with(|value| value.set(value.get() + 1));
+    }
+
+    pub(super) fn read(counter: &'static std::thread::LocalKey<Cell<u32>>) -> u32 {
+        counter.with(Cell::get)
+    }
+}
+
+/// The threshold for `position`, recomputed when the position changes.
+fn cached_threshold(position: &Position) -> ThresholdConfig {
+    let cache = get_cache();
+
+    if let Some(cached) = cache.get::<CachedThreshold>()
+        && cached.position == *position
+    {
+        return cached.config;
+    }
+
+    let config = ThresholdConfig::from_position(position);
+    cache.set(
+        CachedThreshold {
+            position: *position,
+            config,
+        },
+        DERIVED_TTL,
+    );
+
+    #[cfg(test)]
+    counters::bump(&counters::THRESHOLDS);
+
+    config
+}
+
+/// The daylight state for `position` on `date`, recomputed when either changes.
+fn cached_daylight_state(
+    position: &Position,
+    date: Date,
+    threshold: &ThresholdConfig,
+) -> DaylightState {
+    let cache = get_cache();
+
+    if let Some(cached) = cache.get::<CachedDaylightState>()
+        && cached.position == *position
+        && cached.date == date
+    {
+        return cached.state;
+    }
+
+    let state = DaylightState::detect(position, date, threshold);
+    cache.set(
+        CachedDaylightState {
+            position: *position,
+            date,
+            state,
+        },
+        DERIVED_TTL,
+    );
+
+    #[cfg(test)]
+    counters::bump(&counters::DAYLIGHT_STATES);
+
+    state
+}
+
+impl<T: ColorSchemeProvider> ColorSchemeApplier<T> {
     /// Updates the system color scheme based on the current solar position.
     pub(crate) fn update_color_scheme(
         &self,
@@ -340,25 +449,9 @@ impl<T: ColorSchemeProvider> ColorSchemeApplier<T> {
             return Ok(());
         }
 
-        let cache = get_cache();
-
-        let threshold_config = match cache.get::<ThresholdConfig>() {
-            Some(tc) => tc,
-            None => {
-                let tc = ThresholdConfig::from_position(geographic_position);
-                cache.set(tc, Duration::from_hours(24));
-                tc
-            }
-        };
-
-        let daylight_state = match cache.get::<DaylightState>() {
-            Some(ds) => ds,
-            None => {
-                let ds = DaylightState::detect(geographic_position, now.date(), &threshold_config);
-                cache.set(ds, Duration::from_hours(24));
-                ds
-            }
-        };
+        let threshold_config = cached_threshold(geographic_position);
+        let daylight_state =
+            cached_daylight_state(geographic_position, now.date(), &threshold_config);
 
         let current_color_scheme = self.color_scheme_provider.get_current_scheme()?;
         let solar_based_color_scheme = determine_color_scheme_with_hysteresis(
@@ -399,6 +492,270 @@ mod tests {
         ThresholdConfig {
             base_threshold: base,
             hysteresis_band: 0.5,
+        }
+    }
+
+    // ── ColorScheme basics ──────────────────────────────────────────────────
+
+    // ── Derived-value caches ────────────────────────────────────────────────
+    //
+    // The cache in `utils` is keyed by type, so these check what the cached
+    // derivation is allowed to be reused for. Each test reads its thread-local
+    // counter before and after, because the cache itself is thread-local.
+
+    fn date(year: u16, month: Month, day: u8) -> Date {
+        Date::new(year, month, day)
+    }
+
+    #[test]
+    fn the_threshold_is_reused_while_the_position_is_unchanged() {
+        let position = mock_position(35.0);
+        let before = counters::read(&counters::THRESHOLDS);
+
+        let first = cached_threshold(&position);
+        let second = cached_threshold(&position);
+
+        assert_eq!(first.base_threshold, second.base_threshold);
+        assert_eq!(
+            counters::read(&counters::THRESHOLDS) - before,
+            1,
+            "the second lookup has to come from the cache"
+        );
+    }
+
+    /// The regression test for a moved user: the cached threshold stayed valid for
+    /// its whole 24-hour TTL, so the switching threshold kept describing the old
+    /// latitude.
+    #[test]
+    fn the_threshold_cache_is_dropped_when_the_position_changes() {
+        let before = counters::read(&counters::THRESHOLDS);
+
+        let tropics = cached_threshold(&mock_position(5.0));
+        let polar = cached_threshold(&mock_position(70.0));
+
+        assert_ne!(
+            tropics.base_threshold, polar.base_threshold,
+            "the two latitudes need different thresholds"
+        );
+        assert_eq!(
+            polar.base_threshold,
+            ThresholdConfig::from_position(&mock_position(70.0)).base_threshold
+        );
+        assert_eq!(
+            counters::read(&counters::THRESHOLDS) - before,
+            2,
+            "a new position has to be recomputed"
+        );
+    }
+
+    #[test]
+    fn the_daylight_state_is_reused_for_the_same_day_and_position() {
+        let position = mock_position(35.0);
+        let threshold = cached_threshold(&position);
+        let today = date(2026, Month::June, 21);
+        let before = counters::read(&counters::DAYLIGHT_STATES);
+
+        let first = cached_daylight_state(&position, today, &threshold);
+        let second = cached_daylight_state(&position, today, &threshold);
+
+        assert_eq!(first, second);
+        assert_eq!(
+            counters::read(&counters::DAYLIGHT_STATES) - before,
+            1,
+            "the same day must not be detected twice"
+        );
+    }
+
+    /// The regression test for the day rolling over: the state detected yesterday
+    /// stayed cached for up to 24 more hours, although the sun's path — and so the
+    /// extreme state — belongs to the date it was computed for.
+    #[test]
+    fn daylight_state_is_recomputed_on_a_new_day() {
+        let position = mock_position(66.0);
+        let threshold = cached_threshold(&position);
+        let before = counters::read(&counters::DAYLIGHT_STATES);
+
+        cached_daylight_state(&position, date(2026, Month::June, 21), &threshold);
+        cached_daylight_state(&position, date(2026, Month::June, 22), &threshold);
+
+        assert_eq!(
+            counters::read(&counters::DAYLIGHT_STATES) - before,
+            2,
+            "a new date has to be detected again"
+        );
+
+        // And the cached entry now describes the new date.
+        assert_eq!(
+            get_cache().get::<CachedDaylightState>().unwrap().date,
+            date(2026, Month::June, 22)
+        );
+    }
+
+    #[test]
+    fn the_daylight_state_is_recomputed_when_the_position_changes() {
+        let threshold = ThresholdConfig::default_civil();
+        let today = date(2026, Month::June, 21);
+        let before = counters::read(&counters::DAYLIGHT_STATES);
+
+        cached_daylight_state(&mock_position(35.0), today, &threshold);
+        cached_daylight_state(&mock_position(78.0), today, &threshold);
+
+        assert_eq!(
+            counters::read(&counters::DAYLIGHT_STATES) - before,
+            2,
+            "another latitude is another day's sun path"
+        );
+    }
+
+    // ── Latitude zone boundaries ────────────────────────────────────────────
+
+    /// The three documented boundaries: 23.5 (tropics end), 45 (high latitudes
+    /// start) and 66.5 (polar circles).
+    #[test]
+    fn threshold_at_the_documented_latitude_boundaries() {
+        // Below the tropics the threshold is raised, at the boundary it is the plain
+        // civil twilight value.
+        assert!(
+            ThresholdConfig::from_position(&mock_position(23.4)).base_threshold
+                > CIVIL_TWILIGHT_DEG
+        );
+        assert_eq!(
+            ThresholdConfig::from_position(&mock_position(TROPIC_LAT)).base_threshold,
+            CIVIL_TWILIGHT_DEG
+        );
+
+        // 45 itself is still mid-latitude; just above it the threshold deepens.
+        assert_eq!(
+            ThresholdConfig::from_position(&mock_position(HIGH_LAT_BOUNDARY)).base_threshold,
+            CIVIL_TWILIGHT_DEG
+        );
+        assert!(
+            ThresholdConfig::from_position(&mock_position(45.1)).base_threshold
+                < CIVIL_TWILIGHT_DEG
+        );
+
+        // 66.5 itself uses the high-latitude branch; just above it the polar branch
+        // takes over and the threshold drops below it.
+        let high = ThresholdConfig::from_position(&mock_position(ARCTIC_CIRCLE_LAT)).base_threshold;
+        let polar = ThresholdConfig::from_position(&mock_position(66.6)).base_threshold;
+        assert!(
+            polar < high,
+            "the polar branch is deeper: {polar} vs {high}"
+        );
+        assert!(polar >= THRESHOLD_MIN);
+        assert!(high >= THRESHOLD_MIN);
+    }
+
+    #[test]
+    fn the_threshold_never_leaves_the_documented_range() {
+        for latitude in [
+            -90.0, -70.0, -45.0, -23.5, 0.0, 23.5, 45.0, 66.5, 70.0, 90.0,
+        ] {
+            let threshold = ThresholdConfig::from_position(&mock_position(latitude)).base_threshold;
+
+            assert!(
+                (THRESHOLD_MIN..=THRESHOLD_MAX).contains(&threshold),
+                "latitude {latitude} produced {threshold}"
+            );
+        }
+    }
+
+    /// The southern hemisphere is judged by the same rules; the sign of the latitude
+    /// must not change the threshold.
+    #[test]
+    fn the_threshold_is_symmetric_about_the_equator() {
+        for latitude in [10.0, 35.0, 50.0, 70.0] {
+            assert_eq!(
+                ThresholdConfig::from_position(&mock_position(latitude)).base_threshold,
+                ThresholdConfig::from_position(&mock_position(-latitude)).base_threshold,
+            );
+        }
+    }
+
+    // ── Extreme daylight states at real locations ───────────────────────────
+
+    /// Svalbard in June: the sun does not set, so the state is midnight sun at any
+    /// hour and the scheme is forced to light.
+    #[test]
+    fn midnight_sun_at_svalbard_in_june() {
+        let position = Position::from_raw_position(78.22, 15.65, 0.0);
+        let threshold = ThresholdConfig::from_position(&position);
+        let day = date(2026, Month::June, 21);
+
+        let state = DaylightState::detect(&position, day, &threshold);
+
+        assert_eq!(state, DaylightState::MidnightSun);
+    }
+
+    /// Alert in December: the sun stays far below the threshold all day.
+    #[test]
+    fn polar_night_at_alert_in_december() {
+        let position = Position::from_raw_position(82.5, -62.35, 0.0);
+        let threshold = ThresholdConfig::from_position(&position);
+        let day = date(2026, Month::December, 21);
+
+        let state = DaylightState::detect(&position, day, &threshold);
+
+        assert_eq!(state, DaylightState::PolarNight);
+    }
+
+    /// The polar-night fallback is a waking-hours judgement: dark before 7, light
+    /// between 7 and 18, dark again after.
+    #[test]
+    fn polar_night_falls_back_to_the_local_clock() {
+        let config = make_config(-9.0);
+        let position = Position::from_raw_position(82.5, -62.35, 0.0);
+
+        for (hour, expected) in [
+            (0, ColorScheme::Dark),
+            (6, ColorScheme::Dark),
+            (7, ColorScheme::Light),
+            (12, ColorScheme::Light),
+            (17, ColorScheme::Light),
+            (18, ColorScheme::Dark),
+            (23, ColorScheme::Dark),
+        ] {
+            let time = OffsetDateTime::new(
+                2026,
+                Month::December,
+                21,
+                hour,
+                0,
+                0,
+                "+00:00".parse().unwrap(),
+            )
+            .unwrap();
+            let sun = solar_position(&position, time);
+
+            let actual = determine_color_scheme_with_hysteresis(
+                &sun,
+                &ColorScheme::Dark,
+                &config,
+                &time,
+                &DaylightState::PolarNight,
+            );
+
+            assert_eq!(actual, expected, "hour {hour}");
+        }
+    }
+
+    /// Mid-latitudes keep the plain day/night cycle: the states are not triggered.
+    #[test]
+    fn a_mid_latitude_day_is_normal() {
+        let position = Position::from_raw_position(39.9, 116.4, 0.0);
+        let threshold = ThresholdConfig::from_position(&position);
+
+        for (month, day) in [
+            (Month::March, 21),
+            (Month::June, 21),
+            (Month::September, 21),
+            (Month::December, 21),
+        ] {
+            assert_eq!(
+                DaylightState::detect(&position, date(2026, month, day), &threshold),
+                DaylightState::Normal,
+                "{month:?} {day}"
+            );
         }
     }
 
