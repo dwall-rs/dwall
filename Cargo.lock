@@ -476,6 +476,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4e7648175b45a9a48536d676f68d918270699102aa8dab5496df06904c914600"
 
 [[package]]
+name = "cfg_aliases"
+version = "0.2.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f079e83a288787bcd14a6aea84cee5c87a67c5a3e660c30f557a3d24761b3527"
+
+[[package]]
 name = "chacha20"
 version = "0.10.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -895,7 +901,7 @@ checksum = "92773504d58c093f6de2459af4af33faa518c13451eb8f2b5698ed3d36e7c813"
 
 [[package]]
 name = "dwall"
-version = "0.2.5"
+version = "0.3.0-alpha.4"
 dependencies = [
  "dirs",
  "insta",
@@ -906,7 +912,7 @@ dependencies = [
  "serde_json",
  "tauri-winres",
  "thiserror 2.0.21",
- "time 0.2.5",
+ "time 0.3.0-alpha.4",
  "toml 1.1.8+spec-1.1.0",
  "ts-rs",
  "windows",
@@ -915,7 +921,7 @@ dependencies = [
 
 [[package]]
 name = "dwall-settings"
-version = "0.2.5"
+version = "0.3.0-alpha.4"
 dependencies = [
  "dirs",
  "dwall",
@@ -934,12 +940,12 @@ dependencies = [
  "tauri-plugin-single-instance",
  "tauri-plugin-updater",
  "thiserror 2.0.21",
- "time 0.2.5",
+ "time 0.3.0-alpha.4",
  "tokio",
  "toml 1.1.8+spec-1.1.0",
  "ts-rs",
  "windows",
- "zip 8.6.0",
+ "zip 9.0.3",
 ]
 
 [[package]]
@@ -2090,10 +2096,10 @@ checksum = "f9f8bd3e56ce4dfc153cf470fffbfa98c7620958b312ca5c3a4b8d5181fd13c6"
 
 [[package]]
 name = "logging"
-version = "0.2.5"
+version = "0.3.0-alpha.4"
 dependencies = [
  "log",
- "time 0.2.5",
+ "time 0.3.0-alpha.4",
 ]
 
 [[package]]
@@ -2264,6 +2270,18 @@ name = "new_debug_unreachable"
 version = "1.0.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "650eef8c711430f1a879fdd01d4745a7deea475becfb90269c06775983bbf086"
+
+[[package]]
+name = "nix"
+version = "0.31.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "cf20d2fde8ff38632c426f1165ed7436270b44f199fc55284c38276f9db47c3d"
+dependencies = [
+ "bitflags 2.13.2",
+ "cfg-if",
+ "cfg_aliases",
+ "libc",
+]
 
 [[package]]
 name = "num-conv"
@@ -4200,7 +4218,7 @@ dependencies = [
 
 [[package]]
 name = "time"
-version = "0.2.5"
+version = "0.3.0-alpha.4"
 dependencies = [
  "libc",
  "thiserror 2.0.21",
@@ -5417,14 +5435,15 @@ dependencies = [
 
 [[package]]
 name = "zip"
-version = "8.6.0"
+version = "9.0.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2d04a6b5381502aa6087c94c669499eb1602eb9c5e8198e534de571f7154809b"
+checksum = "c2d98561b612a84ae525331a7a094429ef8a5772514ed507ff6db5f54badc971"
 dependencies = [
  "crc32fast",
  "flate2",
  "indexmap 2.14.2",
  "memchr",
+ "nix",
  "typed-path",
  "zopfli",
 ]
