@@ -30,6 +30,8 @@ mod exit {
     pub const AUTOSTART: u8 = 4;
     /// `--once` refused because a daemon already runs.
     pub const ALREADY_RUNNING: u8 = 5;
+    /// The position could not be resolved because the user has location switched off.
+    pub const LOCATION_UNAVAILABLE: u8 = 6;
 }
 
 const USAGE: &str = "\
@@ -55,6 +57,8 @@ EXIT CODES:
     3  the configuration is invalid or unreadable
     4  auto-start registration failed
     5  --once refused because a daemon is already running
+    6  no location: automatic coordinates are on but Windows has location switched off
+       or denied it for this app (the log line names the setting that fixes it)
 
 FILES:
     config  %APPDATA%\\dwall\\config.toml
@@ -231,13 +235,35 @@ fn run(options: Options, once: bool) -> ExitCode {
     match result {
         Ok(()) => ExitCode::from(exit::SUCCESS),
         Err(e) => {
-            // The release binary has no console of its own, so the log file is the
-            // durable record; the message is also printed for `--once` from a shell.
-            logging::error!(error = %e, "Daemon stopped because of a fatal error");
-            eprintln!("error: dwall stopped because of a fatal error: {e}");
-            ExitCode::from(exit::FATAL)
+            let code = exit_code_for(&e);
+
+            if code == exit::LOCATION_UNAVAILABLE {
+                // Not a crash: the user's own setting leaves the daemon without a
+                // position, and it deliberately does not guess one. The message already
+                // names the setting that fixes it, so it goes to the durable log and to
+                // the console.
+                logging::error!(error = %e, "Stopping: automatic location is unavailable");
+                eprintln!("error: {e}");
+            } else {
+                // The release binary has no console of its own, so the log file is the
+                // durable record; the message is also printed for `--once` from a shell.
+                logging::error!(error = %e, "Daemon stopped because of a fatal error");
+                eprintln!("error: dwall stopped because of a fatal error: {e}");
+            }
+
+            ExitCode::from(code)
         }
     }
+}
+
+/// The exit code for a failed run, so callers can tell a missing location apart from a
+/// crash without parsing the message. Both are documented in `docs/headless.md`.
+fn exit_code_for(error: &dwall::error::DwallError) -> u8 {
+    if error.location_unavailable() {
+        return exit::LOCATION_UNAVAILABLE;
+    }
+
+    exit::FATAL
 }
 
 /// Initialises logging: stderr for debug builds, the log file for release builds.
@@ -467,5 +493,50 @@ mod tests {
             "--config is meaningless for auto-start"
         );
         assert!(parse(&["--check-config", "--check-config"]).is_err());
+    }
+
+    // ── Exit codes ──────────────────────────────────────────────────────────
+
+    fn denied() -> dwall::error::DwallError {
+        dwall::solar::GeolocationAccessError::Denied.into()
+    }
+
+    #[test]
+    fn a_missing_location_has_its_own_exit_code() {
+        assert_eq!(exit_code_for(&denied()), exit::LOCATION_UNAVAILABLE);
+
+        let switched_off: dwall::error::DwallError =
+            dwall::solar::GeolocationAccessError::Unspecified.into();
+        assert_eq!(exit_code_for(&switched_off), exit::LOCATION_UNAVAILABLE);
+    }
+
+    /// Everything else is the generic failure code: the distinction only exists for the
+    /// case where retrying or investigating cannot help.
+    #[test]
+    fn other_failures_use_the_fatal_code() {
+        let other: dwall::error::DwallError =
+            dwall::error::DwallError::AsyncTimeout(std::time::Duration::from_secs(30));
+
+        assert_eq!(exit_code_for(&other), exit::FATAL);
+    }
+
+    /// The codes are part of the documented interface, so the help text has to carry
+    /// them — and the new one explains what to do about it.
+    #[test]
+    fn the_help_text_documents_the_exit_codes() {
+        for code in [
+            exit::SUCCESS,
+            exit::FATAL,
+            exit::USAGE,
+            exit::INVALID_CONFIG,
+            exit::AUTOSTART,
+            exit::ALREADY_RUNNING,
+            exit::LOCATION_UNAVAILABLE,
+        ] {
+            assert!(
+                USAGE.contains(&format!("\n    {code}  ")),
+                "the usage text has to list exit code {code}"
+            );
+        }
     }
 }

@@ -16,11 +16,19 @@ use crate::utils::get_cache;
 // ── Geographic position ─────────────────────────────────────────────────────
 
 /// Error type for geolocation access operations
+///
+/// The messages are the whole diagnosis a user gets: they are written to the log, shown
+/// as the engine's last error in the settings window, and printed by the command line,
+/// so each one names the setting that fixes it.
 #[derive(Debug, thiserror::Error)]
 pub enum GeolocationAccessError {
-    #[error("Geolocation permission was denied by the user")]
+    #[error(
+        "Location access was denied for this app. Allow desktop apps in Settings → Privacy & security → Location, or set [position_source] type = \"MANUAL\" with fixed coordinates"
+    )]
     Denied,
-    #[error("Geolocation permission status is unspecified")]
+    #[error(
+        "The Windows location service is off. Turn it on in Settings → Privacy & security → Location, or set [position_source] type = \"MANUAL\" with fixed coordinates"
+    )]
     Unspecified,
 }
 

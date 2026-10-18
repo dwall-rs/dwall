@@ -704,6 +704,19 @@ mod tests {
         }
     }
 
+    /// A machine where the user has switched location off, or denied it for this app.
+    struct DeniedPosition;
+
+    impl PositionProvider for DeniedPosition {
+        fn get_current_position(&self) -> DwallResult<Position> {
+            Err(crate::solar::GeolocationAccessError::Denied.into())
+        }
+
+        fn check_location_permission(&self) -> DwallResult<()> {
+            Err(crate::solar::GeolocationAccessError::Denied.into())
+        }
+    }
+
     /// Records the color schemes the cycle asked for.
     #[derive(Clone, Default)]
     struct RecordingScheme {
@@ -1320,7 +1333,44 @@ azimuth = 0.0
         fixture.cleanup();
     }
 
-    // ── Solar event schedule ────────────────────────────────────────────────
+    // ── Auto location unavailable ───────────────────────────────────────────
+
+    /// The daemon decides to stop based on the error the *engine* returns, so the whole
+    /// chain has to classify: the concrete provider, the caching wrapper that resolves
+    /// manual versus automatic coordinates, and the cycle.
+    #[test]
+    fn a_denied_location_reaches_the_caller_as_a_location_failure() {
+        let fixture = Fixture::new(
+            "denied_location",
+            &["MON-A"],
+            individual(&[("MON-A", "Big Sur")]),
+            &[("Big Sur", &[1, 2])],
+        );
+
+        // Always fresh, so the thread-local position cache cannot answer instead.
+        let source = crate::config::PositionSource::Automatic {
+            update_on_each_calculation: true,
+            cache_minutes: 30,
+        };
+        let engine = ThemeEngine::new(
+            &fixture.config,
+            fixture.wallpapers.clone(),
+            Rc::clone(&fixture.monitors),
+            fixture.scheme.clone(),
+            crate::solar::GeographicPositionProvider::new(&source, DeniedPosition),
+        );
+
+        let error = engine.run_once().unwrap_err();
+
+        assert!(
+            error.location_unavailable(),
+            "the daemon stops on this error, so it has to be classified: {error}"
+        );
+
+        fixture.cleanup();
+    }
+
+    // ── schedule (solar events) ─────────────────────────────────────────────
     //
     // The schedule exists so a frame or light/dark change is applied at the instant it
     // happens instead of up to one interval later. What has to hold is that it finds
