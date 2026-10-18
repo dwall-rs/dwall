@@ -72,3 +72,91 @@ pub fn write_to(directory: &Path, selection: &RandomSelection) -> DwallResult<()
     fs::write(path_in(directory), content)?;
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use time::{Date, Month};
+
+    use super::*;
+
+    fn scratch(name: &str) -> PathBuf {
+        let dir = std::env::temp_dir().join(format!("dwall_random_state_{name}"));
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(&dir).unwrap();
+
+        dir
+    }
+
+    /// The key is compared as a string by the settings UI, so single-digit months
+    /// and days have to be padded.
+    #[test]
+    fn date_key_pads_single_digit_months_and_days() {
+        assert_eq!(date_key(&Date::new(2026, Month::January, 5)), "2026-01-05");
+        assert_eq!(
+            date_key(&Date::new(2026, Month::December, 31)),
+            "2026-12-31"
+        );
+        assert_eq!(date_key(&Date::new(999, Month::September, 9)), "0999-09-09");
+    }
+
+    #[test]
+    fn a_selection_is_built_from_the_date_key() {
+        let selection = RandomSelection::new(&Date::new(2026, Month::June, 21), "Big Sur".into());
+
+        assert_eq!(selection.date, "2026-06-21");
+        assert_eq!(selection.theme_id, "Big Sur");
+    }
+
+    #[test]
+    fn a_missing_file_has_no_selection() {
+        let dir = scratch("missing");
+
+        assert!(read_from(&dir).unwrap().is_none());
+
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn a_selection_round_trips_through_the_file() {
+        let dir = scratch("roundtrip");
+        let selection = RandomSelection::new(&Date::new(2026, Month::June, 21), "Big Sur".into());
+
+        write_to(&dir, &selection).unwrap();
+        let read_back = read_from(&dir).unwrap().expect("the file was just written");
+
+        assert_eq!(read_back.date, selection.date);
+        assert_eq!(read_back.theme_id, selection.theme_id);
+
+        // It lands next to the configuration, not in the cache directory.
+        assert!(dir.join("random_selection.json").is_file());
+
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    /// A truncated file is an error the caller can log, not a silently empty state
+    /// that would make the daemon draw a second theme for the same day.
+    #[test]
+    fn corrupt_selection_json_is_an_error() {
+        let dir = scratch("corrupt");
+        fs::write(dir.join("random_selection.json"), "{ not json").unwrap();
+
+        assert!(read_from(&dir).is_err());
+
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn writing_creates_the_directory() {
+        let dir = scratch("creates").join("nested");
+
+        write_to(
+            &dir,
+            &RandomSelection::new(&Date::new(2026, Month::June, 21), "Big Sur".into()),
+        )
+        .unwrap();
+
+        assert!(read_from(&dir).unwrap().is_some());
+
+        let _ = fs::remove_dir_all(dir.parent().unwrap());
+    }
+}

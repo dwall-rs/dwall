@@ -80,3 +80,74 @@ impl Default for DownloadTaskManager {
         Self::new()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// A task is identified by the theme id, so a second download of the same theme
+    /// has to be refused rather than racing the first one.
+    #[test]
+    fn a_duplicate_task_is_refused() {
+        let manager = DownloadTaskManager::new();
+        manager.add_task("Big Sur").unwrap();
+
+        let error = manager
+            .add_task("Big Sur")
+            .expect_err("already downloading");
+
+        assert!(error.to_string().contains("Big Sur"), "{error}");
+    }
+
+    #[test]
+    fn another_task_can_be_added_at_the_same_time() {
+        let manager = DownloadTaskManager::new();
+        manager.add_task("Big Sur").unwrap();
+
+        assert!(manager.add_task("Catalina").is_ok());
+    }
+
+    #[test]
+    fn cancelling_a_task_sets_its_flag() {
+        let manager = DownloadTaskManager::new();
+        let cancel = manager.add_task("Big Sur").unwrap();
+
+        assert!(!cancel.load(Ordering::Relaxed));
+
+        manager.cancel_task("Big Sur");
+
+        assert!(cancel.load(Ordering::Relaxed));
+    }
+
+    /// Cancelling from the UI can race the download finishing; that is a warning,
+    /// not a panic.
+    #[test]
+    fn cancelling_an_unknown_task_is_a_noop() {
+        let manager = DownloadTaskManager::new();
+
+        manager.cancel_task("never started");
+
+        assert!(manager.add_task("never started").is_ok());
+    }
+
+    /// The guard removes the task when a download ends, so the same theme can be
+    /// downloaded again — including after a failure.
+    #[test]
+    fn removing_a_task_lets_it_be_added_again() {
+        let manager = DownloadTaskManager::new();
+        let first = manager.add_task("Big Sur").unwrap();
+
+        manager.remove_task("Big Sur");
+
+        let second = manager.add_task("Big Sur").expect("the task is gone");
+        assert!(
+            !second.load(Ordering::Relaxed),
+            "a new task gets a fresh flag"
+        );
+
+        // The removed task's flag is not the one the manager hands out any more.
+        manager.cancel_task("Big Sur");
+        assert!(!first.load(Ordering::Relaxed));
+        assert!(second.load(Ordering::Relaxed));
+    }
+}

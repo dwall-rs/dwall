@@ -17,10 +17,17 @@ impl Storage {
         create_dir_if_missing(theme_dir).await.map_err(Into::into)
     }
 
-    /// Update file access time to prevent premature expiration
+    /// Keep a cached file from expiring while it is still in use.
+    ///
+    /// Expiry is decided by the *modification* time (`Cleanup::collect_expired_files`),
+    /// while merely opening a file only touches its access time — which Windows does
+    /// not even maintain by default. A thumbnail used every day therefore still
+    /// expired 30 days after it was downloaded, and the whole cache aged out the same
+    /// way.
     pub(crate) fn update_file_access_time(path: &Path) -> std::io::Result<()> {
-        // Simply open and close the file to update access time
-        File::open(path)?;
+        let file = File::options().write(true).open(path)?;
+        file.set_modified(std::time::SystemTime::now())?;
+
         Ok(())
     }
 
