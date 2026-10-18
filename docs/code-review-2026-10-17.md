@@ -355,9 +355,9 @@ P0（对应第 1、2 节的缺陷，写出来即回归网）：
 
 ---
 
-## 11. 修复记录：批次 1 / 2 / 3 / 4 / 5 / 6（2026-10-17 本轮已实现）
+## 11. 修复记录：批次 1 / 2 / 3 / 4 / 5 / 6 / 7（2026-10-17 本轮已实现）
 
-只做了第 9 节的**批次 1（D1、D2+D3）、批次 2（S1、S2）、批次 3（D5、D6、D4）、批次 4（S3、S4、S5、`.zip` 泄漏、取消不重试）、批次 5（日志轮转上限、时区偏移缓存、去掉整份配置 dump、暴露守护进程最后一条 ERROR）与批次 6（配置生效延迟、写盘顺序、会话过滤与 PID 复用、停止后等待退出）**，其余批次未动。
+只做了第 9 节的**批次 1（D1、D2+D3）、批次 2（S1、S2）、批次 3（D5、D6、D4）、批次 4（S3、S4、S5、`.zip` 泄漏、取消不重试）、批次 5（日志轮转上限、时区偏移缓存、去掉整份配置 dump、暴露守护进程最后一条 ERROR）、批次 6（配置生效延迟、写盘顺序、会话过滤与 PID 复用、停止后等待退出）与批次 7（8.1 的 `ThemeEngine` 泛型化与配置目录参数化 + 被它们解锁的 29 个测试）**，其余批次未动。
 
 ### D1 ✅ 守护进程不再因持续失败而退出
 
@@ -450,6 +450,27 @@ P0（对应第 1、2 节的缺陷，写出来即回归网）：
 - 测试（13 个）：`wait_for_config_change` 3 个（无变化时按时结束、**等待期间的变化会提前结束等待**、配置文件被删除也算变化；翻转验证：把切片等待换成"睡满整个 interval 再检查一次"，前者的耗时从约 1 s 变成 **30.0004 s** 并失败——正是 `interval = 600` 时 10 分钟那条路径）；`is_our_daemon` 3 个（同会话同名匹配、**别的会话不算**、别的可执行文件不算；会话那条已翻转验证）；`session_id_of` 2 个（本进程能取到会话、PID 0 取不到）；`wait_until` 3 个（首次即真、轮询到第 3 次为真、超时放弃）；`wait_for_exit` 2 个（**对自身进程必然超时**、已被回收的 PID 视为已退出）。
 - **本批未验证**：`stop_daemon`/`apply` 的编排顺序（先写盘、等待退出、轮询启动）没有单元测试——它直接操作真实配置文件与真实进程，只能靠代码审阅；跨会话行为同样需要第二个会话/RDP 才能实测（报告第 10 节已列为未验证项）。
 
+### 批次 7 ✅ 8.1 的两处重构 + 被它们解锁的测试（含退出码集成测试）
+
+8.1 的第 2 项（把 `std::process::exit(1)` 改成不退出）在批次 1 已经做掉了，本批做其余两项：
+
+- **`ThemeEngine` 泛型化**（[theme_engine.rs](../crates/dwall/src/theme_engine.rs)、[daemon.rs](../crates/dwall/src/daemon.rs)）：原来四个提供者都是具体类型（`WallpaperSetter`/`DisplayMonitorProvider`/`ColorSchemeScheduler`/`GeographicPositionProvider<Positioner>`），而 `ThemeEngine` 是 `pub(crate)`、`build_engine` 是唯一构造点 —— 于是**整个周期编排层没有任何测试**，[tests/trait_mocks.rs](../crates/dwall/tests/trait_mocks.rs) 里那 7 个测试只能验证 mockall 自己。现在 `ThemeEngine<'a, M, W, C, P>` 对四个提供者泛型，生产路径收在一个类型别名 `PlatformEngine`（[daemon.rs](../crates/dwall/src/daemon.rs)），测试注入自己的替身。顺带补上 `impl<P: PositionProvider> PositionProvider for GeographicPositionProvider<'_, P>`（它此前只有同名固有方法，因此不能作为泛型参数传入）。
+- **周期接受显式本地时间**：帧的选取取决于"那一刻"的太阳位置，而 `process_theme_cycle` 内部读 `OffsetDateTime::now_local()`，所以任何断言"选了哪一帧"的测试都会随运行时间变化（第一次写就踩到了：白天跑期望 `2.jpg`、深夜跑得到 `1.jpg`）。现在拆出 `process_theme_cycle_at(position, now_local)`，测试注入固定时刻。
+- **配置目录参数化**（[catalog.rs](../crates/dwall-settings/src/commands/catalog.rs)、[theme/status.rs](../crates/dwall-settings/src/theme/status.rs)）：`get_theme_catalog` 过去对**每一个**目录条目都 `ConfigReader::read_from_path` 一次（一次文件打开 + 一次 TOML 解析 × 15 个内置主题），现在配置只读一次并作为参数传下去——用类型系统让"每条目读一次"无法再发生；`ThemeStatusProvider` 同样把配置变成参数，`"all"` 聚合的判定因此可测。`DWALL_CONFIG_DIR` 仍留在命令入口（读取用户profile 的那一处）。
+- **`--check-config` 的文档与实现不一致**（[docs/headless.md](./headless.md)）：故障排查表原文说退出 3 时"路径也会被校验"，实测（`themes_directory` 指向不存在的目录）只把目录标成 `(missing)` 并退出 0 —— 这是**有意的**（可以在部署主题之前先校验配置），所以改文档而不是改行为。
+
+**新增测试（+29，全仓 306 → 335）**：
+
+| 文件 | 用例 |
+| --- | --- |
+| `theme_engine.rs`（+12） | `every_configured_monitor_is_attempted_even_when_one_fails`、`a_cycle_where_every_configured_monitor_fails_is_a_failure`（D4 的回归网）、`monitors_without_a_configured_theme_are_skipped_and_do_not_fail_the_cycle`、`a_missing_image_is_reported_per_monitor`、`a_custom_theme_uses_its_manifest_image_format`（`theme.toml` 的格式压过配置）、`lock_screen_is_skipped_when_no_monitor_succeeded`、`lock_screen_theme_is_deterministic_for_a_multi_monitor_map`（跑 5 次）、`a_failing_lock_screen_does_not_fail_the_cycle`、`the_color_scheme_is_updated_even_when_every_monitor_fails`、`the_image_format_comes_from_the_configuration_for_a_legacy_theme`、`the_frame_follows_the_sun_at_the_given_time`（正午 `2.jpg`／午夜 `1.jpg`）、`the_all_variant_applies_one_theme_to_every_monitor` |
+| `tests/headless_cli.rs`（新文件，+5） | `help_exits_zero_and_prints_the_usage`、`an_unknown_flag_exits_two`、`a_broken_config_exits_three`、`check_config_on_a_missing_file_reports_defaults_and_exits_zero`、`once_refuses_with_five_while_a_daemon_runs`（**测试自己 `CreateMutexW` 持有守护进程的会话互斥体**，不启动真守护进程、不碰墙纸；退出码是 `docs/headless.md` 记录在案的对外接口，此前零测试） |
+| `tests/trait_mocks.rs`（重写，7 → 8） | 4 个 mock 定义保留为**签名守卫**（trait 改动即编译失败），测试改为驱动真实的 `GeographicPositionProvider`：自动模式取自后端、缓存窗口内不重复查询（**断言增量**而非绝对值——缓存在 `utils` 里是线程局部的全局对象）、`update_on_each_calculation` 每次都查、手动模式一次都不查、拒绝授权会向上抛出（走 trait 而非固有方法） |
+| `catalog.rs`（+4，该文件首个测试） | `an_installed_catalog_theme_is_marked_installed_and_the_others_are_not`、`a_theme_without_frames_is_not_installed`、`an_installed_custom_theme_becomes_a_catalog_entry`、`without_a_configuration_only_the_downloadable_themes_are_listed` |
+| `theme/status.rs`（+7，该文件首个测试） | `a_named_monitor_gets_its_own_theme`、`a_monitor_without_a_configured_theme_has_none`、`all_monitors_agreeing_returns_that_theme`、`all_disagreeing_monitors_return_nothing`、`all_returns_the_theme_of_the_all_variant`、`without_a_configuration_there_is_no_theme`、`a_configuration_without_a_monitor_map_has_no_theme` |
+
+**未做的 8.1 之外的第 8 节测试**（仍然待办）：`theme.rs` 的 `ThemeValidator`（0 测试）与太阳缓存逐出、`color_scheme.rs` 的跨日重算与 23.5/45/66.5 边界与极昼极夜、`solar.rs` 的 NOAA 金值对照、`config.rs` 的 `write_default` 往返与 watcher、`platform/windows/{async_operation,geolocation,monitor}.rs`、`random_state`/`lazy`/`utils`、settings 的 `network/{client,tasks,progress}`、`thumbnail/{cleanup,storage}`、`theme/{paths,download_url,status}`、`update.rs`、`setup.rs` 与其余 `commands/*`。
+
 ### 本轮验证命令与结果
 
 | 命令 | 结果 |
@@ -458,14 +479,13 @@ P0（对应第 1、2 节的缺陷，写出来即回归网）：
 | `cargo clippy -- -D warnings` / `cargo clippy -r -- -D warnings` | exit 0 / 0 |
 | `cargo clippy -r -p dwall --features build-script,log-max-level-info --all-targets -- -D warnings` | exit 0 |
 | `DWALL_SKIP_BUILD=1 cargo clippy -p dwall-settings --all-targets -- -D warnings` | exit 0 |
-| `DWALL_SKIP_BUILD=1 cargo test` | **306 passed / 0 failed**（批次 1/2 后 239、批次 3 后 252、批次 4 后 279、批次 5 后 293；dwall 124、settings 79、logging 8、time 83） |
-| `bun run check`（tsgo + biome，386 文件） | exit 0，0 error / 0 warning |
-| `bun run test` | **39 passed**（批次 6 不涉及前端） |
-| `bun run build:vite` | 成功；JS 233.2 KB、CSS 122.3 KB（与批次 5 相同） |
+| `DWALL_SKIP_BUILD=1 cargo test` | **335 passed / 0 failed**（批次 1/2 后 239、3 后 252、4 后 279、5 后 293、6 后 306；dwall lib 136、bin 5、headless_cli 5、trait_mocks 8、settings 90、logging 8、time 83） |
+| `bun run check`（tsgo + biome，386 文件） | exit 0，0 error / 0 warning（批次 7 不涉及前端） |
+| `bun run test` | **39 passed** |
 
-第 6 节的**二进制体积数字对本批（乃至批次 3–6）尚未重新测量**：`dwall.exe` 与 `dwall-settings.exe` 都改过（本批还给 settings 加了一个 `windows` feature），表里的 632,832 B / 4,234,240 B 仍是 10/17 那次 release 构建的结果，需要时应重新构建再更新，不要直接引用。
+第 6 节的**二进制体积数字对本批（乃至批次 3–7）尚未重新测量**：`dwall.exe` 与 `dwall-settings.exe` 都改过（本批还给 settings 加了一个 `windows` feature），表里的 632,832 B / 4,234,240 B 仍是 10/17 那次 release 构建的结果，需要时应重新构建再更新，不要直接引用。
 
 ### 仍未做（后续批次）
 
-第 8 节其余测试（含 8.1 的 `ThemeEngine` 泛型化与 `bin/daemon.rs` 的退出码集成测试）、第 9 节批次 8/9（CI 门禁与 P3 清理）。
-批次 4 未处理的相邻项（原报告 2.2 表）：镜像的稳定版通道自废（M1）、续传无 `If-Range`/校验和（M2）、下载与缩略图无并发上限（M3）、缩略图锁表无上限与 100 MB 上限只在未命中时执行（M4）、asset protocol `**/*`（M5）、渲染层可传的 URL/路径（M6）、"读取续命"无效（M7）；另外"应用此主题会静默提交所有未保存的编辑"（[settings.store.ts:173-196](../src/store/settings.store.ts#L173-L196)）仍未处理，它属于前端语义而非本批的生命周期问题。
+第 8 节其余测试（见批次 7 一节末尾的清单：`ThemeValidator`、太阳缓存逐出、跨日重算与阈值边界、NOAA 金值对照、`config.rs` 的 `write_default`/watcher、平台层的 `async_operation`/`geolocation`/`monitor`、settings 的 `network/*`、`thumbnail/{cleanup,storage}`、`update.rs`、`setup.rs`）、第 9 节批次 8/9（CI 门禁与 P3 清理）。
+批次 4 未处理的相邻项（原报告 2.2 表）：镜像的稳定版通道自废（M1）、续传无 `If-Range`/校验和（M2）、下载与缩略图无并发上限（M3）、缩略图锁表无上限与 100 MB 上限只在未命中时执行（M4）、asset protocol `**/*`（M5）、渲染层可传的 URL/路径（M6）、"读取续命"无效（M7）；另外"应用此主题会静默提交所有未保存的编辑"（[settings.store.ts:173-196](../src/store/settings.store.ts#L173-L196)）仍未处理，它属于前端语义而非生命周期问题。

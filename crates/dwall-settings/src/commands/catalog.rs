@@ -2,7 +2,7 @@
 
 use std::path::{Path, PathBuf};
 
-use dwall::config::{ConfigReader, ImageFormat};
+use dwall::config::{Config, ConfigReader, ImageFormat};
 use dwall::theme::{get_theme_directory_path, read_solar_angles};
 use dwall::theme_manifest::ThemeManifest;
 use dwall::wallpaper::WallpaperSelector;
@@ -55,9 +55,31 @@ pub struct CatalogTheme {
     pub installed: bool,
 }
 
+/// The configuration file the commands read, in the user's profile.
+fn default_config_path() -> PathBuf {
+    DWALL_CONFIG_DIR.join("config.toml")
+}
+
+/// Reads the configuration, or `None` when it is missing or unreadable.
+///
+/// A missing configuration is not an error here: the catalog is still the list of
+/// themes that *could* be installed.
+fn read_config(config_path: &Path) -> Option<Config> {
+    ConfigReader::read_from_path(config_path).ok()
+}
+
 /// List the themes available for download, plus the installed custom themes.
 #[tauri::command]
 pub fn get_theme_catalog() -> Vec<CatalogTheme> {
+    catalog_from(read_config(&default_config_path()).as_ref())
+}
+
+/// The catalog for an already-read configuration.
+///
+/// The configuration is a parameter rather than read per entry: it used to be read
+/// and parsed once for *every* catalog theme, which is a file open plus a TOML parse
+/// per entry on a command the library calls on every open.
+fn catalog_from(config: Option<&Config>) -> Vec<CatalogTheme> {
     let mut themes: Vec<CatalogTheme> = THEME_CATALOG
         .iter()
         .map(|&(name, count)| {
@@ -70,18 +92,18 @@ pub fn get_theme_catalog() -> Vec<CatalogTheme> {
                 name: name.to_string(),
                 source: "catalog".to_string(),
                 thumbnails,
-                installed: is_installed(name),
+                installed: is_installed(name, config),
             }
         })
         .collect();
 
-    themes.extend(custom_catalog_themes());
+    themes.extend(custom_catalog_themes(config));
     themes
 }
 
 /// Installed custom themes (`theme.toml`, schema 1) as catalog entries.
-fn custom_catalog_themes() -> Vec<CatalogTheme> {
-    let Ok(config) = ConfigReader::read_from_path(&DWALL_CONFIG_DIR.join("config.toml")) else {
+fn custom_catalog_themes(config: Option<&Config>) -> Vec<CatalogTheme> {
+    let Some(config) = config else {
         return Vec::new();
     };
     let Ok(entries) = std::fs::read_dir(config.customized_themes_directory()) else {
@@ -144,14 +166,25 @@ fn local_thumbnails(theme_dir: &Path, image_format: &ImageFormat) -> Vec<String>
     Vec::new()
 }
 
-fn resolve_theme_dir(theme_id: &str) -> DwallSettingsResult<PathBuf> {
-    let config = ConfigReader::read_from_path(&DWALL_CONFIG_DIR.join("config.toml"))?;
-    let (dir, _is_customized) = get_theme_directory_path(&config, theme_id);
-    Ok(dir)
+fn resolve_theme_dir(
+    theme_id: &str,
+    config: Option<&Config>,
+) -> DwallSettingsResult<Option<PathBuf>> {
+    let Some(config) = config else {
+        return Ok(None);
+    };
+
+    let (dir, _is_customized) = get_theme_directory_path(config, theme_id);
+    Ok(Some(dir))
 }
 
-fn installed_solar_angles(theme_id: &str) -> DwallSettingsResult<Vec<SolarAngle>> {
-    let dir = resolve_theme_dir(theme_id)?;
+fn installed_solar_angles(
+    theme_id: &str,
+    config: Option<&Config>,
+) -> DwallSettingsResult<Vec<SolarAngle>> {
+    let Some(dir) = resolve_theme_dir(theme_id, config)? else {
+        return Ok(Vec::new());
+    };
     if !dir.is_dir() {
         return Ok(Vec::new());
     }
@@ -163,8 +196,8 @@ fn installed_solar_angles(theme_id: &str) -> DwallSettingsResult<Vec<SolarAngle>
 /// A theme whose directory or `solar.json` cannot be read counts as not installed,
 /// which is exactly how the stage treats it: it would have no frames to show and
 /// would offer the download.
-fn is_installed(theme_id: &str) -> bool {
-    !installed_solar_angles(theme_id)
+fn is_installed(theme_id: &str, config: Option<&Config>) -> bool {
+    !installed_solar_angles(theme_id, config)
         .unwrap_or_default()
         .is_empty()
 }
@@ -174,7 +207,7 @@ fn is_installed(theme_id: &str) -> bool {
 /// Returns an empty list when the theme is not installed.
 #[tauri::command]
 pub fn get_theme_wallpapers(theme_id: String) -> DwallSettingsResult<Vec<SolarAngle>> {
-    installed_solar_angles(&theme_id)
+    installed_solar_angles(&theme_id, read_config(&default_config_path()).as_ref())
 }
 
 /// Position (in the theme's `solar.json` array) of the entry whose target solar
@@ -188,8 +221,151 @@ pub fn match_wallpaper(
     altitude: f64,
     azimuth: f64,
 ) -> DwallSettingsResult<Option<usize>> {
-    let angles = installed_solar_angles(&theme_id)?;
+    let angles = installed_solar_angles(&theme_id, read_config(&default_config_path()).as_ref())?;
     Ok(WallpaperSelector::find_closest_entry(
         &angles, altitude, azimuth,
     ))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// A scratch profile with the two theme directories a configuration names.
+    fn scratch(name: &str) -> PathBuf {
+        let dir = std::env::temp_dir().join(format!("dwall_catalog_{name}"));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(dir.join("themes")).unwrap();
+        std::fs::create_dir_all(dir.join("customize")).unwrap();
+
+        dir
+    }
+
+    /// A configuration rooted in `dir`, built through `serde` because the fields are
+    /// private.
+    fn config_at(dir: &Path) -> Config {
+        let json = format!(
+            r#"{{"themes_directory":{},"customized_themes_directory":{}}}"#,
+            serde_json::to_string(&dir.join("themes").to_string_lossy()).unwrap(),
+            serde_json::to_string(&dir.join("customize").to_string_lossy()).unwrap(),
+        );
+
+        serde_json::from_str(&json).unwrap()
+    }
+
+    /// A legacy theme: `solar.json` plus the image its single frame names.
+    fn write_legacy_theme(themes_directory: &Path, theme_id: &str) {
+        let theme_dir = themes_directory.join(theme_id);
+        std::fs::create_dir_all(theme_dir.join("jpg")).unwrap();
+        std::fs::write(
+            theme_dir.join("solar.json"),
+            r#"[{"index": 0, "altitude": 10.0, "azimuth": 20.0}]"#,
+        )
+        .unwrap();
+        std::fs::write(theme_dir.join("jpg").join("1.jpg"), "image").unwrap();
+    }
+
+    fn entry<'a>(catalog: &'a [CatalogTheme], id: &str) -> Option<&'a CatalogTheme> {
+        catalog.iter().find(|theme| theme.id == id)
+    }
+
+    #[test]
+    fn an_installed_catalog_theme_is_marked_installed_and_the_others_are_not() {
+        let dir = scratch("installed");
+        write_legacy_theme(&dir.join("themes"), "Big Sur");
+
+        let catalog = catalog_from(Some(&config_at(&dir)));
+
+        assert!(entry(&catalog, "Big Sur").unwrap().installed);
+        assert!(
+            !entry(&catalog, "Catalina").unwrap().installed,
+            "a theme that is not on disk is what the library offers to download"
+        );
+
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    /// A directory with images but no frames cannot be applied, so it must not be
+    /// reported as installed — the library would otherwise offer no download and the
+    /// stage would show an empty theme.
+    #[test]
+    fn a_theme_without_frames_is_not_installed() {
+        let dir = scratch("no_frames");
+        let theme_dir = dir.join("themes").join("Big Sur");
+        std::fs::create_dir_all(theme_dir.join("jpg")).unwrap();
+        std::fs::write(theme_dir.join("jpg").join("1.jpg"), "image").unwrap();
+
+        let catalog = catalog_from(Some(&config_at(&dir)));
+
+        assert!(!entry(&catalog, "Big Sur").unwrap().installed);
+
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn an_installed_custom_theme_becomes_a_catalog_entry() {
+        let dir = scratch("custom");
+        let theme_dir = dir.join("customize").join("My Theme");
+        std::fs::create_dir_all(theme_dir.join("images")).unwrap();
+        std::fs::write(
+            theme_dir.join("theme.toml"),
+            r#"schema = 1
+
+[theme]
+id = "my-theme"
+name = "My Theme"
+author = "tester"
+version = 1
+created_at = 1700000000
+image_format = "png"
+
+[solar]
+mode = "native"
+
+[[solar.frames]]
+index = 0
+altitude = 10.0
+azimuth = 20.0
+"#,
+        )
+        .unwrap();
+        std::fs::write(theme_dir.join("images").join("1.png"), "image").unwrap();
+
+        let catalog = catalog_from(Some(&config_at(&dir)));
+
+        let custom = entry(&catalog, "My Theme").expect("the custom theme is listed");
+        assert_eq!(custom.source, "custom");
+        assert!(custom.installed);
+        assert_eq!(
+            custom.thumbnails,
+            vec![
+                theme_dir
+                    .join("images")
+                    .join("1.png")
+                    .to_string_lossy()
+                    .into_owned()
+            ]
+        );
+
+        // The manifest's name is what the library shows, not the directory name.
+        assert_eq!(custom.name, "My Theme");
+
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    /// Without a configuration the catalog is still the list of downloadable themes:
+    /// a first run has nothing installed yet.
+    #[test]
+    fn without_a_configuration_only_the_downloadable_themes_are_listed() {
+        let catalog = catalog_from(None);
+
+        assert_eq!(catalog.len(), THEME_CATALOG.len());
+        assert!(catalog.iter().all(|theme| !theme.installed));
+        assert!(catalog.iter().all(|theme| theme.source == "catalog"));
+        assert_eq!(
+            entry(&catalog, "Ventura Graphic").unwrap().thumbnails.len(),
+            5,
+            "the thumbnail count comes from the catalog table"
+        );
+    }
 }

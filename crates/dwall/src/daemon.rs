@@ -118,8 +118,20 @@ fn failure_backoff(consecutive_failures: u32) -> Duration {
         .min(FAILURE_BACKOFF_MAX)
 }
 
+/// The engine wired to the Windows backends, as one name.
+///
+/// [`ThemeEngine`] is generic so its cycle can be tested against doubles; this is
+/// the only place the production providers are named.
+type PlatformEngine<'a> = ThemeEngine<
+    'a,
+    DisplayMonitorProvider,
+    WallpaperSetter,
+    ColorSchemeScheduler,
+    GeographicPositionProvider<'a, Positioner>,
+>;
+
 /// Builds the engine for one configuration generation.
-fn build_engine(config: &Config) -> DwallResult<ThemeEngine<'_>> {
+fn build_engine(config: &Config) -> DwallResult<PlatformEngine<'_>> {
     // One monitor provider, shared with the wallpaper setter: two independent caches
     // meant the setter could still hold a pre-hot-plug snapshot after the engine had
     // refreshed its own, and then fail to find the monitor it was asked for.
@@ -428,7 +440,7 @@ impl DaemonApplication {
     }
 
     /// Runs the engine loop until the configuration changes.
-    fn run_engine_loop(&mut self, theme_engine: &ThemeEngine<'_>) -> DwallResult<()> {
+    fn run_engine_loop(&mut self, theme_engine: &PlatformEngine<'_>) -> DwallResult<()> {
         let update_interval = Duration::from_secs(theme_engine.update_interval().into());
 
         // A configuration change rebuilds the engine, which resets this: the user
