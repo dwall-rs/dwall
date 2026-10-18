@@ -87,7 +87,7 @@ Dwall daemon $Version
 $(('=' * (16 + $Version.Length)))
 
 This archive contains the Dwall daemon on its own: no settings window, no
-WebView2 runtime, about 600 KB. It reads %APPDATA%\dwall\config.toml (creating a
+WebView2 runtime, under 1 MB. It reads %APPDATA%\dwall\config.toml (creating a
 commented default file on the first run) and applies the wallpaper that matches
 the current solar position.
 

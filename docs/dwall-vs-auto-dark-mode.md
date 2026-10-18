@@ -14,7 +14,7 @@ drives the switch and how much of Windows they touch.
 | Also changes | System light/dark theme                              | App/system theme, accent colour, mouse cursors, `.theme` files, taskbar/title bars, grayscale |
 | Extensibility | None                                                | Custom scripts, conditions (gaming, battery, Night Light), hotkeys                  |
 | Stack      | Rust daemon (no async runtime) + Tauri/SolidJS GUI     | .NET 9: WinUI 3 GUI, WinForms-based engine, console CLI shell                        |
-| Footprint  | Daemon ≈4 MB private, 0.6 MB exe; no tray icon         | Not documented by the project; tray icon and named-pipe command server               |
+| Footprint  | Daemon 3–8 MB private, 0.63 MB exe; no tray icon         | Not documented by the project; tray icon and named-pipe command server               |
 | CPU architectures | x64                                              | x64, ARM64                                                                          |
 | Languages  | 6                                                      | 31                                                                                   |
 | Distribution | Installer + portable daemon archive; no Store listing | GitHub, Microsoft Store (free), winget `ArminOsaj.AutoDarkMode`; Chocolatey/Scoop entries are unofficial |
