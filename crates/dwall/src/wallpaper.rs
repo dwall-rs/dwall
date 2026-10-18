@@ -25,8 +25,7 @@ impl WallpaperSelector {
         current_altitude: f64,
         current_azimuth: f64,
     ) -> Option<u8> {
-        Self::find_closest_entry(solar_configs, current_altitude, current_azimuth)
-            .map(|entry| solar_configs[entry].index())
+        FrameIndex::new(solar_configs).find_closest_image(current_altitude, current_azimuth)
     }
 
     /// Finds the position of the solar-angle entry closest to the given position.
@@ -38,36 +37,91 @@ impl WallpaperSelector {
         current_altitude: f64,
         current_azimuth: f64,
     ) -> Option<usize> {
-        solar_configs
-            .iter()
-            .enumerate()
-            .min_by(|(_, a), (_, b)| {
-                // `total_cmp` instead of `partial_cmp().unwrap()`: a theme file is
-                // external data and TOML allows `nan`, which made the unwrap panic
-                // (and the daemon abort on the next cycle).
-                solar_distance(a.altitude(), a.azimuth(), current_altitude, current_azimuth)
-                    .total_cmp(&solar_distance(
-                        b.altitude(),
-                        b.azimuth(),
-                        current_altitude,
-                        current_azimuth,
-                    ))
-            })
-            .map(|(entry, _)| entry)
+        FrameIndex::new(solar_configs).find_closest_entry(current_altitude, current_azimuth)
     }
 }
 
-/// Calculates the normalized distance between two solar positions.
+/// A theme's frames with each declared direction precomputed.
 ///
-/// Altitude spans [-90°, +90°] (180°) and azimuth spans [0°, 360°) and wraps.
-/// Both are normalized to the same scale to avoid over-weighting azimuth.
-fn solar_distance(alt1: f64, az1: f64, alt2: f64, az2: f64) -> f64 {
-    let da = (alt1 - alt2) / 180.0;
+/// The match runs on every cycle and, through the schedule, thousands of times per
+/// recomputation, while a frame's own trigonometry never changes — so it is done once
+/// here instead of once per comparison. The sun's direction is resolved once per query
+/// for the same reason.
+pub(crate) struct FrameIndex {
+    frames: Vec<Frame>,
+}
 
-    let daz_raw = (az1 - az2).abs() % 360.0;
-    let daz = daz_raw.min(360.0 - daz_raw) / 360.0;
+/// One declared frame: the image it shows and the direction it was authored for.
+struct Frame {
+    image_index: u8,
+    entry: usize,
+    sin_altitude: f64,
+    cos_altitude: f64,
+    sin_azimuth: f64,
+    cos_azimuth: f64,
+}
 
-    da * da + daz * daz
+impl FrameIndex {
+    pub(crate) fn new(solar_configs: &[SolarAngle]) -> Self {
+        let frames = solar_configs
+            .iter()
+            .enumerate()
+            .map(|(entry, angle)| {
+                let altitude = angle.altitude().to_radians();
+                let azimuth = angle.azimuth().to_radians();
+
+                Frame {
+                    image_index: angle.index(),
+                    entry,
+                    sin_altitude: altitude.sin(),
+                    cos_altitude: altitude.cos(),
+                    sin_azimuth: azimuth.sin(),
+                    cos_azimuth: azimuth.cos(),
+                }
+            })
+            .collect();
+
+        Self { frames }
+    }
+
+    /// The image of the frame whose direction is the smallest angle away.
+    pub(crate) fn find_closest_image(&self, altitude: f64, azimuth: f64) -> Option<u8> {
+        self.find_closest_entry(altitude, azimuth)
+            .map(|entry| self.frames[entry].image_index)
+    }
+
+    /// The entry of the frame whose direction is the smallest angle away.
+    ///
+    /// The angle itself is never computed: the dot product of two unit vectors is the
+    /// cosine of the angle between them, and `cos` decreases monotonically over `[0, π]`,
+    /// so comparing `1 - cos` compares angles. That is what makes this a solar-*angle*
+    /// match — the azimuth counts for `cos(altitude)` of an altitude degree, which
+    /// matters near the zenith and not at all at the horizon, where an independently
+    /// normalised azimuth would dominate.
+    pub(crate) fn find_closest_entry(&self, altitude: f64, azimuth: f64) -> Option<usize> {
+        let altitude = altitude.to_radians();
+        let azimuth = azimuth.to_radians();
+        let (sin_altitude, cos_altitude) = (altitude.sin(), altitude.cos());
+        let (sin_azimuth, cos_azimuth) = (azimuth.sin(), azimuth.cos());
+
+        let distance = |frame: &Frame| {
+            let cosine = frame.sin_altitude * sin_altitude
+                + frame.cos_altitude
+                    * cos_altitude
+                    * (frame.cos_azimuth * cos_azimuth + frame.sin_azimuth * sin_azimuth);
+
+            1.0 - cosine
+        };
+
+        // `total_cmp` instead of `partial_cmp().unwrap()`: a theme file is external data
+        // and TOML allows `nan`, which made the unwrap panic (and the daemon abort on the
+        // next cycle). Compared as a *distance*, a `nan` frame is the largest value
+        // rather than the smallest, so it simply never wins.
+        self.frames
+            .iter()
+            .min_by(|a, b| distance(a).total_cmp(&distance(b)))
+            .map(|frame| frame.entry)
+    }
 }
 
 #[cfg(test)]
@@ -81,6 +135,28 @@ mod tests {
             SolarAngle::new(2, 20.0, 180.0),
             SolarAngle::new(3, 60.0, 270.0),
         ]
+    }
+
+    /// The angle between two directions, computed independently of the dot product the
+    /// selector minimises, so a test can check the *choice* rather than the formula.
+    fn angle_between(altitude: f64, azimuth: f64, other_altitude: f64, other_azimuth: f64) -> f64 {
+        let (a1, z1) = (altitude.to_radians(), azimuth.to_radians());
+        let (a2, z2) = (other_altitude.to_radians(), other_azimuth.to_radians());
+        let cosine = a1.sin() * a2.sin() + a1.cos() * a2.cos() * (z1 - z2).cos();
+
+        cosine.clamp(-1.0, 1.0).acos().to_degrees()
+    }
+
+    /// The entry a brute-force scan of the true angle picks.
+    fn closest_by_true_angle(angles: &[SolarAngle], altitude: f64, azimuth: f64) -> Option<usize> {
+        angles
+            .iter()
+            .enumerate()
+            .min_by(|(_, a), (_, b)| {
+                angle_between(a.altitude(), a.azimuth(), altitude, azimuth)
+                    .total_cmp(&angle_between(b.altitude(), b.azimuth(), altitude, azimuth))
+            })
+            .map(|(entry, _)| entry)
     }
 
     #[test]
@@ -131,5 +207,112 @@ mod tests {
     #[test]
     fn empty_theme_has_no_match() {
         assert_eq!(WallpaperSelector::find_closest_entry(&[], 0.0, 0.0), None);
+    }
+
+    /// The measured failure of the previous metric: with the sun overhead on the
+    /// equator the azimuth is ill-conditioned, and it chose the 52.4° frame because that
+    /// frame's azimuth was 98° rather than 196° — while the theme also had a 77.1° frame.
+    #[test]
+    fn a_frame_near_the_sun_wins_even_when_its_azimuth_is_far() {
+        let angles = vec![
+            SolarAngle::new(0, 52.4, 98.0),
+            SolarAngle::new(1, 77.1, 196.0),
+        ];
+
+        assert_eq!(
+            WallpaperSelector::find_closest_entry(&angles, 87.1, 1.0),
+            Some(1)
+        );
+    }
+
+    /// The same failure from the other regime: a low winter sun at 55°N, where the sun's
+    /// azimuth barely moves and the frame's azimuth used to dominate the choice.
+    #[test]
+    fn a_low_sun_does_not_lose_to_a_frame_that_merely_shares_its_azimuth() {
+        let angles = vec![
+            SolarAngle::new(0, 8.0, 180.0),
+            SolarAngle::new(1, 12.0, 90.0),
+        ];
+
+        // The sun is at 11.8° due south: the frame 0.2° away in altitude is the match,
+        // not the one 90° away in azimuth.
+        assert_eq!(
+            WallpaperSelector::find_closest_entry(&angles, 11.8, 179.0),
+            Some(0)
+        );
+    }
+
+    /// At the zenith the azimuth carries no information, so two frames that differ only
+    /// in azimuth are equally good — and the first one wins.
+    #[test]
+    fn azimuth_is_irrelevant_at_the_zenith() {
+        let angles = vec![
+            SolarAngle::new(0, 89.0, 0.0),
+            SolarAngle::new(1, 89.0, 180.0),
+        ];
+
+        assert_eq!(
+            WallpaperSelector::find_closest_entry(&angles, 89.0, 90.0),
+            Some(0)
+        );
+    }
+
+    /// The same angular offset counts the same in both axes at the horizon. The previous
+    /// metric measured 5° of azimuth as four times closer than 5° of altitude, so it
+    /// preferred azimuth offsets no matter how far the frame's sun height was.
+    #[test]
+    fn the_same_angular_offset_counts_the_same_in_both_axes() {
+        let angles = vec![SolarAngle::new(0, 5.0, 0.0), SolarAngle::new(1, 0.0, 5.0)];
+
+        // The sun sits at the horizon and due north: 5° from the first frame in altitude
+        // and 5° from the second in azimuth.
+        let to_altitude_frame = angle_between(0.0, 0.0, 5.0, 0.0);
+        let to_azimuth_frame = angle_between(0.0, 0.0, 0.0, 5.0);
+
+        assert!((to_altitude_frame - to_azimuth_frame).abs() < 1e-9);
+        assert!((to_altitude_frame - 5.0).abs() < 1e-9);
+
+        // Either answer is right, and both have to be *equally* good. Compare the chosen
+        // distance rather than the tie-break, which floating point decides.
+        let chosen = WallpaperSelector::find_closest_entry(&angles, 0.0, 0.0).unwrap();
+        let chosen_distance = angle_between(
+            0.0,
+            0.0,
+            angles[chosen].altitude(),
+            angles[chosen].azimuth(),
+        );
+
+        assert!(
+            (chosen_distance - to_altitude_frame).abs() < 1e-9,
+            "the chosen frame is {chosen_distance}° away, not {to_altitude_frame}°"
+        );
+    }
+
+    /// The selector has to agree with a brute-force scan of the true angle across the
+    /// sky, for a theme that covers it.
+    #[test]
+    fn the_choice_matches_a_brute_force_scan_of_the_true_angle() {
+        let angles: Vec<SolarAngle> = (0..8u8)
+            .map(|step| {
+                SolarAngle::new(
+                    step,
+                    -60.0 + 20.0 * f64::from(step),
+                    f64::from(step) * 43.0 % 360.0,
+                )
+            })
+            .collect();
+
+        for altitude_step in -9..=9 {
+            for azimuth_step in 0..24 {
+                let altitude = f64::from(altitude_step) * 10.0;
+                let azimuth = f64::from(azimuth_step) * 15.0;
+
+                assert_eq!(
+                    WallpaperSelector::find_closest_entry(&angles, altitude, azimuth),
+                    closest_by_true_angle(&angles, altitude, azimuth),
+                    "at ({altitude}°, {azimuth}°)"
+                );
+            }
+        }
     }
 }
