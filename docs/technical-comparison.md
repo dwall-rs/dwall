@@ -72,10 +72,18 @@ provisioned without installing anything.
 - **Binary and archive sizes** — file sizes of a release build
   (`bun run build:daemon`, `cargo build -p dwall --release --features build-script,log-max-level-info`)
   and of the generated archive.
-- **Resident memory** — private bytes of the running daemon (0.2.5) as reported by the
-  OS. Working set is larger (≈30 MB) because it counts shared system DLLs that the
-  daemon does not own; private bytes are the meaningful figure for "what does this cost
-  me".
+- **Resident memory** — private bytes of the running daemon as reported by the OS,
+  measured on release builds with `.scripts/measure-daemon-memory.ps1`. The figure
+  depends on what the process has done, not on how long it has run. Before the first
+  wallpaper change it sits at ≈3 MB private bytes with ~270 handles; once the WinRT
+  wallpaper and lock-screen paths have run, it settles at ≈7.5 MB with ~430 handles.
+  A machine whose daemon had been running for thirteen hours and had changed the
+  wallpaper ten times measured 7.5 MB and 427 handles — the same level as a
+  five-minute run that changed it twice, so the extra cost is one-off, not per
+  change. The working set is larger, 23–42 MB, because it counts shared system DLLs
+  that the daemon does not own; private bytes are the meaningful figure for "what
+  does this cost me". A single sample is misleading in both directions: the process
+  holds a dozen threads while the COM/WinRT machinery starts and 4–7 afterwards.
 - **CPU** — not quoted: the daemon computes once per interval (default 15 s) and sleeps
   in between, so any number would depend entirely on the sampling method.
 

@@ -39,9 +39,9 @@
 
 | | DWALL | WinDynamicDesktop | Auto Dark Mode |
 | --- | --- | --- | --- |
-| 常驻私有内存 | ≈4 MB（守护进程，0.2.5） | 未有文档说明 | 未有文档说明 |
+| 常驻私有内存 | 3–8 MB（守护进程；release 构建的私有字节，方法见 [technical-comparison.md](./technical-comparison.md)） | 未有文档说明 | 未有文档说明 |
 | 安装程序 / 压缩包 | 2.0 MB NSIS 安装程序（0.2.5）；0.35 MB 守护进程压缩包 | 每种架构 62–72 MB（自包含） | 未有文档说明 |
-| 主可执行文件 | 0.6 MB 守护进程，3.9 MB 设置程序 | 单个约 70 MB 的可执行文件 | 未有文档说明 |
+| 主可执行文件 | 0.63 MB 守护进程，4.1 MB 设置程序 | 单个约 70 MB 的可执行文件 | 未有文档说明 |
 | 通知区域图标 | 无，出于设计 | 有（应用的操作入口） | 有 |
 
 两个竞品都没有公布 CPU 数据；本文档不臆造任何数字。
@@ -81,7 +81,7 @@
 | Windows 深色模式外加主题色、光标、任务栏 | Auto Dark Mode | DWALL 只切换应用/系统主题值 |
 | 拥有大型社区库的 macOS 风格动态壁纸 | WinDynamicDesktop | 社区目录（427 个免费社区主题）与 `.ddw` 导入 |
 | 脚本化自动化与条件（游戏、电池、环境光） | Auto Dark Mode | 脚本引擎与条件模块 |
-| 尽可能小的常驻进程，无托盘图标 | DWALL | 约 4 MB 私有内存，无通知区域图标 |
+| 尽可能小的常驻进程，无托盘图标 | DWALL | 3–8 MB 私有内存，无通知区域图标 |
 | 依据配置文件进行无界面或受管部署 | DWALL | 便携式守护进程、CLI，守护进程不需要 WebView2 |
 | ARM64 设备 | WinDynamicDesktop、Auto Dark Mode | DWALL 仅提供 x64 |
 | 六种语言之外的非英语界面 | WinDynamicDesktop 或 Auto Dark Mode | 提供约 55 种 / 实装 31 种 |

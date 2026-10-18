@@ -28,8 +28,8 @@
 | `dist-manifests/` | 3,373 B，**内嵌的 sha 与磁盘上的 zip 不一致**（见 6.3） |
 | `target/release` / `target/debug` | 17.09 GB / **60.49 GB**（本机累计 77.6 GB） |
 | 依赖（`cargo tree`） | daemon 正常图 **39** 个 crate-version（含 build-deps 52）；`Cargo.lock` 514 个包；**daemon 图无重复版本**，GUI 图有重复（见 6.2） |
-| 运行中的 `dwall.exe`（已安装 0.3.0-alpha.4） | **1 线程 / 244 句柄 / Private 2.48 MB / 私有工作集 1.38 MB / 工作集 21.25 MB** |
-| 上者 75 秒（约 5 个周期）后复测 | 244 句柄 / 2.477 MB **完全不变**，PeakWorkingSet 21.61 MB |
+| 运行中的 `dwall.exe`（已安装 0.3.0-alpha.4，跑了 13.7 小时、换过 10 次壁纸） | **3 线程 / 427 句柄 / Private 7.51 MB / 工作集 30.41 MB** |
+| 同一二进制的静息态（release 构建，5 分钟 ≈300 周期、未更换壁纸） | **4–7 线程 / 268–286 句柄 / Private 2.84–2.97 MB / 工作集 23.2 MB** |
 
 **图例**：✅ 本轮已逐行独立复核 · ○ 专项评审结论（关键项已抽样复核） · ⚠ 未验证 / 需真机确认。
 严重度：**P1** 必修（崩溃 / 数据损失 / 功能不可用）· **P2** 应修 · **P3** 加固与清理。
@@ -125,8 +125,9 @@
 
 - [docs/headless.md:192](./headless.md#L192)："坏配置不是致命的：守护进程保留上一份配置并每 5 秒重试" → 实际**不保留配置**（引擎已被析构，见 2.1）。
 - [docs/custom-themes.md:6-10](./custom-themes.md#L6-L10) 画的是 `<themes_directory>/<id>/images/<n>.<ext>`，但 [theme.rs:140-152](../crates/dwall/src/theme.rs#L140-L152) 只在**自定义**主题（`customized_themes_directory`）用 `images/`，`themes_directory` 下的主题用的是 `<image_format>/`（如 `jpeg/1.jpg`）。两个根目录的布局**不一样**，而这份文档只写了 `images/`——它同时是 headless 压缩包里唯一的主题格式说明，而手工部署主题正是 headless 场景。
-- [.scripts/package-daemon.ps1:90](../.scripts/package-daemon.ps1#L90) 的 README 硬编码"about 600 KB"，当前二进制已是 631 KB（脚本自己也会打印真实大小）。
-- README "单线程 Rust 守护进程约 4 MB"：实测**私有工作集 1.38 MB / Private 2.48 MB / 工作集 21.25 MB**，"≈4 MB"偏保守；但同一句话里的 "4 MB" 也可能被读成"体积"，而真实二进制是 618 KiB——建议明确写成"常驻内存"。
+- [.scripts/package-daemon.ps1:90](../.scripts/package-daemon.ps1#L90) 的 README 硬编码"about 600 KB"，当前二进制已是 631 KB。**10/18 已改**成"under 1 MB"：这句话是发给无界面用户的随包说明，写死一个会漂移的数字没有意义，脚本打包时本来就会打印真实大小。
+- README "单线程 Rust 守护进程约 4 MB"：这个数字本身**落在实测区间内**（静息 2.9 MB、用过 WinRT 路径后 7.5 MB），问题在于它把两种状态压成了一个数、并且容易被读成"体积"（真实二进制 631 KiB）。**10/18 已改**为"持有 3–8 MB 私有内存——可执行文件本身 0.63 MB"，见 5.3。
+- README/比较文档里的"single-threaded / 单线程"讲的是**代码**（无后台线程、无异步运行时），这一点成立；但**进程**在锁屏/COM 路径上会有 4–7 个系统线程（启动瞬间 9–14 个），不要把它读成"进程只有一个线程"。见 5.2。
 
 ---
 
@@ -164,13 +165,42 @@
 
 ## 5. 内存占用
 
-**结论：守护进程的内存纪律是本仓库最扎实的部分，本轮未发现新的无界增长。**
+**结论：守护进程的内存纪律是本仓库最扎实的部分；本轮用两个二进制、四轮可复现的测量把上一版第 5 节那句"75 秒不变"换成了真正能支撑结论的证据，并顺带发现文档里的"≈4 MB / 1 线程"两头都不准确。**
 
-- 实测（已安装 0.3.0-alpha.4，运行中）：**1 线程、244 句柄、Private 2.48 MB、私有工作集 1.38 MB、工作集 21.25 MB**；75 秒后（约 5 个周期）句柄与 Private **一个字节都没变** → P1-14 的 `CoTaskMemFree` guard（[wallpaper.rs:50-60](../crates/dwall/src/platform/windows/wallpaper.rs#L50-L60)）确实生效，曾经的"每显示器每周期泄漏一块 COM 内存"已闭环。
+### 5.1 测量方法（10/18 重测，`.scripts/measure-daemon-memory.ps1` 可复现）
+
+- 用**测量脚本**启动守护进程，配置抄自用户真实 `config.toml` 的临时副本（真文件不改），只改两处：`interval = 1`、`auto_detect_color_scheme = false`。前者是因为真实配置 600 秒一次，5 分钟只覆盖约 4 个周期，看不见"每周期是否增长"；1 秒一次让 5 分钟覆盖 **≈300 个周期**（≈真实节奏下两天的工作量），且每周期仍走真实路径（显示器枚举、主题取帧、COM 换壁纸、锁屏比较）。关掉主题切换是为了不让测量翻转机器的浅色/深色主题。
+- 每 15 秒采一次 Private bytes / 工作集 / 句柄 / 线程，取**后三分之一**作为平台值（前几个周期是 COM/WinRT 机制的启动期）。
+- 脚本从守护进程自己的日志里统计本轮**真正应用了几次壁纸**——没有这个自证，数字无法归因（见 5.2 的第二行）。
+
+### 5.2 实测（同一协议，两个二进制各 5 分钟）
+
+| 二进制 | 本轮真正换壁纸 | Private | 工作集 | 句柄 | 线程 |
+| --- | --- | --- | --- | --- | --- |
+| 工作树（批次 1–9） | 0 次 | **2.84–2.94 MB** | 23.1–23.3 MB | 269–281 | 4–7 |
+| 已安装 0.3.0-alpha.4 | 0 次 | **2.85–2.97 MB** | 23.2 MB | 268–278 | 4–7 |
+| 工作树（批次 1–9） | **2 次**（Big Sur → Catalina） | **7.54–7.65 MB** | 42.0 MB | 453–465 | 5–6 |
+| 已安装 0.3.0-alpha.4 | **2 次**（强制固定为 Big Sur） | **4.20–4.77 MB** | 33.3–35.2 MB | 359–417 | 4–13 |
+| 用户真实运行 13.7 小时（alpha.4，interval=600） | **10 次** | **7.51 MB** | 30.4 MB | 427 | 3 |
+
+由此得到三条**已实测**的结论：
+
+1. **不是泄漏，也没有批次回退。** 静息态下工作树与已发布 alpha.4 落在同一区间（2.84–2.97 MB / 268–286 句柄），300 个周期内持平不涨。
+2. **一次性的"换过壁纸"成本。** 进程一旦真正应用过壁纸/锁屏，Private 会多出几 MB 并**保持**在那里：13.7 小时里换 10 次（7.51 MB）与 5 分钟里换 2 次（7.5 MB）处于同一水平 → **不是每次更换都增加**。这解释了文档里 2.48 MB 与实测 7.51 MB 的差距：上一版是在一台刚刚启动、还没真正换过壁纸的守护进程上采的。
+3. **"1 线程"是采样假象。** 线程数在 COM/WinRT 机制启动时短暂到 9–14，随后回落到 4–7；任何单次快照都可能报出任一值。Rust 侧确实是单线程（无后台线程、无异步运行时），但**进程**不是——锁屏路径会把 `WinTypes`/`windows.storage`/`Windows.UI.Immersive` 等一整套 Shell/WinRT 模块拉进来（`combase`/`ole32` 亦常驻），这才是工作集 23→42 MB 的来源。因此 AGENTS.md 的"single-threaded"（讲代码）成立，而 README 面向用户的"single-threaded daemon…4 MB"需要按 5.3 改写。
+
+### 5.3 已同步修正的文档
+
+12 处（中英各半）把守护进程内存写成"≈4 MB"，现在统一为 **3–8 MB**（静息 ≈3、用过 WinRT 路径后 ≈7.5），并把"这 4 MB 是内存还是体积"的歧义改掉：README 现在写明"持有 3–8 MB 私有内存——可执行文件本身 0.63 MB"。方法说明集中在 [docs/technical-comparison.md](technical-comparison.md)（中英），共享规格在 [docs/shared-comparison-content.md](shared-comparison-content.md)；两处都给出测量脚本路径，符合 `docs/README.md`"说明数字如何取得"的要求。
+
+### 5.4 仍然有界的缓存（上一版结论，保持不变）
+
 - 缓存全部有界：主题角度 LRU = 32（[theme.rs:73](../crates/dwall/src/theme.rs#L73)）；显示器信息 300 s（[monitor.rs:434](../crates/dwall/src/platform/windows/monitor.rs#L434)）；typed cache 固定 4 槽 TTL（[utils.rs:115-122](../crates/dwall/src/utils.rs#L115-L122)）；命中返回 `Rc`，不克隆角度表。
 - 无后台线程（全仓只有 `std::thread::sleep`）；不长期持有 WinRT 对象（`Geolocator` 每次调用新建并析构，只长期持有 `IDesktopWallpaper` 与命名互斥体句柄）。
 - 剩余的三处严格意义上的违规：`MONITOR_FRIENDLY_NAMES_CACHE` 无上限（2.1）；瞬时分配方面每周期有 2 次显示器 `HashMap` 克隆 + 1 次 `canonicalize` + 每个显示器几条 `PathBuf`/`format!`（D6 的枚举频率放大了这些）；typed cache 的 `SolarPosition` 槽位从未使用（死槽）。
 - 设置端才是内存与线程的大头（Tauri + WebView2 + 两个 tokio 运行时），但只在窗口打开时存在，符合产品定位。
+
+**留待确认（未验证）**：4.2 MB 与 7.6 MB 这两个"换过壁纸"的平台值之间还差 3 MB，最可能是**位置刷新次数**（真实配置 30 分钟刷新一次，13.7 小时里约 27 次 WinRT `Geolocator` 调用；我的 5 分钟运行只调用 1 次），但我没有做过"高频位置刷新"的对照实验，所以这只是最可能的解释，不是结论。
 
 ---
 
@@ -358,13 +388,13 @@ P0（对应第 1、2 节的缺陷，写出来即回归网）：
 - **本机 `/target` 与 `dist/` 已在 10/18 10:36–10:39 重新构建并实测**（第 6.1 节），源码是含批次 1–9 的工作树 + 未提交的版本号改动；**NSIS 安装包没有重测**（打包需要 CI 才有的 updater 签名私钥）。不同 `--features` 组合的体积差异仍未单独测量。
 - **daemon 二进制的逐 crate 体积占比没有测量**（需要 `cargo bloat` + 重建）；第 6.2 节的排序只是按依赖权重的推测（已标注）。
 - 前端专项评审里的**运行时行为**结论（toast 流、抽屉聚焦、Solid store 语义）我逐项复核了关键链条（D2/D3 与死 CSS 已实测），其余为源码级推断。
-- 内存采样基于**已安装的 0.3.0-alpha.4**（不是 `target/release/dwall.exe`），36 分钟 / 144 个周期只能界定而不能证伪更慢的泄漏。
+- 内存采样已在 10/18 重做（第 5 节）：已安装的 0.3.0-alpha.4 与工作树构建各两轮、同一协议、每轮 5 分钟 ≈300 周期，并由日志自证本轮是否真的换过壁纸。**仍未验证**的是：4.2 MB 与 7.6 MB 两个"换过壁纸"平台值之间的 3 MB 差值（最可能是位置刷新次数的差别），以及真实节奏（interval=600）下更长时间（数周）的走势——300 个周期覆盖的是"两天工作量"，不是日历时间。
 
 ---
 
-## 11. 修复记录：批次 1 ~ 9（2026-10-17 ~ 10-18 本轮已实现）
+## 11. 修复记录：批次 1 ~ 10（2026-10-17 ~ 10-18 本轮已实现）
 
-只做了第 9 节的**批次 1（D1、D2+D3）、批次 2（S1、S2）、批次 3（D5、D6、D4）、批次 4（S3、S4、S5、`.zip` 泄漏、取消不重试）、批次 5（日志轮转上限、时区偏移缓存、去掉整份配置 dump、暴露守护进程最后一条 ERROR）、批次 6（配置生效延迟、写盘顺序、会话过滤与 PID 复用、停止后等待退出）、批次 7（8.1 的 `ThemeEngine` 泛型化与配置目录参数化 + 29 个测试）、批次 8（第 8 节测试的 theme/color_scheme/config/solar 部分 + 四个缓存与校验缺陷）与批次 9（第 8 节的 utils/random_state/settings network+thumbnail 部分 + 缩略图缓存永不续命）**，其余批次未动。
+只做了第 9 节的**批次 1（D1、D2+D3）、批次 2（S1、S2）、批次 3（D5、D6、D4）、批次 4（S3、S4、S5、`.zip` 泄漏、取消不重试）、批次 5（日志轮转上限、时区偏移缓存、去掉整份配置 dump、暴露守护进程最后一条 ERROR）、批次 6（配置生效延迟、写盘顺序、会话过滤与 PID 复用、停止后等待退出）、批次 7（8.1 的 `ThemeEngine` 泛型化与配置目录参数化 + 29 个测试）、批次 8（第 8 节测试的 theme/color_scheme/config/solar 部分 + 四个缓存与校验缺陷）、批次 9（第 8 节的 utils/random_state/settings network+thumbnail 部分 + 缩略图缓存永不续命）与批次 10（体积重测 + 守护进程内存实测与 12 处文档修正）**，其余批次未动。
 
 ### D1 ✅ 守护进程不再因持续失败而退出
 
@@ -523,6 +553,15 @@ P0（对应第 1、2 节的缺陷，写出来即回归网）：
 
 **仍未做的第 8 节测试**：`platform/windows/{async_operation,geolocation,monitor}.rs`（`poll` 注入闭包、`TimeSpan` 换算、显示器缓存 TTL 与友好名缓存上限）、`update.rs`、`setup.rs` 与其余 `commands/*`、`solar.rs` 的 NOAA 金值对照（需要外部参考数据，我没有编造数值）。
 
+### 批次 10 ✅ 重测体积、实测守护进程内存、把 12 处文档改对（**没有改任何产品代码**）
+
+- **二进制体积**（6.1 节）：`bun run build:daemon` + `tauri build --no-bundle --features log-max-level-info` 重建，`dwall.exe` **646,144 B**（+2.1% vs 10/17）、`dwall-settings.exe` **4,257,280 B**（+0.54%）、`dist/` **386,869 B**；NSIS 安装包**未重测**（打包需要 CI 才有的 updater 签名私钥，见 6.1 的说明），没有拿旧数字冒充新数字。
+- **守护进程内存**（5 节重写）：新增 [.scripts/measure-daemon-memory.ps1](../.scripts/measure-daemon-memory.ps1)，把"用户真实配置 + `interval=1` + 关掉主题切换"做成可复现脚本，**并由守护进程日志自证本轮到底换过几次壁纸**——这一步是关键：两个二进制在同一协议下的静息值完全一致（2.84–2.97 MB / 268–286 句柄），而"真正换过壁纸"的进程会稳定在 4.2–7.6 MB，13.7 小时换 10 次与 5 分钟换 2 次处于同一水平（不是每次更换都涨）。
+- **纠正了上一版第 5 节的两处不准确**：`1 线程` 是单次快照的假象（启动期 9–14、稳态 4–7）；`2.48 MB` 采自一台还没真正换过壁纸的进程，而用户真实运行 13.7 小时后是 7.51 MB / 427 句柄。
+- **12 处文档修正**（中英各半）：`README(.zh-CN)`、`docs/shared-comparison-content(.zh-CN)`、`docs/user-benefits(.zh-CN)`、`docs/dwall-vs-windynamicdesktop(.zh-CN)`、`docs/dwall-vs-auto-dark-mode(.zh-CN)` 统一为 **3–8 MB**，README 并写明这 3–8 MB 是私有内存（可执行文件 0.63 MB），方法说明集中在 `docs/technical-comparison(.zh-CN)`，符合 `docs/README.md` 的"说明数字如何取得"。
+- **顺带更正的一处我自己的错误**：原文说 GUI 二进制里链接了两套 `toml`；`cargo tree -i toml@0.8.2` 显示它只经 `system-deps` 作为 Linux 目标的 build-dependency 存在，Windows 目标下不可达（6.2 节已更正并撤回该例子）。
+- **方法学上的自我修正**：测量脚本第一版把 `$Samples` 参数与局部 `$samples` 撞在一起（PowerShell 变量名大小写不敏感），第一次冒烟测试还留下了两个游离守护进程占住互斥体——两者都已修掉，并在脚本里写明了原因。
+
 ### 本轮验证命令与结果
 
 | 命令 | 结果 |
@@ -532,8 +571,9 @@ P0（对应第 1、2 节的缺陷，写出来即回归网）：
 | `cargo clippy -r -p dwall --features build-script,log-max-level-info --all-targets -- -D warnings` | exit 0 |
 | `DWALL_SKIP_BUILD=1 cargo clippy -p dwall-settings --all-targets -- -D warnings` | exit 0 |
 | `DWALL_SKIP_BUILD=1 cargo test` | **407 passed / 0 failed**（批次 1/2 后 239、3 后 252、4 后 279、5 后 293、6 后 306、7 后 335、8 后 376；dwall lib 187、bin 5、headless_cli 5、trait_mocks 8、settings 111、logging 8、time 83） |
-| `bun run check`（tsgo + biome，386 文件） | exit 0，0 error / 0 warning（批次 9 不涉及前端） |
+| `bun run check`（tsgo + biome，386 文件） | exit 0，0 error / 0 warning（批次 9/10 不涉及前端） |
 | `bun run test` | **39 passed** |
+| `.scripts/measure-daemon-memory.ps1`（批次 10） | 6 轮测量：静息 2.84–2.97 MB / 268–286 句柄（两个二进制各 2 轮）、换过壁纸后 4.20–7.65 MB / 359–465 句柄（2 轮）、用户真实 13.7 小时 7.51 MB / 427 句柄；每轮 5 分钟 ≈300 周期，原始样本在 `%TEMP%\dwall_memtest\samples-*.csv` |
 
 第 6.1 节的二进制体积数字已在 10/18 用规范命令重建后更新（`dwall.exe` 646,144 B、`dwall-settings.exe` 4,257,280 B、`dist/` 386,869 B）；**NSIS 安装包未重测**，因为它需要 CI 才有的 updater 签名私钥。
 

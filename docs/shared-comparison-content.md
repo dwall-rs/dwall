@@ -42,9 +42,9 @@ a project's language or architecture.
 
 | | DWALL | WinDynamicDesktop | Auto Dark Mode |
 | --- | --- | --- | --- |
-| Resident private memory | ≈4 MB (daemon, 0.2.5) | Not documented | Not documented |
+| Resident private memory | 3–8 MB (daemon; private bytes of a release build, see [technical-comparison.md](./technical-comparison.md)) | Not documented | Not documented |
 | Installer / archive | 2.0 MB NSIS installer (0.2.5); 0.35 MB daemon archive | 62–72 MB per architecture (self-contained) | Not documented |
-| Main executable | 0.6 MB daemon, 3.9 MB settings | Single ~70 MB executable | Not documented |
+| Main executable | 0.63 MB daemon, 4.1 MB settings | Single ~70 MB executable | Not documented |
 | Notification-area icon | None, by design | Yes (the app's control surface) | Yes |
 
 Neither competitor publishes CPU figures; this document does not invent any.
@@ -84,7 +84,7 @@ Neither competitor publishes CPU figures; this document does not invent any.
 | Windows dark mode plus accent colour, cursors, taskbar | Auto Dark Mode | DWALL only switches the app/system theme value |
 | macOS-style dynamic wallpapers with a large community library | WinDynamicDesktop | Community catalogue (427 free community themes) and `.ddw` import |
 | Scripted automation and conditions (gaming, battery, ambient light) | Auto Dark Mode | Script engine and condition modules |
-| The smallest possible always-on process, no tray icon | DWALL | ≈4 MB private, no notification-area icon |
+| The smallest possible always-on process, no tray icon | DWALL | 3–8 MB private, no notification-area icon |
 | Headless or managed deployment from a config file | DWALL | Portable daemon, CLI, no WebView2 needed for the daemon |
 | ARM64 devices | WinDynamicDesktop, Auto Dark Mode | DWALL ships x64 only |
 | Non-English interface beyond six languages | WinDynamicDesktop or Auto Dark Mode | ~55 offered / 31 shipped |

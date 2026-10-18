@@ -13,8 +13,9 @@ English | <a href="./README.zh-CN.md">简体中文</a>
 A Windows dynamic-wallpaper app that follows the **sun's position**, not a clock: it
 computes solar altitude and azimuth locally and applies the theme frame that matches,
 moving the system light/dark theme and the lock screen with it (the theme switch is on by
-default and can be turned off). The always-on part is a single-threaded Rust daemon of
-about 4 MB; the settings window is a separate process that only runs while it is open.
+default and can be turned off). The always-on part is a single-threaded Rust daemon that
+holds 3–8 MB of private memory — the executable itself is 0.63 MB — and the settings
+window is a separate process that only runs while it is open.
 
 ## How it compares
 
@@ -25,7 +26,7 @@ about 4 MB; the settings window is a separate process that only runs while it is
 | Lock screen | Yes | Yes | Not documented |
 | Per-monitor themes | Yes | Yes | Yes |
 | Scripting / automation | None | PowerShell scripts, CLI | Scripts, conditions, hotkeys |
-| Always-on cost | ≈4 MB daemon, no tray icon | Not documented; ~70 MB app with tray icon | Not documented; tray icon |
+| Always-on cost | 3–8 MB daemon, no tray icon | Not documented; ~70 MB app with tray icon | Not documented; tray icon |
 | Architectures / languages | x64 / 6 | x86, x64, ARM64 / ~55 offered | x64, ARM64 / 31 |
 | Distribution | GitHub releases | GitHub, Microsoft Store, winget, Scoop, Chocolatey | GitHub, Microsoft Store, winget |
 | Licence | AGPL-3.0-only | MPL-2.0 | GPL-3.0 |
