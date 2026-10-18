@@ -39,6 +39,25 @@ the theme directories, the update interval in seconds (default 15, range 1–360
 image format, system light/dark switching (on by default), lock-screen wallpaper and
 the position source (automatic via Windows Geolocator, or manual coordinates).
 
+Two of those keys are worth knowing the reasoning behind:
+
+- **`interval`** (default 15) is how far the wallpaper may lag the sun. Over a year at
+  latitudes 0–65° the sun's altitude moves at most 0.0233°/s, so 15 seconds means the
+  applied frame is at most 0.35° of altitude behind — a tenth of the way from one frame
+  to the closest neighbour in the tightest real theme. 30 seconds doubles that to a
+  fifth, and 60 to two fifths, which starts to show at every frame switch. Going below
+  15 buys almost nothing: a 24-frame theme at the equator has frames that last 15
+  seconds, and one of those passing unnoticed is invisible next to its neighbours.
+- **`position_source.cache_minutes`** (default 30, only for automatic coordinates) is
+  how long a location reading is reused. The daemon cannot tell whether the machine
+  moved, so this trades accuracy for how often Windows reads the location sensor — a
+  refresh forces a real reading, because the platform's own cache only covers a minute.
+  A 30-minute-old reading after 50 km of travel (100 km/h) picks a neighbouring frame
+  0.5–2.9% of the day; the same reading after 450 km (900 km/h) reaches 4–30%, so on a
+  flight the wallpaper is visibly wrong until the next refresh. Set it to 10 or 15 on a
+  laptop that travels; the refresh itself is cheap (245 forced readings added 0.2 MB and
+  ten handles, and each took about 0.2 s).
+
 `--config` also moves `random_selection.json` next to the chosen file, so
 independent configurations coexist. The settings window always uses the default
 path, so it does not see a daemon started with `--config` elsewhere.

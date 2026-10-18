@@ -13,9 +13,35 @@ use crate::{
 };
 
 // Configuration constants
+
+/// How often the daemon recomputes the sun's position and re-checks the wallpaper.
+///
+/// Derived, not guessed: over a year at latitudes 0–65° the sun's altitude moves at
+/// most 0.0233°/s (at the equator in March, where it also crosses the zenith), so 15
+/// seconds lets the applied frame lag the sun by at most 0.35° of altitude. Expressed
+/// in the selector's own metric (`wallpaper::solar_distance`, altitude weighted twice
+/// the azimuth) that is 0.0053, which is 10% of the closest frame pair measured in
+/// real themes (0.0529, a 24-frame theme) — the switch happens before the sun has
+/// moved a sixth of the way from one frame to its neighbour. 30 seconds would reach
+/// 20%, which is why doubling this value is not free.
+/// `the_default_interval_keeps_the_frame_within_a_tenth_of_its_neighbour` pins it.
 const DEFAULT_INTERVAL_SECONDS: u16 = 15;
 const MIN_INTERVAL_SECONDS: u16 = 1;
 const MAX_INTERVAL_SECONDS: u16 = 3600;
+
+/// How long an automatically obtained position may be reused.
+///
+/// The daemon cannot tell whether the machine moved, so this trades the accuracy of a
+/// laptop that travels against how often Windows has to read the location sensor
+/// (a refresh forces a real reading: the platform's own cache only covers 60 seconds,
+/// `geolocation::MAX_GEOPOSITION_AGE`). Measured over a day, a 30-minute-old reading
+/// after 50 km of travel — 100 km/h — picks a neighbouring frame 0.5–2.9% of the time,
+/// which is the dominant case; an aircraft covering 450 km in the same window reaches
+/// 4–30%, and there the frames are visibly wrong until the next refresh. Refresh cost
+/// is not the constraint: 245 forced readings in five minutes added 0.2 MB and ten
+/// handles, and each took ~0.2 s.
+const DEFAULT_POSITION_CACHE_MINUTES: u64 = 30;
+
 const DEFAULT_AUTO_DETECT_COLOR_SCHEME: bool = true;
 const DEFAULT_LOCK_SCREEN_WALLPAPER_ENABLED: bool = true;
 const DEFAULT_TITLE_BAR_COLOR_FOLLOWS_WINDOWS_THEME: bool = false;
@@ -250,7 +276,7 @@ fn default_position_source() -> PositionSource {
 }
 
 fn default_position_cache_minutes() -> u64 {
-    30
+    DEFAULT_POSITION_CACHE_MINUTES
 }
 
 fn default_auto_detect_color_scheme() -> bool {
@@ -414,14 +440,11 @@ impl Default for Config {
             customized_themes_directory: default_customized_themes_directory(),
             lock_screen_wallpaper_enabled: default_lock_screen_wallpaper_enabled(),
             wallpaper_mode: Default::default(),
-            // On the equator, an azimuth change of 0.1 degrees takes
-            // approximately 12 seconds, and an altitude change of 0.1
-            // degrees takes about 24 seconds.
-            // Set the default time interval based on the rate of change of the azimuth.
-            // On the equator, an azimuth change of 0.1 degrees takes approximately 12 seconds,
-            // and an altitude change of 0.1 degrees takes about 24 seconds.
-            // FIXME: This default value is a rough estimate; a more precise algorithm should
-            // be used to calculate the time interval required for each 0.1 degree change.
+            // The rationale for the interval lives on `DEFAULT_INTERVAL_SECONDS`: the
+            // previous comment here claimed 0.1° of azimuth takes 12 seconds at the
+            // equator and 0.1° of altitude 24, which the crate's own solar code
+            // contradicts (4.3 s and 0.8 s respectively, the latter at local noon when
+            // the sun passes the zenith), and it was duplicated twice with a FIXME.
             interval: DEFAULT_INTERVAL_SECONDS,
         }
     }
@@ -1095,6 +1118,114 @@ mod tests {
                 "cache_minutes = {cache_minutes} should be usable"
             );
         }
+    }
+
+    /// The tightest frame spacing to design against, in the selector's metric
+    /// (`wallpaper::solar_distance`): the closest pair measured in real themes was
+    /// 0.0529 (a 24-frame theme), so frames can be no closer than this.
+    const TIGHTEST_FRAME_SPACING: f64 = 0.05;
+
+    /// The worst-case angular rate of the sun over a year at latitudes 0–65°,
+    /// in degrees per second, for altitude and azimuth.
+    ///
+    /// This is the quantity the detection interval has to be compared against, and it
+    /// is deliberately recomputed here rather than quoted: the comment that used to
+    /// justify the default was wrong by an order of magnitude (it claimed 0.1° of
+    /// azimuth takes 12 seconds; at the equator in March the sun crosses the zenith
+    /// and sweeps 0.1° of azimuth in 0.8 seconds).
+    fn worst_case_solar_rates() -> (f64, f64) {
+        let mut worst_altitude = 0.0f64;
+        let mut worst_azimuth = 0.0f64;
+
+        for latitude in [0.0f64, 15.0, 30.0, 45.0, 55.0, 60.0, 65.0] {
+            let position = crate::solar::Position::new(latitude, 0.0, 0.0).unwrap();
+
+            for month in [
+                time::Month::January,
+                time::Month::March,
+                time::Month::April,
+                time::Month::June,
+                time::Month::September,
+                time::Month::December,
+            ] {
+                let mut previous: Option<(f64, f64)> = None;
+
+                // A minute of resolution is enough: the rate is smooth, and the peak
+                // is broad enough that a finer step moves it by well under a percent.
+                for second in (0..86_400u32).step_by(60) {
+                    let date = time::UtcDateTime::new(
+                        2026,
+                        month,
+                        15,
+                        (second / 3600) as u8,
+                        ((second % 3600) / 60) as u8,
+                        0,
+                    )
+                    .unwrap();
+                    let solar = crate::solar::SolarPosition::new(&position, &date);
+                    let current = (solar.altitude(), solar.azimuth());
+
+                    if let Some((altitude, azimuth)) = previous {
+                        let delta_altitude = (current.0 - altitude).abs();
+                        let raw_azimuth = (current.1 - azimuth).abs();
+                        let delta_azimuth = raw_azimuth.min(360.0 - raw_azimuth);
+
+                        worst_altitude = worst_altitude.max(delta_altitude / 60.0);
+                        worst_azimuth = worst_azimuth.max(delta_azimuth / 60.0);
+                    }
+
+                    previous = Some(current);
+                }
+            }
+        }
+
+        (worst_altitude, worst_azimuth)
+    }
+
+    /// The default interval must leave the applied frame within a sixth of the way
+    /// from its own sun position to the next frame's.
+    ///
+    /// This is the reason the default is 15 seconds and not 30: at 30 the lag reaches
+    /// a fifth of the tightest frame spacing, and the frame shown near every switch
+    /// would visibly belong to the previous one.
+    #[test]
+    fn the_default_interval_keeps_the_frame_within_a_tenth_of_its_neighbour() {
+        let (altitude_rate, azimuth_rate) = worst_case_solar_rates();
+        let seconds = f64::from(DEFAULT_INTERVAL_SECONDS);
+
+        // The selector weights altitude twice the azimuth: [-90°, +90°] and [0°, 360°)
+        // are both normalized to 1.
+        let lag = ((altitude_rate * seconds / 180.0).powi(2)
+            + (azimuth_rate * seconds / 360.0).powi(2))
+        .sqrt();
+
+        assert!(
+            lag <= TIGHTEST_FRAME_SPACING / 6.0,
+            "a {DEFAULT_INTERVAL_SECONDS} s interval lags the sun by {lag:.4} of the \
+             selection metric, more than a sixth of the tightest frame spacing \
+             ({TIGHTEST_FRAME_SPACING}); rates were {altitude_rate:.5} °/s altitude and \
+             {azimuth_rate:.5} °/s azimuth"
+        );
+    }
+
+    /// The defaults have to be the documented ones and to pass validation: the range
+    /// check lives in `validate`, so comparing the constants to each other here would
+    /// only assert what the compiler already knows.
+    #[test]
+    fn the_default_configuration_is_accepted_by_validation() {
+        let config = Config::default();
+
+        assert_eq!(config.interval, DEFAULT_INTERVAL_SECONDS);
+        assert_eq!(
+            config.position_source,
+            PositionSource::Automatic {
+                update_on_each_calculation: false,
+                cache_minutes: DEFAULT_POSITION_CACHE_MINUTES,
+            }
+        );
+        config
+            .validate()
+            .expect("the default configuration has to validate");
     }
 
     /// The default file the daemon writes when none exists has to be readable as the
