@@ -17,17 +17,17 @@
 | `cargo fmt --all -- --check` | exit 0 |
 | `cargo clippy -r -p dwall --features build-script,log-max-level-info --all-targets` | exit 0，0 警告 |
 | `cargo test -p dwall -p logging -p time` | **196 passed / 0 failed**（dwall lib 101 + bin 5 + 集成 7 + logging 3 + time 80） |
-| `target/release/dwall.exe`（当前源码，FileVersion `0.3.0-alpha.2`） | **632,832 B（618.0 KiB）** |
-| `target/debug/dwall.exe` | 2,741,248 B → release 小 **4.33×** |
+| `target/release/dwall.exe`（当前源码） | **646,144 B（631.0 KiB）**（见 6.1：10/18 用 `bun run build:daemon` 重测） |
+| `target/debug/dwall.exe` | 2,772,992 B → release 小 4.29× |
 | `target/release/dwall.exe`（0.2.5，前一份清单实测） | 600,576 B（586.5 KiB） → **+5.4%** |
-| `target/release/dwall-settings.exe`（0.3.0-alpha.2） | 4,234,240 B（4.04 MiB）；debug 21,730,816 B |
-| NSIS 安装包 `Dwall Settings_0.3.0-alpha.2_x64-setup.exe` | 1,806,833 B（0.2.5 = 1,756,558、0.1.33 = 2,070,883） |
-| `dist/`（2026-10-17 12:53 构建） | 384,534 B：JS 231,251 / CSS 121,900 / SVG 30,781 / html 602 |
-| `dist/`（0.2.5 基线） | 360,866 B → JS **+21 KB（+10%）**、CSS +2.4 KB |
+| `target/release/dwall-settings.exe` | 4,257,280 B（4.06 MiB）；debug 21,730,816 B |
+| NSIS 安装包 `Dwall Settings_0.3.0-alpha.2_x64-setup.exe` | 1,806,833 B（0.2.5 = 1,756,558、0.1.33 = 2,070,883）——**10/18 未重测**，见 6.1 |
+| `dist/`（2026-10-18 10:38 构建） | 386,869 B：JS 233,235 / CSS 122,251 / SVG 30,781 / html 602 |
+| `dist/`（0.2.5 基线） | 360,866 B → JS **+26 KB（+12%）**、CSS +2.7 KB |
 | `dist-daemon/Dwall_0.2.5_x64-daemon.zip` | 359,401 B（351 KiB）+ `.sha256`（校验通过；内含 5 条 SHA256SUM 全部重算 OK，无 BOM） |
 | `dist-manifests/` | 3,373 B，**内嵌的 sha 与磁盘上的 zip 不一致**（见 6.3） |
-| `target/release` / `target/debug` | 17.93 GB / **61.51 GB**（本机累计 79.4 GB，含 2,361 个 rlib = 5.0 GB） |
-| 依赖（`cargo tree`） | daemon 正常图 **39** 个 crate-version（含 build-deps 52）；`Cargo.lock` 514 个包；**daemon 图无重复版本**，GUI 图有 23 组重复 |
+| `target/release` / `target/debug` | 17.09 GB / **60.49 GB**（本机累计 77.6 GB） |
+| 依赖（`cargo tree`） | daemon 正常图 **39** 个 crate-version（含 build-deps 52）；`Cargo.lock` 514 个包；**daemon 图无重复版本**，GUI 图有重复（见 6.2） |
 | 运行中的 `dwall.exe`（已安装 0.3.0-alpha.4） | **1 线程 / 244 句柄 / Private 2.48 MB / 私有工作集 1.38 MB / 工作集 21.25 MB** |
 | 上者 75 秒（约 5 个周期）后复测 | 244 句柄 / 2.477 MB **完全不变**，PeakWorkingSet 21.61 MB |
 
@@ -125,7 +125,7 @@
 
 - [docs/headless.md:192](./headless.md#L192)："坏配置不是致命的：守护进程保留上一份配置并每 5 秒重试" → 实际**不保留配置**（引擎已被析构，见 2.1）。
 - [docs/custom-themes.md:6-10](./custom-themes.md#L6-L10) 画的是 `<themes_directory>/<id>/images/<n>.<ext>`，但 [theme.rs:140-152](../crates/dwall/src/theme.rs#L140-L152) 只在**自定义**主题（`customized_themes_directory`）用 `images/`，`themes_directory` 下的主题用的是 `<image_format>/`（如 `jpeg/1.jpg`）。两个根目录的布局**不一样**，而这份文档只写了 `images/`——它同时是 headless 压缩包里唯一的主题格式说明，而手工部署主题正是 headless 场景。
-- [.scripts/package-daemon.ps1:90](../.scripts/package-daemon.ps1#L90) 的 README 硬编码"about 600 KB"，当前二进制已是 618 KB（脚本自己也会打印真实大小）。
+- [.scripts/package-daemon.ps1:90](../.scripts/package-daemon.ps1#L90) 的 README 硬编码"about 600 KB"，当前二进制已是 631 KB（脚本自己也会打印真实大小）。
 - README "单线程 Rust 守护进程约 4 MB"：实测**私有工作集 1.38 MB / Private 2.48 MB / 工作集 21.25 MB**，"≈4 MB"偏保守；但同一句话里的 "4 MB" 也可能被读成"体积"，而真实二进制是 618 KiB——建议明确写成"常驻内存"。
 
 ---
@@ -176,25 +176,32 @@
 
 ## 6. 体积与发布链路
 
-### 6.1 产物
+### 6.1 产物（**2026-10-18 10:36–10:39 重新测量**）
+
+本节的二进制数字是 10/18 重建后实测的，源码为本文档第 11 节批次 1–9 的工作树（提交 `84c7cde` + **未提交**的 `0.3.0-alpha.2` 版本号改动）。
 
 | 产物 | 体积 | 对比 |
 | --- | --- | --- |
-| `target/release/dwall.exe`（当前源码，含图标资源） | **632,832 B = 618.0 KiB** | 0.2.5 = 600,576 B → **+32 KB / +5.4%**（windows 0.62 升版 + 随机模式 + 有界异步等待等） |
-| `target/debug/dwall.exe` | 2,741,248 B | release 小 4.33× |
-| `target/release/dwall-settings.exe` | 4,234,240 B（4.04 MiB） | debug 21.7 MB |
-| NSIS 安装包 | 1,806,833 B（1.72 MiB） | 0.2.5 = 1.68 MiB、0.1.33 = 1.97 MiB |
-| `Dwall_0.2.5_x64-daemon.zip` | 359,401 B = 351 KiB | 约为二进制的 57% |
-| `dist/` 前端产物 | 384,534 B | JS **231,251 B（+21 KB / +10% vs 0.2.5）**、CSS 121,900 B、SVG 30,781 B、html 602 B |
-| `target/release` + `target/debug` | 17.93 GB + **61.51 GB** | 本机累计 79.4 GB（`codegen-units=1` + fat LTO 的代价是构建时间/磁盘，不是运行期） |
+| `target/release/dwall.exe`（`bun run build:daemon`，含图标资源） | **646,144 B = 631.0 KiB** | 10/17 = 632,832 B → **+13,312 B / +2.1%**（批次 3–9：显示器缓存合一、切片等待、日志轮转、缓存失效等）；0.2.5 = 600,576 B → +7.6% |
+| `target/debug/dwall.exe` | 2,772,992 B | release 小 4.29× |
+| `target/release/dwall-settings.exe`（`tauri build --no-bundle --features log-max-level-info`） | **4,257,280 B（4.06 MiB）** | 10/17 = 4,234,240 B → **+23,040 B / +0.54%**（批次 4/5 的解压上限、缩略图键、状态区错误行、`ProcessIdToSessionId` 特性）；debug 21,730,816 B |
+| NSIS 安装包 | **未重测** | `bundle.createUpdaterArtifacts = true` 且配置里有 updater 公钥，打包阶段需要 CI 才有的 `TAURI_SIGNING_PRIVATE_KEY`；本机只跑到 `--no-bundle`。10/17 的 1,806,833 B（1.72 MiB）只能当参考，要更新得在有密钥的环境里跑一次 `bun run build` |
+| `Dwall_0.2.5_x64-daemon.zip` | 359,401 B = 351 KiB（0.2.5 时） | 未重打包；它约等于二进制的 57%，按新二进制推算 ≈370 KB |
+| `dist/` 前端产物（同一轮 `tauri build` 触发的 vite 构建） | **386,869 B** | JS **233,235 B**（10/17 = 231,251 → +1,984）、CSS 122,251（+351）、SVG 30,781、html 602 |
+| `target/release` + `target/debug` | 17.09 GB + **60.49 GB** | 本机累计 77.6 GB（`codegen-units=1` + fat LTO 的代价是构建时间/磁盘，不是运行期） |
+
+两点必须一起读：
+
+- 这次的 `0.3.0-alpha.2` 来自**未提交**的版本号改动（`git show HEAD:Cargo.toml` 仍是 0.2.5）。版本字符串会进 `--version`、User-Agent 与版本资源，所以把那个改动提交或撤销后重建，体积会有**几十字节**级差异；2.1% / 0.54% 的结论不受影响。
+- 构建耗时仅供参考（依赖已缓存）：daemon 11.6 s，settings 2 分 23 秒（`opt-level="z"` + fat LTO），其中大头是 Tauri 依赖图的链接。
 
 `opt-level = "z"` 的取舍**没有问题**：每个周期做的都是 Win32/WinRT 调用（`QueryDisplayConfig` + SetupAPI 枚举、注册表读、COM Get/SetWallpaper），唯一的计算是对 ≤N 个 24 B 的 `SolarAngle` 做一次线性扫描，`-Oz` 的百分之几完全被 15 秒睡眠淹没。
 
 ### 6.2 可回收的体积 / 依赖
 
 1. **CSS 死重 13.8 KB（11.3%）**：删掉 [src/styles/toast.css](../src/styles/toast.css) 及其 `@import`（[index.css:4](../src/styles/index.css#L4)），该文件的选择器在组件上不可能命中（见 3.4）。JS 侧还有约 2400 行零引用的 UI 组件。
-2. **GUI 二进制里有 23 组重复依赖**，其中 `zip 4.6.1`（经 `tauri-plugin-updater`）与 `zip 8.6.0`（直接依赖，[crates/dwall-settings/Cargo.toml:31](../crates/dwall-settings/Cargo.toml#L31)）意味着**同一个 4.2 MB 可执行文件里链接了两套 zip + flate2 + miniz_oxide**；还有 `toml 0.8/1.1`、`windows-sys 0.45/0.60/0.61`、`indexmap 1.9/2.14`、`base64 0.22/0.23` 等。daemon 图**完全没有重复版本**（workspace 的 `windows` 固定版本策略有效）。
-3. **`windows` 特性表**（[crates/dwall/Cargo.toml:39-54](../crates/dwall/Cargo.toml#L39-L54)）：`Win32_Security` 看起来"repo 内无人引用"，**但它必需**——`CreateMutexW` 的签名引用 `Win32::Security::SECURITY_ATTRIBUTES`，而 `CreateMutexW` 本身带 `#[cfg(feature = "Win32_Security")]`（我在 vendored 的 `windows-0.62.2/src/Windows/Win32/System/Threading/mod.rs` 里核对了 29 处同类门控）；删掉它 = `single_instance.rs:69` 编译失败。`Storage_Streams`（= `["Storage"]`）值得试删；设置端的 `Win32_System_ProcessStatus`、`Win32_Globalization` 与冗余的 `Win32_System_Registry` 也值得试删——**但这三者都要"删掉再编译"来确认**，仅靠 grep 得出的"未使用"结论在 `windows` crate 上不可靠（本次审查中已出现过一次这样的误判）。由于 release 是 fat LTO，删特性主要省编译时间与依赖面，**不会明显减小 618 KB 的二进制**，不要把它当体积优化来宣传。
+2. **GUI 二进制里有重复依赖**（10/18 复核：`cargo tree -d -p dwall-settings` 对 Windows 目标列出 **6 个**重复 crate：`zip` 两版、`windows-sys` 三版、`indexmap`/`base64`/`flate2`/`miniz_oxide` 各两版——原文的"23 组"是另一种数法，且**不再引用具体组数**，因为它取决于是否把带 `(*)` 的行算进去）。其中 `zip 4.6.1`（经 `tauri-plugin-updater`）与 `zip 8.6.0`（直接依赖，[crates/dwall-settings/Cargo.toml:31](../crates/dwall-settings/Cargo.toml#L31)）意味着**同一个 4.2 MB 可执行文件里链接了两套 zip**。**更正**：原文还举了 `toml 0.8/1.1`，但 `cargo tree -i toml@0.8.2` 显示它只经 `system-deps` 以 **Linux 目标的 build-dependency** 存在（Windows 目标下不可达），所以它**不在这个可执行文件里**——这是本节唯一一处需要撤回的例子。daemon 图**完全没有重复版本**（workspace 的 `windows` 固定版本策略有效），批次 3–9 也没有增删任何依赖（唯一的 `Cargo.toml` 改动是给 settings 加了一个 `windows` 特性）。
+3. **`windows` 特性表**（[crates/dwall/Cargo.toml:39-54](../crates/dwall/Cargo.toml#L39-L54)）：`Win32_Security` 看起来"repo 内无人引用"，**但它必需**——`CreateMutexW` 的签名引用 `Win32::Security::SECURITY_ATTRIBUTES`，而 `CreateMutexW` 本身带 `#[cfg(feature = "Win32_Security")]`（我在 vendored 的 `windows-0.62.2/src/Windows/Win32/System/Threading/mod.rs` 里核对了 29 处同类门控）；删掉它 = `single_instance.rs:69` 编译失败。`Storage_Streams`（= `["Storage"]`）值得试删；设置端的 `Win32_System_ProcessStatus`、`Win32_Globalization` 与冗余的 `Win32_System_Registry` 也值得试删——**但这三者都要"删掉再编译"来确认**，仅靠 grep 得出的"未使用"结论在 `windows` crate 上不可靠（本次审查中已出现过一次这样的误判）。由于 release 是 fat LTO，删特性主要省编译时间与依赖面，**不会明显减小 631 KB 的二进制**，不要把它当体积优化来宣传。
 4. 前端未使用依赖 `solid-icons`、`@tauri-apps/plugin-shell`、`jsdom`（[package.json](../package.json)）——不影响发布产物。
 5. 想再压 daemon 体积，唯一有量级的候选是用 `SHGetKnownFolderPath`（`Win32_UI_Shell` 已启用）替掉 `dirs`（连带 `dirs-sys`/`option-ext`/`windows-sys`/`windows-link` 四个 crate）；但 daemon 只有 39 个 crate-version，收益有限。
 
@@ -347,8 +354,8 @@ P0（对应第 1、2 节的缺陷，写出来即回归网）：
 - **`find_daemon_process` 跨会话行为**：需要第二个用户会话/RDP 才能复现。
 - **`Storage_Streams` / 设置端的 `Win32_System_ProcessStatus`、`Win32_Globalization`、冗余的 `Win32_System_Registry` 是否可删**：需改 manifest 后跑一次 release 构建确认（我没有改动任何被跟踪文件）。`Win32_Security` 已定论：**必需**（`CreateMutexW` 带该 feature 门控）。
 - **发布链路的状态**：`main`/`dev`/tag 的关系、`origin/release` 的残留、`dist-manifests` 里的旧哈希都是通过 `git`/文件读取实测的；**`publish.yml` 失败的具体时序（是 merge 步骤失败还是 push 被拒）没有实跑验证**（需要触发一次 release）。
-- **`target/` 的 79 GB 与 GitHub 的 10 GB 缓存预算**：本机是多次 feature/多次构建累积的结果；CI 冷构建是否真的装得下 `target/release/deps`（本机 10.66 GB）需要 `gh cache list` 实测，不要凭假设。
-- **本机 `/target` 与 `dist/` 是 10/17 12:53 从"未提交的工作树"构建的**（cargo 认为与当前源一致，但我没有重新链接）；体积数字对当前源码有效，不同 `--features` 组合的体积差异未单独测量。
+- **`target/` 的 77.6 GB 与 GitHub 的 10 GB 缓存预算**：本机是多次 feature/多次构建累积的结果；CI 冷构建是否真的装得下 `target/release/deps`（本机 10.66 GB）需要 `gh cache list` 实测，不要凭假设。
+- **本机 `/target` 与 `dist/` 已在 10/18 10:36–10:39 重新构建并实测**（第 6.1 节），源码是含批次 1–9 的工作树 + 未提交的版本号改动；**NSIS 安装包没有重测**（打包需要 CI 才有的 updater 签名私钥）。不同 `--features` 组合的体积差异仍未单独测量。
 - **daemon 二进制的逐 crate 体积占比没有测量**（需要 `cargo bloat` + 重建）；第 6.2 节的排序只是按依赖权重的推测（已标注）。
 - 前端专项评审里的**运行时行为**结论（toast 流、抽屉聚焦、Solid store 语义）我逐项复核了关键链条（D2/D3 与死 CSS 已实测），其余为源码级推断。
 - 内存采样基于**已安装的 0.3.0-alpha.4**（不是 `target/release/dwall.exe`），36 分钟 / 144 个周期只能界定而不能证伪更慢的泄漏。
@@ -528,7 +535,7 @@ P0（对应第 1、2 节的缺陷，写出来即回归网）：
 | `bun run check`（tsgo + biome，386 文件） | exit 0，0 error / 0 warning（批次 9 不涉及前端） |
 | `bun run test` | **39 passed** |
 
-第 6 节的**二进制体积数字对本批（乃至批次 3–9）尚未重新测量**：两个 exe 都改过，表里的 632,832 B / 4,234,240 B 仍是 10/17 那次 release 构建的结果，需要时应重新构建再更新，不要直接引用。
+第 6.1 节的二进制体积数字已在 10/18 用规范命令重建后更新（`dwall.exe` 646,144 B、`dwall-settings.exe` 4,257,280 B、`dist/` 386,869 B）；**NSIS 安装包未重测**，因为它需要 CI 才有的 updater 签名私钥。
 
 ### 仍未做（后续批次）
 
