@@ -39,7 +39,7 @@ pub enum CoordinateError {
 
 /// Geographic position with latitude, longitude and altitude
 #[repr(C)]
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Position {
     latitude: f64,
     longitude: f64,
@@ -188,7 +188,7 @@ impl<'a, P: PositionProvider> GeographicPositionProvider<'a, P> {
                 if *update_on_each_calculation {
                     self.get_fresh_position()
                 } else {
-                    self.get_cached_position(Duration::from_secs(60 * position_cache_minutes))
+                    self.get_cached_position(position_cache_ttl(*position_cache_minutes))
                 }
             }
             PositionSource::Manual {
@@ -198,6 +198,20 @@ impl<'a, P: PositionProvider> GeographicPositionProvider<'a, P> {
             } => self.get_manual_position(*latitude, *longitude, *altitude),
         }
     }
+}
+
+/// The cache lifetime for `cache_minutes`, bounded.
+///
+/// `Config::validate` rejects an out-of-range value, but this also has to survive a
+/// configuration that reached the cache without being validated (the settings app
+/// writes the file the daemon reads): `60 * minutes` used to overflow, and the
+/// resulting duration panicked the addition inside the cache.
+fn position_cache_ttl(cache_minutes: u64) -> Duration {
+    /// A year, which no configuration has a reason to exceed and which `Instant`
+    /// arithmetic can still represent.
+    const MAX_POSITION_CACHE_TTL: Duration = Duration::from_hours(24 * 365);
+
+    Duration::from_secs(60u64.saturating_mul(cache_minutes)).min(MAX_POSITION_CACHE_TTL)
 }
 
 impl<P: PositionProvider> PositionProvider for GeographicPositionProvider<'_, P> {
@@ -511,6 +525,93 @@ mod tests {
         fn check_location_permission(&self) -> DwallResult<()> {
             Ok(())
         }
+    }
+
+    /// A backend that counts how often it was really asked.
+    struct CountingPositionProvider {
+        position: Position,
+        calls: std::rc::Rc<std::cell::Cell<u32>>,
+    }
+
+    impl PositionProvider for CountingPositionProvider {
+        fn get_current_position(&self) -> DwallResult<Position> {
+            self.calls.set(self.calls.get() + 1);
+
+            Ok(self.position)
+        }
+
+        fn check_location_permission(&self) -> DwallResult<()> {
+            Ok(())
+        }
+    }
+
+    // ── The position cache's lifetime ───────────────────────────────────────
+
+    #[test]
+    fn the_position_cache_ttl_follows_the_configured_minutes() {
+        assert_eq!(position_cache_ttl(0), Duration::ZERO);
+        assert_eq!(position_cache_ttl(1), Duration::from_secs(60));
+        assert_eq!(position_cache_ttl(30), Duration::from_secs(1800));
+    }
+
+    /// The regression test for the abort: `60 * minutes` used to overflow, and the
+    /// resulting duration panicked the addition inside the cache.
+    #[test]
+    fn the_position_cache_ttl_is_bounded() {
+        let bounded = position_cache_ttl(u64::MAX);
+
+        assert!(bounded <= Duration::from_hours(24 * 365));
+        assert!(
+            bounded > Duration::from_secs(60),
+            "a value that large is still a cache lifetime, not zero"
+        );
+    }
+
+    /// A zero-minute cache means "ask every time", which is a usable configuration.
+    #[test]
+    fn a_zero_minute_cache_reads_the_backend_every_time() {
+        let calls = std::rc::Rc::new(std::cell::Cell::new(0));
+        let source = PositionSource::Automatic {
+            update_on_each_calculation: false,
+            cache_minutes: 0,
+        };
+        let provider = GeographicPositionProvider::new(
+            &source,
+            CountingPositionProvider {
+                position: Position::from_raw_position(1.0, 2.0, 3.0),
+                calls: std::rc::Rc::clone(&calls),
+            },
+        );
+
+        provider.get_current_position().unwrap();
+        provider.get_current_position().unwrap();
+
+        assert_eq!(calls.get(), 2, "a zero-minute cache must not serve a value");
+    }
+
+    #[test]
+    fn a_cache_window_serves_the_value_it_already_read() {
+        let calls = std::rc::Rc::new(std::cell::Cell::new(0));
+        let source = PositionSource::Automatic {
+            update_on_each_calculation: false,
+            cache_minutes: 30,
+        };
+        let provider = GeographicPositionProvider::new(
+            &source,
+            CountingPositionProvider {
+                position: Position::from_raw_position(1.0, 2.0, 3.0),
+                calls: std::rc::Rc::clone(&calls),
+            },
+        );
+
+        // The cache in `utils` is a thread-local shared by every test on this thread,
+        // so the assertion is a delta rather than an absolute count.
+        provider.get_current_position().unwrap();
+        let after_first = calls.get();
+
+        provider.get_current_position().unwrap();
+
+        assert_eq!(calls.get(), after_first, "the window must not expire yet");
     }
 
     #[test]

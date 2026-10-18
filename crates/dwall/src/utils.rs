@@ -6,7 +6,7 @@ use std::time::{Duration, Instant};
 
 use std::{ffi::OsStr, os::windows::ffi::OsStrExt};
 
-use crate::color_scheme::{DaylightState, ThresholdConfig};
+use crate::color_scheme::{CachedDaylightState, CachedThreshold, DaylightState, ThresholdConfig};
 use crate::solar::{Position, SolarPosition};
 
 // ── Wide string helpers ─────────────────────────────────────────────────────
@@ -119,6 +119,8 @@ define_cache! {
     ThresholdConfig / threshold_config => ThresholdConfig,
     DaylightState / daylight_state => DaylightState,
     SolarPosition / solar_position => SolarPosition,
+    CachedThreshold / cached_threshold => CachedThreshold,
+    CachedDaylightState / cached_daylight_state => CachedDaylightState,
 }
 
 pub(crate) trait Cacheable: Clone + 'static {
@@ -133,10 +135,14 @@ struct Entry {
 
 impl Entry {
     fn new(value: CacheValue, ttl: Duration) -> Self {
-        Entry {
-            value,
-            expires_at: Instant::now() + ttl,
-        }
+        // `checked_add`, not `+`: a TTL that comes from configuration is not trusted,
+        // and this process aborts invisibly on a panic (`panic = "abort"`, GUI
+        // subsystem). An unusable TTL means "effectively never", not "crash".
+        let expires_at = Instant::now()
+            .checked_add(ttl)
+            .unwrap_or_else(|| Instant::now() + Duration::from_hours(24 * 365));
+
+        Entry { value, expires_at }
     }
     fn is_expired(&self) -> bool {
         Instant::now() >= self.expires_at

@@ -94,7 +94,9 @@ fn default_update_on_each_calculation() -> bool {
 impl PositionSource {
     pub fn validate(&self) -> bool {
         match *self {
-            PositionSource::Automatic { .. } => true,
+            PositionSource::Automatic { cache_minutes, .. } => {
+                position_cache_minutes_are_valid(cache_minutes)
+            }
             PositionSource::Manual {
                 latitude,
                 longitude,
@@ -102,6 +104,19 @@ impl PositionSource {
             } => (-90.0..=90.0).contains(&latitude) && (-180.0..=180.0).contains(&longitude),
         }
     }
+}
+
+/// Upper bound for `cache_minutes`.
+///
+/// The cache TTL is `60 * cache_minutes` seconds, added to an `Instant`. Nothing
+/// bounded the value, so a hand-edited `config.toml` with a huge number overflowed
+/// that addition and aborted the daemon — in a release build with `panic = "abort"`
+/// and a GUI subsystem, leaving no trace at all.
+const MAX_POSITION_CACHE_MINUTES: u64 = 24 * 60;
+
+/// Whether a `cache_minutes` value is usable.
+fn position_cache_minutes_are_valid(minutes: u64) -> bool {
+    minutes <= MAX_POSITION_CACHE_MINUTES
 }
 
 #[cfg_attr(feature = "ts", derive(ts_rs::TS))]
@@ -294,11 +309,26 @@ impl Config {
         }
 
         if !self.position_source.validate() {
-            error!("Latitude or longitude is invalid");
-            return Err(ConfigError::Validation {
-                reason: "Latitude or longitude is invalid".to_string(),
-            }
-            .into());
+            // The two cases need different messages: "latitude or longitude" would
+            // send someone editing a manual position after a cache setting.
+            let reason = match &self.position_source {
+                PositionSource::Automatic { cache_minutes, .. }
+                    if !position_cache_minutes_are_valid(*cache_minutes) =>
+                {
+                    error!(
+                        cache_minutes = cache_minutes,
+                        max = MAX_POSITION_CACHE_MINUTES,
+                        "Position cache validation failed"
+                    );
+                    "Position cache is out of range".to_string()
+                }
+                _ => {
+                    error!("Latitude or longitude is invalid");
+                    "Latitude or longitude is invalid".to_string()
+                }
+            };
+
+            return Err(ConfigError::Validation { reason }.into());
         }
 
         Ok(())
@@ -1028,5 +1058,136 @@ mod tests {
             ".themes_directory" => "[themes_directory]",
             ".customized_themes_directory" => "[customized_themes_directory]",
         });
+    }
+
+    // ── cache_minutes validation ──────────────────────────────────────────────
+
+    fn config_with_cache_minutes(cache_minutes: u64) -> Config {
+        let json = format!(
+            r#"{{"position_source":{{"type":"AUTOMATIC","update_on_each_calculation":false,"cache_minutes":{cache_minutes}}}}}"#
+        );
+
+        serde_json::from_str(&json).unwrap()
+    }
+
+    /// The regression test for a value that used to abort the daemon: an
+    /// out-of-range `cache_minutes` overflowed the TTL arithmetic, and a panic in
+    /// this process is invisible.
+    #[test]
+    fn validate_rejects_an_out_of_range_cache_minutes() {
+        for cache_minutes in [MAX_POSITION_CACHE_MINUTES + 1, u64::MAX] {
+            let error = config_with_cache_minutes(cache_minutes)
+                .validate()
+                .expect_err("a cache that never expires is not a cache");
+
+            assert!(
+                error.to_string().contains("Position cache"),
+                "the message has to name the setting: {error}"
+            );
+        }
+    }
+
+    #[test]
+    fn validate_accepts_the_documented_cache_minutes() {
+        for cache_minutes in [0, 1, 30, MAX_POSITION_CACHE_MINUTES] {
+            assert!(
+                config_with_cache_minutes(cache_minutes).validate().is_ok(),
+                "cache_minutes = {cache_minutes} should be usable"
+            );
+        }
+    }
+
+    /// The default file the daemon writes when none exists has to be readable as the
+    /// configuration it describes — it is the only documentation a headless install
+    /// starts with.
+    #[test]
+    fn the_default_configuration_round_trips() {
+        let dir = std::env::temp_dir().join("dwall_config_default_roundtrip");
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("config.toml");
+
+        ConfigWriter.write_default(&path).unwrap();
+        let read_back = ConfigReader::read_from_path(&path).unwrap();
+
+        assert_eq!(read_back, Config::default());
+
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn the_default_configuration_documents_its_keys() {
+        let dir = std::env::temp_dir().join("dwall_config_default_header");
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("config.toml");
+
+        ConfigWriter.write_default(&path).unwrap();
+        let contents = fs::read_to_string(&path).unwrap();
+
+        assert!(contents.starts_with("# Dwall configuration"));
+        assert!(contents.contains("--check-config"));
+        assert!(contents.contains("docs/headless.md"));
+        assert!(contents.contains("DWALL_LOG=debug"));
+
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    /// The round trip through TOML, which the JSON snapshot above does not cover.
+    #[test]
+    fn the_default_configuration_serialises_to_toml_and_back() {
+        let toml_string = toml::to_string(&Config::default()).unwrap();
+        let parsed: Config = toml::from_str(&toml_string).unwrap();
+
+        assert_eq!(parsed, Config::default());
+    }
+
+    // ── ConfigWatcher ─────────────────────────────────────────────────────────
+
+    fn watcher(name: &str) -> (ConfigWatcher, PathBuf, PathBuf) {
+        let dir = std::env::temp_dir().join(format!("dwall_config_watcher_{name}"));
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("config.toml");
+
+        (ConfigWatcher::new(path.clone()), path, dir)
+    }
+
+    /// The daemon records the modification time before its first cycle, so the file
+    /// that is already there is not a change.
+    #[test]
+    fn the_startup_baseline_is_not_a_change() {
+        let (mut watcher, path, dir) = watcher("baseline");
+        fs::write(&path, "interval = 30\n").unwrap();
+        watcher.update_modified_time().unwrap();
+
+        assert!(!watcher.has_changed().unwrap());
+
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn config_watcher_reports_appeared_disappeared_and_modified() {
+        let (mut watcher, path, dir) = watcher("changes");
+
+        // Missing at startup, then created: a change.
+        watcher.update_modified_time().unwrap();
+        assert!(!watcher.has_changed().unwrap(), "still missing");
+
+        fs::write(&path, "interval = 30\n").unwrap();
+        assert!(watcher.has_changed().unwrap(), "appeared");
+
+        watcher.update_modified_time().unwrap();
+        assert!(!watcher.has_changed().unwrap(), "recorded");
+
+        std::thread::sleep(std::time::Duration::from_millis(20));
+        fs::write(&path, "interval = 45\n").unwrap();
+        assert!(watcher.has_changed().unwrap(), "modified");
+
+        watcher.update_modified_time().unwrap();
+        fs::remove_file(&path).unwrap();
+        assert!(watcher.has_changed().unwrap(), "disappeared");
+
+        let _ = fs::remove_dir_all(&dir);
     }
 }
