@@ -10,7 +10,6 @@
     "updater:default",
     "updater:deny-check",
     "dialog:allow-open",
-    "core:window:default",
     "process:default"
   ]
 }

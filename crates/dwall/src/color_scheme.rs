@@ -357,7 +357,7 @@ pub(crate) struct CachedDaylightState {
 ///
 /// The inputs are checked on every read, so this is only a ceiling for a value whose
 /// inputs never change.
-const DERIVED_TTL: Duration = Duration::from_hours(24);
+const DERIVED_TTL: Duration = Duration::from_secs(24 * 3600);
 
 /// How many times a value was really recomputed on this thread.
 ///

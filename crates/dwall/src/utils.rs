@@ -144,7 +144,7 @@ impl Entry {
         // subsystem). An unusable TTL means "effectively never", not "crash".
         let expires_at = Instant::now()
             .checked_add(ttl)
-            .unwrap_or_else(|| Instant::now() + Duration::from_hours(24 * 365));
+            .unwrap_or_else(|| Instant::now() + Duration::from_secs(24 * 365 * 3600));
 
         Entry { value, expires_at }
     }

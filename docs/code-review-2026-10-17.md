@@ -22,7 +22,7 @@
 | `target/release/dwall.exe`（0.2.5，前一份清单实测） | 600,576 B（586.5 KiB） → **+5.4%** |
 | `target/release/dwall-settings.exe` | 4,257,280 B（4.06 MiB）；debug 21,730,816 B |
 | NSIS 安装包 `Dwall Settings_0.3.0-alpha.2_x64-setup.exe` | 1,806,833 B（0.2.5 = 1,756,558、0.1.33 = 2,070,883）——**10/18 未重测**，见 6.1 |
-| `dist/`（2026-10-18 10:38 构建） | 386,869 B：JS 233,235 / CSS 122,251 / SVG 30,781 / html 602 |
+| `dist/`（2026-10-19 批次 20 后构建） | **374,460 B**：JS 234,649 / CSS **108,428** / SVG 30,781 / html 602（CSS −13,823 B，删除死 CSS 的实测收益） |
 | `dist/`（0.2.5 基线） | 360,866 B → JS **+26 KB（+12%）**、CSS +2.7 KB |
 | `dist-daemon/Dwall_0.2.5_x64-daemon.zip` | 359,401 B（351 KiB）+ `.sha256`（校验通过；内含 5 条 SHA256SUM 全部重算 OK，无 BOM） |
 | `dist-manifests/` | 3,373 B，**内嵌的 sha 与磁盘上的 zip 不一致**（见 6.3） |
@@ -101,7 +101,7 @@
 | P2 ○ | **在错误的地方做阻塞 IO。** [commands/catalog.rs:60-80](../crates/dwall-settings/src/commands/catalog.rs#L60-L80) 是**同步命令**（Tauri 在主线程执行），而它对**每个**目录条目都 `ConfigReader::read_from_path` 一遍（15+ 次读盘 + TOML 解析）；[settings/daemon.rs:87-107](../crates/dwall-settings/src/daemon.rs#L87-L107) 把整份 `dwall.log` 读进内存再 `from_utf8_lossy`（第二份拷贝），且在 async 路径里同步调用。 |
 | P2 ○ | **保存配置在"杀掉守护进程之后"。** [applier.rs:26-37](../crates/dwall-settings/src/theme/applier.rs#L26-L37)：先 `terminate_process` 再 `write_to_path`；写盘校验失败就留下一个已停的引擎，用户只看到"保存失败"。反过来写更安全。 |
 | P2 ○ | **缩略图的"读取续命"是无效的。** [storage.rs:21-25](../crates/dwall-settings/src/thumbnail/storage.rs#L21-L25) 只打开文件"更新访问时间"，而淘汰/过期都看 `metadata.modified()`（[cleanup.rs:109-117](../crates/dwall-settings/src/thumbnail/cleanup.rs#L109-L117)、[:193-214](../crates/dwall-settings/src/thumbnail/cleanup.rs#L193-L214)），且 Windows 默认不更新 atime → 每天看的缩略图仍会在写入 30 天后被删，注释与实现相反。 |
-| P3 ○ | **`.zip`→`.tmp` 改名纯属多余**（[downloader.rs:188-195](../crates/dwall-settings/src/theme/downloader.rs#L188-L195)）、**`kill_daemon_cmd` 与 `stop_engine` 完全重复**且其 TS 包装无调用者、**`thumbnail/error.rs` 的 `ThumbnailError` 从未被构造**（连带 `error.rs` 的 `#[from]` 与 `thumbnail/mod.rs` 的导出都是死的）、**`tracker.rs` 已是 no-op 但 `setup.rs:66` 仍 spawn 一个空任务**。 |
+| P3 ○ | **`.zip`→`.tmp` 改名纯属多余**（[downloader.rs:188-195](../crates/dwall-settings/src/theme/downloader.rs#L188-L195)）~~、**`kill_daemon_cmd` 与 `stop_engine` 完全重复**且其 TS 包装无调用者、**`thumbnail/error.rs` 的 `ThumbnailError` 从未被构造**（连带 `error.rs` 的 `#[from]` 与 `thumbnail/mod.rs` 的导出都是死的）、**`tracker.rs` 已是 no-op 但 `setup.rs:66` 仍 spawn 一个空任务**~~。**批次 20 复核后撤回第一条**：`.tmp` 是"可续传半成品"与"完整待解压"的分界——失败时保留较大的 `.tmp` 供续传、成功后 rename 成 `.zip` 并删除，直接下到 `.zip` 会让失败后残留半个归档（`a_failed_extraction_still_removes_the_archive` 正依赖这个命名），**不改**。后三条已在批次 20 删除。 |
 | P3 ○ | **`update.rs:99-107` 用 GitHub 的 `prerelease` 标志而不是 semver 的 `pre`** 来判定通道：被误标为 stable 的 `v0.4.0-alpha.1` 会击败真正的 stable。`RELEASES_API_MAX_BYTES = 4 MiB`（[update.rs:36](../crates/dwall-settings/src/update.rs#L36)）对 30 条带完整 changelog 的响应也可能不够。 |
 | P3 ○ | **capability 过宽**（[capabilities/default.json](../crates/dwall-settings/capabilities/default.json)）：`core:default` 已含 `core:window:default`（又显式列了一次），并额外授予未使用的 tray/menu/image；`process:default` 含 `allow-exit`（只用到 `relaunch`）。`hooks.nsi:42-43` 每次安装都删缓存与日志，`:56-57` 卸载时删掉 `%APPDATA%\dwall`（**含用户全部已下载主题**）且不询问。 |
 
@@ -124,7 +124,7 @@
 ### 2.4 文档与实现不一致
 
 - [docs/headless.md:192](./headless.md#L192)："坏配置不是致命的：守护进程保留上一份配置并每 5 秒重试" → 实际**不保留配置**（引擎已被析构，见 2.1）。
-- [docs/custom-themes.md:6-10](./custom-themes.md#L6-L10) 画的是 `<themes_directory>/<id>/images/<n>.<ext>`，但 [theme.rs:140-152](../crates/dwall/src/theme.rs#L140-L152) 只在**自定义**主题（`customized_themes_directory`）用 `images/`，`themes_directory` 下的主题用的是 `<image_format>/`（如 `jpeg/1.jpg`）。两个根目录的布局**不一样**，而这份文档只写了 `images/`——它同时是 headless 压缩包里唯一的主题格式说明，而手工部署主题正是 headless 场景。
+- [docs/custom-themes.md:6-10](./custom-themes.md#L6-L10) 画的是 `<themes_directory>/<id>/images/<n>.<ext>`，但 [theme.rs:140-152](../crates/dwall/src/theme.rs#L140-L152) 只在**自定义**主题（`customized_themes_directory`）用 `images/`，`themes_directory` 下的主题用的是 `<image_format>/`（`ImageFormat::as_str()` 对 JPEG 返回 `jpg`，实测已安装主题就是 `jpg/` 目录）。两个根目录的布局**不一样**，而这份文档只写了 `images/`——它同时是 headless 压缩包里唯一的主题格式说明，而手工部署主题正是 headless 场景。**批次 20 已修正**为两种布局并列，并写明"手工部署的精选套装必须放在 `themes_directory`、否则会去找 `images/` 而找不到"。
 - [.scripts/package-daemon.ps1:90](../.scripts/package-daemon.ps1#L90) 的 README 硬编码"about 600 KB"，当前二进制已是 631 KB。**10/18 已改**成"under 1 MB"：这句话是发给无界面用户的随包说明，写死一个会漂移的数字没有意义，脚本打包时本来就会打印真实大小。
 - README "单线程 Rust 守护进程约 4 MB"：这个数字本身**落在实测区间内**（静息 2.9 MB、用过 WinRT 路径后 7.5 MB），问题在于它把两种状态压成了一个数、并且容易被读成"体积"（真实二进制 631 KiB）。**10/18 已改**为"持有 3–8 MB 私有内存——可执行文件本身 0.63 MB"，见 5.3。
 - README/比较文档里的"single-threaded / 单线程"讲的是**代码**（无后台线程、无异步运行时），这一点成立；但**进程**在锁屏/COM 路径上会有 4–7 个系统线程（启动瞬间 9–14 个），不要把它读成"进程只有一个线程"。见 5.2。
@@ -374,8 +374,8 @@ P0（对应第 1、2 节的缺陷，写出来即回归网）：
 | 5 | 日志：轮转上限、`GetTimeZoneInformation` 缓存、去掉 `debug!(?config)`、补 `has_configuration_changed` 的 warn | 可观测性，成本低 |
 | 6 | 配置生效延迟（D6 的 `interval` 问题）+ 设置端写盘顺序 + 设置端会话过滤/等待退出 | 交互与生命周期正确性 |
 | 7 | 第 8 节测试（先 8.1 的三处重构） | 让以上修复有回归网 |
-| 8 | CI 补门禁（bindings 同步、settings shipped-feature clippy、`.scripts`/`.packaging`/`docs` 触发路径、action 固定版本 + dependabot `github-actions`） | 防止同类问题再次漏进来 |
-| 9 | P3 清理（死代码、`macros.rs.bak`、`rust-version`、`icon.icns`、死 CSS、capability 收窄、`docs/custom-themes.md` 布局说明、`.zip`/清单哈希来源） | 机械、可批量 |
+| 8 ✅ | CI 补门禁（bindings 同步、settings shipped-feature clippy、`.scripts`/`.packaging`/`docs` 触发路径、action 固定版本 + dependabot `github-actions`） | 防止同类问题再次漏进来 |
+| 9 ✅ | P3 清理（死代码、`macros.rs.bak`、`rust-version`、`icon.icns`、死 CSS、capability 收窄、`docs/custom-themes.md` 布局说明、`.zip`/清单哈希来源） | 机械、可批量 |
 
 ## 10. 本轮未验证 / 需真机确认
 
@@ -392,9 +392,9 @@ P0（对应第 1、2 节的缺陷，写出来即回归网）：
 
 ---
 
-## 11. 修复记录：批次 1 ~ 18（2026-10-17 ~ 10-18 本轮已实现）
+## 11. 修复记录：批次 1 ~ 20（2026-10-17 ~ 10-18 本轮已实现）
 
-只做了第 9 节的**批次 1（D1、D2+D3）、批次 2（S1、S2）、批次 3（D5、D6、D4）、批次 4（S3、S4、S5、`.zip` 泄漏、取消不重试）、批次 5（日志轮转上限、时区偏移缓存、去掉整份配置 dump、暴露守护进程最后一条 ERROR）、批次 6（配置生效延迟、写盘顺序、会话过滤与 PID 复用、停止后等待退出）、批次 7（8.1 的 `ThemeEngine` 泛型化与配置目录参数化 + 29 个测试）、批次 8（第 8 节测试的 theme/color_scheme/config/solar 部分 + 四个缓存与校验缺陷）、批次 9（第 8 节的 utils/random_state/settings network+thumbnail 部分 + 缩略图缓存永不续命）、批次 10（体积重测 + 守护进程内存实测与 12 处文档修正）、批次 11（`interval`/`cache_minutes` 两个默认值的推导 + 否证位置刷新假设）、批次 12（按需唤醒的太阳事件调度 + 配置轮询 5 秒）、批次 13（自动定位不可用时以退出码 6 明确停止，不做位置兜底）、批次 14（壁纸匹配逻辑的量化分析）、批次 15（匹配改用真实角距离）、批次 16（设置窗口启动时自动检查更新并提醒）、批次 17（第 8 节的平台层测试 + 友好名缓存两个缺陷）与批次 18（第 8 节的设置端与太阳位置测试）**，其余批次未动。
+只做了第 9 节的**批次 1（D1、D2+D3）、批次 2（S1、S2）、批次 3（D5、D6、D4）、批次 4（S3、S4、S5、`.zip` 泄漏、取消不重试）、批次 5（日志轮转上限、时区偏移缓存、去掉整份配置 dump、暴露守护进程最后一条 ERROR）、批次 6（配置生效延迟、写盘顺序、会话过滤与 PID 复用、停止后等待退出）、批次 7（8.1 的 `ThemeEngine` 泛型化与配置目录参数化 + 29 个测试）、批次 8（第 8 节测试的 theme/color_scheme/config/solar 部分 + 四个缓存与校验缺陷）、批次 9（第 8 节的 utils/random_state/settings network+thumbnail 部分 + 缩略图缓存永不续命）、批次 10（体积重测 + 守护进程内存实测与 12 处文档修正）、批次 11（`interval`/`cache_minutes` 两个默认值的推导 + 否证位置刷新假设）、批次 12（按需唤醒的太阳事件调度 + 配置轮询 5 秒）、批次 13（自动定位不可用时以退出码 6 明确停止，不做位置兜底）、批次 14（壁纸匹配逻辑的量化分析）、批次 15（匹配改用真实角距离）、批次 16（设置窗口启动时自动检查更新并提醒）、批次 17（第 8 节的平台层测试 + 友好名缓存两个缺陷）、批次 18（第 8 节的设置端与太阳位置测试）、批次 19（第 9 节批次 8：CI 门禁）与批次 20（第 9 节批次 9：P3 清理）**，其余批次未动。
 
 ### D1 ✅ 守护进程不再因持续失败而退出
 
@@ -720,6 +720,45 @@ P0（对应第 1、2 节的缺陷，写出来即回归网）：
 1. **NOAA 参考星历的 0.02° 金值对照仍未做**。我需要的是一份**可引用**的权威数值表；两次检索只找到不可引用的镜像与 PDF（[NREL SPA 报告](https://www.yumpu.com/en/document/view/6132632/solar-position-algorithm-for-solar-radiation-applications-nrel/39#1) 的第三方转载、[PlantPredict 文档](https://docs.plantpredict.com/models/solar-geometry/solar_position_algorithm) 等），**我不会把查不到出处的数字写进测试**。替代品是本批的物理不变量（子午线、至日三角、交角、时差方程极值与其月份）——它们能抓住错误的符号与错误的公式（这正是快照测不出来的），但**强度不等于**与独立星历逐点比对 0.02°。如果维护者能提供一份带出处的金值表（NOAA 计算器导出、NREL SPA 报告表 A3 之类），我可以照它补上。
 2. **其余 `commands/*` 仍未加测试**，原因是它们没有值得测的内容：`read_config_file`、`mirror_url`、`get_monitors_cmd` 等是**单行委托**，逻辑在各自模块里已有测试（`filesystem` 14、`network::mirror` 7、`monitor` 6 等）；唯一有分支的 `write_config_file` 是把 `validate_theme_roots` + `ConfigWriter` + 两次 `reconfigure` 串起来，而这三者各有测试。要测这些包装函数本身需要构造 Tauri 的 `State`/`AppHandle`（即引入一个 Tauri 测试运行时），与本项目一贯的取舍不符——这一条是**判断**，不是遗留缺陷，我把理由写在这里由维护者复核。
 
+### 批次 19 ✅ 第 9 节的批次 8：CI 门禁
+
+报告的四个门禁缺口，加 P2 的 action 固定问题。**所有改动都无法在本地执行工作流**，所以每一条都由三层证据支撑：actionlint + YAML 结构解析 + 门禁脚本本身可本地运行，并且每个新门禁都做了一次翻转验证。
+
+- **bindings 同步门禁**（`pr-check.yml` 的 rust job）：跑 `cargo test -p dwall --features ts --lib export_bindings` 与 `cargo test -p dwall-settings --features typegen export_bindings`，然后 `git status --porcelain -- src/ipc/bindings` 非空即失败并打印 `git diff`。**翻转验证**：把一个绑定文件手工改坏并 `git add`（模拟"PR 里提交了陈旧绑定"）→ 重新生成后状态为 `MM` → 门禁失败 ✓；复原后干净 ✓。**本地实测**：当前提交的绑定与 Rust 类型本来就同步（重生成后 `git status` 为空 ✓），所以这条门禁今天就通过 ✓。
+- **settings 的 shipped-feature clippy**：`cargo clippy -p dwall-settings --features log-max-level-info --all-targets -- -D warnings`（`DWALL_SKIP_BUILD=1`）✓ 本地实测 **exit 0** ✓。同时给根的两条既有 clippy 加 `--all-targets`（测试代码此前从未被 lint ✓ 本地实测干净 ✓），并把这条命令写进 `warm-cache.yml`，让每周预热产出这条门禁要用的产物 ✓。
+- **触发路径**：`on.pull_request.paths` 与 `detect-changes` 的过滤器都补上 `.github/**`、`.scripts/**`、`.packaging/**`、`docs/**` ✓ 只改打包脚本/模板的 PR 现在会启动工作流（并由 `scripts-check` 实际检查），`docs/**` 的 PR 也不再完全静默 ✓。
+- **action 固定**：5 个工作流里的 **53 处** `uses:` 全部钉到 commit，版本写在行尾注释（`# v4.4.0` 形式，dependabot 认这种写法）；替换脚本逐字节保留原文件的 CRLF/LF 与无 BOM ✓，替换后断言"不得残留浮动 ref" ✓。**专门核实了 `dtolnay/rust-toolchain`**：它的 ref 名看似是工具链选择器，但读该 commit 的 `action.yml` 确认 `toolchain` 输入默认就是 `stable`（`env: toolchain: ${{ inputs.toolchain }}`），**所以钉 SHA 不会去装一个名叫 SHA 的工具链** ✓（这是本批最容易埋雷的一处）。配套加 `dependabot: github-actions` ✓，否则钉死后没人升级。
+- **actionlint**（新 `workflow-lint` job）：`docker run … rhysd/actionlint:1.7.7`（按版本钉住、不引第三方 action、不接触仓库 token ✓）。本地用 actionlint 1.7.7 跑**全部 5 个工作流：零告警、exit 0** ✓；在一次性 git 仓库里做翻转验证，它确实会抓 `needs.<job>` 属性拼错（exit 1 ✓）与表达式语法错误（exit 1 ✓）。**一个值得记下的陷阱**：`actionlint -stdin-filename` 模式**不做**跨 job 检查 —— 我第一次的翻转验证因此"静默通过"，差点误判为"它不检查这个" ✗。
+- **CI 首跑抓到本地没抓到的问题**（10/19 追记）：那个镜像**内置 shellcheck**，会逐个检查 `run:` 块；我本地的 Windows actionlint 二进制不带 shellcheck，所以"本地零告警"是假阴性 ✗ —— CI 在 `nightly.yml` 的脚本里报出 3 个 `SC2155`（`local x=$(…)` 掩盖返回值）。三处已改成先声明再赋值 ✓；门禁口径同时定为 `-shellcheck 'shellcheck -S warning'`：release 脚本里 `for commit in $commits` 这类**故意**的空格拆分与重复追加重定向（SC2086/SC2129，共 53 条 info + 4 条 style）不该让门禁变红 ✓。随后本地装上 shellcheck 0.10.0，用**同一口径**复跑 → exit 0 ✓，并单独验证该口径仍能抓到 SC2155（翻转验证 ✓）。教训：**"本地验证通过"只对本地那套工具成立**，门禁的验证必须用与 CI 相同的工具集合。
+- **PowerShell 语法门禁**（新 `scripts-check` job，windows）：[check-powershell-syntax.ps1](../.scripts/check-powershell-syntax.ps1) 用 PowerShell 自己的 parser（不装模块、不联网 ✓），翻转验证：放进一个括号未闭合的脚本 → 打印 `文件名:行:列` 并 exit 1 ✓。
+- **打包模板门禁**（同一 job）：[check-packaging-templates.ps1](../.scripts/check-packaging-templates.ps1) 用合成版本与合成摘要把 `.packaging/**` 渲染到 `dist-manifests/check-templates`（在已被 gitignore 的目录内，`finally` 清理 ✓，只删这个子目录 ✓）并走 `-Validate`（windows runner 上会真的跑 `winget validate` ✓）。翻转验证：把一个占位符改名 → `Unreplaced placeholder` → exit 1 ✓。过程中修掉两个自己的 bug：包装脚本最初把内层失败吞成 exit 0 ✗；跨盘符时 `GetRelativePath` 返回绝对路径、被 `Join-Path` 拼坏 ✗。
+- **`timeout-minutes`**：rust 60、frontend 30、两个新 job 各 10（报告指出的"Rust job 没有超时" ✓）。
+
+**如实记录的限制**：(a) 没有任何工作流被**真正执行**过，首次端到端运行会是第一个真实 PR；(b) `rhysd/actionlint:1.7.7` 是版本 tag 而非 digest（更紧的做法需要先 pull 一次才能取 digest）；(c) `oven-sh/setup-bun` 在两个工作流里分别是 `v1`/`v2`（P2 提过），本批按原样钉住、**没有顺手统一**——统一会改变发布路径的行为，不属于"加门禁"；(d) P3-49 里的 `cargo audit`/`deny.toml`/`rust-toolchain.toml` 属于批次 9，未做。另外这一批的验证是在**你工作树里未提交的 `zip 9` 升级生效的情况下**跑的（我没碰那两个文件）。
+
+### 批次 20 ✅ 第 9 节的批次 9：P3 清理
+
+**死代码（`dwall-settings`）**，每条都先 grep 确认零引用再删：
+
+- `kill_daemon_cmd`（与 `stop_engine` 完全重复，TS 包装 `killDaemon` 零调用者）→ 命令、注册、TS 包装，以及随之无用的 `use crate::process::stop_daemon` ✓
+- `thumbnail/error.rs` 的 `ThumbnailError` 从未被构造 → 删文件、`thumbnail/mod.rs` 的 `mod`/`use`、`DwallSettingsError::Thumbnail` 变体与其 import ✓
+- `tracker.rs` 是 `TELEMETRY_ENABLED = false` 的空任务，`setup.rs` 却每次启动 spawn 一个 → 删模块、`mod tracker;` 与那个 spawn ✓（关掉遥测的决定仍记在提交信息与本节 ✓）
+- `logging/src/macros.rs.bak`（118,492 B，被 `*.bak` 忽略）→ 删 ✓
+
+**`rust-version`**：声明 **1.88**（dwall/logging/time）。这一步立刻有回报——clippy 的 `incompatible_msrv` 抓出三处 `Duration::from_hours`（**1.91** 才稳定）→ 换成 `Duration::from_secs(24 * 3600)` / `(24 * 365 * 3600)`（含一处测试断言）后 1.88 成立 ✓。`crates/dwall-settings/Cargo.toml` **没动**（你正在改它）→ 它的 `rust-version` 需要等那次改动落地后再补，见下面的未做项。本机 rustc 是 1.99.0，**无法**证明 1.88 真能编译，这个声明目前的依据是 clippy 的 msrv 检查。
+
+**`icon.icns`**：从 `tauri.conf.json` 的图标列表删掉（文件本就不存在，NSIS 不读它，换打包目标即失败）✓
+
+**capability**：删掉与 `core:default` 重复的 `core:window:default` ✓（无行为变化）。**没有**把 `core:default` 展开成最小集合——那要真机启动窗口验证，风险高于收益，见未做项。
+
+**死 CSS**：`src/styles/toast.css`（747 行，98 条 `data-sonner`/`.sonner-*` 选择器）与其 `@import` 删除 ✓；组件发出的是 `data-slot="toast…"`，两者不可能匹配（删前重新核对过组件）。**实测**：`dist/assets/*.css` **122,251 → 108,428 B（−13,823 B，−11.3%）** ✓ 与第 6.2 节的预测一致；`dist/` 总量 386,869 → 374,460 B ✓。**没有**删那份"约 2400 行零引用 UI 组件"——它们不进产物（无人 import），删除只改善仓库观感且可能是你特意保留的，留给你定。
+
+**`docs/custom-themes.md` 布局**：原文档只画 `images/` ✗，而 `themes_directory` 下的精选主题用 `<image_format>/`（`ImageFormat::as_str()` 对 JPEG 返回 `jpg`，实测已安装的 Earth View 就是 `jpg/` + `solar.json`）→ 改成两种布局并列，并写明"手工部署的精选套装必须放到 `themes_directory`，放到 `customized_themes_directory` 会去找 `images/` 而找不到"以及"同一 id 在两处都存在时 `themes_directory` 优先" ✓（这份文档是 headless 压缩包里唯一的格式说明）。
+
+**清单哈希来源**：`render-package-manifests.ps1` 不再无条件信任 `dist-daemon/<archive>.sha256` ✗ → 归档在本地时**从归档重算 SHA-256** 并与旁挂文件交叉校验（不一致直接失败 ✓），只有归档缺失时才回退到文件并给出 warning ✓。**验证**：正常路径打印 `Computed SHA-256 … matches …` ✓；把 `.sha256` 改成全 0 → **exit 1**，消息写明 `declares … but the archive hashes to …` ✓。
+
+**本轮验证**：`cargo fmt --check` 0；4 组 clippy（含 `--all-targets`）全 0；`cargo test` **479 passed + 1 failed** —— 唯一失败是**你未提交的 `zip 9` 升级**导致的 `archive::tests::a_declared_size_lie_does_not_bound_the_written_bytes`（`zip 9` 现在读的时候就自己拒绝声明尺寸撒谎的归档），与本批无关，我没有改那个文件；`bun run check` 0（387 文件）；`bun run test` **47 passed**；`bun run build:vite` 成功。
+
 ### 本轮验证命令与结果
 
 | 命令 | 结果 |
@@ -728,7 +767,7 @@ P0（对应第 1、2 节的缺陷，写出来即回归网）：
 | `cargo clippy -- -D warnings` / `cargo clippy -r -- -D warnings`（均含 `--all-targets`） | exit 0 / 0 |
 | `cargo clippy -r -p dwall --features build-script,log-max-level-info --all-targets -- -D warnings` | exit 0 |
 | `DWALL_SKIP_BUILD=1 cargo clippy -p dwall-settings --all-targets -- -D warnings` | exit 0 |
-| `DWALL_SKIP_BUILD=1 cargo test` | **480 passed / 0 failed**（批次 1/2 后 239、3 后 252、4 后 279、5 后 293、6 后 306、7 后 335、8 后 376、9 后 407、10 后 409、12 后 429、13 后 438、15 后 443、17 后 458；dwall lib **242**、bin 8、headless_cli 5、trait_mocks 8、settings **126**、logging 8、time 83） |
+| `DWALL_SKIP_BUILD=1 cargo test` | **479 passed / 1 failed**（批次 1/2 后 239、3 后 252、4 后 279、5 后 293、6 后 306、7 后 335、8 后 376、9 后 407、10 后 409、12 后 429、13 后 438、15 后 443、17 后 458、18 后 480；dwall lib **242**、bin 8、headless_cli 5、trait_mocks 8、settings 126、logging 8、time 83。**唯一失败**是批次 20 时工作树里未提交的 `zip 9` 升级导致的 `archive::tests::a_declared_size_lie_does_not_bound_the_written_bytes`，与本轮改动无关） | |
 | `bun run check`（tsgo + biome，387 文件） | exit 0，0 error / 0 warning（批次 11–15、17–18 不涉及前端；16 只改前端） |
 | `bun run test` | **47 passed**（批次 16 新增 8 个更新相关用例） |
 | `.scripts/measure-daemon-memory.ps1`（批次 10） | 6 轮测量：静息 2.84–2.97 MB / 268–286 句柄（两个二进制各 2 轮）、换过壁纸后 4.20–7.65 MB / 359–465 句柄（2 轮）、用户真实 13.7 小时 7.51 MB / 427 句柄；每轮 5 分钟 ≈300 周期，原始样本在 `%TEMP%\dwall_memtest\samples-*.csv` |
@@ -737,8 +776,18 @@ P0（对应第 1、2 节的缺陷，写出来即回归网）：
 
 ### 仍未做（后续批次）
 
-第 8 节的测试在批次 17（平台层的 `async_operation`/`geolocation`/`monitor`）与批次 18（`network/client`、`setup`、`solar`）之后**基本收尾**，只剩一件明确未做：**`solar.rs` 与独立参考星历逐点比对的金值测试**（我找不到可引用的权威数值表，且不会编造数值，见批次 18 一节末尾）。`update.rs` 与 `ThemeValidator` 经确认早已覆盖；其余 `commands/*` 是单行委托，未加测试的理由同样记在批次 18 一节末尾。剩下的工作是第 9 节批次 8/9（CI 门禁与 P3 清理）。
+第 8 节的测试在批次 17（平台层的 `async_operation`/`geolocation`/`monitor`）与批次 18（`network/client`、`setup`、`solar`）之后**基本收尾**，只剩一件明确未做：**`solar.rs` 与独立参考星历逐点比对的金值测试**（我找不到可引用的权威数值表，且不会编造数值，见批次 18 一节末尾）。`update.rs` 与 `ThemeValidator` 经确认早已覆盖；其余 `commands/*` 是单行委托，未加测试的理由同样记在批次 18 一节末尾。
+
+第 9 节的两个批次都已完成：**批次 8（CI 门禁）**在批次 19，**批次 9（P3 清理）**在批次 20。批次 9 里明确留下的三件事：
+
+1. **`crates/dwall-settings/Cargo.toml` 的 `rust-version`** 没加——那个文件里正有你未提交的 `zip 9`/`single-instance` 改动，我不去动它；等你落下那批改动后，在它的 `[package]` 里补一行 `rust-version = "1.88"` 即可（另外三个 crate 已声明）。同理，把这三个 crate 的字面量收敛到 `[workspace.package]` + `rust-version.workspace = true` 也留到那时一起做。
+2. **`core:default` 的最小化**没做：要把它展开成应用真正用到的 core 权限集合，必须真机启动窗口确认没有运行时拒绝，风险高于收益。已删掉与它重复的 `core:window:default`，其余保持原样。
+3. **约 2400 行零引用 UI 组件**没删：它们不进产物，删除只改善仓库观感，且可能是你有意保留的。
+
+P3-49 里的 `cargo audit`/`deny.toml`/`rust-toolchain.toml` 也不在批次 9 的清单里（那份清单只到"`.zip`/清单哈希来源"），未做。
 批次 4 未处理的相邻项（原报告 2.2 表）：镜像的稳定版通道自废（M1）、续传无 `If-Range`/校验和（M2）、下载与缩略图无并发上限（M3）、缩略图锁表无上限与 100 MB 上限只在未命中时执行（M4）、asset protocol `**/*`（M5）、渲染层可传的 URL/路径（M6）、"读取续命"无效（M7）；另外"应用此主题会静默提交所有未保存的编辑"（[settings.store.ts:173-196](../src/store/settings.store.ts#L173-L196)）仍未处理，它属于前端语义而非生命周期问题。
+
+
 
 
 

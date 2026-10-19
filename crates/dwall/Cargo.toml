@@ -5,6 +5,8 @@ exclude = ["CHANGELOG.md", "/target"]
 readme = "README.md"
 version.workspace = true
 edition.workspace = true
+# Let-chains (`if let ... && ...`) need 1.88; `u16::is_multiple_of` needs 1.87.
+rust-version = "1.88"
 # homepage.workspace = true
 repository.workspace = true
 license.workspace = true

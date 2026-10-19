@@ -63,8 +63,6 @@ pub fn setup_app(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>>
 
     build_window(app.app_handle(), "main", "Dwall Settings")?;
 
-    tokio::spawn(async move { crate::tracker::track().await });
-
     // Only start the daemon when the configuration asks for it; otherwise "stop
     // engine" would be undone every time the settings window opens.
     if !should_run_daemon {
