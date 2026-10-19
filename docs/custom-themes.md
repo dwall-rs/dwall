@@ -34,8 +34,12 @@ reads them.
   data is LRU-cached per theme directory.
 - **Validation** (`dwall::ThemeValidator`): schema, angle ranges, and that every
   referenced `images/<index + 1>.<ext>` exists.
-- **Matching** (`dwall::WallpaperSelector`): the frame with the smallest solar-angle
-  distance to the current position.
+- **Matching** (`dwall::WallpaperSelector`): the frame whose declared position is the
+  smallest **angle** away from the current one, measured on the sky rather than in the
+  altitude/azimuth plane — so a degree of azimuth counts for `cos(altitude)` of a degree
+  of altitude. Near the zenith the azimuth barely matters (it swings fastest exactly
+  where it means least); at the horizon the two count the same. Declare frames where the
+  sun actually goes for the latitudes you care about, and spread them by altitude.
 - **Settings** (`crates/dwall-settings`): lists custom themes (id = directory name,
   metadata from `[theme]`), merges them into the catalog with `source = "custom"`
   and local thumbnails, and resolves wallpapers through `theme.toml`.

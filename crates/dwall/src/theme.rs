@@ -11,6 +11,7 @@ use time::Date;
 
 use crate::config::{Config, ImageFormat};
 use crate::theme_manifest::{THEME_MANIFEST_FILENAME, ThemeManifest};
+use crate::wallpaper::FrameIndex;
 use crate::{DwallResult, SolarAngle};
 
 // ── Errors ──────────────────────────────────────────────────────────────────
@@ -79,7 +80,14 @@ const SOLAR_CACHE_CAPACITY: usize = 32;
 /// format declared by the manifest. Legacy `solar.json` themes fall back to the
 /// global config's image format (`None`).
 pub(crate) struct ThemeData {
+    /// The frames as they were declared, for callers that report or highlight them.
     pub(crate) angles: Rc<Vec<SolarAngle>>,
+    /// The same frames with their trigonometry precomputed, for the match itself.
+    ///
+    /// Both are kept: the declared angles are what the settings window shows, while the
+    /// match runs once per cycle and, through the schedule, thousands of times per
+    /// recomputation.
+    pub(crate) frames: FrameIndex,
     pub(crate) image_format: Option<ImageFormat>,
 }
 
@@ -225,18 +233,22 @@ pub fn read_solar_angles(theme_dir: &Path) -> DwallResult<Vec<SolarAngle>> {
 
 /// Reads a theme's frames and image format without caching.
 fn read_theme_data(theme_dir: &Path) -> DwallResult<ThemeData> {
-    if ThemeManifest::exists(theme_dir) {
+    let (angles, image_format) = if ThemeManifest::exists(theme_dir) {
         let manifest = ThemeManifest::read(theme_dir)?;
-        Ok(ThemeData {
-            angles: Rc::new(manifest.solar_angles()?),
-            image_format: Some(manifest.image_format().clone()),
-        })
+
+        (
+            manifest.solar_angles()?,
+            Some(manifest.image_format().clone()),
+        )
     } else {
-        Ok(ThemeData {
-            angles: Rc::new(read_solar_json(theme_dir)?),
-            image_format: None,
-        })
-    }
+        (read_solar_json(theme_dir)?, None)
+    };
+
+    Ok(ThemeData {
+        frames: FrameIndex::new(&angles),
+        angles: Rc::new(angles),
+        image_format,
+    })
 }
 
 /// Reads a legacy theme's `solar.json`.
@@ -895,11 +907,12 @@ mode = "native"
     // ── Solar data cache ────────────────────────────────────────────────────
 
     fn cache_data(frames: usize) -> Rc<ThemeData> {
-        let angles = (0..frames)
+        let angles: Vec<SolarAngle> = (0..frames)
             .map(|index| SolarAngle::new(index as u8, 0.0, 0.0))
             .collect();
 
         Rc::new(ThemeData {
+            frames: FrameIndex::new(&angles),
             angles: Rc::new(angles),
             image_format: None,
         })

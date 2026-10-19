@@ -17,7 +17,7 @@ use crate::solar::{Position, PositionProvider, SolarPosition};
 use crate::theme::{
     ThemeError, get_theme_directory_path, load_cached_theme_data, wallpaper_image_path,
 };
-use crate::wallpaper::{WallpaperProvider, WallpaperSelector};
+use crate::wallpaper::WallpaperProvider;
 
 /// Orchestrates the solar-based theme update cycle.
 ///
@@ -271,15 +271,13 @@ where
             "Calculated current solar position for wallpaper selection"
         );
 
-        let optimal_image_index = WallpaperSelector::find_closest_image(
-            theme_data.angles.as_slice(),
-            sun_altitude_degrees,
-            sun_azimuth_degrees,
-        )
-        .ok_or(ThemeError::ImageSolarConfigurationMismatch {
-            expected: theme_data.angles.len(),
-            found: 0,
-        })?;
+        let optimal_image_index = theme_data
+            .frames
+            .find_closest_image(sun_altitude_degrees, sun_azimuth_degrees)
+            .ok_or(ThemeError::ImageSolarConfigurationMismatch {
+                expected: theme_data.angles.len(),
+                found: 0,
+            })?;
 
         // Custom themes declare their own image format; legacy themes use the config's.
         let image_format = theme_data
@@ -318,7 +316,7 @@ where
     /// The image index every configured monitor would show at `solar_position`.
     ///
     /// Read-only: nothing is applied, and the selection goes through the same
-    /// [`WallpaperSelector`] the cycle uses. `None` means the question cannot be
+    /// [`FrameIndex`](crate::wallpaper::FrameIndex) the cycle uses. `None` means the question cannot be
     /// answered right now (a theme directory that moved, a monitor list that could not
     /// be read) — the caller then falls back to its plain interval instead of guessing.
     fn selected_images(&self, solar_position: &SolarPosition) -> Option<Vec<u8>> {
@@ -329,11 +327,11 @@ where
             let (theme_dir, _) = get_theme_directory_path(self.config, theme_id);
             let theme_data = load_cached_theme_data(&theme_dir).ok()?;
 
-            images.push(WallpaperSelector::find_closest_image(
-                theme_data.angles.as_slice(),
-                solar_position.altitude(),
-                solar_position.azimuth(),
-            )?);
+            images.push(
+                theme_data
+                    .frames
+                    .find_closest_image(solar_position.altitude(), solar_position.azimuth())?,
+            );
         }
 
         Some(images)
@@ -509,13 +507,6 @@ mod tests {
     const TWO_FRAMES: &str = r#"[
         {"index": 0, "altitude": -30.0, "azimuth": 0.0},
         {"index": 1, "altitude": 30.0, "azimuth": 0.0}
-    ]"#;
-
-    /// Frames whose boundary sits at 71° of altitude, which the summer sun above
-    /// Beijing crosses again about fifty minutes after local noon.
-    const MIDDAY_FRAMES: &str = r#"[
-        {"index": 0, "altitude": 68.0, "azimuth": 0.0},
-        {"index": 1, "altitude": 74.0, "azimuth": 0.0}
     ]"#;
 
     /// A theme with one frame: its image can never change.
@@ -1570,27 +1561,46 @@ azimuth = 0.0
         );
     }
 
-    /// The frame boundary of `MIDDAY_FRAMES` sits at 71°, which Beijing's summer sun
-    /// crosses again a bit over an hour after local noon — inside the longest interval
-    /// the configuration allows, so this is the case the schedule exists for.
+    /// The frame boundary of this theme lies on the sun's own path, a bit over an hour
+    /// after local noon — inside the longest interval the configuration allows, so this
+    /// is the case the schedule exists for.
+    ///
+    /// The frames are derived from the sun rather than written down because a theme's
+    /// frames have to sit where the sun actually goes: Beijing's summer noon sun is at
+    /// 167° of azimuth and swings past 213° within the hour, so two frames that differ
+    /// only in altitude are compared mostly by that azimuth gap.
     #[test]
     fn an_event_inside_a_short_horizon_is_reported() {
+        let horizon = Duration::from_secs(90 * 60);
+        let now = summer_noon();
+        let position = beijing();
+
+        let at = |seconds: u64| {
+            let instant = now.add_seconds(seconds).unwrap();
+            let solar = SolarPosition::new(&position, &instant.assume_utc());
+
+            (solar.altitude(), solar.azimuth())
+        };
+        let (first, second) = (at(0), at(horizon.as_secs()));
+        let frames = format!(
+            r#"[{{"index": 0, "altitude": {:.2}, "azimuth": {:.2}}}, {{"index": 1, "altitude": {:.2}, "azimuth": {:.2}}}]"#,
+            first.0, first.1, second.0, second.1
+        );
+
         let fixture = Fixture::new_with_frames(
             "schedule_inside",
             &["MON-A"],
             individual(&[("MON-A", "Midday")]),
             &[("Midday", &[1, 2])],
-            MIDDAY_FRAMES,
+            &frames,
         )
         .without_color_scheme();
         let engine = fixture.engine();
-        let now = summer_noon();
 
         engine
             .process_theme_cycle_at(&fixture.position, &now)
             .unwrap();
 
-        let horizon = Duration::from_secs(90 * 60);
         let scheduled = engine.next_event_within(&now, horizon);
 
         assert_eq!(
