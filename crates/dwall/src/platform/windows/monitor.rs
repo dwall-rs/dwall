@@ -579,10 +579,7 @@ impl MonitorProvider for DisplayMonitorProvider {
         let current_monitors = fetch_system_monitors()?;
         let mut cache = self.cache.borrow_mut();
 
-        let changed = current_monitors.len() != cache.data.len()
-            || current_monitors
-                .keys()
-                .any(|device_path| !cache.data.contains_key(device_path));
+        let changed = monitor_set_changed(&cache.data, &current_monitors);
 
         // Both are recorded whether or not anything changed: the shape is what the
         // next cheap check compares against, and without the timestamp every cycle
@@ -639,8 +636,92 @@ fn shape_forces_full_check(
 }
 
 thread_local! {
-    /// Caches friendly names for monitors to avoid querying them multiple times
+    /// Caches friendly names for monitors to avoid querying them multiple times.
+    ///
+    /// Only *successful* lookups are remembered (see [`friendly_name_for`]) and the
+    /// table is pruned to the monitors that are currently attached (see
+    /// [`retain_attached_friendly_names`]), so it cannot grow with every display a
+    /// machine has ever seen.
     static MONITOR_FRIENDLY_NAMES_CACHE: RefCell<HashMap<String, String>> = RefCell::new(HashMap::new());
+}
+
+/// The fallback shown for a monitor whose friendly name could not be read.
+fn fallback_friendly_name(index: usize) -> String {
+    format!("Display {}", index + 1)
+}
+
+/// The remembered friendly name of a monitor, if its lookup ever succeeded.
+fn cached_friendly_name(device_path: &str) -> Option<String> {
+    MONITOR_FRIENDLY_NAMES_CACHE.with(|names| names.borrow().get(device_path).cloned())
+}
+
+/// Remembers a friendly name that was read successfully.
+fn remember_friendly_name(device_path: &str, name: &str) {
+    MONITOR_FRIENDLY_NAMES_CACHE.with(|names| {
+        names
+            .borrow_mut()
+            .insert(device_path.to_string(), name.to_string());
+    });
+}
+
+/// Forgets the names of monitors that are no longer attached.
+///
+/// This is what keeps the table bounded: it only ever holds one entry per attached
+/// monitor, instead of one per device path the machine has ever reported.
+fn retain_attached_friendly_names(attached: &HashMap<String, DisplayMonitor>) {
+    MONITOR_FRIENDLY_NAMES_CACHE.with(|names| {
+        names
+            .borrow_mut()
+            .retain(|device_path, _| attached.contains_key(device_path));
+    });
+}
+
+/// The friendly name to use for a monitor, querying it at most once.
+///
+/// A *failed* lookup is deliberately not remembered: the previous version cached the
+/// `Display N` fallback for the life of the process, so a monitor whose name could not
+/// be read once — a device that was still starting, a transient SetupAPI failure — was
+/// labelled wrongly until the daemon restarted.
+fn friendly_name_for(
+    device_path: &str,
+    index: usize,
+    query: impl FnOnce() -> DwallResult<String>,
+) -> String {
+    if let Some(friendly_name) = cached_friendly_name(device_path) {
+        debug!(
+            "Using cached friendly name for '{}': {}",
+            device_path, friendly_name
+        );
+        return friendly_name;
+    }
+
+    match query() {
+        Ok(name) => {
+            remember_friendly_name(device_path, &name);
+
+            name
+        }
+        Err(e) => {
+            warn!(error = %e, "Failed to get friendly name, using fallback");
+
+            fallback_friendly_name(index)
+        }
+    }
+}
+
+/// Whether the attached monitors differ from the cached set.
+///
+/// A wallpaper is addressed by device path, so the *set* of paths is what matters: a
+/// resolution change on the same monitor needs no re-application, while a monitor
+/// swapped for another leaves a path that disappeared and one that is new.
+fn monitor_set_changed(
+    cached: &HashMap<String, DisplayMonitor>,
+    current: &HashMap<String, DisplayMonitor>,
+) -> bool {
+    cached.len() != current.len()
+        || current
+            .keys()
+            .any(|device_path| !cached.contains_key(device_path))
 }
 
 /// Queries monitor information from the system
@@ -652,37 +733,19 @@ fn fetch_system_monitors() -> DwallResult<HashMap<String, DisplayMonitor>> {
         let target_info = query_target_name(display_path.adapter_id, display_path.target_id)?;
         let device_path = target_info.monitorDevicePath.to_string();
 
-        let friendly_name = if let Some(friendly_name) = MONITOR_FRIENDLY_NAMES_CACHE
-            .with(|friendly_names| friendly_names.borrow().get(&device_path).cloned())
-        {
-            debug!(
-                "Using cached friendly name for '{}': {}",
-                device_path, friendly_name
-            );
-            friendly_name
-        } else {
-            let name = match query_device_friendly_name(&device_path, &GUID_DEVINTERFACE_MONITOR) {
-                Ok(name) => name,
-                Err(e) => {
-                    warn!(error = %e, "Failed to get friendly name, using fallback");
-                    format!("Display {}", index + 1)
-                }
-            };
-
-            MONITOR_FRIENDLY_NAMES_CACHE.with(|friendly_names| {
-                friendly_names
-                    .borrow_mut()
-                    .insert(device_path.clone(), name.clone());
-            });
-
-            name
-        };
+        let friendly_name = friendly_name_for(&device_path, index, || {
+            query_device_friendly_name(&device_path, &GUID_DEVINTERFACE_MONITOR)
+        });
 
         monitors.insert(
             device_path.clone(),
             DisplayMonitor::new(device_path, friendly_name, Some(index as u32)),
         );
     }
+
+    // Drop the names of monitors that went away, so the table cannot grow with every
+    // display the machine has ever reported.
+    retain_attached_friendly_names(&monitors);
 
     let monitor_count = monitors.len();
     debug!("Found {} active monitor(s)", monitor_count);
@@ -692,6 +755,8 @@ fn fetch_system_monitors() -> DwallResult<HashMap<String, DisplayMonitor>> {
 
 #[cfg(test)]
 mod tests {
+    use std::cell::Cell;
+
     use super::*;
 
     fn shape(path_count: u32, mode_count: u32) -> DisplayConfigShape {
@@ -782,5 +847,131 @@ mod tests {
         // check, and losing it here would make every cycle enumerate again.
         assert_eq!(cache.shape, Some(shape(3, 8)));
         assert_eq!(cache.last_full_check, checked_at);
+    }
+
+    // ── The monitor set comparison ──────────────────────────────────────────
+
+    fn monitor_map(paths: &[&str]) -> HashMap<String, DisplayMonitor> {
+        paths
+            .iter()
+            .enumerate()
+            .map(|(index, path)| {
+                (
+                    (*path).to_string(),
+                    DisplayMonitor::new_test(
+                        (*path).to_string(),
+                        format!("Display {}", index + 1),
+                        Some(index as u32),
+                    ),
+                )
+            })
+            .collect()
+    }
+
+    #[test]
+    fn an_unchanged_monitor_set_is_not_a_change() {
+        let monitors = monitor_map(&["\\\\?\\DISPLAY#1", "\\\\?\\DISPLAY#2"]);
+
+        assert!(!monitor_set_changed(&monitors, &monitors));
+    }
+
+    /// A monitor swapped for another leaves both a new path and a missing one, which is
+    /// what the daemon has to notice to re-apply a wallpaper.
+    #[test]
+    fn a_swapped_monitor_is_detected() {
+        let cached = monitor_map(&["\\\\?\\DISPLAY#1", "\\\\?\\DISPLAY#2"]);
+        let swapped = monitor_map(&["\\\\?\\DISPLAY#1", "\\\\?\\DISPLAY#3"]);
+
+        assert!(monitor_set_changed(&cached, &swapped));
+    }
+
+    #[test]
+    fn attaching_a_monitor_is_detected() {
+        let cached = monitor_map(&["\\\\?\\DISPLAY#1"]);
+        let attached = monitor_map(&["\\\\?\\DISPLAY#1", "\\\\?\\DISPLAY#2"]);
+
+        assert!(monitor_set_changed(&cached, &attached));
+    }
+
+    /// Pinning the current behaviour: a resolution change keeps the device path, and a
+    /// wallpaper is addressed by device path, so nothing has to be re-applied.
+    #[test]
+    fn a_resolution_change_is_not_a_change() {
+        let cached = monitor_map(&["\\\\?\\DISPLAY#1"]);
+        let mut resized = monitor_map(&["\\\\?\\DISPLAY#1"]);
+        resized.insert(
+            "\\\\?\\DISPLAY#1".to_string(),
+            DisplayMonitor::new_test(
+                "\\\\?\\DISPLAY#1".to_string(),
+                "Display 1 (renamed)".to_string(),
+                Some(0),
+            ),
+        );
+
+        assert!(!monitor_set_changed(&cached, &resized));
+    }
+
+    // ── The friendly-name cache ─────────────────────────────────────────────
+    //
+    // These drive the helpers directly: a real SetupAPI query needs a real display, and
+    // what goes wrong here is bookkeeping, not enumeration.
+
+    #[test]
+    fn a_failed_friendly_name_lookup_is_not_remembered() {
+        let path = "\\\\?\\DISPLAY#friendly-failure";
+
+        let fallback = friendly_name_for(path, 1, || {
+            Err(
+                DisplayError::GetDeviceRegistryProperty(windows::core::Error::from_hresult(
+                    windows::core::HRESULT::from_win32(5),
+                ))
+                .into(),
+            )
+        });
+
+        assert_eq!(fallback, "Display 2");
+        assert!(
+            cached_friendly_name(path).is_none(),
+            "caching the fallback made a monitor wrong for the life of the process"
+        );
+
+        // The next enumeration can still find the real name.
+        let later = friendly_name_for(path, 1, || Ok("DELL U2720Q".to_string()));
+        assert_eq!(later, "DELL U2720Q");
+        assert_eq!(cached_friendly_name(path).as_deref(), Some("DELL U2720Q"));
+    }
+
+    #[test]
+    fn a_known_friendly_name_is_never_queried_again() {
+        let path = "\\\\?\\DISPLAY#friendly-cached";
+        remember_friendly_name(path, "DELL U2720Q");
+
+        let queried = Cell::new(false);
+        let name = friendly_name_for(path, 0, || {
+            queried.set(true);
+
+            Ok("something else".to_string())
+        });
+
+        assert_eq!(name, "DELL U2720Q");
+        assert!(!queried.get(), "the cached name must answer instead");
+    }
+
+    /// The bound is not a capacity: entries for monitors that are gone are dropped, so
+    /// the table holds one name per attached display however long the machine runs.
+    #[test]
+    fn the_friendly_name_cache_forgets_monitors_that_are_gone() {
+        let gone = "\\\\?\\DISPLAY#friendly-gone";
+        let attached = "\\\\?\\DISPLAY#friendly-attached";
+        remember_friendly_name(gone, "Old monitor");
+        remember_friendly_name(attached, "Current monitor");
+
+        retain_attached_friendly_names(&monitor_map(&[attached]));
+
+        assert!(cached_friendly_name(gone).is_none());
+        assert_eq!(
+            cached_friendly_name(attached).as_deref(),
+            Some("Current monitor")
+        );
     }
 }

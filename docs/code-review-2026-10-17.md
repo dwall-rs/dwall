@@ -392,9 +392,9 @@ P0（对应第 1、2 节的缺陷，写出来即回归网）：
 
 ---
 
-## 11. 修复记录：批次 1 ~ 16（2026-10-17 ~ 10-18 本轮已实现）
+## 11. 修复记录：批次 1 ~ 17（2026-10-17 ~ 10-18 本轮已实现）
 
-只做了第 9 节的**批次 1（D1、D2+D3）、批次 2（S1、S2）、批次 3（D5、D6、D4）、批次 4（S3、S4、S5、`.zip` 泄漏、取消不重试）、批次 5（日志轮转上限、时区偏移缓存、去掉整份配置 dump、暴露守护进程最后一条 ERROR）、批次 6（配置生效延迟、写盘顺序、会话过滤与 PID 复用、停止后等待退出）、批次 7（8.1 的 `ThemeEngine` 泛型化与配置目录参数化 + 29 个测试）、批次 8（第 8 节测试的 theme/color_scheme/config/solar 部分 + 四个缓存与校验缺陷）、批次 9（第 8 节的 utils/random_state/settings network+thumbnail 部分 + 缩略图缓存永不续命）、批次 10（体积重测 + 守护进程内存实测与 12 处文档修正）、批次 11（`interval`/`cache_minutes` 两个默认值的推导 + 否证位置刷新假设）、批次 12（按需唤醒的太阳事件调度 + 配置轮询 5 秒）、批次 13（自动定位不可用时以退出码 6 明确停止，不做位置兜底）、批次 14（壁纸匹配逻辑的量化分析）、批次 15（匹配改用真实角距离）与批次 16（设置窗口启动时自动检查更新并提醒）**，其余批次未动。
+只做了第 9 节的**批次 1（D1、D2+D3）、批次 2（S1、S2）、批次 3（D5、D6、D4）、批次 4（S3、S4、S5、`.zip` 泄漏、取消不重试）、批次 5（日志轮转上限、时区偏移缓存、去掉整份配置 dump、暴露守护进程最后一条 ERROR）、批次 6（配置生效延迟、写盘顺序、会话过滤与 PID 复用、停止后等待退出）、批次 7（8.1 的 `ThemeEngine` 泛型化与配置目录参数化 + 29 个测试）、批次 8（第 8 节测试的 theme/color_scheme/config/solar 部分 + 四个缓存与校验缺陷）、批次 9（第 8 节的 utils/random_state/settings network+thumbnail 部分 + 缩略图缓存永不续命）、批次 10（体积重测 + 守护进程内存实测与 12 处文档修正）、批次 11（`interval`/`cache_minutes` 两个默认值的推导 + 否证位置刷新假设）、批次 12（按需唤醒的太阳事件调度 + 配置轮询 5 秒）、批次 13（自动定位不可用时以退出码 6 明确停止，不做位置兜底）、批次 14（壁纸匹配逻辑的量化分析）、批次 15（匹配改用真实角距离）、批次 16（设置窗口启动时自动检查更新并提醒）与批次 17（第 8 节的平台层测试 + 友好名缓存两个缺陷）**，其余批次未动。
 
 ### D1 ✅ 守护进程不再因持续失败而退出
 
@@ -683,6 +683,24 @@ P0（对应第 1、2 节的缺陷，写出来即回归网）：
 
 **新增测试（+8，前端 39 → 47）**（[update.store.test.ts](../src/store/update.store.test.ts)）：有更新时弹一次通知且带版本、**重复调用只检查一次**、已是最新不通知、**启动失败静默且分区状态不受污染**、检查带上配置的代理、手动检查失败显示错误、手动检查成功不弹通知、**启动检查之后手动检查仍然可用**（"一次"只约束自动检查）、再次检查会释放上一个更新句柄（Rust 侧资源表不会只增不减）。
 
+### 批次 17 ✅ 第 8 节的平台层测试，并修掉友好名缓存的两个缺陷
+
+用户点名的三个文件。**其中两条计划中的测试当前会失败**，所以这一批不只是补测试：
+
+- **P3-12 修掉：失败的名字被永久缓存**（[monitor.rs](../crates/dwall/src/platform/windows/monitor.rs)）。原实现把回落值 `Display N` 也写进缓存，于是一次瞬时失败（设备刚上电、SetupAPI 抽风）会让这块显示器**在整个进程生命周期内都叫错名字**。现在只记住**成功**的查询：`friendly_name_for(path, index, query)` 失败时返回回落值但不写缓存，下一次枚举仍能拿到真名。**翻转验证**：把回落值也缓存回去 → `a_failed_friendly_name_lookup_is_not_remembered` 失败（`caching the fallback made a monitor wrong for the life of the process`）✓
+- **无界缓存修掉：表按"当前在用的显示器"裁剪**。原来 `MONITOR_FRIENDLY_NAMES_CACHE` 只增不减（AGENTS 明令禁止无界全局缓存）。现在每次枚举结束后 `retain_attached_friendly_names(&monitors)`，表的大小恒等于在用显示器数——**不是靠一个容量常数，而是靠"不再用的条目本就没有意义"**。
+- **纯函数切分**（都是为可测性，行为不变）：`monitor_set_changed(cached, current)` 从 `has_configuration_changed` 拆出（按**设备路径集合**比较：分辨率变化不需要重新应用，换显示器才会留下"消失的路径 + 新路径"）；新增 `should_warn_about_altitude(altitude)`（"恰好为 0"才提示气压计，海平面以下是真实读数）与 `fallback_friendly_name`。
+
+**新增测试（+15，全仓 443 → 458）**：
+
+| 文件 | 用例 |
+| --- | --- |
+| `async_operation.rs`（+5） | 状态离开 `Started` 就返回（且正好在第 3 次查询停止）、**卡死的操作按预算超时**（断言耗时 ≥ 预算且不止查一次）、`Error`/`Canceled` 这类**终态立即返回**（否则会先耗尽预算再报超时）、**状态查询本身失败也立即返回**（真错误由 `GetResults` 报）、两种失败映射到 `DwallError::{Windows, AsyncTimeout}` —— 并断言 `E_ACCESSDENIED` 那条**能被批次 13 的定位分类识别**（跨批次联动） |
+| `geolocation.rs`（+3） | `TimeSpan` 换算（0/1/30/60 秒 → 100 ns 刻度）、**亚秒部分被截断**（所以两个预算都是整秒）、只有恰好 0 才提示气压计（`-0.0` 算 0、海平面以下 `-430.5` 不算、`NaN` 不算） |
+| `monitor.rs`（+7） | 显示器集合未变不算变化、**换显示器被检出**（数量相同、键不同）、**新接入被检出**、**分辨率变化不算变化**（钉住现状，理由写在注释里）、**失败的名字不被记住且下次仍能拿到真名**、已缓存的名字不再查询（用 `Cell` 断言查询闭包没被调用）、**离开的显示器条目被丢弃**（这就是上界） |
+
+**这一批明确没有验证的东西**（如实记下）：真实 Win32 路径——`QueryDisplayConfig`/`SetupAPI` 枚举本身、`GetResults` 对失败 HRESULT 的呈现、真实定位读数——都需要真机与真设备，测试覆盖的是**从这些调用里切出来的决策逻辑**；另外"`fetch_system_monitors` 确实调用了裁剪函数"属于**代码审阅**而非测试（调用点在真机上），只有裁剪函数本身有测试。
+
 ### 本轮验证命令与结果
 
 | 命令 | 结果 |
@@ -691,8 +709,8 @@ P0（对应第 1、2 节的缺陷，写出来即回归网）：
 | `cargo clippy -- -D warnings` / `cargo clippy -r -- -D warnings`（均含 `--all-targets`） | exit 0 / 0 |
 | `cargo clippy -r -p dwall --features build-script,log-max-level-info --all-targets -- -D warnings` | exit 0 |
 | `DWALL_SKIP_BUILD=1 cargo clippy -p dwall-settings --all-targets -- -D warnings` | exit 0 |
-| `DWALL_SKIP_BUILD=1 cargo test` | **443 passed / 0 failed**（批次 1/2 后 239、3 后 252、4 后 279、5 后 293、6 后 306、7 后 335、8 后 376、9 后 407、10 后 409、12 后 429、13 后 438；dwall lib **220**、bin 8、headless_cli 5、trait_mocks 8、settings 111、logging 8、time 83） |
-| `bun run check`（tsgo + biome，386 文件） | exit 0，0 error / 0 warning（批次 11–15 不涉及前端；批次 16 **只有前端改动**，见下） |
+| `DWALL_SKIP_BUILD=1 cargo test` | **458 passed / 0 failed**（批次 1/2 后 239、3 后 252、4 后 279、5 后 293、6 后 306、7 后 335、8 后 376、9 后 407、10 后 409、12 后 429、13 后 438、15 后 443；dwall lib **235**、bin 8、headless_cli 5、trait_mocks 8、settings 111、logging 8、time 83） |
+| `bun run check`（tsgo + biome，387 文件） | exit 0，0 error / 0 warning（批次 11–15、17 不涉及前端；16 只改前端） |
 | `bun run test` | **47 passed**（批次 16 新增 8 个更新相关用例） |
 | `.scripts/measure-daemon-memory.ps1`（批次 10） | 6 轮测量：静息 2.84–2.97 MB / 268–286 句柄（两个二进制各 2 轮）、换过壁纸后 4.20–7.65 MB / 359–465 句柄（2 轮）、用户真实 13.7 小时 7.51 MB / 427 句柄；每轮 5 分钟 ≈300 周期，原始样本在 `%TEMP%\dwall_memtest\samples-*.csv` |
 
@@ -702,5 +720,6 @@ P0（对应第 1、2 节的缺陷，写出来即回归网）：
 
 第 8 节其余测试（见批次 9 一节末尾的清单：平台层的 `async_operation`/`geolocation`/`monitor`、`update.rs`、`setup.rs` 与其余 `commands/*`、NOAA 金值对照）、第 9 节批次 8/9（CI 门禁与 P3 清理）。
 批次 4 未处理的相邻项（原报告 2.2 表）：镜像的稳定版通道自废（M1）、续传无 `If-Range`/校验和（M2）、下载与缩略图无并发上限（M3）、缩略图锁表无上限与 100 MB 上限只在未命中时执行（M4）、asset protocol `**/*`（M5）、渲染层可传的 URL/路径（M6）、"读取续命"无效（M7）；另外"应用此主题会静默提交所有未保存的编辑"（[settings.store.ts:173-196](../src/store/settings.store.ts#L173-L196)）仍未处理，它属于前端语义而非生命周期问题。
+
 
 
