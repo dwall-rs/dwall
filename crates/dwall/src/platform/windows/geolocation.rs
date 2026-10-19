@@ -33,6 +33,16 @@ fn time_span(duration: Duration) -> TimeSpan {
     }
 }
 
+/// Whether a reading's altitude deserves the barometer hint.
+///
+/// Exactly zero, not "small": a device without a barometric sensor reports 0 m, while a
+/// real reading below sea level (the Dead Sea, a mine) is negative and valid. Nothing is
+/// wrong with either case, so this only decides whether to explain the shifted switch
+/// times.
+fn should_warn_about_altitude(altitude: f64) -> bool {
+    altitude == 0.0
+}
+
 /// Helper function to handle Windows API errors with consistent logging
 fn handle_windows_error<T, F>(operation: &str, f: F) -> DwallResult<T>
 where
@@ -108,7 +118,7 @@ impl PositionProvider for Positioner {
         trace!("Creating Position struct with latitude and longitude...");
         let position =
             Position::from_raw_position(position.Latitude, position.Longitude, position.Altitude);
-        if position.altitude() == 0. {
+        if should_warn_about_altitude(position.altitude()) {
             warn!(
                 "An altitude of 0 may cause the time for switching between light and dark modes to shift earlier or later by a few minutes to an hour. This is likely because your device lacks a barometric pressure sensor. This is not an error, but an expected outcome."
             );
@@ -160,5 +170,44 @@ impl PositionProvider for Positioner {
                 Err(GeolocationAccessError::Unspecified.into())
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// WinRT's `TimeSpan` counts 100-nanosecond ticks, and the two budgets the module
+    /// hands it are whole seconds.
+    #[test]
+    fn time_span_converts_seconds_to_100ns_ticks() {
+        for (duration, ticks) in [
+            (Duration::ZERO, 0),
+            (Duration::from_secs(1), 10_000_000),
+            (Duration::from_secs(30), 300_000_000),
+            (Duration::from_secs(60), 600_000_000),
+        ] {
+            assert_eq!(time_span(duration).Duration, ticks, "{duration:?}");
+        }
+    }
+
+    /// Sub-second parts are truncated, which is why both budgets are whole seconds.
+    #[test]
+    fn time_span_truncates_sub_second_parts() {
+        assert_eq!(time_span(Duration::from_millis(1_999)).Duration, 10_000_000);
+    }
+
+    #[test]
+    fn only_an_exactly_zero_altitude_asks_for_the_barometer_hint() {
+        assert!(should_warn_about_altitude(0.0));
+        assert!(
+            should_warn_about_altitude(-0.0),
+            "negative zero is still zero"
+        );
+
+        // Below sea level is a real reading, not a missing sensor.
+        assert!(!should_warn_about_altitude(-430.5));
+        assert!(!should_warn_about_altitude(0.001));
+        assert!(!should_warn_about_altitude(f64::NAN));
     }
 }

@@ -85,3 +85,114 @@ fn poll(
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use std::cell::Cell;
+
+    use super::*;
+
+    /// A status source that yields `statuses` in order, repeating the last one.
+    fn statuses<'a>(
+        statuses: &'a [AsyncStatus],
+        calls: &'a Cell<usize>,
+    ) -> impl Fn() -> windows::core::Result<AsyncStatus> + 'a {
+        move || {
+            let index = calls.get().min(statuses.len() - 1);
+            calls.set(calls.get() + 1);
+
+            Ok(statuses[index])
+        }
+    }
+
+    #[test]
+    fn poll_returns_as_soon_as_the_operation_is_done() {
+        let calls = Cell::new(0);
+
+        let result = poll(
+            statuses(
+                &[
+                    AsyncStatus::Started,
+                    AsyncStatus::Started,
+                    AsyncStatus::Completed,
+                ],
+                &calls,
+            ),
+            Duration::from_secs(5),
+        );
+
+        assert!(result.is_ok());
+        assert_eq!(calls.get(), 3, "it must stop at the terminal status");
+    }
+
+    /// The case the whole module exists for: a shell or location service that never
+    /// answers has to end the wait instead of blocking the daemon forever.
+    #[test]
+    fn poll_times_out_on_a_wedged_operation() {
+        let calls = Cell::new(0);
+        let budget = Duration::from_millis(120);
+        let started = Instant::now();
+
+        let error = poll(statuses(&[AsyncStatus::Started], &calls), budget)
+            .expect_err("a status that never leaves Started has to time out");
+
+        match error {
+            AsyncWaitError::Timeout(reported) => assert_eq!(reported, budget),
+            other => panic!("expected a timeout, got {other}"),
+        }
+        assert!(started.elapsed() >= budget);
+        assert!(calls.get() > 1, "it polls until the budget runs out");
+    }
+
+    /// `Error` and `Canceled` are terminal: polling them would burn the budget and then
+    /// report a timeout instead of the failure the caller is about to read.
+    #[test]
+    fn a_terminal_failure_status_ends_the_wait() {
+        for status in [AsyncStatus::Error, AsyncStatus::Canceled] {
+            let calls = Cell::new(0);
+
+            assert!(poll(statuses(&[status], &calls), Duration::from_secs(5)).is_ok());
+            assert_eq!(calls.get(), 1);
+        }
+    }
+
+    /// A status call that fails is also reported by `GetResults`; spinning on it would
+    /// waste the whole timeout first.
+    #[test]
+    fn a_status_call_that_fails_ends_the_wait() {
+        let calls = Cell::new(0);
+
+        let result = poll(
+            || {
+                calls.set(calls.get() + 1);
+
+                Err(windows::core::Error::from_hresult(
+                    windows::core::HRESULT::from_win32(5),
+                ))
+            },
+            Duration::from_secs(5),
+        );
+
+        assert!(result.is_ok());
+        assert_eq!(calls.get(), 1);
+    }
+
+    /// The two failure kinds reach the daemon as different errors, and the location
+    /// check depends on the second one being recognisable.
+    #[test]
+    fn the_two_failure_kinds_reach_the_daemon_differently() {
+        let timeout: crate::error::DwallError =
+            AsyncWaitError::Timeout(Duration::from_secs(30)).into();
+        assert!(matches!(timeout, crate::error::DwallError::AsyncTimeout(_)));
+
+        let failed: crate::error::DwallError = AsyncWaitError::Failed(
+            windows::core::Error::from_hresult(windows::core::HRESULT::from_win32(5)),
+        )
+        .into();
+        assert!(matches!(failed, crate::error::DwallError::Windows(_)));
+        assert!(
+            failed.location_unavailable(),
+            "an access-denied wait is what makes the daemon stop for a missing location"
+        );
+    }
+}
