@@ -189,6 +189,10 @@ export const dict: RawDictionary = {
       logDirSub: "フォルダーを開く",
       checkUpdate: "アップデートを確認",
       checking: "確認中…",
+      updateToastTitle: "新しいバージョン {{ version }} があります",
+      updateToastHint:
+        "「このアプリについて」からダウンロードしてインストールできます。",
+      updateToastAction: "開く",
       upToDate: "最新版です",
       available: "{{ version }} に更新できます",
       download: "ダウンロードしてインストール",

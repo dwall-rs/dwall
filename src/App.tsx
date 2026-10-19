@@ -8,6 +8,7 @@ import { syncFromConfig as syncFixed } from "./store/fixed.store";
 import { syncFromConfig as syncRandom } from "./store/random.store";
 import { load as loadSettings, settingsStore } from "./store/settings.store";
 import { setMode } from "./store/mode.store";
+import { checkOnStartup as checkUpdatesOnStartup } from "./store/update.store";
 import { showWindow } from "./ipc";
 
 export default function App() {
@@ -26,6 +27,10 @@ export default function App() {
     // Only themes on disk can be applied, so only those can enter the pool.
     syncRandom(config, availableThemeIds());
     if (config?.wallpaper_mode?.mode === "random") setMode("random");
+
+    // After the settings, because the check has to honour the configured proxy; not
+    // awaited, so a slow network never delays the window.
+    void checkUpdatesOnStartup();
   });
   return <AppShell />;
 }

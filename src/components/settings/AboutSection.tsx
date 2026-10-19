@@ -21,36 +21,43 @@ export function AboutSection() {
   const [info] = createResource(getAppInfo);
 
   return (
-    <SettingsGroup
-      icon={<FileText class="size-3.25" />}
-      title={t("settings.about.title")}
-      delay={200}
-    >
-      <div class="grid grid-cols-[1.5fr_1fr] gap-3">
-        <div class="relative row-span-2 flex flex-col gap-2.5 overflow-hidden rounded-[15px] border border-border bg-linear-to-br from-primary/10 to-card p-5 shadow-[0_1px_2px_rgba(0,0,0,.05),0_8px_24px_rgba(0,0,0,.06)]">
-          <img src={Logo} alt={t("settings.about.logoAlt")} class="size-8.5" />
-          <div class="font-display text-[34px] font-extrabold leading-none tracking-tight">
-            {info()?.version ?? "…"}
+    // Anchored so the start-up update notification can bring this group into view.
+    <div id="settings-about">
+      <SettingsGroup
+        icon={<FileText class="size-3.25" />}
+        title={t("settings.about.title")}
+        delay={200}
+      >
+        <div class="grid grid-cols-[1.5fr_1fr] gap-3">
+          <div class="relative row-span-2 flex flex-col gap-2.5 overflow-hidden rounded-[15px] border border-border bg-linear-to-br from-primary/10 to-card p-5 shadow-[0_1px_2px_rgba(0,0,0,.05),0_8px_24px_rgba(0,0,0,.06)]">
+            <img
+              src={Logo}
+              alt={t("settings.about.logoAlt")}
+              class="size-8.5"
+            />
+            <div class="font-display text-[34px] font-extrabold leading-none tracking-tight">
+              {info()?.version ?? "…"}
+            </div>
+            <div class="font-mono text-[11px] text-muted-foreground">
+              {t("settings.about.tagline")}
+            </div>
+            <UpdateCheck />
           </div>
-          <div class="font-mono text-[11px] text-muted-foreground">
-            {t("settings.about.tagline")}
-          </div>
-          <UpdateCheck />
+          <LinkRow
+            icon={<Code class="size-3.5" />}
+            title={t("settings.about.sourceCode")}
+            sub={t("settings.about.sourceSub")}
+            onClick={() => void openUrl(SOURCE_URL)}
+          />
+          <LinkRow
+            icon={<FileText class="size-3.5" />}
+            title={t("settings.about.logDir")}
+            sub={t("settings.about.logDirSub")}
+            onClick={() => void openLogDir()}
+          />
         </div>
-        <LinkRow
-          icon={<Code class="size-3.5" />}
-          title={t("settings.about.sourceCode")}
-          sub={t("settings.about.sourceSub")}
-          onClick={() => void openUrl(SOURCE_URL)}
-        />
-        <LinkRow
-          icon={<FileText class="size-3.5" />}
-          title={t("settings.about.logDir")}
-          sub={t("settings.about.logDirSub")}
-          onClick={() => void openLogDir()}
-        />
-      </div>
-    </SettingsGroup>
+      </SettingsGroup>
+    </div>
   );
 }
 function LinkRow(props: {
