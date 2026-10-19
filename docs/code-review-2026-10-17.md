@@ -17,10 +17,10 @@
 | `cargo fmt --all -- --check` | exit 0 |
 | `cargo clippy -r -p dwall --features build-script,log-max-level-info --all-targets` | exit 0，0 警告 |
 | `cargo test -p dwall -p logging -p time` | **196 passed / 0 failed**（dwall lib 101 + bin 5 + 集成 7 + logging 3 + time 80） |
-| `target/release/dwall.exe`（当前源码） | **646,144 B（631.0 KiB）**（见 6.1：10/18 用 `bun run build:daemon` 重测） |
+| `target/release/dwall.exe`（当前源码） | **649,216 B（634.0 KiB）**（见 6.1：10/19 用 `tauri build --no-bundle` 重测，其 `beforeBuildCommand` 就包含 `build:daemon`） |
 | `target/debug/dwall.exe` | 2,772,992 B → release 小 4.29× |
 | `target/release/dwall.exe`（0.2.5，前一份清单实测） | 600,576 B（586.5 KiB） → **+5.4%** |
-| `target/release/dwall-settings.exe` | 4,257,280 B（4.06 MiB）；debug 21,730,816 B |
+| `target/release/dwall-settings.exe` | **4,248,576 B（4.05 MiB）**（10/19；`zip` 8 → 9 与删掉死 CSS 的合计）；debug 21,730,816 B |
 | NSIS 安装包 `Dwall Settings_0.3.0-alpha.2_x64-setup.exe` | 1,806,833 B（0.2.5 = 1,756,558、0.1.33 = 2,070,883）——**10/18 未重测**，见 6.1 |
 | `dist/`（2026-10-19 批次 20 后构建） | **374,460 B**：JS 234,649 / CSS **108,428** / SVG 30,781 / html 602（CSS −13,823 B，删除死 CSS 的实测收益） |
 | `dist/`（0.2.5 基线） | 360,866 B → JS **+26 KB（+12%）**、CSS +2.7 KB |
@@ -212,9 +212,9 @@
 
 | 产物 | 体积 | 对比 |
 | --- | --- | --- |
-| `target/release/dwall.exe`（`bun run build:daemon`，含图标资源） | **646,144 B = 631.0 KiB** | 10/17 = 632,832 B → **+13,312 B / +2.1%**（批次 3–9：显示器缓存合一、切片等待、日志轮转、缓存失效等）；0.2.5 = 600,576 B → +7.6% |
+| `target/release/dwall.exe`（`bun run build:daemon`，含图标资源） | **649,216 B = 634.0 KiB**（10/19 重测） | 10/18 = 646,144 B → **+3,072 B / +0.5%**（批次 13–20：退出码 6、真实角距离匹配、平台层测试与钳位）；0.2.5 = 600,576 B → +8.1%。守护进程不含 `zip`，所以依赖升级对它没有影响 |
 | `target/debug/dwall.exe` | 2,772,992 B | release 小 4.29× |
-| `target/release/dwall-settings.exe`（`tauri build --no-bundle --features log-max-level-info`） | **4,257,280 B（4.06 MiB）** | 10/17 = 4,234,240 B → **+23,040 B / +0.54%**（批次 4/5 的解压上限、缩略图键、状态区错误行、`ProcessIdToSessionId` 特性）；debug 21,730,816 B |
+| `target/release/dwall-settings.exe`（`tauri build --no-bundle --features log-max-level-info`） | **4,248,576 B（4.05 MiB）**（10/19 重测） | 10/18 = 4,257,280 B → **−8,704 B / −0.2%**（`zip` 8 → 9 与删掉 13.8 KB 死 CSS 这两个方向的合计）；debug 21,730,816 B |
 | NSIS 安装包 | **未重测** | `bundle.createUpdaterArtifacts = true` 且配置里有 updater 公钥，打包阶段需要 CI 才有的 `TAURI_SIGNING_PRIVATE_KEY`；本机只跑到 `--no-bundle`。10/17 的 1,806,833 B（1.72 MiB）只能当参考，要更新得在有密钥的环境里跑一次 `bun run build` |
 | `Dwall_0.2.5_x64-daemon.zip` | 359,401 B = 351 KiB（0.2.5 时） | 未重打包；它约等于二进制的 57%，按新二进制推算 ≈370 KB |
 | `dist/` 前端产物（同一轮 `tauri build` 触发的 vite 构建） | **386,869 B** | JS **233,235 B**（10/17 = 231,251 → +1,984）、CSS 122,251（+351）、SVG 30,781、html 602 |
@@ -759,6 +759,19 @@ P0（对应第 1、2 节的缺陷，写出来即回归网）：
 
 **本轮验证**：`cargo fmt --check` 0；4 组 clippy（含 `--all-targets`）全 0；`cargo test` **479 passed + 1 failed** —— 唯一失败是**你未提交的 `zip 9` 升级**导致的 `archive::tests::a_declared_size_lie_does_not_bound_the_written_bytes`（`zip 9` 现在读的时候就自己拒绝声明尺寸撒谎的归档），与本批无关，我没有改那个文件；`bun run check` 0（387 文件）；`bun run test` **47 passed**；`bun run build:vite` 成功。
 
+### 批次 21 ✅ 依赖升级（`zip` 9、`single-instance` 2）的收尾
+
+这一批改的是**工作树里未提交的依赖升级**（`zip` 8 → 9、`tauri-plugin-single-instance` "2.4" → "2"，lock 里是 `zip 9.0.5` / `tauri-plugin-single-instance 2.5.4`），因为用户要求把升级后的编译/测试问题修掉。改动**尚未提交**（与那次升级同处一个工作树）。
+
+- **编译**：全无错误 ✓ —— `cargo check --workspace --all-targets --all-features` exit 0 ✓，`cargo build --workspace --all-targets` exit 0 ✓，release 配置（`-Oz` + LTO）也编过 ✓（`cargo build -p dwall-settings --release --features log-max-level-info` ✓）。升级引入的 API 变化（`entry.name()` 现在返回 `Result`）已在升级方自己的改动里处理掉 ✓。
+- **唯一失败的测试**：`archive::tests::a_declared_size_lie_does_not_bound_the_written_bytes`。原因不是我们的代码坏了，而是 **`zip` 9 自己就会在读的时候拒绝"声明尺寸撒谎"的条目**（`File is larger than its declared uncompressed size`）→ 那条测试"应当由**我们的**写入上限来拒绝"的前提不再成立 ✗。
+- **修法（两处，都在测试模块内）**：
+  1. 那条测试改成断言**与依赖无关的性质**：撒谎的归档被拒绝、且不留任何文件 ✓（并在注释里写明：现在先被 `zip` 拒绝，写入上限仍是最终保证）。
+  2. **加强** `copying_stops_exactly_at_the_limit`：原来只断言"11 字节过不去 10 字节的上限"✗，现在同时断言**写入量**（恰好等于上限时写 10 字节 ✓；超限那一段**一个字节都不写** ✓）与**失败消息**（`expands to more than` ✓）→ 这样"上限"这条保证就**独立于 zip 的任何行为**被钉住了 ✓✓。**翻转验证**：把 `copy_bounded` 里的上限判断去掉 → 该测试失败 ✓，恢复后通过 ✓。
+- **验证**：`cargo test` **480 passed / 0 failed**（settings 126 ✓）；4 组 clippy（含 `--all-targets`）全 0；`cargo fmt --check` 0。
+- **升级没有去重依赖**：`cargo tree -i zip@4.6.1` → `tauri-plugin-updater` ✓，`zip@9.0.5` → `dwall-settings` ✓ —— 两个 zip 仍然链在同一个可执行文件里，第 6.2 节那条结论不变 ✓。
+- **顺手用规范命令重测了体积**（`tauri build --no-bundle --features log-max-level-info`，其 `beforeBuildCommand` 本来就包含 `build:daemon` ✓）：`dwall.exe` **649,216 B**（10/18 = 646,144 → +3,072，来自批次 13–20；守护进程不含 `zip`，升级与它无关 ✓）、`dwall-settings.exe` **4,248,576 B**（10/18 = 4,257,280 → −8,704，是 `zip` 9 与删掉 13.8 KB 死 CSS 两个方向的合计 ✓）、`dist/` **374,460 B** ✓。第 1 节与第 6.1 节的数字已同步 ✓。
+
 ### 本轮验证命令与结果
 
 | 命令 | 结果 |
@@ -767,12 +780,12 @@ P0（对应第 1、2 节的缺陷，写出来即回归网）：
 | `cargo clippy -- -D warnings` / `cargo clippy -r -- -D warnings`（均含 `--all-targets`） | exit 0 / 0 |
 | `cargo clippy -r -p dwall --features build-script,log-max-level-info --all-targets -- -D warnings` | exit 0 |
 | `DWALL_SKIP_BUILD=1 cargo clippy -p dwall-settings --all-targets -- -D warnings` | exit 0 |
-| `DWALL_SKIP_BUILD=1 cargo test` | **479 passed / 1 failed**（批次 1/2 后 239、3 后 252、4 后 279、5 后 293、6 后 306、7 后 335、8 后 376、9 后 407、10 后 409、12 后 429、13 后 438、15 后 443、17 后 458、18 后 480；dwall lib **242**、bin 8、headless_cli 5、trait_mocks 8、settings 126、logging 8、time 83。**唯一失败**是批次 20 时工作树里未提交的 `zip 9` 升级导致的 `archive::tests::a_declared_size_lie_does_not_bound_the_written_bytes`，与本轮改动无关） | |
+| `DWALL_SKIP_BUILD=1 cargo test` | **480 passed / 0 failed**（批次 1/2 后 239、3 后 252、4 后 279、5 后 293、6 后 306、7 后 335、8 后 376、9 后 407、10 后 409、12 后 429、13 后 438、15 后 443、17 后 458；dwall lib **242**、bin 8、headless_cli 5、trait_mocks 8、settings **126**、logging 8、time 83。批次 20 期间曾因工作树里未提交的 `zip 9` 升级失败一条，已在批次 21 修好） | |
 | `bun run check`（tsgo + biome，387 文件） | exit 0，0 error / 0 warning（批次 11–15、17–18 不涉及前端；16 只改前端） |
 | `bun run test` | **47 passed**（批次 16 新增 8 个更新相关用例） |
 | `.scripts/measure-daemon-memory.ps1`（批次 10） | 6 轮测量：静息 2.84–2.97 MB / 268–286 句柄（两个二进制各 2 轮）、换过壁纸后 4.20–7.65 MB / 359–465 句柄（2 轮）、用户真实 13.7 小时 7.51 MB / 427 句柄；每轮 5 分钟 ≈300 周期，原始样本在 `%TEMP%\dwall_memtest\samples-*.csv` |
 
-第 6.1 节的二进制体积数字已在 10/18 用规范命令重建后更新（`dwall.exe` 646,144 B、`dwall-settings.exe` 4,257,280 B、`dist/` 386,869 B）；**NSIS 安装包未重测**，因为它需要 CI 才有的 updater 签名私钥。
+第 6.1 节的二进制体积数字已在 10/19 用规范命令重建后更新（`dwall.exe` 649,216 B、`dwall-settings.exe` 4,248,576 B、`dist/` 374,460 B）；**NSIS 安装包未重测**，因为它需要 CI 才有的 updater 签名私钥。
 
 ### 仍未做（后续批次）
 

@@ -98,13 +98,14 @@ fn extract_with_limit(
         let mut entry = zip.by_index(index)?;
 
         let Some(path) = entry.enclosed_name() else {
+            let name = entry.name()?;
             error!(
-                entry = entry.name(),
+                entry = name,
                 "Archive entry resolves to a path outside the extraction directory"
             );
             return Err(DwallSettingsError::Other(format!(
                 "Archive entry '{}' escapes the extraction directory",
-                entry.name()
+                name
             )));
         };
 
@@ -380,29 +381,26 @@ mod tests {
         let _ = fs::remove_dir_all(&dir);
     }
 
-    /// The regression test for the advisory-only limit.
+    /// An archive whose entries lie about their size is refused, and none of it is left
+    /// behind.
     ///
-    /// The archive declares 16 bytes and really expands to 64 KiB, so the
-    /// declared-size pre-check passes and only the cap on written bytes can stop
-    /// it; the assertion on the message proves which of the two fired. Handing this
-    /// archive to the crate's extractor, as the previous implementation did, writes
-    /// all 64 KiB.
+    /// The regression this started as: summing the sizes the central directory declares
+    /// and then handing the archive to the crate's extractor let an archive that
+    /// declares 16 bytes and expands to 64 KiB fill the disk — the cap on written bytes
+    /// is what stopped it. `copying_stops_exactly_at_the_limit` pins that cap directly,
+    /// because `zip` 9 refuses a lying entry in its own reader ("File is larger than its
+    /// declared uncompressed size"), so this extraction now fails before reaching it.
     #[test]
-    fn a_declared_size_lie_does_not_bound_the_written_bytes() {
+    fn an_archive_that_lies_about_its_sizes_is_refused_and_leaves_nothing() {
         let dir = scratch("lie");
         let mut bytes = archive(&[("Theme/big.bin", &[b'x'; 64 * 1024])]);
         lie_about_uncompressed_size(&mut bytes, 16);
         let zip_path = write_archive(&dir, &bytes);
         let target = dir.join("out");
 
-        let error = extract_with_limit(&zip_path, &target, 4096)
-            .expect_err("the byte cap must reject the extraction")
-            .to_string();
+        extract_with_limit(&zip_path, &target, 4096)
+            .expect_err("an archive that lies about its sizes must not be extracted");
 
-        assert!(
-            error.contains("expands to more than"),
-            "the write cap, not the declared-size check, has to reject it: {error}"
-        );
         assert!(
             !target.join("big.bin").is_file(),
             "the oversized file must not be left behind"
@@ -490,10 +488,23 @@ mod tests {
         let mut source = Cursor::new(vec![b'x'; 10]);
         let mut sink = Vec::new();
         assert_eq!(copy_bounded(&mut source, &mut sink, 10).unwrap(), 10);
+        assert_eq!(
+            sink.len(),
+            10,
+            "a source exactly at the limit is copied whole"
+        );
 
+        // One byte past it: the chunk that does not fit is refused before it is
+        // written, and the failure names the limit that fired. This is the guarantee
+        // the extraction rests on, independent of what the zip crate trusts.
         let mut source = Cursor::new(vec![b'x'; 11]);
         let mut sink = Vec::new();
-        assert!(copy_bounded(&mut source, &mut sink, 10).is_err());
+        let error = copy_bounded(&mut source, &mut sink, 10)
+            .expect_err("eleven bytes may not fit through a ten byte limit")
+            .to_string();
+
+        assert_eq!(sink.len(), 0, "the oversized chunk must not be written");
+        assert!(error.contains("expands to more than"), "{error}");
     }
 
     #[test]
