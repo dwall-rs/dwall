@@ -9,7 +9,13 @@ on:
     branches:
       - main
     paths:
-      - ".github/workflows/pr-check.yml"
+      # Anything that can change what CI would have to say about a change belongs here:
+      # a pull request that only touches the packaging templates or the release scripts
+      # used to start no workflow at all, so its problems surfaced during a release.
+      - ".github/**"
+      - ".scripts/**"
+      - ".packaging/**"
+      - "docs/**"
       - "Cargo.toml"
       - "Cargo.lock"
       - "crates/**"
@@ -40,9 +46,10 @@ jobs:
       frontend: ${{ steps.changes.outputs.frontend }}
       backend: ${{ steps.changes.outputs.backend }}
       workflow: ${{ steps.changes.outputs.workflow }}
+      scripts: ${{ steps.changes.outputs.scripts }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: dorny/paths-filter@v3
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: dorny/paths-filter@0e4a8c6effa4802afeda77dc8d303f8176d7dfad # v3.0.4
         id: changes
         with:
           filters: |
@@ -62,23 +69,27 @@ jobs:
               - "crates/**"
               - ".cargo/**"
             workflow:
-              - '.github/workflows/**'
+              - '.github/**'
+            scripts:
+              - '.scripts/**'
+              - '.packaging/**'
 
   frontend-check:
     name: "Frontend Code Check"
     runs-on: windows-latest
     needs: detect-changes
     if: needs.detect-changes.outputs.frontend == 'true' || needs.detect-changes.outputs.workflow == 'true'
+    timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
       - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
           bun-version: latest
 
       - name: Cache frontend dependencies
-        uses: actions/cache/restore@v5
+        uses: actions/cache/restore@caa296126883cff596d87d8935842f9db880ef25 # v5.1.0
         with:
           path: |
             ~/.bun
@@ -88,7 +99,7 @@ jobs:
             ${{ runner.os }}-frontend-
 
       - name: Setup Biome CLI
-        uses: biomejs/setup-biome@v2
+        uses: biomejs/setup-biome@4c91541eaada48f67d7dbd7833600ce162b68f51 # v2.7.1
 
       - name: Install dependencies
         run: bun install --frozen-lockfile
@@ -102,23 +113,58 @@ jobs:
       - name: Build frontend
         run: bun run build:vite
 
+  # The release scripts and the package templates only run inside publish.yml, so a
+  # mistake in them used to be discovered while a release was being cut.
+  scripts-check:
+    name: "Scripts Check"
+    runs-on: windows-latest
+    needs: detect-changes
+    if: needs.detect-changes.outputs.scripts == 'true' || needs.detect-changes.outputs.workflow == 'true'
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+
+      - name: Check PowerShell syntax
+        run: ./.scripts/check-powershell-syntax.ps1
+
+      # Windows, because the winget schema validation only runs where the winget CLI is,
+      # which is the same condition the release path sees.
+      - name: Check the packaging templates still render
+        run: ./.scripts/check-packaging-templates.ps1
+
+  # A typo in a workflow is otherwise only noticed when it fails to run — a gate that
+  # never fires because its `if:` names the wrong job looks exactly like a passing one.
+  # The image is pinned by version and runs without the repository's token.
+  workflow-lint:
+    name: "Workflow Lint"
+    runs-on: ubuntu-latest
+    needs: detect-changes
+    if: needs.detect-changes.outputs.workflow == 'true'
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+
+      - name: Lint the workflows
+        run: docker run --rm -v "$PWD:/repo" --workdir /repo rhysd/actionlint:1.7.7 -color
+
   rust-check:
     name: "Rust Code Check"
     runs-on: windows-latest
     needs: detect-changes
     if: needs.detect-changes.outputs.backend == 'true' || needs.detect-changes.outputs.workflow == 'true'
+    timeout-minutes: 60
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
       - name: Setup Rust
         id: rust-toolchain
-        uses: dtolnay/rust-toolchain@stable
+        uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
         with:
           targets: x86_64-pc-windows-msvc
 
       - name: Cache cargo registry
-        uses: actions/cache/restore@v5
+        uses: actions/cache/restore@caa296126883cff596d87d8935842f9db880ef25 # v5.1.0
         with:
           path: |
             ~/.cargo/bin/
@@ -130,7 +176,7 @@ jobs:
             ${{ runner.os }}-cargo-registry-
 
       - name: Cache Rust dependencies
-        uses: actions/cache/restore@v5
+        uses: actions/cache/restore@caa296126883cff596d87d8935842f9db880ef25 # v5.1.0
         with:
           path: |
             target/debug/.fingerprint
@@ -146,7 +192,7 @@ jobs:
       # The release-profile lints below would otherwise recompile every dependency
       # on each pull request.
       - name: Cache Rust release dependencies
-        uses: actions/cache/restore@v5
+        uses: actions/cache/restore@caa296126883cff596d87d8935842f9db880ef25 # v5.1.0
         with:
           path: |
             target/release/.fingerprint
@@ -163,17 +209,41 @@ jobs:
       - name: Cargo fmt check
         run: cargo fmt --all -- --check
 
+      # `--all-targets` so test code is linted too, not only the libraries and binaries.
       - name: Cargo clippy
-        run: cargo clippy -- -D warnings
+        run: cargo clippy --all-targets -- -D warnings
 
       # `cfg(debug_assertions)` hides whole blocks from the debug pass, and
       # `log-max-level-info` compiles the debug!/trace! macros away, so the shipped
       # configuration has its own set of lints to fail.
       - name: Cargo clippy (release)
-        run: cargo clippy -r -- -D warnings
+        run: cargo clippy -r --all-targets -- -D warnings
 
       - name: Cargo clippy (release, shipped features)
         run: cargo clippy -r -p dwall --features build-script,log-max-level-info --all-targets -- -D warnings
+
+      # The settings crate is built by `tauri build --features log-max-level-info` too,
+      # and that is the configuration where the debug!/trace! call sites disappear.
+      - name: Cargo clippy (settings, shipped features)
+        env:
+          DWALL_SKIP_BUILD: 1
+        run: cargo clippy -p dwall-settings --features log-max-level-info --all-targets -- -D warnings
+
+      # The frontend compiles against src/ipc/bindings, which is generated from the Rust
+      # types. Stale bindings type-check happily, so only regenerating them and looking
+      # for a diff can tell.
+      - name: Check generated bindings are up to date
+        run: |
+          cargo test -p dwall --features ts --lib export_bindings
+          cargo test -p dwall-settings --features typegen export_bindings
+
+          $stale = git status --porcelain -- src/ipc/bindings
+          if ($stale) {
+            Write-Host "::error::src/ipc/bindings is out of date; run 'bun run typegen' and commit the result"
+            Write-Host $stale
+            git --no-pager diff -- src/ipc/bindings
+            exit 1
+          }
 
       - name: Cargo test
         run: cargo test
@@ -181,7 +251,7 @@ jobs:
   auto-merge:
     name: Auto Merge PR
     runs-on: ubuntu-latest
-    needs: [detect-changes, frontend-check, rust-check]
+    needs: [detect-changes, frontend-check, scripts-check, workflow-lint, rust-check]
     # Only merge when the change detection actually ran and no executed check
     # failed; a skipped check (nothing relevant changed) is acceptable, a failed
     # or cancelled one is not.
@@ -189,13 +259,15 @@ jobs:
       always() && !cancelled()
       && needs.detect-changes.result == 'success'
       && (needs.frontend-check.result == 'success' || needs.frontend-check.result == 'skipped')
+      && (needs.scripts-check.result == 'success' || needs.scripts-check.result == 'skipped')
+      && (needs.workflow-lint.result == 'success' || needs.workflow-lint.result == 'skipped')
       && (needs.rust-check.result == 'success' || needs.rust-check.result == 'skipped')
     permissions:
       contents: write
       pull-requests: write
     steps:
       - name: Auto merge PR
-        uses: pascalgn/automerge-action@v0.16.4
+        uses: pascalgn/automerge-action@7961b8b5eec56cc088c140b56d864285eabd3f67 # v0.16.4
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           MERGE_REMOVE_LABELS: "automerge"

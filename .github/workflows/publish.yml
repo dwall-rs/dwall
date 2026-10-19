@@ -35,7 +35,7 @@ jobs:
     outputs:
       should_continue: ${{ steps.check.outputs.should_continue }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           fetch-depth: 0
 
@@ -68,13 +68,13 @@ jobs:
       changelog: ${{ steps.final_changelog.outputs.changelog }}
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           fetch-depth: 0
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: lts/*
 
@@ -130,7 +130,7 @@ jobs:
 
       - name: Build changelog
         id: github_release_changelog
-        uses: mikepenz/release-changelog-builder-action@v4
+        uses: mikepenz/release-changelog-builder-action@32e3c96f29a6532607f638797455e9e98cfc703d # v4.2.2
         with:
           configuration: ".github/changelog-configuration.json"
           fromTag: ${{ steps.changelog_range.outputs.fromTag }}
@@ -142,7 +142,7 @@ jobs:
       - name: Fallback changelog from commits
         id: fallback_changelog
         if: steps.github_release_changelog.outputs.changelog == ''
-        uses: actions/github-script@v7
+        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7.1.0
         env:
           FROM: ${{ steps.changelog_range.outputs.fromTag }}
         with:
@@ -206,7 +206,7 @@ jobs:
 
       - name: Create release
         id: create-release
-        uses: actions/github-script@v7
+        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7.1.0
         env:
           changelog: ${{ steps.final_changelog.outputs.changelog }}
           PRERELEASE: ${{ github.event.inputs.release_channel != 'stable' }}
@@ -233,21 +233,21 @@ jobs:
 
     timeout-minutes: 60
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           ref: release
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: lts/*
 
-      - uses: oven-sh/setup-bun@v1
+      - uses: oven-sh/setup-bun@f4d14e03ff726c06358e5557344e1da148b56cf7 # v1.2.2
         with:
           bun-version: latest
 
       - name: Cache frontend dependencies
-        uses: actions/cache@v5
+        uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5.1.0
         with:
           path: |
             ~/.bun
@@ -258,12 +258,12 @@ jobs:
 
       - name: Install Rust stable
         id: rust-toolchain
-        uses: dtolnay/rust-toolchain@stable
+        uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
         with:
           targets: x86_64-pc-windows-msvc
 
       - name: Cache cargo registry
-        uses: actions/cache@v5
+        uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5.1.0
         with:
           path: |
             ~/.cargo/bin/
@@ -275,7 +275,7 @@ jobs:
             ${{ runner.os }}-cargo-registry-
 
       - name: Cache Rust dependencies
-        uses: actions/cache@v5
+        uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5.1.0
         with:
           path: |
             target/release/.fingerprint
@@ -286,7 +286,7 @@ jobs:
             ${{ runner.os }}-rust-release-${{ steps.rust-toolchain.outputs.cachekey }}-
 
       - name: Setup Biome CLI
-        uses: biomejs/setup-biome@v2
+        uses: biomejs/setup-biome@4c91541eaada48f67d7dbd7833600ce162b68f51 # v2.7.1
 
       - name: Install frontend dependencies
         run: bun install --frozen-lockfile
@@ -295,7 +295,7 @@ jobs:
         run: bun run check
 
       - name: Build application
-        uses: tauri-apps/tauri-action@v0.5.23
+        uses: tauri-apps/tauri-action@e834788a94591d81e3ae0bd9ec06366f5afb8994 # v0.5.23
         env:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
@@ -337,7 +337,7 @@ jobs:
     steps:
       - name: Publish release
         id: publish-release
-        uses: actions/github-script@v7
+        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7.1.0
         env:
           release_id: ${{ needs.create-release.outputs.release_id }}
           PACKAGE_VERSION: ${{ needs.create-release.outputs.package_version }}
@@ -388,7 +388,7 @@ jobs:
     if: success()
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           fetch-depth: 0
@@ -414,7 +414,7 @@ jobs:
     if: success()
     steps:
       - name: Delete release branch
-        uses: actions/github-script@v7
+        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7.1.0
         with:
           script: |
             try {
@@ -436,7 +436,7 @@ jobs:
     if: success()
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
       - name: Delete old nightly release
         run: |

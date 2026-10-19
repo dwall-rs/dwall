@@ -392,9 +392,9 @@ P0（对应第 1、2 节的缺陷，写出来即回归网）：
 
 ---
 
-## 11. 修复记录：批次 1 ~ 18（2026-10-17 ~ 10-18 本轮已实现）
+## 11. 修复记录：批次 1 ~ 19（2026-10-17 ~ 10-18 本轮已实现）
 
-只做了第 9 节的**批次 1（D1、D2+D3）、批次 2（S1、S2）、批次 3（D5、D6、D4）、批次 4（S3、S4、S5、`.zip` 泄漏、取消不重试）、批次 5（日志轮转上限、时区偏移缓存、去掉整份配置 dump、暴露守护进程最后一条 ERROR）、批次 6（配置生效延迟、写盘顺序、会话过滤与 PID 复用、停止后等待退出）、批次 7（8.1 的 `ThemeEngine` 泛型化与配置目录参数化 + 29 个测试）、批次 8（第 8 节测试的 theme/color_scheme/config/solar 部分 + 四个缓存与校验缺陷）、批次 9（第 8 节的 utils/random_state/settings network+thumbnail 部分 + 缩略图缓存永不续命）、批次 10（体积重测 + 守护进程内存实测与 12 处文档修正）、批次 11（`interval`/`cache_minutes` 两个默认值的推导 + 否证位置刷新假设）、批次 12（按需唤醒的太阳事件调度 + 配置轮询 5 秒）、批次 13（自动定位不可用时以退出码 6 明确停止，不做位置兜底）、批次 14（壁纸匹配逻辑的量化分析）、批次 15（匹配改用真实角距离）、批次 16（设置窗口启动时自动检查更新并提醒）、批次 17（第 8 节的平台层测试 + 友好名缓存两个缺陷）与批次 18（第 8 节的设置端与太阳位置测试）**，其余批次未动。
+只做了第 9 节的**批次 1（D1、D2+D3）、批次 2（S1、S2）、批次 3（D5、D6、D4）、批次 4（S3、S4、S5、`.zip` 泄漏、取消不重试）、批次 5（日志轮转上限、时区偏移缓存、去掉整份配置 dump、暴露守护进程最后一条 ERROR）、批次 6（配置生效延迟、写盘顺序、会话过滤与 PID 复用、停止后等待退出）、批次 7（8.1 的 `ThemeEngine` 泛型化与配置目录参数化 + 29 个测试）、批次 8（第 8 节测试的 theme/color_scheme/config/solar 部分 + 四个缓存与校验缺陷）、批次 9（第 8 节的 utils/random_state/settings network+thumbnail 部分 + 缩略图缓存永不续命）、批次 10（体积重测 + 守护进程内存实测与 12 处文档修正）、批次 11（`interval`/`cache_minutes` 两个默认值的推导 + 否证位置刷新假设）、批次 12（按需唤醒的太阳事件调度 + 配置轮询 5 秒）、批次 13（自动定位不可用时以退出码 6 明确停止，不做位置兜底）、批次 14（壁纸匹配逻辑的量化分析）、批次 15（匹配改用真实角距离）、批次 16（设置窗口启动时自动检查更新并提醒）、批次 17（第 8 节的平台层测试 + 友好名缓存两个缺陷）、批次 18（第 8 节的设置端与太阳位置测试）与批次 19（第 9 节批次 8：CI 门禁）**，其余批次未动。
 
 ### D1 ✅ 守护进程不再因持续失败而退出
 
@@ -720,6 +720,21 @@ P0（对应第 1、2 节的缺陷，写出来即回归网）：
 1. **NOAA 参考星历的 0.02° 金值对照仍未做**。我需要的是一份**可引用**的权威数值表；两次检索只找到不可引用的镜像与 PDF（[NREL SPA 报告](https://www.yumpu.com/en/document/view/6132632/solar-position-algorithm-for-solar-radiation-applications-nrel/39#1) 的第三方转载、[PlantPredict 文档](https://docs.plantpredict.com/models/solar-geometry/solar_position_algorithm) 等），**我不会把查不到出处的数字写进测试**。替代品是本批的物理不变量（子午线、至日三角、交角、时差方程极值与其月份）——它们能抓住错误的符号与错误的公式（这正是快照测不出来的），但**强度不等于**与独立星历逐点比对 0.02°。如果维护者能提供一份带出处的金值表（NOAA 计算器导出、NREL SPA 报告表 A3 之类），我可以照它补上。
 2. **其余 `commands/*` 仍未加测试**，原因是它们没有值得测的内容：`read_config_file`、`mirror_url`、`get_monitors_cmd` 等是**单行委托**，逻辑在各自模块里已有测试（`filesystem` 14、`network::mirror` 7、`monitor` 6 等）；唯一有分支的 `write_config_file` 是把 `validate_theme_roots` + `ConfigWriter` + 两次 `reconfigure` 串起来，而这三者各有测试。要测这些包装函数本身需要构造 Tauri 的 `State`/`AppHandle`（即引入一个 Tauri 测试运行时），与本项目一贯的取舍不符——这一条是**判断**，不是遗留缺陷，我把理由写在这里由维护者复核。
 
+### 批次 19 ✅ 第 9 节的批次 8：CI 门禁
+
+报告的四个门禁缺口，加 P2 的 action 固定问题。**所有改动都无法在本地执行工作流**，所以每一条都由三层证据支撑：actionlint + YAML 结构解析 + 门禁脚本本身可本地运行，并且每个新门禁都做了一次翻转验证。
+
+- **bindings 同步门禁**（`pr-check.yml` 的 rust job）：跑 `cargo test -p dwall --features ts --lib export_bindings` 与 `cargo test -p dwall-settings --features typegen export_bindings`，然后 `git status --porcelain -- src/ipc/bindings` 非空即失败并打印 `git diff`。**翻转验证**：把一个绑定文件手工改坏并 `git add`（模拟"PR 里提交了陈旧绑定"）→ 重新生成后状态为 `MM` → 门禁失败 ✓；复原后干净 ✓。**本地实测**：当前提交的绑定与 Rust 类型本来就同步（重生成后 `git status` 为空 ✓），所以这条门禁今天就通过 ✓。
+- **settings 的 shipped-feature clippy**：`cargo clippy -p dwall-settings --features log-max-level-info --all-targets -- -D warnings`（`DWALL_SKIP_BUILD=1`）✓ 本地实测 **exit 0** ✓。同时给根的两条既有 clippy 加 `--all-targets`（测试代码此前从未被 lint ✓ 本地实测干净 ✓），并把这条命令写进 `warm-cache.yml`，让每周预热产出这条门禁要用的产物 ✓。
+- **触发路径**：`on.pull_request.paths` 与 `detect-changes` 的过滤器都补上 `.github/**`、`.scripts/**`、`.packaging/**`、`docs/**` ✓ 只改打包脚本/模板的 PR 现在会启动工作流（并由 `scripts-check` 实际检查），`docs/**` 的 PR 也不再完全静默 ✓。
+- **action 固定**：5 个工作流里的 **53 处** `uses:` 全部钉到 commit，版本写在行尾注释（`# v4.4.0` 形式，dependabot 认这种写法）；替换脚本逐字节保留原文件的 CRLF/LF 与无 BOM ✓，替换后断言"不得残留浮动 ref" ✓。**专门核实了 `dtolnay/rust-toolchain`**：它的 ref 名看似是工具链选择器，但读该 commit 的 `action.yml` 确认 `toolchain` 输入默认就是 `stable`（`env: toolchain: ${{ inputs.toolchain }}`），**所以钉 SHA 不会去装一个名叫 SHA 的工具链** ✓（这是本批最容易埋雷的一处）。配套加 `dependabot: github-actions` ✓，否则钉死后没人升级。
+- **actionlint**（新 `workflow-lint` job）：`docker run … rhysd/actionlint:1.7.7`（按版本钉住、不引第三方 action、不接触仓库 token ✓）。本地用 actionlint 1.7.7 跑**全部 5 个工作流：零告警、exit 0** ✓；在一次性 git 仓库里做翻转验证，它确实会抓 `needs.<job>` 属性拼错（exit 1 ✓）与表达式语法错误（exit 1 ✓）。**一个值得记下的陷阱**：`actionlint -stdin-filename` 模式**不做**跨 job 检查 —— 我第一次的翻转验证因此"静默通过"，差点误判为"它不检查这个" ✗。
+- **PowerShell 语法门禁**（新 `scripts-check` job，windows）：[check-powershell-syntax.ps1](../.scripts/check-powershell-syntax.ps1) 用 PowerShell 自己的 parser（不装模块、不联网 ✓），翻转验证：放进一个括号未闭合的脚本 → 打印 `文件名:行:列` 并 exit 1 ✓。
+- **打包模板门禁**（同一 job）：[check-packaging-templates.ps1](../.scripts/check-packaging-templates.ps1) 用合成版本与合成摘要把 `.packaging/**` 渲染到 `dist-manifests/check-templates`（在已被 gitignore 的目录内，`finally` 清理 ✓，只删这个子目录 ✓）并走 `-Validate`（windows runner 上会真的跑 `winget validate` ✓）。翻转验证：把一个占位符改名 → `Unreplaced placeholder` → exit 1 ✓。过程中修掉两个自己的 bug：包装脚本最初把内层失败吞成 exit 0 ✗；跨盘符时 `GetRelativePath` 返回绝对路径、被 `Join-Path` 拼坏 ✗。
+- **`timeout-minutes`**：rust 60、frontend 30、两个新 job 各 10（报告指出的"Rust job 没有超时" ✓）。
+
+**如实记录的限制**：(a) 没有任何工作流被**真正执行**过，首次端到端运行会是第一个真实 PR；(b) `rhysd/actionlint:1.7.7` 是版本 tag 而非 digest（更紧的做法需要先 pull 一次才能取 digest）；(c) `oven-sh/setup-bun` 在两个工作流里分别是 `v1`/`v2`（P2 提过），本批按原样钉住、**没有顺手统一**——统一会改变发布路径的行为，不属于"加门禁"；(d) P3-49 里的 `cargo audit`/`deny.toml`/`rust-toolchain.toml` 属于批次 9，未做。另外这一批的验证是在**你工作树里未提交的 `zip 9` 升级生效的情况下**跑的（我没碰那两个文件）。
+
 ### 本轮验证命令与结果
 
 | 命令 | 结果 |
@@ -737,8 +752,11 @@ P0（对应第 1、2 节的缺陷，写出来即回归网）：
 
 ### 仍未做（后续批次）
 
-第 8 节的测试在批次 17（平台层的 `async_operation`/`geolocation`/`monitor`）与批次 18（`network/client`、`setup`、`solar`）之后**基本收尾**，只剩一件明确未做：**`solar.rs` 与独立参考星历逐点比对的金值测试**（我找不到可引用的权威数值表，且不会编造数值，见批次 18 一节末尾）。`update.rs` 与 `ThemeValidator` 经确认早已覆盖；其余 `commands/*` 是单行委托，未加测试的理由同样记在批次 18 一节末尾。剩下的工作是第 9 节批次 8/9（CI 门禁与 P3 清理）。
+第 8 节的测试在批次 17（平台层的 `async_operation`/`geolocation`/`monitor`）与批次 18（`network/client`、`setup`、`solar`）之后**基本收尾**，只剩一件明确未做：**`solar.rs` 与独立参考星历逐点比对的金值测试**（我找不到可引用的权威数值表，且不会编造数值，见批次 18 一节末尾）。`update.rs` 与 `ThemeValidator` 经确认早已覆盖；其余 `commands/*` 是单行委托，未加测试的理由同样记在批次 18 一节末尾。
+
+第 9 节的**批次 8（CI 门禁）已在批次 19 完成**。剩下的只有**批次 9（P3 清理）**：死代码、`macros.rs.bak`、`rust-version`、`icon.icns`、死 CSS、capability 收窄、`docs/custom-themes.md` 的布局说明、`.zip`/清单哈希来源，以及 P3-49 里的 `cargo audit`/`deny.toml`/`rust-toolchain.toml`。
 批次 4 未处理的相邻项（原报告 2.2 表）：镜像的稳定版通道自废（M1）、续传无 `If-Range`/校验和（M2）、下载与缩略图无并发上限（M3）、缩略图锁表无上限与 100 MB 上限只在未命中时执行（M4）、asset protocol `**/*`（M5）、渲染层可传的 URL/路径（M6）、"读取续命"无效（M7）；另外"应用此主题会静默提交所有未保存的编辑"（[settings.store.ts:173-196](../src/store/settings.store.ts#L173-L196)）仍未处理，它属于前端语义而非生命周期问题。
+
 
 
 

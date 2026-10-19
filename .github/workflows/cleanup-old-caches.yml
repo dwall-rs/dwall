@@ -21,7 +21,7 @@ jobs:
 
     steps:
       - name: Fetch and Cleanup Old Caches
-        uses: actions/github-script@v7
+        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7.1.0
         with:
           script: |
             const DRY_RUN = '${{ github.event.inputs.dry_run }}' === 'true';
