@@ -118,3 +118,63 @@ fn setup_updater(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>>
 
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use std::fs;
+
+    use super::*;
+
+    /// A directory holding a settings executable, and optionally a daemon next to it.
+    fn scratch(name: &str, with_daemon: bool) -> PathBuf {
+        let dir = std::env::temp_dir().join(format!("dwall_setup_{name}"));
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(&dir).unwrap();
+
+        let settings = dir.join("dwall-settings.exe");
+        fs::write(&settings, b"").unwrap();
+
+        if with_daemon {
+            fs::write(dir.join("dwall.exe"), b"").unwrap();
+        }
+
+        settings
+    }
+
+    #[test]
+    fn the_daemon_is_looked_for_next_to_the_settings_executable() {
+        let settings = scratch("beside", true);
+
+        let resolved = resolve_daemon_path(&[settings.display().to_string()]).unwrap();
+
+        assert_eq!(resolved, settings.parent().unwrap().join("dwall.exe"));
+    }
+
+    #[test]
+    fn a_missing_daemon_is_an_error_rather_than_a_guess() {
+        let settings = scratch("missing", false);
+
+        let error = resolve_daemon_path(&[settings.display().to_string()]).unwrap_err();
+
+        assert!(
+            error.to_string().contains("does not exist"),
+            "the message names what is missing: {error}"
+        );
+    }
+
+    #[test]
+    fn a_directory_named_like_the_daemon_is_not_one() {
+        let settings = scratch("directory", false);
+        fs::create_dir(settings.parent().unwrap().join("dwall.exe")).unwrap();
+
+        assert!(
+            resolve_daemon_path(&[settings.display().to_string()]).is_err(),
+            "an executable is a file, not a directory with that name"
+        );
+    }
+
+    #[test]
+    fn no_arguments_is_an_error() {
+        assert!(resolve_daemon_path(&[]).is_err());
+    }
+}

@@ -392,9 +392,9 @@ P0（对应第 1、2 节的缺陷，写出来即回归网）：
 
 ---
 
-## 11. 修复记录：批次 1 ~ 17（2026-10-17 ~ 10-18 本轮已实现）
+## 11. 修复记录：批次 1 ~ 18（2026-10-17 ~ 10-18 本轮已实现）
 
-只做了第 9 节的**批次 1（D1、D2+D3）、批次 2（S1、S2）、批次 3（D5、D6、D4）、批次 4（S3、S4、S5、`.zip` 泄漏、取消不重试）、批次 5（日志轮转上限、时区偏移缓存、去掉整份配置 dump、暴露守护进程最后一条 ERROR）、批次 6（配置生效延迟、写盘顺序、会话过滤与 PID 复用、停止后等待退出）、批次 7（8.1 的 `ThemeEngine` 泛型化与配置目录参数化 + 29 个测试）、批次 8（第 8 节测试的 theme/color_scheme/config/solar 部分 + 四个缓存与校验缺陷）、批次 9（第 8 节的 utils/random_state/settings network+thumbnail 部分 + 缩略图缓存永不续命）、批次 10（体积重测 + 守护进程内存实测与 12 处文档修正）、批次 11（`interval`/`cache_minutes` 两个默认值的推导 + 否证位置刷新假设）、批次 12（按需唤醒的太阳事件调度 + 配置轮询 5 秒）、批次 13（自动定位不可用时以退出码 6 明确停止，不做位置兜底）、批次 14（壁纸匹配逻辑的量化分析）、批次 15（匹配改用真实角距离）、批次 16（设置窗口启动时自动检查更新并提醒）与批次 17（第 8 节的平台层测试 + 友好名缓存两个缺陷）**，其余批次未动。
+只做了第 9 节的**批次 1（D1、D2+D3）、批次 2（S1、S2）、批次 3（D5、D6、D4）、批次 4（S3、S4、S5、`.zip` 泄漏、取消不重试）、批次 5（日志轮转上限、时区偏移缓存、去掉整份配置 dump、暴露守护进程最后一条 ERROR）、批次 6（配置生效延迟、写盘顺序、会话过滤与 PID 复用、停止后等待退出）、批次 7（8.1 的 `ThemeEngine` 泛型化与配置目录参数化 + 29 个测试）、批次 8（第 8 节测试的 theme/color_scheme/config/solar 部分 + 四个缓存与校验缺陷）、批次 9（第 8 节的 utils/random_state/settings network+thumbnail 部分 + 缩略图缓存永不续命）、批次 10（体积重测 + 守护进程内存实测与 12 处文档修正）、批次 11（`interval`/`cache_minutes` 两个默认值的推导 + 否证位置刷新假设）、批次 12（按需唤醒的太阳事件调度 + 配置轮询 5 秒）、批次 13（自动定位不可用时以退出码 6 明确停止，不做位置兜底）、批次 14（壁纸匹配逻辑的量化分析）、批次 15（匹配改用真实角距离）、批次 16（设置窗口启动时自动检查更新并提醒）、批次 17（第 8 节的平台层测试 + 友好名缓存两个缺陷）与批次 18（第 8 节的设置端与太阳位置测试）**，其余批次未动。
 
 ### D1 ✅ 守护进程不再因持续失败而退出
 
@@ -701,6 +701,25 @@ P0（对应第 1、2 节的缺陷，写出来即回归网）：
 
 **这一批明确没有验证的东西**（如实记下）：真实 Win32 路径——`QueryDisplayConfig`/`SetupAPI` 枚举本身、`GetResults` 对失败 HRESULT 的呈现、真实定位读数——都需要真机与真设备，测试覆盖的是**从这些调用里切出来的决策逻辑**；另外"`fetch_system_monitors` 确实调用了裁剪函数"属于**代码审阅**而非测试（调用点在真机上），只有裁剪函数本身有测试。
 
+### 批次 18 ✅ 第 8 节的设置端与太阳位置测试（第 8 节至此收尾）
+
+**新增 22 个测试（全仓 458 → 480）**：
+
+| 文件 | 用例 |
+| --- | --- |
+| `network/client.rs`（+11，§8.5 计划第 4 项） | 用 `std::net::TcpListener` 起一次性 HTTP 夹具（**不引入 hyper/axum**）：**只有 206 才续传**（断言客户端确实发了 `Range: bytes=4-`，且落盘是 `aaaabbbb`）、**200 会截断重下而不是追加**（镜像忽略 Range 时不会写出坏档）、没有半成品时不发 Range、**取消标志在分块之间生效**（预置标志 → `Cancelled` 且一个字节都没落盘）、404 在任何文件被创建之前就返回、**已知长度时进度报总数**、**长度未知时进度报 0 而不是把已写字节当总数**、`get_text` 正常返回、**声明长度超限**、**声明缺失/撒谎时边读边守上限**、非 UTF-8 被拒 |
+| `setup.rs`（+4） | `resolve_daemon_path` 这个唯一纯函数：从设置可执行文件旁边找 `dwall.exe`、缺了就报错而**不猜**、**同名目录不算可执行文件**（`is_file`）、无参数报错 |
+| `solar.rs`（+7） | `altitude_is_clamped_when_the_sine_rounds_past_one`（配合下面的钳位修复）、**正午最高太阳在正北半球正南**、**南半球正北**（悉尼冬季）、**太阳过中天的钟点与经度/时差方程相符**（北京 11 月 3 日应约 11:58，时差方程那时是 +16.4 min 的正极值 → **这条能钉住时差方程的符号**，自洽的实现自己是发现不了的）、**正午高度角符合至日三角公式** `90°−|φ−δ|`（三个纬度 × 两个至日）、**赤纬不超出黄赤交角且在至日达到它**、**时差方程在 ±17 min 内且极值出现在 2 月（负）与 11 月（正）** |
+
+**一个真修复**：`SolarPosition::altitude_from_context` 直接 `sin_alt.asin()`，而两个舍入过的乘积之和在太阳正当天顶时可以落到 `1` 之外几个 ulp → `asin` 给出 `NaN` → 那一刻高度角为 `NaN`，匹配也跟着变成 `NaN`。现在 `altitude_from_sin` 先 `clamp(-1, 1)` ✓ 测试直接用该辅助函数（真实路径无法从外部逼到越界，这点写在注释里）。
+
+**顺带确认（无需改动）**：`update.rs` 现有的 8 个测试已覆盖计划关心的两件事——`select_release` 的稳定版优先/最新稳定版/更旧的绝不提供/草稿与非法 tag 忽略，以及 AGENTS 点名的 `retag_manifest_url`（预发布清单必须被指回自己的 tag，否则安装会 404 而检查看起来正常）；`theme.rs` 的 `ThemeValidator` 已有 9 个测试（批次 8）。
+
+**这一批明确没有做的两件事**（如实记录，不粉饰）：
+
+1. **NOAA 参考星历的 0.02° 金值对照仍未做**。我需要的是一份**可引用**的权威数值表；两次检索只找到不可引用的镜像与 PDF（[NREL SPA 报告](https://www.yumpu.com/en/document/view/6132632/solar-position-algorithm-for-solar-radiation-applications-nrel/39#1) 的第三方转载、[PlantPredict 文档](https://docs.plantpredict.com/models/solar-geometry/solar_position_algorithm) 等），**我不会把查不到出处的数字写进测试**。替代品是本批的物理不变量（子午线、至日三角、交角、时差方程极值与其月份）——它们能抓住错误的符号与错误的公式（这正是快照测不出来的），但**强度不等于**与独立星历逐点比对 0.02°。如果维护者能提供一份带出处的金值表（NOAA 计算器导出、NREL SPA 报告表 A3 之类），我可以照它补上。
+2. **其余 `commands/*` 仍未加测试**，原因是它们没有值得测的内容：`read_config_file`、`mirror_url`、`get_monitors_cmd` 等是**单行委托**，逻辑在各自模块里已有测试（`filesystem` 14、`network::mirror` 7、`monitor` 6 等）；唯一有分支的 `write_config_file` 是把 `validate_theme_roots` + `ConfigWriter` + 两次 `reconfigure` 串起来，而这三者各有测试。要测这些包装函数本身需要构造 Tauri 的 `State`/`AppHandle`（即引入一个 Tauri 测试运行时），与本项目一贯的取舍不符——这一条是**判断**，不是遗留缺陷，我把理由写在这里由维护者复核。
+
 ### 本轮验证命令与结果
 
 | 命令 | 结果 |
@@ -709,8 +728,8 @@ P0（对应第 1、2 节的缺陷，写出来即回归网）：
 | `cargo clippy -- -D warnings` / `cargo clippy -r -- -D warnings`（均含 `--all-targets`） | exit 0 / 0 |
 | `cargo clippy -r -p dwall --features build-script,log-max-level-info --all-targets -- -D warnings` | exit 0 |
 | `DWALL_SKIP_BUILD=1 cargo clippy -p dwall-settings --all-targets -- -D warnings` | exit 0 |
-| `DWALL_SKIP_BUILD=1 cargo test` | **458 passed / 0 failed**（批次 1/2 后 239、3 后 252、4 后 279、5 后 293、6 后 306、7 后 335、8 后 376、9 后 407、10 后 409、12 后 429、13 后 438、15 后 443；dwall lib **235**、bin 8、headless_cli 5、trait_mocks 8、settings 111、logging 8、time 83） |
-| `bun run check`（tsgo + biome，387 文件） | exit 0，0 error / 0 warning（批次 11–15、17 不涉及前端；16 只改前端） |
+| `DWALL_SKIP_BUILD=1 cargo test` | **480 passed / 0 failed**（批次 1/2 后 239、3 后 252、4 后 279、5 后 293、6 后 306、7 后 335、8 后 376、9 后 407、10 后 409、12 后 429、13 后 438、15 后 443、17 后 458；dwall lib **242**、bin 8、headless_cli 5、trait_mocks 8、settings **126**、logging 8、time 83） |
+| `bun run check`（tsgo + biome，387 文件） | exit 0，0 error / 0 warning（批次 11–15、17–18 不涉及前端；16 只改前端） |
 | `bun run test` | **47 passed**（批次 16 新增 8 个更新相关用例） |
 | `.scripts/measure-daemon-memory.ps1`（批次 10） | 6 轮测量：静息 2.84–2.97 MB / 268–286 句柄（两个二进制各 2 轮）、换过壁纸后 4.20–7.65 MB / 359–465 句柄（2 轮）、用户真实 13.7 小时 7.51 MB / 427 句柄；每轮 5 分钟 ≈300 周期，原始样本在 `%TEMP%\dwall_memtest\samples-*.csv` |
 
@@ -718,8 +737,9 @@ P0（对应第 1、2 节的缺陷，写出来即回归网）：
 
 ### 仍未做（后续批次）
 
-第 8 节其余测试（见批次 9 一节末尾的清单：平台层的 `async_operation`/`geolocation`/`monitor`、`update.rs`、`setup.rs` 与其余 `commands/*`、NOAA 金值对照）、第 9 节批次 8/9（CI 门禁与 P3 清理）。
+第 8 节的测试在批次 17（平台层的 `async_operation`/`geolocation`/`monitor`）与批次 18（`network/client`、`setup`、`solar`）之后**基本收尾**，只剩一件明确未做：**`solar.rs` 与独立参考星历逐点比对的金值测试**（我找不到可引用的权威数值表，且不会编造数值，见批次 18 一节末尾）。`update.rs` 与 `ThemeValidator` 经确认早已覆盖；其余 `commands/*` 是单行委托，未加测试的理由同样记在批次 18 一节末尾。剩下的工作是第 9 节批次 8/9（CI 门禁与 P3 清理）。
 批次 4 未处理的相邻项（原报告 2.2 表）：镜像的稳定版通道自废（M1）、续传无 `If-Range`/校验和（M2）、下载与缩略图无并发上限（M3）、缩略图锁表无上限与 100 MB 上限只在未命中时执行（M4）、asset protocol `**/*`（M5）、渲染层可传的 URL/路径（M6）、"读取续命"无效（M7）；另外"应用此主题会静默提交所有未保存的编辑"（[settings.store.ts:173-196](../src/store/settings.store.ts#L173-L196)）仍未处理，它属于前端语义而非生命周期问题。
+
 
 
 

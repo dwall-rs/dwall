@@ -395,6 +395,15 @@ pub struct SolarPosition {
 }
 
 impl SolarPosition {
+    /// The true altitude for a sine of it.
+    ///
+    /// `asin` is `NaN` outside `[-1, 1]`, and the sum of two rounded products can land a
+    /// few ulps past `1` when the sun is at the zenith — which would make the altitude
+    /// `NaN` for that instant and, with it, the frame match.
+    fn altitude_from_sin(sin_altitude: f64) -> f64 {
+        sin_altitude.clamp(-1.0, 1.0).asin().to_degrees()
+    }
+
     #[inline]
     pub fn new(position: &Position, date_time: &UtcDateTime) -> Self {
         let ctx = SolarContext::new(position, date_time);
@@ -408,7 +417,8 @@ impl SolarPosition {
         let sin_alt = ctx.latitude_rad.sin() * ctx.declination_rad.sin()
             + ctx.latitude_rad.cos() * ctx.declination_rad.cos() * ctx.hour_angle_rad.cos();
 
-        let true_altitude = sin_alt.asin().to_degrees();
+        let true_altitude = SolarPosition::altitude_from_sin(sin_alt);
+
         true_altitude + SolarCalc::atmospheric_refraction(true_altitude)
     }
 
@@ -783,5 +793,274 @@ mod tests {
         }
 
         insta::assert_json_snapshot!("solar_position_24h_beijing", results);
+    }
+
+    // ── Physics invariants ──────────────────────────────────────────────────
+    //
+    // These check the geometry against facts that hold for any correct solar
+    // implementation — the meridian crossing, the solstice triangle, the obliquity and
+    // the equation of time — so they catch a wrong sign or a wrong formula that a
+    // self-consistent set of snapshots cannot. They are *not* a comparison against a
+    // reference ephemeris: that needs a citable table of published values, which this
+    // checkout does not carry.
+
+    /// Every day of 2026, so an annual curve can be walked without an ordinal-date API.
+    fn days_of_year() -> Vec<(Month, u8)> {
+        // 2026 is not a leap year.
+        const LENGTHS: [(Month, u8); 12] = [
+            (Month::January, 31),
+            (Month::February, 28),
+            (Month::March, 31),
+            (Month::April, 30),
+            (Month::May, 31),
+            (Month::June, 30),
+            (Month::July, 31),
+            (Month::August, 31),
+            (Month::September, 30),
+            (Month::October, 31),
+            (Month::November, 30),
+            (Month::December, 31),
+        ];
+
+        LENGTHS
+            .into_iter()
+            .flat_map(|(month, days)| (1..=days).map(move |day| (month, day)))
+            .collect()
+    }
+
+    const BEIJING: (f64, f64, f64) = (39.9042, 116.4074, 43.5);
+
+    fn position_at((latitude, longitude, altitude): (f64, f64, f64)) -> Position {
+        Position::from_raw_position(latitude, longitude, altitude)
+    }
+
+    /// The instant of the day's highest sun, as seconds of the UTC day.
+    ///
+    /// Scanned in five-minute steps and then refined in five-second steps around that
+    /// peak, because a coarse sample can sit minutes away from the meridian and the
+    /// azimuth moves quickly at a high sun.
+    fn meridian_crossing(position: &Position, year: u16, month: Month, day: u8) -> (f64, f64, u32) {
+        let altitude_at = |second: u32| {
+            let utc = UtcDateTime::new(
+                year,
+                month,
+                day,
+                (second / 3600) as u8,
+                ((second % 3600) / 60) as u8,
+                (second % 60) as u8,
+            )
+            .unwrap();
+
+            SolarPosition::new(position, &utc)
+        };
+
+        let coarse = (0..86_400).step_by(300).max_by(|a, b| {
+            altitude_at(*a)
+                .altitude()
+                .total_cmp(&altitude_at(*b).altitude())
+        });
+        let coarse = coarse.expect("a day has samples");
+
+        let finest = (coarse.saturating_sub(300)..=(coarse + 300).min(86_399))
+            .step_by(5)
+            .max_by(|a, b| {
+                altitude_at(*a)
+                    .altitude()
+                    .total_cmp(&altitude_at(*b).altitude())
+            })
+            .expect("the window has samples");
+
+        let solar = altitude_at(finest);
+
+        (solar.altitude(), solar.azimuth(), finest)
+    }
+
+    /// `asin` of a value that rounding pushed just past ±1 is `NaN`, and the path that
+    /// computes the sine cannot be pushed there from outside, so the helper is tested
+    /// directly.
+    #[test]
+    fn altitude_is_clamped_when_the_sine_rounds_past_one() {
+        assert_eq!(
+            SolarPosition::altitude_from_sin(1.0 + f64::EPSILON),
+            90.0,
+            "a sine a rounding step above one is the zenith, not NaN"
+        );
+        assert_eq!(SolarPosition::altitude_from_sin(-1.0 - f64::EPSILON), -90.0);
+        assert_eq!(SolarPosition::altitude_from_sin(0.0), 0.0);
+
+        // The clamp is a range guard, not a NaN filter: a `NaN` stays one, and the
+        // colour-scheme layer is what decides not to act on it.
+        assert!(SolarPosition::altitude_from_sin(f64::NAN).is_nan());
+    }
+
+    /// The daily maximum is the meridian crossing, and the sun is due south there in the
+    /// northern hemisphere.
+    #[test]
+    fn the_highest_sun_of_the_day_is_due_south() {
+        let (altitude, azimuth, _) =
+            meridian_crossing(&position_at(BEIJING), 2026, Month::June, 21);
+
+        assert!(
+            (azimuth - 180.0).abs() < 0.5,
+            "the noon sun above Beijing is due south, got {azimuth}°"
+        );
+        assert!(
+            altitude > 70.0,
+            "the June sun above Beijing reaches 73°, got {altitude}°"
+        );
+    }
+
+    /// The same crossing is due *north* below the equator, which no amount of internal
+    /// consistency would get right if the azimuth formula's hemisphere handling broke.
+    #[test]
+    fn the_highest_sun_of_the_day_is_due_north_below_the_equator() {
+        // Sydney, in its winter: the sun stays low and crosses to the north.
+        let (altitude, azimuth, _) = meridian_crossing(
+            &position_at((-33.8688, 151.2093, 58.0)),
+            2026,
+            Month::June,
+            21,
+        );
+
+        assert!(
+            azimuth < 0.5 || azimuth > 359.5,
+            "the winter noon sun above Sydney is due north, got {azimuth}°"
+        );
+        assert!(
+            altitude > 25.0,
+            "it still climbs to about 33°, got {altitude}°"
+        );
+    }
+
+    /// Solar noon sits where geography puts it: 12:00 minus the longitude offset from the
+    /// time zone's meridian, minus the equation of time.
+    ///
+    /// November is the case worth pinning, because the equation of time is then at its
+    /// positive extreme (+16.4 min), so the crossing lands near 11:58 in Beijing. An
+    /// implementation that got that sign backwards would still agree with itself
+    /// everywhere, but would put its noon half an hour later — which is what this catches.
+    #[test]
+    fn the_sun_crosses_the_meridian_at_the_clock_time_the_longitude_implies() {
+        // 116.4074°E is 3.6° west of the 120°E meridian of UTC+8, so longitude alone puts
+        // solar noon at 12:14:24; the equation of time moves it to about 11:58.
+        let expected_utc_seconds = (11 * 3600 + 58 * 60) as f64 - 8.0 * 3600.0;
+        let expected_utc_seconds = if expected_utc_seconds < 0.0 {
+            expected_utc_seconds + 86_400.0
+        } else {
+            expected_utc_seconds
+        };
+
+        let (_, _, crossing) = meridian_crossing(&position_at(BEIJING), 2026, Month::November, 3);
+        let drift = (f64::from(crossing) - expected_utc_seconds).abs();
+
+        assert!(
+            drift < 8.0 * 60.0,
+            "solar noon should be near 11:58 Beijing time ({} UTC seconds), got {crossing}",
+            expected_utc_seconds
+        );
+    }
+
+    /// At the solstices the noon sun stands `90° − |latitude − declination|` above the
+    /// horizon, with the declination at the obliquity of the ecliptic (23.44°). The
+    /// declination comes from the implementation, so this pins it against the one number
+    /// astronomy fixes for that date.
+    #[test]
+    fn the_noon_altitude_matches_the_solstice_triangle() {
+        const OBLIQUITY: f64 = 23.44;
+
+        for (latitude, month, day) in [
+            (0.0, Month::June, 21),
+            (BEIJING.0, Month::June, 21),
+            (55.0, Month::June, 21),
+            (BEIJING.0, Month::December, 21),
+        ] {
+            let expected = 90.0
+                - (latitude
+                    - if month == Month::June {
+                        OBLIQUITY
+                    } else {
+                        -OBLIQUITY
+                    })
+                .abs();
+            let (altitude, _, _) =
+                meridian_crossing(&position_at((latitude, BEIJING.1, 0.0)), 2026, month, day);
+
+            assert!(
+                (altitude - expected).abs() < 0.5,
+                "at {latitude}° on {day} {month:?} the noon sun is {expected}° up, got {altitude}°"
+            );
+        }
+    }
+
+    #[test]
+    fn the_declination_stays_within_the_obliquity_and_reaches_it() {
+        let mut highest: f64 = f64::MIN;
+        let mut lowest: f64 = f64::MAX;
+
+        for (month, day) in days_of_year() {
+            let utc = UtcDateTime::new(2026, month, day, 0, 0, 0).unwrap();
+            let t = SolarCalc::julian_century_t(&utc);
+            let declination = SolarCalc::solar_declination(t, SolarCalc::earth_axial_tilt(t));
+
+            highest = highest.max(declination);
+            lowest = lowest.min(declination);
+
+            assert!(
+                (-23.45..=23.45).contains(&declination),
+                "the sun never stands more than the obliquity off the equator, got {declination}°"
+            );
+        }
+
+        assert!(
+            (23.4..=23.45).contains(&highest),
+            "the June solstice has to reach the obliquity, got {highest}°"
+        );
+        assert!(
+            (-23.45..=-23.4).contains(&lowest),
+            "the December solstice has to reach it the other way, got {lowest}°"
+        );
+    }
+
+    /// The equation of time swings between about −14 minutes in February and +16 in
+    /// November. The range catches a scale error, and the months catch a sign one.
+    #[test]
+    fn the_equation_of_time_stays_within_a_quarter_of_an_hour() {
+        let mut extremes: Vec<(f64, Month)> = Vec::new();
+
+        for (month, day) in days_of_year() {
+            let utc = UtcDateTime::new(2026, month, day, 12, 0, 0).unwrap();
+            let t = SolarCalc::julian_century_t(&utc);
+            let minutes =
+                SolarCalc::solar_time_correction(t, SolarCalc::earth_axial_tilt(t)) * 60.0;
+
+            assert!(
+                (-17.0..=17.0).contains(&minutes),
+                "the equation of time stays inside ±17 minutes, got {minutes}"
+            );
+
+            extremes.push((minutes, month));
+        }
+
+        let (lowest, lowest_month) = extremes
+            .iter()
+            .copied()
+            .min_by(|a, b| a.0.total_cmp(&b.0))
+            .unwrap();
+        let (highest, highest_month) = extremes
+            .iter()
+            .copied()
+            .max_by(|a, b| a.0.total_cmp(&b.0))
+            .unwrap();
+
+        assert!(
+            (-15.0..=-13.5).contains(&lowest),
+            "the sundial runs slowest in early February, got {lowest} min"
+        );
+        assert_eq!(lowest_month, Month::February);
+        assert!(
+            (15.5..=17.0).contains(&highest),
+            "and fastest in early November, got {highest} min"
+        );
+        assert_eq!(highest_month, Month::November);
     }
 }
