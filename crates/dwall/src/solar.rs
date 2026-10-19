@@ -217,7 +217,7 @@ impl<'a, P: PositionProvider> GeographicPositionProvider<'a, P> {
 fn position_cache_ttl(cache_minutes: u64) -> Duration {
     /// A year, which no configuration has a reason to exceed and which `Instant`
     /// arithmetic can still represent.
-    const MAX_POSITION_CACHE_TTL: Duration = Duration::from_hours(24 * 365);
+    const MAX_POSITION_CACHE_TTL: Duration = Duration::from_secs(24 * 365 * 3600);
 
     Duration::from_secs(60u64.saturating_mul(cache_minutes)).min(MAX_POSITION_CACHE_TTL)
 }
@@ -578,7 +578,7 @@ mod tests {
     fn the_position_cache_ttl_is_bounded() {
         let bounded = position_cache_ttl(u64::MAX);
 
-        assert!(bounded <= Duration::from_hours(24 * 365));
+        assert!(bounded <= Duration::from_secs(24 * 365 * 3600));
         assert!(
             bounded > Duration::from_secs(60),
             "a value that large is still a cache lifetime, not zero"

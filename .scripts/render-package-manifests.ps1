@@ -42,15 +42,34 @@ $ErrorActionPreference = "Stop"
 $repositoryRoot = Split-Path -Parent $PSScriptRoot
 $archiveName = "Dwall_${Version}_x64-daemon.zip"
 $archiveUrl = "https://github.com/$Repository/releases/download/v${Version}/$archiveName"
+$archivePath = Join-Path $repositoryRoot "dist-daemon/$archiveName"
+$checksumFile = "$archivePath.sha256"
 
 if (-not $Sha256) {
-    $checksumFile = Join-Path $repositoryRoot "dist-daemon/$archiveName.sha256"
+    if (Test-Path -LiteralPath $archivePath -PathType Leaf) {
+        # Recompute from the archive itself. The sibling checksum file was the only
+        # source before, which made a stale or hand-edited file publish a manifest that
+        # disagreed with the archive it points at.
+        $Sha256 = (Get-FileHash -LiteralPath $archivePath -Algorithm SHA256).Hash
+        Write-Host "Computed SHA-256 from $archiveName"
 
-    if (-not (Test-Path -LiteralPath $checksumFile -PathType Leaf)) {
-        throw "Checksum not found: $checksumFile. Run ./.scripts/package-daemon.ps1 -Version $Version first, or pass -Sha256."
+        if (Test-Path -LiteralPath $checksumFile -PathType Leaf) {
+            $declared = ((Get-Content -LiteralPath $checksumFile -First 1) -split '\s+')[0]
+            if ($declared -and $declared -ne $Sha256) {
+                throw "dist-daemon/$archiveName.sha256 declares $declared but the archive hashes to $Sha256"
+            }
+            Write-Host "  matches dist-daemon/$archiveName.sha256"
+        }
     }
-
-    $Sha256 = ((Get-Content -LiteralPath $checksumFile -First 1) -split '\s+')[0]
+    elseif (Test-Path -LiteralPath $checksumFile -PathType Leaf) {
+        # No archive here (a checkout that only has the published checksum): trust the
+        # file, but say so, because nothing verified it.
+        $Sha256 = ((Get-Content -LiteralPath $checksumFile -First 1) -split '\s+')[0]
+        Write-Warning "dist-daemon/$archiveName is missing; taking the digest from $archiveName.sha256 unchecked"
+    }
+    else {
+        throw "Neither $archivePath nor $checksumFile exists. Run ./.scripts/package-daemon.ps1 -Version $Version first, or pass -Sha256."
+    }
 }
 
 if ($Sha256 -notmatch '^[0-9a-fA-F]{64}$') {

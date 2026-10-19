@@ -1,7 +1,7 @@
 use dwall::RegistryError;
 use serde::{Serialize, Serializer};
 
-use crate::{filesystem::DirectoryMoveError, thumbnail::ThumbnailError};
+use crate::filesystem::DirectoryMoveError;
 
 pub type DwallSettingsResult<T, E = DwallSettingsError> = std::result::Result<T, E>;
 
@@ -34,8 +34,6 @@ pub enum DwallSettingsError {
     /// is what the renderer matches on (`isCancellation`), so it stays as it was.
     #[error("Download cancelled")]
     Cancelled,
-    #[error(transparent)]
-    Thumbnail(#[from] ThumbnailError),
     #[error(transparent)]
     Logger(#[from] log::SetLoggerError),
     #[error(transparent)]

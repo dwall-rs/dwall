@@ -23,7 +23,6 @@ mod process;
 mod setup;
 mod theme;
 mod thumbnail;
-mod tracker;
 mod update;
 mod window;
 
@@ -82,7 +81,6 @@ async fn main() -> DwallSettingsResult<()> {
             commands::window::open_log_dir,
             commands::window::set_titlebar_color_mode,
             commands::system::move_directory_cmd,
-            commands::system::kill_daemon_cmd,
             commands::thumbnail::get_or_save_cached_thumbnails_cmd,
             commands::thumbnail::clear_thumbnail_cache_cmd,
             commands::monitor::get_monitors_cmd,

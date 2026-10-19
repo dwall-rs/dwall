@@ -1,7 +1,6 @@
 @import "tailwindcss";
 @import "./animate.css";
 @import "./i18n.css";
-@import "./toast.css";
 
 @custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
 

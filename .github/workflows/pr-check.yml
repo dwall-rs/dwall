@@ -144,8 +144,13 @@ jobs:
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
+      # The image bundles shellcheck, which actionlint runs over every `run:` block.
+      # Only warnings and errors are gated: the release scripts deliberately rely on
+      # word splitting (`for commit in $commits`) and repeated appends, which shellcheck
+      # files as info/style. SC2155 — the warning class that caught masked return values
+      # in nightly.yml — still fails.
       - name: Lint the workflows
-        run: docker run --rm -v "$PWD:/repo" --workdir /repo rhysd/actionlint:1.7.7 -color
+        run: docker run --rm -v "$PWD:/repo" --workdir /repo rhysd/actionlint:1.7.7 -color -shellcheck 'shellcheck -S warning'
 
   rust-check:
     name: "Rust Code Check"
