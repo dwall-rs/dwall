@@ -103,6 +103,12 @@ cannot reach. Set a mirror template in the settings page, for example
 for a prefixing proxy, or `https://kkgithub.com/<owner>/<repo>/...` for a mirror that
 replaces the host. Thumbnails come from the same host and need the same setting.
 
+**The window used the network when I opened it.** It checks for a new version once per
+start — through the mirror and proxy configured in the settings — and tells you if there
+is one. A check that cannot reach GitHub stays silent rather than showing a failure you
+did not ask for, and nothing is downloaded or installed until you press the button in the
+About section.
+
 **Can I use my own wallpapers?** Yes — a custom theme is a directory containing a
 `theme.toml` manifest (schema 1) plus its images. See
 [docs/custom-themes.md](./docs/custom-themes.md). The curated sets remain the easiest
