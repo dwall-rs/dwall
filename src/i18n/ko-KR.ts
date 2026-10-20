@@ -74,6 +74,7 @@ export const dict: RawDictionary = {
     east: "동·90°",
     south: "남·180°",
     west: "서·270°",
+    randomSunPath: "오늘의 테마 「{{ name }}」의 태양 경로 위치",
     randomIntro:
       "매일 후보 풀에서 테마 하나를 셔플해 모든 모니터에 적용합니다. 편집기는 풀만 정하고, 어떤 테마가 뽑힐지는 엔진이 런타임에 결정합니다.",
     stats: {
