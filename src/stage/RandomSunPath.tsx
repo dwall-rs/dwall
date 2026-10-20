@@ -55,6 +55,13 @@ export function RandomSunPath() {
     <Show when={list().length > 0 && current()}>
       {(cur) => (
         <div class="flex flex-col gap-1.5">
+          <SunPathPanel
+            wallpapers={list()}
+            current={cur()}
+            matchedEntry={matchedEntry() ?? null}
+            fullWidth
+          />
+          {/* Below the track, and quiet: it names the theme, it is not a heading. */}
           <div class="flex items-center gap-1.5 font-mono text-[10.5px] text-muted-foreground">
             <span class="size-1.5 shrink-0 rounded-full bg-success" />
             <span class="truncate">
@@ -63,11 +70,6 @@ export function RandomSunPath() {
               })}
             </span>
           </div>
-          <SunPathPanel
-            wallpapers={list()}
-            current={cur()}
-            matchedEntry={matchedEntry() ?? null}
-          />
         </div>
       )}
     </Show>

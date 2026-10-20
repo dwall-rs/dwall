@@ -1,8 +1,9 @@
-// Responsibility: Random-mode stage orchestration — intro + pool status + summary + select all / clear all + collage or empty state. No sampling.
+// Responsibility: Random-mode stage orchestration — today's sun track, pool status, summary + select all /
+//       clear all, then the collage or the empty state. No sampling.
 import { randomStore, selectAll, clearAll } from "@/store/random.store";
 import { availableThemeIds } from "@/store/catalog.selectors";
 import { t } from "@/i18n";
-import { createMemo } from "solid-js";
+import { createMemo, Show } from "solid-js";
 import { WriteNote } from "./WriteNote";
 import { RandomStats } from "./RandomStats";
 import { RandomSunPath } from "./RandomSunPath";
@@ -17,12 +18,19 @@ export function RandomStage() {
 
   return (
     <>
-      <p class="max-w-145 font-display text-[15px] font-semibold leading-relaxed text-foreground">
-        {t("stage.randomIntro")}
-      </p>
+      {/* The track leads: it is the only part of this stage that moves during the day. An
+          empty pool has nothing drawn, so it stays out of the way then. */}
+      <Show when={poolSize() > 0}>
+        <RandomSunPath />
+      </Show>
       <WriteNote />
       <div class="flex flex-wrap items-center gap-x-5 gap-y-2">
         <RandomStats />
+        {/* The explanation sits in the space the figures leave, at caption size: it is a
+            note about the mode, not a heading over the stage. */}
+        <p class="min-w-0 max-w-120 flex-1 text-[11.5px] leading-relaxed text-muted-foreground">
+          {t("stage.randomIntro")}
+        </p>
         <div class="ml-auto flex items-center gap-4 text-[12px]">
           <button
             type="button"
@@ -42,16 +50,7 @@ export function RandomStage() {
           </button>
         </div>
       </div>
-      {poolSize() === 0 ? (
-        <PoolEmpty />
-      ) : (
-        <>
-          {/* The pool area reports rather than asks, so the track sits with it: it belongs
-              to the theme drawn for today, not to the whole pool. */}
-          <RandomSunPath />
-          <PoolCollage />
-        </>
-      )}
+      {poolSize() === 0 ? <PoolEmpty /> : <PoolCollage />}
       <RandomCommitRow />
     </>
   );
