@@ -128,6 +128,9 @@ export const dict: RawDictionary = {
       titleBar: "タイトルバーを Windows のテーマ色にする",
       titleBarDesc:
         "オフのときは Dwall の背景色でタイトルバーを描画し、ウィンドウと一体化します。色まで合わせられるのは Windows 11 のみで、Windows 10 はライト/ダークの同期までです。",
+      contentBorder: "タイトルバーと内容を区切る",
+      contentBorderDesc:
+        "内容領域の上端に境界線を引き、タイトルバーがウィンドウと同じ色でも見つけやすく、ドラッグしやすくします。",
       languageLabel: "言語",
       languageDesc: "UIの言語。切り替えると即時反映されます。",
     },

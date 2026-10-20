@@ -123,6 +123,9 @@ export const dict: RawDictionary = {
       titleBar: "标题栏跟随 Windows 主题色",
       titleBarDesc:
         "关闭时用 Dwall 的背景色绘制标题栏，与窗口融为一体。精确配色仅 Windows 11 生效；Windows 10 只能跟随明暗，颜色仍由系统决定。",
+      contentBorder: "分隔标题栏与内容区",
+      contentBorderDesc:
+        "在内容区顶部画一条边框，标题栏与窗口同色时也能一眼找到、方便拖动。",
       languageLabel: "语言 / Language",
       languageDesc: "界面语言，切换后立即生效。",
     },
