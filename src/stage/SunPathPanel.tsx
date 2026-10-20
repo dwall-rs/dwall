@@ -41,6 +41,7 @@ interface Props {
 
 export function SunPathPanel(props: Props) {
   const [hover, setHover] = createSignal<number | null>(null);
+  const [hoverSun, setHoverSun] = createSignal(false);
   /** A track without a selector reports the frames; it does not choose them. */
   const interactive = () => props.onSelect !== undefined;
 
@@ -210,15 +211,25 @@ export function SunPathPanel(props: Props) {
           }}
         </For>
 
+        {/* The sun: a 20px hit area around a 10px dot, because the dot alone is a hard thing
+            to point at — and pointing at it is what reveals the readout below. */}
         <div
           style={{ left: `${cx()}%`, top: `${cy()}%` }}
-          class={clsx(
-            "absolute size-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full ring-2 ring-card",
-            props.current.altitude < 0
-              ? "bg-muted-foreground shadow-[0_0_6px_var(--muted-foreground)]"
-              : "bg-warning shadow-[0_0_8px_var(--warning)]",
-          )}
-        />
+          class="absolute flex size-5 -translate-x-1/2 -translate-y-1/2 items-center justify-center"
+          onMouseEnter={() => setHoverSun(true)}
+          onMouseLeave={() => setHoverSun(false)}
+          title={`${t("stage.altitude")} ${formatAngle(props.current.altitude)}° · ${t("stage.azimuth")} ${formatAngle(props.current.azimuth)}°`}
+        >
+          <div
+            class={clsx(
+              "size-2.5 rounded-full ring-2 ring-card transition-transform",
+              hoverSun() && "scale-125",
+              props.current.altitude < 0
+                ? "bg-muted-foreground shadow-[0_0_6px_var(--muted-foreground)]"
+                : "bg-warning shadow-[0_0_8px_var(--warning)]",
+            )}
+          />
+        </div>
 
         {/* Horizon label: sits in the empty middle band (the track hangs high here, no path crosses it) */}
         <span
@@ -248,15 +259,19 @@ export function SunPathPanel(props: Props) {
             {m.label}
           </span>
         ))}
-        <span class="absolute right-2 top-1.5 flex items-center gap-1 whitespace-nowrap rounded bg-card/75 px-1.5 py-0.5 font-mono text-[11px] text-muted-foreground backdrop-blur-sm">
-          <span class={props.current.altitude < 0 ? "" : "text-warning"}>
-            {props.current.altitude < 0 ? "☾" : "☀"}
+        {/* Hovering the sun reveals the readout, so it is not a permanent label sitting on
+            top of the marker it describes. */}
+        <Show when={hoverSun()}>
+          <span class="pointer-events-none absolute right-2 top-1.5 flex items-center gap-1 whitespace-nowrap rounded bg-card/85 px-1.5 py-0.5 font-mono text-[11px] text-muted-foreground shadow-[0_2px_8px_rgba(0,0,0,.12)] backdrop-blur-sm">
+            <span class={props.current.altitude < 0 ? "" : "text-warning"}>
+              {props.current.altitude < 0 ? "☾" : "☀"}
+            </span>
+            <span class="text-foreground">
+              {props.current.altitude.toFixed(1)}° ·{" "}
+              {props.current.azimuth.toFixed(1)}°
+            </span>
           </span>
-          <span class="text-foreground">
-            {props.current.altitude.toFixed(1)}° ·{" "}
-            {props.current.azimuth.toFixed(1)}°
-          </span>
-        </span>
+        </Show>
       </div>
     </div>
   );
