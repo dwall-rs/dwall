@@ -1,8 +1,15 @@
-// Responsibility: Update check widget — idle / checking / up to date / update available / downloading / awaiting restart / failed.
-import { Match, Switch } from "solid-js";
+// Responsibility: Update check widget — idle / checking / up to date / update available (with its notes in a dialog) / downloading / awaiting restart / failed.
+import { Match, Show, Switch } from "solid-js";
 import { t } from "@/i18n";
 import { check, install, restart, updateStore } from "@/store/update.store";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import {
   Check,
   Download,
@@ -10,6 +17,7 @@ import {
   RefreshCw,
   TriangleAlert,
 } from "lucide-solid";
+import { ReleaseNotes } from "./ReleaseNotes";
 
 export function UpdateCheck() {
   const percent = () =>
@@ -29,6 +37,32 @@ export function UpdateCheck() {
                   version: updateStore.version ?? "",
                 })}
               </span>
+              {/* The notes are the release body the updater already fetched. They open in a
+                  dialog rather than inside this card: a changelog is longer than the card and
+                  would push the install button off the screen. */}
+              <Show when={updateStore.notes}>
+                <Dialog>
+                  <DialogTrigger
+                    variant="ghost"
+                    size="xs"
+                    class="ml-auto h-auto shrink-0 px-1.5 py-0 text-[11px] font-normal text-primary hover:bg-primary/10"
+                  >
+                    {t("settings.about.whatsNew")}
+                  </DialogTrigger>
+                  <DialogContent class="sm:max-w-2xl!">
+                    <DialogHeader class="pr-8">
+                      <DialogTitle>
+                        {t("settings.about.whatsNewFor", {
+                          version: updateStore.version ?? "",
+                        })}
+                      </DialogTitle>
+                    </DialogHeader>
+                    <div class="max-h-[60vh] overflow-y-auto pr-1">
+                      <ReleaseNotes markdown={updateStore.notes ?? ""} />
+                    </div>
+                  </DialogContent>
+                </Dialog>
+              </Show>
             </div>
             <Button
               size="sm"

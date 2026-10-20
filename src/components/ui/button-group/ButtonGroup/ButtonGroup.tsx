@@ -17,6 +17,7 @@ export const ButtonGroup = (props: ButtonGroupProps) => {
         buttonGroupVariants({ orientation: local.orientation }),
         local.class,
       )}
+      classList={local.classList}
       {...others}
     />
   );

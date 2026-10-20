@@ -27,6 +27,8 @@ interface UpdateState {
   version: string | null;
   progress: number | null;
   error: string | null;
+  /** Release notes of the offered version, when the manifest carried them. */
+  notes: string | null;
 }
 
 const [updateStore, setUpdateStore] = createStore<UpdateState>({
@@ -34,6 +36,7 @@ const [updateStore, setUpdateStore] = createStore<UpdateState>({
   version: null,
   progress: null,
   error: null,
+  notes: null,
 });
 
 /** Handle of the update that can be installed right now; non-reactive — its derived fields are synced into the store. */
@@ -95,6 +98,7 @@ const runCheck = async (automatic: boolean) => {
     version: null,
     progress: null,
     error: null,
+    notes: null,
   });
 
   try {
@@ -107,7 +111,11 @@ const runCheck = async (automatic: boolean) => {
     }
 
     pending = update;
-    setUpdateStore({ status: "available", version: update.version });
+    setUpdateStore({
+      status: "available",
+      version: update.version,
+      notes: update.body ?? null,
+    });
 
     if (automatic) announceUpdate(update.version);
   } catch (e) {

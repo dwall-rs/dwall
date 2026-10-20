@@ -1,5 +1,5 @@
 // Responsibility: About group — asymmetric layout (one large version block + a column of narrow link rows), breaking the default three-equal-card look.
-import { ChevronRight, Code, FileText } from "lucide-solid";
+import { ChevronRight, Code, FileText, ScrollText } from "lucide-solid";
 import { createResource, type JSXElement } from "solid-js";
 import {
   Item,
@@ -16,6 +16,8 @@ import { SettingsGroup } from "./SettingsGroup";
 import { UpdateCheck } from "./UpdateCheck";
 
 const SOURCE_URL = "https://github.com/dwall-rs/dwall";
+/** The release list, not one tag: nightly builds are published under their own release. */
+const CHANGELOG_URL = `${SOURCE_URL}/releases`;
 
 export function AboutSection() {
   const [info] = createResource(getAppInfo);
@@ -29,7 +31,7 @@ export function AboutSection() {
         delay={200}
       >
         <div class="grid grid-cols-[1.5fr_1fr] gap-3">
-          <div class="relative row-span-2 flex flex-col gap-2.5 overflow-hidden rounded-[15px] border border-border bg-linear-to-br from-primary/10 to-card p-5 shadow-[0_1px_2px_rgba(0,0,0,.05),0_8px_24px_rgba(0,0,0,.06)]">
+          <div class="relative row-span-3 flex flex-col gap-2.5 overflow-hidden rounded-[15px] border border-border bg-linear-to-br from-primary/10 to-card p-5 shadow-[0_1px_2px_rgba(0,0,0,.05),0_8px_24px_rgba(0,0,0,.06)]">
             <img
               src={Logo}
               alt={t("settings.about.logoAlt")}
@@ -43,6 +45,12 @@ export function AboutSection() {
             </div>
             <UpdateCheck />
           </div>
+          <LinkRow
+            icon={<ScrollText class="size-3.5" />}
+            title={t("settings.about.changelog")}
+            sub={t("settings.about.changelogSub")}
+            onClick={() => void openUrl(CHANGELOG_URL)}
+          />
           <LinkRow
             icon={<Code class="size-3.5" />}
             title={t("settings.about.sourceCode")}

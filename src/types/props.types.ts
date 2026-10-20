@@ -3,7 +3,7 @@ import type { JSX, ComponentProps, ValidComponent } from "solid-js";
 export type EmptyObject = Record<never, never>;
 
 export type MouseEventHandler<T extends keyof HTMLElementTagNameMap> = (
-  e?: MouseEvent & {
+  e: MouseEvent & {
     currentTarget: HTMLElementTagNameMap[T];
     target: Element;
   },
