@@ -31,6 +31,12 @@ interface Props {
   /** Entry the user picked; omit it, and `onSelect`, for a track that only reports. */
   selIndex?: number | null;
   onSelect?: (index: number | null) => void;
+  /**
+   * Fill the column instead of the fixed-mode card width. The random-mode stage is as wide as
+   * the window, and a narrow track centred in it reads as a floating island; there the track
+   * also becomes the day's own horizontal axis, so the azimuth labels spread out.
+   */
+  fullWidth?: boolean;
 }
 
 export function SunPathPanel(props: Props) {
@@ -78,7 +84,9 @@ export function SunPathPanel(props: Props) {
   );
 
   return (
-    <div class="mx-auto w-full max-w-155 shrink-0">
+    <div
+      class={clsx("w-full shrink-0", !props.fullWidth && "mx-auto max-w-155")}
+    >
       <div class="relative h-28 shrink-0 overflow-hidden rounded-xl border border-border bg-card shadow-[0_1px_2px_rgba(0,0,0,.05),0_6px_18px_rgba(0,0,0,.06)]">
         <div
           class={clsx(
