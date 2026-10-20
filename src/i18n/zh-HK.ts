@@ -72,6 +72,7 @@ export const dict: RawDictionary = {
     east: "東·90°",
     south: "南·180°",
     west: "西·270°",
+    randomSunPath: "今日主題「{{ name }}」在太陽軌跡上的位置",
     randomIntro:
       "每天從候選池洗牌抽取一套，同時套用到所有顯示器。編輯器只負責選定池子，抽中哪套由引擎在運行時決定。",
     stats: {

@@ -73,6 +73,7 @@ export const dict = {
     east: "E·90°",
     south: "S·180°",
     west: "W·270°",
+    randomSunPath: "Today's theme — {{ name }} — on the sun's path",
     randomIntro:
       "Every day one theme is shuffled out of the pool and applied to all monitors. The editor only picks the pool; which theme is drawn is decided by the engine at runtime.",
     stats: {

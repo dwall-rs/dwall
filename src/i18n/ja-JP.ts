@@ -75,6 +75,7 @@ export const dict: RawDictionary = {
     east: "東·90°",
     south: "南·180°",
     west: "西·270°",
+    randomSunPath: "本日のテーマ「{{ name }}」の太陽軌道上の位置",
     randomIntro:
       "毎日候補プールから1つのテーマをシャッフルして全モニターに適用します。エディターはプールを選ぶだけで、どのテーマが選ばれるかは実行時にエンジンが決定します。",
     stats: {

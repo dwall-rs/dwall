@@ -5,6 +5,7 @@ import { t } from "@/i18n";
 import { createMemo } from "solid-js";
 import { WriteNote } from "./WriteNote";
 import { RandomStats } from "./RandomStats";
+import { RandomSunPath } from "./RandomSunPath";
 import { PoolCollage } from "./PoolCollage";
 import { PoolEmpty } from "./PoolEmpty";
 import { RandomCommitRow } from "./RandomCommitRow";
@@ -41,7 +42,16 @@ export function RandomStage() {
           </button>
         </div>
       </div>
-      {poolSize() === 0 ? <PoolEmpty /> : <PoolCollage />}
+      {poolSize() === 0 ? (
+        <PoolEmpty />
+      ) : (
+        <>
+          {/* The pool area reports rather than asks, so the track sits with it: it belongs
+              to the theme drawn for today, not to the whole pool. */}
+          <RandomSunPath />
+          <PoolCollage />
+        </>
+      )}
       <RandomCommitRow />
     </>
   );
