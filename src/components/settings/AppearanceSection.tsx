@@ -1,13 +1,15 @@
-// Responsibility: Appearance & language group — three options + palette + title bar + language. Note: "follow the system" is the "System" option among the three.
+// Responsibility: Appearance & language group — three options + palette + title bar + its separator + language. Note: "follow the system" is the "System" option among the three.
 import { SettingsGroup } from "./SettingsGroup";
 import { SettingsRow } from "./SettingsRow";
 import { ThemeSegmented } from "./ThemeSegmented";
 import { LanguageRow } from "./LanguageRow";
 import { Switch } from "@/components/ui/switch";
 import { patch, save, settingsStore } from "@/store/settings.store";
+import { setTitlebarBorder, uiStore } from "@/store/ui.store";
+import { titleBarMatchesContent } from "@/store/ui.selectors";
 import { t } from "@/i18n";
 import { Sparkles } from "lucide-solid";
-import { createSignal } from "solid-js";
+import { createSignal, Show } from "solid-js";
 
 export function AppearanceSection() {
   const [flash, setFlash] = createSignal<string | null>(null);
@@ -45,6 +47,20 @@ export function AppearanceSection() {
             />
           }
         />
+        {/* Only while the title bar has no colour of its own: once it follows the Windows
+            theme, the two areas are visibly different and the switch would be decoration. */}
+        <Show when={titleBarMatchesContent()}>
+          <SettingsRow
+            label={t("settings.appearance.contentBorder")}
+            desc={t("settings.appearance.contentBorderDesc")}
+            control={
+              <Switch
+                checked={uiStore.titlebarBorder}
+                onCheckedChange={(checked) => setTitlebarBorder(checked)}
+              />
+            }
+          />
+        </Show>
         <SettingsRow
           label={t("settings.appearance.languageLabel")}
           desc={t("settings.appearance.languageDesc")}

@@ -127,6 +127,9 @@ export const dict: RawDictionary = {
       titleBar: "제목 표시줄을 Windows 테마 색으로",
       titleBarDesc:
         "끄면 Dwall 배경색으로 제목 표시줄을 그려 창과 하나로 보입니다. 색까지 맞추는 것은 Windows 11에서만 되고, Windows 10은 밝기 모드만 따라갑니다.",
+      contentBorder: "제목 표시줄과 내용 구분",
+      contentBorderDesc:
+        "내용 영역 위쪽에 경계선을 그려, 제목 표시줄이 창과 같은 색이어도 찾고 끌기 쉽게 합니다.",
       languageLabel: "언어",
       languageDesc: "인터페이스 언어이며 즉시 적용됩니다.",
     },

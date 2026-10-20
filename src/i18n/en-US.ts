@@ -126,6 +126,9 @@ export const dict = {
       titleBar: "Title bar follows the Windows theme",
       titleBarDesc:
         "Off: the title bar is painted with Dwall's background colour, so it matches the window. Matching the colour needs Windows 11; Windows 10 follows the light/dark side only.",
+      contentBorder: "Separate the title bar from the content",
+      contentBorderDesc:
+        "Draws a border along the top of the content area, so the title bar is easy to find — and to grab — when it is the same colour as the window.",
       languageLabel: "Language",
       languageDesc: "Interface language; takes effect immediately.",
     },
