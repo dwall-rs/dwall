@@ -30,9 +30,10 @@ vi.mock("./settings.store", () => ({
 }));
 
 /** An update handle as the updater plugin hands it over. */
-function updateHandle(version: string) {
+function updateHandle(version: string, body?: string) {
   return {
     version,
+    body,
     close: vi.fn().mockResolvedValue(undefined),
     downloadAndInstall: vi.fn().mockResolvedValue(undefined),
   };
@@ -63,6 +64,45 @@ describe("update store: checking on start-up", () => {
     expect(mocks.toastInfo).toHaveBeenCalledTimes(1);
     expect(mocks.toastInfo.mock.calls[0][0]).toContain("0.3.0");
     expect(mocks.toastInfo.mock.calls[0][1].action.label).toBeDefined();
+  });
+
+  test("the release notes the manifest carried reach the widget", async () => {
+    mocks.checkForUpdates.mockResolvedValue(
+      updateHandle("0.3.0", "### Added\n- changelog button"),
+    );
+
+    const store = await freshStore();
+    await store.checkOnStartup();
+
+    expect(store.updateStore.notes).toContain("changelog button");
+  });
+
+  /**
+   * A check that finds nothing must not leave the previous version's notes in place: the
+   * widget would show "what's new" for a release the user is already past.
+   */
+  test("a later check clears the notes", async () => {
+    mocks.checkForUpdates.mockResolvedValueOnce(
+      updateHandle("0.3.0", "old notes"),
+    );
+    mocks.checkForUpdates.mockResolvedValueOnce(null);
+
+    const store = await freshStore();
+    await store.check();
+    expect(store.updateStore.notes).toBe("old notes");
+
+    await store.check();
+    expect(store.updateStore.notes).toBeNull();
+  });
+
+  test("an update without notes reports none", async () => {
+    mocks.checkForUpdates.mockResolvedValue(updateHandle("0.3.0"));
+
+    const store = await freshStore();
+    await store.check();
+
+    expect(store.updateStore.status).toBe("available");
+    expect(store.updateStore.notes).toBeNull();
   });
 
   test("being up to date is not announced", async () => {

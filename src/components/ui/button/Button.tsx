@@ -87,6 +87,7 @@ export const Button = <T extends ButtonValidElement = "button">(
         }),
         local.class,
       )}
+      classList={local.classList}
       {...others}
     >
       {resolved()}
