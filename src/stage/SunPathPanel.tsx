@@ -6,6 +6,7 @@ import { t } from "@/i18n";
 import { settingsStore } from "@/store/settings.store";
 import { clsx, formatAngle } from "@/utils";
 import { createMemo, createResource, createSignal, For, Show } from "solid-js";
+import { Dynamic } from "solid-js/web";
 import { themeStore } from "~/store/theme.store";
 import {
   type AltitudeDomain,
@@ -27,12 +28,15 @@ interface Props {
   current: SolarPosition;
   /** Position of the matched solar-angle entry within the array (not the image index) */
   matchedEntry: number | null;
-  selIndex: number | null;
-  onSelect: (index: number | null) => void;
+  /** Entry the user picked; omit it, and `onSelect`, for a track that only reports. */
+  selIndex?: number | null;
+  onSelect?: (index: number | null) => void;
 }
 
 export function SunPathPanel(props: Props) {
   const [hover, setHover] = createSignal<number | null>(null);
+  /** A track without a selector reports the frames; it does not choose them. */
+  const interactive = () => props.onSelect !== undefined;
 
   // Real sun path: recomputed as the observer's position changes (today's date).
   const [path] = createResource(
@@ -171,10 +175,15 @@ export function SunPathPanel(props: Props) {
               mat = createMemo(() => i() === props.matchedEntry),
               hov = createMemo(() => i() === hover());
             return (
-              <button
-                type="button"
+              // A marker is a button only when a selection would mean something; the
+              // read-only track renders the same dot as a span, so it is not focusable.
+              <Dynamic
+                component={interactive() ? "button" : "span"}
+                {...(interactive() ? { type: "button" as const } : {})}
                 title={`${t("stage.altitude")} ${formatAngle(wp.solar.altitude)}° · ${t("stage.azimuth")} ${formatAngle(wp.solar.azimuth)}°`}
-                onClick={() => props.onSelect(wp.index)}
+                onClick={
+                  props.onSelect ? () => props.onSelect?.(wp.index) : undefined
+                }
                 onMouseEnter={() => setHover(i())}
                 onMouseLeave={() => setHover(null)}
                 style={{
