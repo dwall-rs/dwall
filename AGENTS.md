@@ -145,24 +145,24 @@ bun run build   # release: vite build + daemon release + tauri bundle
 
 ## Commits
 
-### One commit per conversation
+### One commit per change
 
-**Create at most one commit per conversation.** Do not split a session's work
-across several commits, however unrelated the parts look: stack them in the working
-tree and commit once. Several commits per conversation make the remote merge
-painful, and a review of the branch cannot follow them.
+**Split the work by feature.** A commit carries one functional change — a feature, a bug
+fix, a test batch, a cleanup. Never fold unrelated changes into it, even when they were made
+in the same pass: a reviewer has to be able to accept or reject each one on its own.
 
-- If the change set looks like it wants splitting, **ask** before committing; the
-  answer is a single commit unless the maintainer says otherwise.
-- If you already created several, offer to squash them before the conversation
-  ends (with `git reset --soft <base>` plus one commit, or `git rebase -i`). Never
-  rewrite commits that are already pushed without an explicit instruction.
+- **A change that spans several areas is several commits.** When a feature or a fix needs
+  work in more than one place — a shared type and the callers that use it, a component and
+  the store it reads — commit each part separately, and say in every one of them why that
+  part exists. "Part of <feature>" is not a reason; name the job the part does.
+- **Ask after every commit.** Never push on your own initiative: after each commit, ask the
+  maintainer whether to push it or leave it local, and wait for the answer. Pushing,
+  force-pushing and updating a PR all need that instruction.
 - **Re-check before every amend or rebase**: run `git log --oneline '@{u}..HEAD`
-  immediately beforehand, because the maintainer can push while you work. If the
-  target commit reached the remote in the meantime, add a new commit instead of
-  rewriting it and say what happened.
-- Do not push. Commit locally and leave pushing, force-pushing and PR updates to
-  the maintainer.
+  immediately beforehand, because the maintainer can push while you work. If the target
+  commit reached the remote in the meantime, add a new commit instead of rewriting it and
+  say what happened.
+- Never rewrite a commit that is already pushed without an explicit instruction.
 
 ### Message format
 
@@ -179,8 +179,8 @@ consistently:
 - **Scope** names the area that changed — a crate (`dwall`, `settings`,
   `logging`, `time`, `deps`) or a frontend feature (`layout`, `stage`, `library`,
   `scene`, `style`, `settings`, `lib`) — matching the existing history.
-- **Subject only, no body.** History here is one line per commit; add a short body
-  (at most a few lines, no trailers) only when the *why* is not inferable from the
+- **One-line subject, short body.** Add a body (at most a few lines, no trailers) whenever
+  the commit is one part of a larger change, or when the *why* is not inferable from the
   subject. Never add tool or `Co-authored-by` attribution lines.
 
 Examples:
