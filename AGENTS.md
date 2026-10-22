@@ -228,7 +228,15 @@ gh pr create --base main --fill
   history stays linear and the diff stays reviewable.
 - **No direct pushes, no force-pushes to `main`, no `--no-verify`.** An urgent one-line fix
   is still a pull request; with `pr-check` green it merges in under a minute.
-- **Delete the branch once it is merged.** Nothing removes it for you yet.
+- **Add the `automerge` label when the pull request is ready.** `pr-check`'s `auto-merge`
+  job then merges it with `pascalgn/automerge-action` (a merge commit) as soon as every
+  check is green — a skipped check is fine, a failed one is not. Without the label the
+  pull request waits for a human.
+- **The branch is deleted for you.** `delete-merged-branch.yml` removes the ref of a
+  merged pull request, keeping the long-lived branches (`main`, `dev`, `old`) and any
+  branch another open pull request still uses. It hears about the merge because
+  `auto-merge` merges with `AUTOMERGE_TOKEN`: a merge made with `GITHUB_TOKEN` starts no
+  workflow at all.
 - **Agents follow this too.** Create the branch *before* the first commit rather than
   committing on `main` and moving the commits afterwards: a rebased-away commit still shows
   up in the reflog and in whoever is watching the terminal, and it means part of the work
