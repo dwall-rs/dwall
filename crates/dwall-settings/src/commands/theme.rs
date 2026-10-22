@@ -81,9 +81,16 @@ pub async fn get_customized_themes_cmd(
         };
 
         let image_format = manifest.image_format().clone();
-        let images = find_files_in_dir(&subdir.join("images"), image_format.as_str())
-            .await
-            .inspect_err(|e| error!(error = ?e, "Failed to find images in directory"))?;
+        // A custom theme whose `images/` directory is missing or unreadable cannot be
+        // applied, so skip it exactly like an invalid manifest: one broken directory
+        // must not hide every other custom theme in the list.
+        let images = match find_files_in_dir(&subdir.join("images"), image_format.as_str()).await {
+            Ok(images) => images,
+            Err(e) => {
+                warn!(theme_id = %id, error = %e, "Skipping custom theme whose images could not be listed");
+                continue;
+            }
+        };
         debug!(images = images.len(), "Found images");
 
         // Thumbnails are optional: use them when present, else fall back to images.
@@ -115,4 +122,75 @@ pub async fn get_customized_themes_cmd(
     info!("Found {} customized themes", themes.len());
 
     Ok(themes)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// A scratch `customized_themes_directory`.
+    fn scratch(name: &str) -> PathBuf {
+        let dir = std::env::temp_dir().join(format!("dwall_theme_cmd_{name}"));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+
+        dir
+    }
+
+    /// Writes a schema-valid `theme.toml` under `theme_dir`.
+    fn write_manifest(theme_dir: &Path, id: &str, name: &str) {
+        std::fs::create_dir_all(theme_dir).unwrap();
+        std::fs::write(
+            theme_dir.join("theme.toml"),
+            format!(
+                r#"schema = 1
+
+[theme]
+id = "{id}"
+name = "{name}"
+author = "tester"
+version = 1
+created_at = 1700000000
+image_format = "png"
+
+[solar]
+mode = "native"
+
+[[solar.frames]]
+index = 0
+altitude = 10.0
+azimuth = 20.0
+"#
+            ),
+        )
+        .unwrap();
+    }
+
+    /// One custom theme whose `images/` directory cannot be read must not fail the whole
+    /// listing: the settings window would otherwise show no custom theme at all.
+    #[tokio::test]
+    async fn a_broken_custom_theme_does_not_hide_the_others() {
+        let dir = scratch("broken_listing");
+
+        let good = dir.join("Good Theme");
+        write_manifest(&good, "good-theme", "Good Theme");
+        std::fs::create_dir_all(good.join("images")).unwrap();
+        std::fs::write(good.join("images").join("1.png"), "image").unwrap();
+
+        // Schema-valid manifest, but no `images/` directory to list.
+        let broken = dir.join("Broken Theme");
+        write_manifest(&broken, "broken-theme", "Broken Theme");
+
+        let themes = get_customized_themes_cmd(dir.clone()).await.unwrap();
+
+        let ids: Vec<&str> = themes.iter().map(|theme| theme.id.as_str()).collect();
+        assert_eq!(
+            ids,
+            vec!["Good Theme"],
+            "the broken theme is skipped, not fatal"
+        );
+        assert_eq!(themes[0].thumbnails.len(), 1);
+
+        let _ = std::fs::remove_dir_all(&dir);
+    }
 }
