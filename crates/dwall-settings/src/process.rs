@@ -92,6 +92,32 @@ fn session_id_of(pid: u32) -> Option<u32> {
     Some(session)
 }
 
+/// Whether a process snapshot entry describes this session's daemon.
+///
+/// Fails closed: a candidate whose session Windows will not report — a process that
+/// has exited, or one it refuses to describe — is not matched on the strength of its
+/// name alone. Matching it used to hand [`terminate_process`] a PID that could have
+/// been recycled by then.
+fn is_daemon_entry(
+    own_pid: u32,
+    pid: u32,
+    image_name: &str,
+    our_session: Option<u32>,
+    process_session: impl FnOnce() -> Option<u32>,
+) -> bool {
+    if pid == own_pid || !image_name.eq_ignore_ascii_case(DAEMON_EXE_NAME) {
+        return false;
+    }
+
+    match (our_session, process_session()) {
+        (Some(ours), Some(theirs)) => is_our_daemon(image_name, theirs, ours),
+        // This process's own session could not be read, so the session filter cannot
+        // be applied at all; the warning in `find_daemon_process` says as much.
+        (None, _) => true,
+        (Some(_), None) => false,
+    }
+}
+
 /// Finds the running daemon process of this session, wherever it was installed.
 ///
 /// Matching on the executable name — rather than on the path the settings app
@@ -126,14 +152,9 @@ pub fn find_daemon_process() -> DwallSettingsResult<Option<u32>> {
                 let pid = process_entry.th32ProcessID;
                 let image_name = get_process_exe_name(&process_entry);
 
-                if pid != own_pid
-                    && image_name.eq_ignore_ascii_case(DAEMON_EXE_NAME)
-                    && our_session.is_none_or(|session| {
-                        session_id_of(pid).is_none_or(|process_session| {
-                            is_our_daemon(&image_name, process_session, session)
-                        })
-                    })
-                {
+                if is_daemon_entry(own_pid, pid, &image_name, our_session, || {
+                    session_id_of(pid)
+                }) {
                     return Ok(Some(pid));
                 }
 
@@ -241,9 +262,9 @@ pub fn wait_for_exit(pid: u32, timeout: Duration) -> DwallSettingsResult<bool> {
 /// Whether the process behind `handle` is running the expected executable.
 fn image_name_matches(handle: &HandleWrapper, expected: &str) -> bool {
     let Some(path) = process_image_path(handle) else {
-        // Windows refused to describe the process; assume it is the daemon, which is
-        // what the caller asked to stop in the first place.
-        return true;
+        // Windows would not describe the process, so it cannot be confirmed as the
+        // daemon: the caller asked to stop the daemon, and this is not provably it.
+        return false;
     };
 
     Path::new(&path)
@@ -313,6 +334,35 @@ mod tests {
     fn another_executable_is_not_the_daemon() {
         assert!(!is_our_daemon("dwall-settings.exe", 1, 1));
         assert!(!is_our_daemon("notdwall.exe", 1, 1));
+    }
+
+    #[test]
+    fn a_daemon_entry_is_matched_by_name_and_session() {
+        assert!(is_daemon_entry(10, 20, "dwall.exe", Some(1), || Some(1)));
+    }
+
+    #[test]
+    fn a_daemon_entry_in_another_session_is_not_matched() {
+        assert!(!is_daemon_entry(10, 20, "dwall.exe", Some(1), || Some(2)));
+    }
+
+    /// The bug this closes: an undescribable process was treated as the daemon, and a
+    /// PID reused between the snapshot and the terminate call was killed for it.
+    #[test]
+    fn a_daemon_entry_with_an_unknown_session_is_not_matched() {
+        assert!(!is_daemon_entry(10, 20, "dwall.exe", Some(1), || None));
+    }
+
+    #[test]
+    fn our_own_process_and_other_names_are_never_matched() {
+        assert!(!is_daemon_entry(10, 10, "dwall.exe", Some(1), || Some(1)));
+        assert!(!is_daemon_entry(
+            10,
+            20,
+            "dwall-settings.exe",
+            Some(1),
+            || Some(1)
+        ));
     }
 
     #[test]
