@@ -2,6 +2,7 @@
 //       with the theme's solar-angle entries overlaid on it as marker points only; the Y axis adapts to all nodes.
 import type { SolarPosition, Wallpaper } from "@/models/types";
 import { getSolarPath } from "@/ipc";
+import { resourceValue } from "@/lib/resource";
 import { t } from "@/i18n";
 import { settingsStore } from "@/store/settings.store";
 import { clsx, formatAngle } from "@/utils";
@@ -50,11 +51,14 @@ export function SunPathPanel(props: Props) {
     () => settingsStore.config?.position_source,
     (ps) => getSolarPath(ps, Math.floor(Date.now() / 1000)),
   );
+  // A denied location permission (or any other failure) must not take the stage
+  // down: the track then falls back to the theme's own angles.
+  const pathPoints = createMemo(() => resourceValue(path) ?? []);
 
   // Adaptive Y axis: anchored to the "real sun path" (theme-independent, so every theme sees the same track),
   // covering the current position and the horizon (0)° with an 8% margin on both sides. Falls back to the theme's angles while the track is not loaded.
   const domain = createMemo<AltitudeDomain>(() => {
-    const pathAlts = (path() ?? []).map((p) => p.altitude);
+    const pathAlts = pathPoints().map((p) => p.altitude);
     return altitudeDomain([
       props.current.altitude,
       0,
@@ -78,9 +82,7 @@ export function SunPathPanel(props: Props) {
 
   const track = createMemo(() =>
     smoothPath(
-      (path() ?? []).map(
-        (p): Point => [xForAzimuth(p.azimuth), Yp(p.altitude)],
-      ),
+      pathPoints().map((p): Point => [xForAzimuth(p.azimuth), Yp(p.altitude)]),
     ),
   );
 

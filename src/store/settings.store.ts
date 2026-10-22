@@ -220,19 +220,25 @@ const save = async () => {
  * Both fixed and random mode "apply/save" go through here.
  */
 const applyWallpaperMode = async (mode: WallpaperMode) => {
-  const config = settingsStore.config;
-  if (!config) return;
+  const draft = settingsStore.config;
+  const saved = settingsStore.saved;
+  if (!draft || !saved) return;
 
-  const next: Config = { ...config, wallpaper_mode: mode };
-  setSettingsStore("config", next);
+  // Apply only the mode. The draft may carry edits the user has not saved yet, and
+  // applying a theme from the stage must not write them to disk or mark them saved —
+  // the old code applied `{ ...draft, wallpaper_mode }`, which committed them silently.
+  const applied: Config = { ...saved, wallpaper_mode: mode };
+
+  // The mode itself is optimistic: the toggle reflects it before the daemon answers.
+  setSettingsStore("config", { ...draft, wallpaper_mode: mode });
 
   try {
-    await applyTheme(next);
+    await applyTheme(applied);
     // Apply/stop starts or stops the daemon, so sync the engine state right away.
     void refreshEngine();
     setSettingsStore(
       produce((s) => {
-        s.saved = snapshot(next);
+        s.saved = snapshot(applied);
         s.saveError = null;
       }),
     );
@@ -259,7 +265,11 @@ const changeThemesDirectory = async (dir: string) => {
     patch({ themes_directory: dir });
     await save();
   } catch (e) {
+    // The move is what can fail here (a non-empty destination, a permission
+    // problem). Without this the user's choice was discarded with only a log line,
+    // while the row kept showing the old directory as if nothing had happened.
     log.error("Failed to move themes directory", e);
+    toast.error(t("common.operationFailed"), { description: String(e) });
   }
 };
 

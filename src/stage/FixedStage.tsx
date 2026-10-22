@@ -4,6 +4,7 @@ import { themeById } from "@/store/catalog.selectors";
 import { catalogStore } from "@/store/catalog.store";
 import type { Wallpaper } from "@/models/types";
 import { getThemeWallpapers, matchWallpaper } from "@/ipc";
+import { resourceValue } from "@/lib/resource";
 import { t } from "@/i18n";
 import {
   fixedStore,
@@ -49,7 +50,7 @@ export function FixedStage() {
     async ({ id, cur }) => await matchWallpaper(id, cur.altitude, cur.azimuth),
   );
 
-  const list = createMemo(() => wallpapers() ?? []);
+  const list = createMemo(() => resourceValue(wallpapers) ?? []);
   /** A theme is usable once its frames are on disk; the fallback below offers to install it. */
   const installed = createMemo(() => list().length > 0);
   // One image may correspond to several solar positions; the list is deduplicated by image
@@ -65,7 +66,7 @@ export function FixedStage() {
     return result;
   });
   const matchedIndex = createMemo(() => {
-    const entry = matchedEntry();
+    const entry = resourceValue(matchedEntry);
     return entry != null ? (list()[entry]?.index ?? null) : null;
   });
   const active = createMemo(() => {
@@ -73,18 +74,18 @@ export function FixedStage() {
     if (fixedStore.selIndex != null) {
       return items.find((w) => w.index === fixedStore.selIndex) ?? null;
     }
-    const entry = matchedEntry();
+    const entry = resourceValue(matchedEntry);
     return entry != null ? (items[entry] ?? null) : (items[0] ?? null);
   });
 
   return (
     <div class="flex min-h-0 flex-1 flex-col gap-3">
-      <Show when={current()}>
+      <Show when={resourceValue(current)}>
         {(cur) => (
           <SunPathPanel
             wallpapers={list()}
             current={cur()}
-            matchedEntry={matchedEntry() ?? null}
+            matchedEntry={resourceValue(matchedEntry) ?? null}
             selIndex={fixedStore.selIndex}
             onSelect={selectWallpaper}
           />

@@ -9,8 +9,11 @@ import {
 import { downloadPercent, isCancellation } from "@/models/download";
 import { t } from "@/i18n";
 import { toast } from "@/components/ui/toast";
+import { logger } from "@/utils";
 import { markInstalled } from "./catalog.store";
 import { settingsStore } from "./settings.store";
+
+const log = logger.child("download");
 
 interface DownloadState {
   /** Theme downloading now, or the theme whose download failed. */
@@ -57,12 +60,16 @@ export const downloadTheme = async (themeId: string): Promise<boolean> => {
     error: null,
   });
 
-  const unlisten = await onThemeDownloadProgress((progress) => {
-    if (progress.taskId !== themeId) return;
-    setDownloadStore("percent", downloadPercent(progress));
-  });
+  // Registered inside the `try`: if listening fails there is no progress to show,
+  // and the store must not stay "downloading" forever with every button disabled.
+  let unlisten: (() => void) | undefined;
 
   try {
+    unlisten = await onThemeDownloadProgress((progress) => {
+      if (progress.taskId !== themeId) return;
+      setDownloadStore("percent", downloadPercent(progress));
+    });
+
     await downloadThemeAndExtract(config, themeId);
     // Tells every view that reads frames from disk that this theme has them now.
     markInstalled(themeId);
@@ -90,7 +97,7 @@ export const downloadTheme = async (themeId: string): Promise<boolean> => {
     });
     return false;
   } finally {
-    unlisten();
+    unlisten?.();
   }
 };
 
@@ -98,6 +105,12 @@ export const downloadTheme = async (themeId: string): Promise<boolean> => {
 export const cancelDownload = async () => {
   const themeId = downloadStore.themeId;
   if (downloadStore.status === "downloading" && themeId) {
-    await cancelThemeDownload(themeId);
+    try {
+      await cancelThemeDownload(themeId);
+    } catch (e) {
+      // The download may already be over, or the command may be unreachable; the
+      // progress event (or the failure path above) settles the state either way.
+      log.warn("Failed to cancel the download", e);
+    }
   }
 };
