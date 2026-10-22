@@ -481,3 +481,13 @@ jobs:
           else
             echo "❌ **Release failed or was cancelled**" >> $GITHUB_STEP_SUMMARY
           fi
+
+          # The release is already public at this point, so a failed fast-forward is
+          # not a failed release — but it does leave main on the previous version,
+          # and the summary used to report success without a word about it.
+          if [[ "${{ needs.publish-release.result }}" == "success" && "${{ needs.update-main-version.result }}" != "success" ]]; then
+            echo "::warning::The release is public but main was not moved to it"
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "⚠️ **main still points at the previous version** — update-main-version reported ${{ needs.update-main-version.result }}." >> $GITHUB_STEP_SUMMARY
+            echo "The release is public, but the version bump is not on main; move it by hand or re-run that job." >> $GITHUB_STEP_SUMMARY
+          fi
