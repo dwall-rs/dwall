@@ -3,6 +3,7 @@
 import { createMemo, createResource, Show } from "solid-js";
 import type { Wallpaper } from "@/models/types";
 import { getRandomSelection, getThemeWallpapers, matchWallpaper } from "@/ipc";
+import { resourceValue } from "@/lib/resource";
 import { useSolarPosition } from "@/hooks/useSolarPosition";
 import { themeById } from "@/store/catalog.selectors";
 import { t } from "@/i18n";
@@ -49,16 +50,16 @@ export function RandomSunPath() {
     async ({ id, cur }) => await matchWallpaper(id, cur.altitude, cur.azimuth),
   );
 
-  const list = createMemo(() => wallpapers() ?? []);
+  const list = createMemo(() => resourceValue(wallpapers) ?? []);
 
   return (
-    <Show when={list().length > 0 && current()}>
+    <Show when={list().length > 0 && resourceValue(current)}>
       {(cur) => (
         <div class="flex flex-col gap-1.5">
           <SunPathPanel
             wallpapers={list()}
             current={cur()}
-            matchedEntry={matchedEntry() ?? null}
+            matchedEntry={resourceValue(matchedEntry) ?? null}
             fullWidth
           />
           {/* Below the track, and quiet: it names the theme, it is not a heading. */}
