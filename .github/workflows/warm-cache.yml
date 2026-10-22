@@ -10,6 +10,9 @@ on:
       - "crates/*/Cargo.toml"
       - "package.json"
       - "bun.lockb"
+      # A change to this file changes what the cache must contain; without this the
+      # new builds would wait for the next dependency change or the weekly run.
+      - ".github/workflows/warm-cache.yml"
   pull_request:
     types:
       - closed
@@ -21,6 +24,7 @@ on:
       - "crates/*/Cargo.toml"
       - "package.json"
       - "bun.lockb"
+      - ".github/workflows/warm-cache.yml"
   workflow_dispatch:
 
   # The caches are keyed by the resolved toolchain, and a stable update changes that key
@@ -119,3 +123,11 @@ jobs:
           cargo clippy -r --all-targets -- -D warnings
           cargo clippy -r -p dwall --features build-script,log-max-level-info --all-targets -- -D warnings
           cargo clippy -p dwall-settings --features log-max-level-info --all-targets -- -D warnings
+
+          # pr-check regenerates the bindings with these two feature sets, and neither is
+          # covered by anything above: `ts` is what pulls in ts-rs, so the bindings step
+          # compiled it from source on every pull request. Compile them here — without
+          # running, since the test itself rewrites src/ipc/bindings — so the restore
+          # covers the step that needs them.
+          cargo test -p dwall --features ts --lib --no-run
+          cargo test -p dwall-settings --features typegen --no-run
