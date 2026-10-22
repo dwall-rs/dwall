@@ -28,7 +28,12 @@ impl ThemeApplier {
         // Stop whichever daemon is running, wherever it was installed from, and wait
         // for it to release its mutex. Failing to stop it is not fatal any more: the
         // daemon re-reads the configuration within a second of it changing.
-        match stop_daemon() {
+        // `stop_daemon` waits on the process handle (up to five seconds), so it must
+        // run off the async runtime thread that is driving the window.
+        let stopped = tauri::async_runtime::spawn_blocking(stop_daemon)
+            .await
+            .map_err(|e| DwallSettingsError::Other(e.to_string()))?;
+        match stopped {
             Ok(Some(pid)) => info!(pid = pid, "Stopped the existing daemon"),
             Ok(None) => info!("No daemon process found"),
             Err(e) => error!(error = %e, "Failed to stop the daemon process"),
