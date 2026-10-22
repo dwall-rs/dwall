@@ -4,6 +4,7 @@ import { t } from "@/i18n";
 import { engineStore } from "@/store/engine.store";
 import { settingsStore } from "@/store/settings.store";
 import { useSolarPosition } from "@/hooks/useSolarPosition";
+import { resourceValue } from "@/lib/resource";
 import { clsx, formatAngle } from "@/utils";
 
 export function EngineStatus() {
@@ -39,7 +40,7 @@ export function EngineStatus() {
             mode: t(random() ? "app.mode.random" : "app.mode.fixed"),
           })}
           <span class="inline-flex items-center gap-1.5 font-display font-semibold text-foreground">
-            <Show when={sp()} fallback="—">
+            <Show when={resourceValue(sp)} fallback="—">
               {(p) => (
                 <>
                   <span>{p().altitude < 0 ? "☾" : "☀"}</span>
