@@ -8,7 +8,7 @@ use tokio::fs;
 
 use crate::error::DwallSettingsResult;
 
-use super::storage::Storage;
+use super::storage::{Storage, next_entry_or_stop};
 
 // Cache configuration constants
 const MAX_CACHE_SIZE_BYTES: u64 = 100 * 1024 * 1024; // 100MB
@@ -85,7 +85,7 @@ impl Cleanup {
             e
         })?;
 
-        while let Ok(Some(entry)) = entries.next_entry().await {
+        while let Some(entry) = next_entry_or_stop(&mut entries, dir).await {
             let path = entry.path();
 
             if path.is_dir() {
@@ -117,7 +117,7 @@ impl Cleanup {
             }
         };
 
-        while let Ok(Some(file_entry)) = theme_entries.next_entry().await {
+        while let Some(file_entry) = next_entry_or_stop(&mut theme_entries, dir).await {
             let file_path = file_entry.path();
 
             if file_path.is_file()
@@ -161,7 +161,7 @@ impl Cleanup {
             e
         })?;
 
-        while let Ok(Some(entry)) = entries.next_entry().await {
+        while let Some(entry) = next_entry_or_stop(&mut entries, dir).await {
             let path = entry.path();
 
             if path.is_dir() {
@@ -185,7 +185,7 @@ impl Cleanup {
             }
         };
 
-        while let Ok(Some(file_entry)) = theme_entries.next_entry().await {
+        while let Some(file_entry) = next_entry_or_stop(&mut theme_entries, dir).await {
             let file_path = file_entry.path();
 
             if file_path.is_file()
@@ -238,7 +238,7 @@ impl Cleanup {
             e
         })?;
 
-        while let Ok(Some(entry)) = entries.next_entry().await {
+        while let Some(entry) = next_entry_or_stop(&mut entries, dir).await {
             let path = entry.path();
 
             if path.is_dir() {
