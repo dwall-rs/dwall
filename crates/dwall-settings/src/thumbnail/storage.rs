@@ -8,6 +8,28 @@ use tokio::fs;
 use crate::error::DwallSettingsResult;
 use crate::filesystem::create_dir_if_missing;
 
+/// Reads the next directory entry, stopping the walk — and saying so — on an I/O error.
+///
+/// `while let Ok(Some(..))` ended the walk silently at the first error, so a cache that
+/// could not be fully read looked like one that was fully clean.
+pub(crate) async fn next_entry_or_stop(
+    entries: &mut fs::ReadDir,
+    dir: &Path,
+) -> Option<fs::DirEntry> {
+    match entries.next_entry().await {
+        Ok(Some(entry)) => Some(entry),
+        Ok(None) => None,
+        Err(e) => {
+            warn!(
+                dir = %dir.display(),
+                error = %e,
+                "Stopping directory walk after a read error"
+            );
+            None
+        }
+    }
+}
+
 /// File system operations for cache storage
 pub(crate) struct Storage;
 
@@ -51,7 +73,7 @@ impl Storage {
             e
         })?;
 
-        while let Ok(Some(entry)) = entries.next_entry().await {
+        while let Some(entry) = next_entry_or_stop(&mut entries, dir).await {
             let path = entry.path();
 
             if path.is_file() {
