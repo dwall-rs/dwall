@@ -29,6 +29,13 @@ env:
   # directory (and prints a "could not be used" warning after a cache restore).
   CARGO_INCREMENTAL: 0
 
+# Two release runs race over the same release branch, tag and GitHub release: the
+# second force-pushes over the first while it is still uploading. Serialize them, and
+# leave cancel-in-progress off so a queued run waits its turn instead of interrupting
+# a run that is halfway through publishing.
+concurrency:
+  group: publish
+
 jobs:
   pre-checks:
     runs-on: ubuntu-latest
