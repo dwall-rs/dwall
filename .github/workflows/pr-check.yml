@@ -259,20 +259,63 @@ jobs:
     needs: [detect-changes, frontend-check, scripts-check, workflow-lint, rust-check]
     # Only merge when the change detection actually ran and no executed check
     # failed; a skipped check (nothing relevant changed) is acceptable, a failed
-    # or cancelled one is not.
+    # or cancelled one is not. Same-repository branches only: a pull request from a
+    # fork gets a read-only token, so it could not merge even if it should.
     if: >-
       always() && !cancelled()
+      && github.event.pull_request.head.repo.full_name == github.repository
       && needs.detect-changes.result == 'success'
       && (needs.frontend-check.result == 'success' || needs.frontend-check.result == 'skipped')
       && (needs.scripts-check.result == 'success' || needs.scripts-check.result == 'skipped')
       && (needs.workflow-lint.result == 'success' || needs.workflow-lint.result == 'skipped')
       && (needs.rust-check.result == 'success' || needs.rust-check.result == 'skipped')
+    timeout-minutes: 10
+    # `gh` reads the label with the repository token; the merge itself uses
+    # `AUTOMERGE_TOKEN`, which is why no write scope is requested here.
     permissions:
-      contents: write
-      pull-requests: write
+      contents: read
+      pull-requests: read
     steps:
+      # The action below fails with "environment variable GITHUB_TOKEN not set!"
+      # when the secret is empty, which says nothing about what to do. The label is
+      # read through the API rather than from the payload, because a label added
+      # after the run started is not in the payload while the action reads it live.
+      - name: Check that the merge token is configured
+        env:
+          TOKEN: ${{ secrets.AUTOMERGE_TOKEN }}
+          NUMBER: ${{ github.event.pull_request.number }}
+          # There is no checkout in this job, so `gh` cannot infer the repository
+          # from a remote; without this it fails before it reads a single label.
+          GH_REPO: ${{ github.repository }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if [[ -n "${TOKEN:-}" ]]; then
+            exit 0
+          fi
+
+          labels=$(gh pr view "${NUMBER}" --json labels --jq '.labels[].name') || {
+            echo "::error::Could not read the labels of #${NUMBER}."
+            exit 1
+          }
+
+          if ! grep -qx automerge <<< "${labels}"; then
+            echo "::notice::#${NUMBER} has no automerge label, so the missing AUTOMERGE_TOKEN is not used here."
+            exit 0
+          fi
+
+          echo "::error::AUTOMERGE_TOKEN is not set, so this labelled pull request cannot be merged."
+          echo "::error::Create a fine-grained personal access token for this repository with"
+          echo "::error::Contents, Pull requests and Workflows set to read and write, then store it:"
+          echo "::error::  gh secret set AUTOMERGE_TOKEN --body <token>"
+          exit 1
+
       - name: Auto merge PR
         uses: pascalgn/automerge-action@7961b8b5eec56cc088c140b56d864285eabd3f67 # v0.16.4
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # `AUTOMERGE_TOKEN`, not `GITHUB_TOKEN`: GitHub starts no workflow for
+          # the events the repository token causes, so a merge made with it would
+          # leave `delete-merged-branch.yml` with nothing to hear and the branch
+          # behind. See the comment above the job.
+          GITHUB_TOKEN: ${{ secrets.AUTOMERGE_TOKEN }}
+          MERGE_LABELS: "automerge"
           MERGE_REMOVE_LABELS: "automerge"
