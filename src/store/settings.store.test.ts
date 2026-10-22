@@ -264,3 +264,46 @@ describe("settings store: writing", () => {
     expect(mocks.toastError).toHaveBeenCalled();
   });
 });
+
+describe("settings store: moving the themes directory", () => {
+  test("a successful move patches the directory and saves", async () => {
+    mocks.readConfigFile.mockResolvedValue(config());
+    mocks.moveDirectory.mockResolvedValue(undefined);
+    mocks.writeConfigFile.mockResolvedValue(undefined);
+
+    const store = await freshStore();
+    await store.load();
+
+    await store.changeThemesDirectory("D:\\themes");
+
+    expect(mocks.moveDirectory).toHaveBeenCalledWith(
+      "C:\\Users\\test\\AppData\\Roaming\\dwall\\themes",
+      "D:\\themes",
+    );
+    expect(store.settingsStore.config?.themes_directory).toBe("D:\\themes");
+    expect(mocks.writeConfigFile).toHaveBeenCalledTimes(1);
+    expect(mocks.toastError).not.toHaveBeenCalled();
+  });
+
+  /**
+   * A move can fail (a non-empty destination, a permission problem). The row has to
+   * say so instead of leaving the old directory in place with only a log line.
+   */
+  test("a failed move is reported and nothing is written", async () => {
+    mocks.readConfigFile.mockResolvedValue(config());
+    mocks.moveDirectory.mockRejectedValue(
+      new Error("destination is not empty"),
+    );
+
+    const store = await freshStore();
+    await store.load();
+
+    await store.changeThemesDirectory("D:\\themes");
+
+    expect(mocks.toastError).toHaveBeenCalled();
+    expect(store.settingsStore.config?.themes_directory).toBe(
+      "C:\\Users\\test\\AppData\\Roaming\\dwall\\themes",
+    );
+    expect(mocks.writeConfigFile).not.toHaveBeenCalled();
+  });
+});

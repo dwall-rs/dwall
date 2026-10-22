@@ -259,7 +259,11 @@ const changeThemesDirectory = async (dir: string) => {
     patch({ themes_directory: dir });
     await save();
   } catch (e) {
+    // The move is what can fail here (a non-empty destination, a permission
+    // problem). Without this the user's choice was discarded with only a log line,
+    // while the row kept showing the old directory as if nothing had happened.
     log.error("Failed to move themes directory", e);
+    toast.error(t("common.operationFailed"), { description: String(e) });
   }
 };
 
