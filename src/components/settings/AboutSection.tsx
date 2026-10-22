@@ -10,6 +10,7 @@ import {
   ItemTitle,
 } from "@/components/ui/item";
 import { getAppInfo, openLogDir, openUrl } from "@/ipc";
+import { resourceValue } from "@/lib/resource";
 import { t } from "@/i18n";
 import Logo from "@/assets/dwall.svg";
 import { SettingsGroup } from "./SettingsGroup";
@@ -38,7 +39,7 @@ export function AboutSection() {
               class="size-8.5"
             />
             <div class="font-display text-[34px] font-extrabold leading-none tracking-tight">
-              {info()?.version ?? "…"}
+              {resourceValue(info)?.version ?? "…"}
             </div>
             <div class="font-mono text-[11px] text-muted-foreground">
               {t("settings.about.tagline")}

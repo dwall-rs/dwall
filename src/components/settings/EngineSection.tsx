@@ -24,6 +24,7 @@ import {
 import { Field, FieldGroup, FieldLabel } from "../ui/field";
 import { Input } from "../ui/input";
 import { checkAutoStart, disableAutoStart, enableAutoStart } from "@/ipc";
+import { resourceValue } from "@/lib/resource";
 
 export function EngineSection() {
   const [flash, setFlash] = createSignal<string | null>(null);
@@ -56,7 +57,7 @@ export function EngineSection() {
           desc={t("settings.engine.launchAtStartupDesc")}
           control={
             <Switch
-              checked={autoStart()}
+              checked={resourceValue(autoStart) ?? false}
               onCheckedChange={async (checked) => {
                 if (checked) {
                   await enableAutoStart();
