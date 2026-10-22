@@ -32,6 +32,26 @@ describe("themeList", () => {
         .needsDownload,
     ).toBe(false);
   });
+
+  test("reuses the model while the entry's fields are unchanged", () => {
+    // Row identity is what keeps <For> from remounting every tile (and refetching
+    // every thumbnail) when the search box recomputes the list.
+    const catalogEntry = entry({});
+
+    expect(themeList([catalogEntry])[0]).toBe(themeList([catalogEntry])[0]);
+  });
+
+  test("rebuilds the model once the entry's installed flag flips", () => {
+    const catalogEntry = entry({ installed: false });
+    const before = themeList([catalogEntry])[0];
+    expect(before.needsDownload).toBe(true);
+
+    catalogEntry.installed = true;
+    const after = themeList([catalogEntry])[0];
+
+    expect(after.needsDownload).toBe(false);
+    expect(after).not.toBe(before);
+  });
 });
 
 describe("themeById", () => {

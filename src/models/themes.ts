@@ -8,11 +8,32 @@ import type { Theme } from "./types";
  * Only a catalog theme can need downloading: a custom theme exists on disk by
  * construction, and Rust decides whether a catalog theme's frames are there.
  */
-const toTheme = (theme: CatalogTheme): Theme => ({
-  id: theme.id,
-  name: theme.name,
-  needsDownload: theme.source === "catalog" && !theme.installed,
-});
+/**
+ * One model per catalog entry, reused while the fields the UI reads are unchanged.
+ *
+ * `<For>` keys rows by item reference, so a fresh object per call remounted every tile
+ * — and refetched every thumbnail — whenever an unrelated signal (the search box)
+ * recomputed the list. Keyed weakly, so an entry that leaves the store is collected
+ * with its model.
+ */
+const models = new WeakMap<CatalogTheme, Theme>();
+
+const toTheme = (theme: CatalogTheme): Theme => {
+  const needsDownload = theme.source === "catalog" && !theme.installed;
+  const cached = models.get(theme);
+  if (
+    cached &&
+    cached.id === theme.id &&
+    cached.name === theme.name &&
+    cached.needsDownload === needsDownload
+  ) {
+    return cached;
+  }
+
+  const mapped: Theme = { id: theme.id, name: theme.name, needsDownload };
+  models.set(theme, mapped);
+  return mapped;
+};
 
 /** Theme list (from the Rust catalog). */
 export const themeList = (themes: CatalogTheme[]): Theme[] =>
