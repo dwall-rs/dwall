@@ -6,7 +6,11 @@ use dwall::config::Network;
 pub struct MirrorUrlResolver;
 
 impl MirrorUrlResolver {
-    /// Resolve a GitHub URL using the configured mirror template
+    /// Resolve a GitHub URL using the configured mirror template.
+    ///
+    /// Purely local: the release route is filled in with the `latest` alias, so no
+    /// request leaves the machine and a usable mirror is never bypassed in favour of
+    /// the original `github.com` URL.
     pub async fn resolve(network: Option<&Network>, github_url: &str) -> String {
         match network {
             None | Some(Network::Socks5 { .. }) => github_url.to_owned(),
@@ -49,23 +53,19 @@ impl MirrorUrlResolver {
                     && parts[4] == "download"
                 {
                     let asset = parts[5..].join("/");
-                    let api_url = format!(
-                        "https://api.github.com/repos/{}/{}/releases/latest",
-                        owner, repo
+                    // `latest` is a real segment of GitHub's download route and every
+                    // proxy that mirrors it passes the alias through, so the template can
+                    // be filled directly. Asking `api.github.com` for the tag made the
+                    // check depend on the very host a mirror is configured to avoid, and
+                    // its failure fell back to the original `github.com` URL.
+                    return apply_template(
+                        template,
+                        owner,
+                        repo,
+                        Some("latest"),
+                        &asset,
+                        github_url,
                     );
-
-                    if let Ok(version) = fetch_latest_release_tag(&api_url).await {
-                        return apply_template(
-                            template,
-                            owner,
-                            repo,
-                            Some(&version),
-                            &asset,
-                            github_url,
-                        );
-                    }
-
-                    return github_url.to_owned();
                 }
 
                 github_url.to_owned()
@@ -141,29 +141,6 @@ fn apply_template(
     }
 
     resolved
-}
-
-async fn fetch_latest_release_tag(api_url: &str) -> Result<String, Box<dyn std::error::Error>> {
-    // Bounded: this runs while the user waits for the update check, and the GitHub
-    // API is unreachable in the very regions the mirror template exists for.
-    let client = reqwest::Client::builder()
-        .user_agent("resolve-mirror/1.0")
-        .connect_timeout(std::time::Duration::from_secs(5))
-        .timeout(std::time::Duration::from_secs(10))
-        .build()?;
-
-    let json: serde_json::Value = client
-        .get(api_url)
-        .send()
-        .await?
-        .error_for_status()?
-        .json()
-        .await?;
-
-    json["tag_name"]
-        .as_str()
-        .map(|s| s.to_owned())
-        .ok_or_else(|| "tag_name not found".into())
 }
 
 #[cfg(test)]
@@ -289,5 +266,33 @@ mod tests {
             ),
             url
         );
+    }
+
+    /// The stable channel's manifest uses the `latest` alias. It must be rewritten
+    /// through the template without a request, or the mirror is bypassed for the one
+    /// check every stable build performs.
+    #[tokio::test]
+    async fn resolve_rewrites_a_latest_release_asset_without_the_api() {
+        let network =
+            mirror("https://ghproxy.cc/<owner>/<repo>/releases/download/<version>/<asset>");
+
+        assert_eq!(
+            MirrorUrlResolver::resolve(
+                network.as_ref(),
+                "https://github.com/dwall-rs/dwall/releases/latest/download/latest.json",
+            )
+            .await,
+            "https://ghproxy.cc/dwall-rs/dwall/releases/download/latest/latest.json"
+        );
+    }
+
+    /// A host-swap template cannot express a release asset; the original URL is kept
+    /// rather than a mirror URL that is guaranteed to 404.
+    #[tokio::test]
+    async fn resolve_keeps_the_original_for_a_template_without_an_asset() {
+        let network = mirror("https://kkgithub.com/<owner>/<repo>");
+        let url = "https://github.com/dwall-rs/dwall/releases/latest/download/latest.json";
+
+        assert_eq!(MirrorUrlResolver::resolve(network.as_ref(), url).await, url);
     }
 }
