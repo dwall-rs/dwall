@@ -191,6 +191,57 @@ fix(stage): mark today's theme on its own collage tile
 fix(settings): identify the daemon by mutex and executable name
 ```
 
+### Branching and pull requests
+
+`main` takes no direct change. **Nothing is committed or pushed to it** — every change
+starts on its own branch and reaches `main` through a pull request whose `pr-check` is
+green.
+
+Protection is not on yet: `gh api repos/dwall-rs/dwall/branches/main/protection` answers
+404. The repository is public, so protection is available on the free plan; until it is
+switched on, this rule is held by the people and agents working in the repository rather
+than by the platform — which is all the more reason to follow it, and to switch protection
+on, requiring `pr-check`, as soon as someone gets to it.
+
+```bash
+git fetch origin
+git switch -c fix/nsis-space-in-name origin/main
+# ... work, commit ...
+git push -u origin fix/nsis-space-in-name
+gh pr create --base main --fill
+```
+
+- **Branch names describe the change, not the person**: `<type>/<slug>`, using the commit
+  types (`feat/sun-path`, `fix/nsis-space-in-name`, `docs/english-docs`,
+  `ci/upx-optional`). One branch per functional change — a branch that accumulates three
+  unrelated fixes cannot be reviewed, and cannot be reverted without dragging the others
+  along.
+- **Branch from `main`.** A change based on `dev` cannot be reviewed or reverted on its
+  own, and it drags whatever else `dev` carries into the pull request.
+- **The pull request is the unit of review.** Its description says what changes and why, in
+  the same terms as the commit body, so that the merged history stays readable on its own.
+- **Title and description are English only**, for the same reason the commit messages are:
+  the change record is read by people, tools and agents that did not take part in the
+  conversation that produced it. Discuss in any language in the comments — that is
+  conversation, not record.
+- **Keep the branch current by rebasing on `main`**, not by merging `main` into it, so the
+  history stays linear and the diff stays reviewable.
+- **No direct pushes, no force-pushes to `main`, no `--no-verify`.** An urgent one-line fix
+  is still a pull request; with `pr-check` green it merges in under a minute.
+- **Delete the branch once it is merged.** Nothing removes it for you yet.
+- **Agents follow this too.** Create the branch *before* the first commit rather than
+  committing on `main` and moving the commits afterwards: a rebased-away commit still shows
+  up in the reflog and in whoever is watching the terminal, and it means part of the work
+  was written under different assumptions than the part that is reviewed.
+
+The one commit that reaches `main` without a pull request is the release bump that
+`publish.yml` fast-forwards in (`update-main-version` merges `release` with `--ff-only`) —
+after the release is public, and only when `main` has not moved. It changes nothing but the
+version and the lock file, and it is tolerated because no protection exists to bypass it;
+the day protection exists, either list `github-actions[bot]` as an exception or make
+`publish.yml` open a pull request and tag after that merges. A rule the repository's own
+automation ignores is not a rule.
+
 ## Gotchas
 
 - Windows-only. There is no cross-platform fallback; platform code lives under
