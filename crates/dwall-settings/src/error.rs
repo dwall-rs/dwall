@@ -34,6 +34,13 @@ pub enum DwallSettingsError {
     /// is what the renderer matches on (`isCancellation`), so it stays as it was.
     #[error("Download cancelled")]
     Cancelled,
+    /// The transfer would have written more than the caller allowed.
+    ///
+    /// A variant of its own for the same reason as [`Self::Cancelled`]: the retry loop
+    /// has to tell it from a flaky transfer. The server answered the same way once and
+    /// will answer the same way again, so retrying only writes the same bytes again.
+    #[error("Download exceeds the {limit} byte limit")]
+    DownloadTooLarge { limit: u64 },
     #[error(transparent)]
     Logger(#[from] log::SetLoggerError),
     #[error(transparent)]

@@ -178,6 +178,7 @@ impl ThemeDownloader {
                     url,
                     temp_path,
                     downloaded_bytes,
+                    MAX_THEME_ARCHIVE_BYTES,
                     Some(cancel_flag),
                     progress_callback.clone(),
                 )
@@ -211,13 +212,25 @@ impl ThemeDownloader {
     }
 }
 
+/// The most the archive on disk may hold.
+///
+/// The same bound the extractor enforces: a compressed archive is never larger than
+/// what it expands to, so this is the largest download that could still be extracted,
+/// and a server that streams forever stops here instead of filling the disk first.
+const MAX_THEME_ARCHIVE_BYTES: u64 = archive::MAX_EXTRACTED_BYTES;
+
 /// Whether a failed attempt is worth trying again.
 ///
 /// The cancellation message is part of the renderer contract
 /// (`isCancellation` in `src/models/download.ts` matches this text), so it is
-/// pinned by a test rather than left to whoever edits the variant next.
+/// pinned by a test rather than left to whoever edits the variant next. An oversized
+/// download is refused the same way: the server will answer with the same bytes
+/// again, so a retry only writes them again.
 fn is_retryable(error: &DwallSettingsError) -> bool {
-    !matches!(error, DwallSettingsError::Cancelled)
+    !matches!(
+        error,
+        DwallSettingsError::Cancelled | DwallSettingsError::DownloadTooLarge { .. }
+    )
 }
 
 /// Moves the finished download into place, extracts it, and clears the archive.
@@ -300,6 +313,17 @@ mod tests {
     use std::path::PathBuf;
 
     use super::*;
+
+    #[test]
+    fn an_oversized_download_is_not_retried() {
+        assert!(!is_retryable(&DwallSettingsError::DownloadTooLarge {
+            limit: 1
+        }));
+        assert!(!is_retryable(&DwallSettingsError::Cancelled));
+        assert!(is_retryable(&DwallSettingsError::Other(
+            "connection reset".to_string()
+        )));
+    }
 
     /// An empty scratch themes directory of its own, so the tests can run in
     /// parallel without sharing a staging path.

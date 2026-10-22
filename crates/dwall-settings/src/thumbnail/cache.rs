@@ -14,6 +14,12 @@ use crate::thumbnail::store::{CacheKey, clear_cache, initialize_cache, lock_for_
 /// Bytes inspected to recognise an image format.
 const MAGIC_BYTES_LEN: usize = 16;
 
+/// The most a thumbnail may be.
+///
+/// A thumbnail is a few hundred KB at most, so this only has to be generous enough
+/// that no real image reaches it; its job is to stop a server that streams forever.
+const MAX_THUMBNAIL_BYTES: u64 = 32 * 1024 * 1024;
+
 /// Manages the thumbnail cache system
 pub struct ThumbnailCache {
     http_client: HttpClient,
@@ -132,7 +138,14 @@ impl ThumbnailCache {
 
         let written = self
             .http_client
-            .download_file(&cache_key.url, &image_path, 0, None, None)
+            .download_file(
+                &cache_key.url,
+                &image_path,
+                0,
+                MAX_THUMBNAIL_BYTES,
+                None,
+                None,
+            )
             .await?;
 
         if written == 0 {

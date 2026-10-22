@@ -91,11 +91,17 @@ impl HttpClient {
     /// so it is never buffered whole — the cancellation flag is checked between
     /// chunks (so cancelling actually stops the transfer), and a range request is
     /// only continued when the server really answered `206 Partial Content`.
+    ///
+    /// `max_bytes` bounds what the file may end up holding. It is counted from the
+    /// start of the transfer rather than from this response, so a resumed download
+    /// cannot walk past it one attempt at a time, and a chunk that would cross it is
+    /// refused before it is written.
     pub async fn download_file(
         &self,
         url: &str,
         target_path: &Path,
         downloaded_bytes: u64,
+        max_bytes: u64,
         cancel_flag: Option<&Arc<AtomicBool>>,
         progress_callback: Option<Arc<dyn Fn(u64, u64) + Send + Sync>>,
     ) -> DwallSettingsResult<u64> {
@@ -119,6 +125,11 @@ impl HttpClient {
         }
 
         let already_written = if resume { downloaded_bytes } else { 0 };
+
+        if already_written > max_bytes {
+            return Err(DwallSettingsError::DownloadTooLarge { limit: max_bytes });
+        }
+
         let total_size = already_written + response.content_length().unwrap_or(0);
 
         let mut file = if resume {
@@ -138,6 +149,12 @@ impl HttpClient {
                 && cancel.load(Ordering::Relaxed)
             {
                 return Err(DwallSettingsError::Cancelled);
+            }
+
+            // Refuse before writing, so the file never holds more than the caller
+            // allowed, not even for a moment.
+            if written.saturating_add(chunk.len() as u64) > max_bytes {
+                return Err(DwallSettingsError::DownloadTooLarge { limit: max_bytes });
             }
 
             file.write_all(&chunk).await?;
@@ -282,6 +299,9 @@ mod tests {
         response
     }
 
+    /// A limit none of these tests reaches; the bound has tests of its own below.
+    const NO_LIMIT: u64 = u64::MAX;
+
     fn scratch(name: &str) -> PathBuf {
         let dir = std::env::temp_dir().join(format!("dwall_client_{name}"));
         let _ = fs::remove_dir_all(&dir);
@@ -312,6 +332,7 @@ mod tests {
                 &server.url,
                 &target,
                 4,
+                NO_LIMIT,
                 None,
                 None,
             ))
@@ -343,6 +364,7 @@ mod tests {
                 &server.url,
                 &target,
                 4,
+                NO_LIMIT,
                 None,
                 None,
             ))
@@ -363,6 +385,7 @@ mod tests {
                 &server.url,
                 &target,
                 0,
+                NO_LIMIT,
                 None,
                 None,
             ))
@@ -391,6 +414,7 @@ mod tests {
                 &server.url,
                 &target,
                 0,
+                NO_LIMIT,
                 Some(&cancelled),
                 None,
             ))
@@ -410,9 +434,14 @@ mod tests {
         let target = scratch("not_found").join("theme.zip");
 
         let result = tokio::runtime::Runtime::new().unwrap().block_on(
-            HttpClient::new(None)
-                .unwrap()
-                .download_file(&server.url, &target, 0, None, None),
+            HttpClient::new(None).unwrap().download_file(
+                &server.url,
+                &target,
+                0,
+                NO_LIMIT,
+                None,
+                None,
+            ),
         );
 
         assert!(result.is_err());
@@ -437,6 +466,7 @@ mod tests {
                 &server.url,
                 &target,
                 0,
+                NO_LIMIT,
                 None,
                 Some(Arc::new(move |written, total| {
                     recorder.lock().unwrap().push((written, total));
@@ -464,6 +494,7 @@ mod tests {
                 &server.url,
                 &target,
                 0,
+                NO_LIMIT,
                 None,
                 Some(Arc::new(move |written, total| {
                     recorder.lock().unwrap().push((written, total));
@@ -473,6 +504,82 @@ mod tests {
 
         assert_eq!(read(&target), "0123456789");
         assert_eq!(*seen.lock().unwrap().last().unwrap(), (10, 0));
+    }
+
+    // ── The size limit ──────────────────────────────────────────────────────
+
+    #[test]
+    fn a_body_exactly_at_the_limit_is_accepted() {
+        let server = TestServer::new(response("200 OK", b"0123456789"));
+        let target = scratch("at_limit").join("theme.zip");
+
+        let written = tokio::runtime::Runtime::new()
+            .unwrap()
+            .block_on(HttpClient::new(None).unwrap().download_file(
+                &server.url,
+                &target,
+                0,
+                10,
+                None,
+                None,
+            ))
+            .unwrap();
+
+        assert_eq!(written, 10);
+        assert_eq!(read(&target), "0123456789");
+    }
+
+    /// The check happens before the write, so an oversized body is refused whole
+    /// rather than silently truncated at the boundary.
+    #[test]
+    fn a_body_over_the_limit_is_refused_and_not_written() {
+        let server = TestServer::new(response("200 OK", b"0123456789"));
+        let target = scratch("too_large").join("theme.zip");
+
+        let error = tokio::runtime::Runtime::new()
+            .unwrap()
+            .block_on(HttpClient::new(None).unwrap().download_file(
+                &server.url,
+                &target,
+                0,
+                4,
+                None,
+                None,
+            ))
+            .unwrap_err();
+
+        assert!(matches!(
+            error,
+            DwallSettingsError::DownloadTooLarge { limit: 4 }
+        ));
+        assert_eq!(read(&target), "", "nothing past the limit may be written");
+    }
+
+    /// The bytes already on disk count, so a resumed transfer cannot walk past the
+    /// limit one attempt at a time.
+    #[test]
+    fn a_resumed_download_counts_the_partial_file_against_the_limit() {
+        let server = TestServer::new(response("206 Partial Content", b"bbbb"));
+        let target = scratch("resume_limit").join("theme.zip");
+        write(&target, "aaaa");
+
+        let error = tokio::runtime::Runtime::new()
+            .unwrap()
+            .block_on(HttpClient::new(None).unwrap().download_file(
+                &server.url,
+                &target,
+                4,
+                6,
+                None,
+                None,
+            ))
+            .unwrap_err();
+
+        assert!(matches!(
+            error,
+            DwallSettingsError::DownloadTooLarge { limit: 6 }
+        ));
+        assert_eq!(read(&target), "aaaa", "the partial file is left as it was");
     }
 
     // ── Reading a small body ────────────────────────────────────────────────

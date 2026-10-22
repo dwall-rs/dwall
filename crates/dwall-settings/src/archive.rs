@@ -11,7 +11,11 @@ use zip::read::root_dir_common_filter;
 use crate::error::{DwallSettingsError, DwallSettingsResult};
 
 /// Bytes an archive may expand to, and the most this module is willing to write.
-const MAX_EXTRACTED_BYTES: u64 = 8 * 1024 * 1024 * 1024; // 8 GiB
+///
+/// The downloader bounds the archive it fetches by the same number: a compressed
+/// archive is never larger than what it expands to, so this is the largest file that
+/// could still be extracted.
+pub(crate) const MAX_EXTRACTED_BYTES: u64 = 8 * 1024 * 1024 * 1024; // 8 GiB
 
 /// Upper bound on the number of entries, so a zip bomb cannot create millions of
 /// files either.
