@@ -8,7 +8,9 @@ use std::{
 use dwall::config::ImageFormat;
 
 use crate::error::DwallSettingsResult;
-use crate::filesystem::{find_files_in_dir, list_subdirectories};
+use crate::filesystem::{
+    find_files_in_dir, list_subdirectories, validate_directory, validate_theme_id,
+};
 use crate::theme::applier::ThemeApplier;
 use crate::theme::status::ThemeStatusProvider;
 use crate::theme::validator::ThemeValidator;
@@ -21,6 +23,10 @@ pub async fn validate_theme_cmd(
     is_customized: bool,
     image_format: ImageFormat,
 ) -> DwallSettingsResult<()> {
+    // Both values arrive from the renderer and are joined into a path below.
+    validate_directory(themes_directory, "themes_directory")?;
+    validate_theme_id(theme_id)?;
+
     ThemeValidator::validate(themes_directory, theme_id, is_customized, &image_format)
         .map_err(Into::into)
 }
@@ -50,6 +56,9 @@ pub async fn apply_theme_cmd(
 pub async fn get_customized_themes_cmd(
     customized_themes_directory: PathBuf,
 ) -> DwallSettingsResult<Vec<CustomizedTheme>> {
+    // The directory arrives from the renderer and is walked below.
+    validate_directory(&customized_themes_directory, "customized_themes_directory")?;
+
     if !customized_themes_directory.exists() {
         return Ok(Vec::new());
     }
@@ -192,5 +201,36 @@ azimuth = 20.0
         assert_eq!(themes[0].thumbnails.len(), 1);
 
         let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    /// Both values arrive from the renderer and are joined into a path below.
+    #[tokio::test]
+    async fn validate_theme_cmd_refuses_a_traversing_id_and_a_relative_directory() {
+        let dir = scratch("validation");
+
+        assert!(
+            validate_theme_cmd(&dir, "../escape", false, ImageFormat::Jpeg)
+                .await
+                .is_err(),
+            "a traversing id must not resolve under the themes directory"
+        );
+        assert!(
+            validate_theme_cmd(Path::new("relative"), "Big Sur", false, ImageFormat::Jpeg)
+                .await
+                .is_err(),
+            "a relative root must be refused"
+        );
+
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    /// The customized-themes command walks the directory the renderer names.
+    #[tokio::test]
+    async fn get_customized_themes_cmd_refuses_a_relative_directory() {
+        assert!(
+            get_customized_themes_cmd(PathBuf::from("relative"))
+                .await
+                .is_err()
+        );
     }
 }

@@ -10,6 +10,7 @@ use dwall::{DWALL_CONFIG_DIR, SolarAngle};
 use serde::Serialize;
 
 use crate::error::DwallSettingsResult;
+use crate::filesystem::validate_theme_id;
 
 /// Base URL for theme thumbnails in the dwall-assets repository.
 const THUMBNAILS_BASE_URL: &str =
@@ -182,6 +183,10 @@ fn installed_solar_angles(
     theme_id: &str,
     config: Option<&Config>,
 ) -> DwallSettingsResult<Vec<SolarAngle>> {
+    // The id arrives from the renderer and becomes a path component below; the write
+    // path already validates it, and a read must not be the way around that.
+    validate_theme_id(theme_id)?;
+
     let Some(dir) = resolve_theme_dir(theme_id, config)? else {
         return Ok(Vec::new());
     };
@@ -267,6 +272,22 @@ mod tests {
 
     fn entry<'a>(catalog: &'a [CatalogTheme], id: &str) -> Option<&'a CatalogTheme> {
         catalog.iter().find(|theme| theme.id == id)
+    }
+
+    /// The id becomes a path component; a renderer-supplied value that climbs out of
+    /// the themes directory has to be refused, exactly as the write path refuses it.
+    #[test]
+    fn installed_solar_angles_rejects_a_traversing_theme_id() {
+        let dir = scratch("traversal");
+
+        let error = installed_solar_angles("../escape", Some(&config_at(&dir))).unwrap_err();
+
+        assert!(
+            error.to_string().contains("Invalid theme id"),
+            "unexpected error: {error}"
+        );
+
+        let _ = std::fs::remove_dir_all(&dir);
     }
 
     #[test]
