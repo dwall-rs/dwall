@@ -78,6 +78,9 @@ jobs:
         with:
           node-version: lts/*
 
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
+
       - name: Setup Git
         run: |
           git config --global user.name 'github-actions[bot]'
@@ -103,13 +106,18 @@ jobs:
           fi
           VERSION=$(node -p "require('./package.json').version")
           sed -i "s/^version = \".*\"/version = \"$VERSION\"/" Cargo.toml
+          # Cargo.lock names the workspace members' versions too, so bumping only the
+          # manifest leaves it stale: a build with --locked then fails with "cannot
+          # update the lock file", and every checkout comes up dirty after the first
+          # build. Refreshing the workspace packages leaves the dependency set alone.
+          cargo update --workspace
           echo "VERSION=$VERSION" >> $GITHUB_ENV
           echo "Bumping version to: $VERSION (channel: $RELEASE_CHANNEL)"
 
       - name: Create and push release branch
         run: |
           git checkout -b release
-          git add package.json Cargo.toml
+          git add package.json Cargo.toml Cargo.lock
           git commit -m "Bump version to ${{ env.VERSION }}"
           git push origin release --force
 
