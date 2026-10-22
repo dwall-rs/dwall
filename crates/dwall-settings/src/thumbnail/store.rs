@@ -35,6 +35,13 @@ static THUMBNAIL_LOCKS: LazyLock<KeyLocks> = LazyLock::new(|| Arc::new(Mutex::ne
 pub(crate) async fn lock_for(cache_key: CacheKey) -> Arc<Mutex<()>> {
     let mut locks = THUMBNAIL_LOCKS.lock().await;
 
+    // Drop the keys nobody is downloading any more. The table used to grow for the
+    // life of the process, one entry per thumbnail ever requested, and only a manual
+    // cache clear released it. A key whose `Arc` only the table still holds has no
+    // holder and no waiter; pruning it here — under the same lock `lock_for` clones
+    // under — cannot split one download in two.
+    locks.retain(|_, lock| Arc::strong_count(lock) > 1);
+
     locks
         .entry(cache_key)
         .or_insert_with(|| Arc::new(Mutex::new(())))
@@ -161,6 +168,26 @@ mod tests {
 
         let after = block_on(lock_for(key("store-clear", "https://a/1.jpg")));
         assert!(!Arc::ptr_eq(&before, &after));
+    }
+
+    /// An idle key does not stay in the table: it used to grow for the life of the
+    /// process, one entry per thumbnail ever requested.
+    #[test]
+    fn an_idle_key_is_dropped_from_the_table() {
+        let _serialised = table_wide_test_guard();
+        let idle = key("store-idle", "https://a/1.jpg");
+
+        let held = block_on(lock_for(idle.clone()));
+        drop(held);
+
+        // Any lookup prunes the keys nobody holds.
+        let _trigger = block_on(lock_for(key("store-prune", "https://a/9.jpg")));
+
+        let tracked = block_on(THUMBNAIL_LOCKS.lock());
+        assert!(
+            !tracked.contains_key(&idle),
+            "the idle key was pruned, not kept for the process lifetime"
+        );
     }
 
     /// Holding the guard is what serialises two downloads of one thumbnail; the
