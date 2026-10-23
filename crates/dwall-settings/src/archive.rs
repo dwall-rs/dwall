@@ -621,4 +621,121 @@ mod tests {
 
         let _ = fs::remove_dir_all(&dir);
     }
+
+    #[test]
+    fn archive_entry_with_parent_components_is_refused() {
+        let dir = scratch("escape");
+        let zip_path = write_archive(&dir, &archive(&[("../../escape.txt", b"payload")]));
+        let target = dir.join("out");
+
+        let error = extract_with_limit(&zip_path, &target, MAX_EXTRACTED_BYTES)
+            .expect_err("an entry with parent components must not be extracted")
+            .to_string();
+
+        assert!(
+            error.contains("escapes the extraction directory"),
+            "the refusal has to name the escape: {error}"
+        );
+        assert!(!target.join("escape.txt").exists());
+        assert!(
+            !dir.join("escape.txt").exists(),
+            "nothing may be written outside the extraction directory"
+        );
+
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn archive_symlink_entries_are_skipped() {
+        let dir = scratch("symlink");
+        let zip_path = dir.join("theme.zip");
+        let mut writer = zip::ZipWriter::new(File::create(&zip_path).unwrap());
+        let options = SimpleFileOptions::default().compression_method(CompressionMethod::Deflated);
+
+        writer.start_file("Theme/solar.json", options).unwrap();
+        writer.write_all(b"[]").unwrap();
+        writer
+            .add_symlink("Theme/evil", "../outside", options)
+            .unwrap();
+        writer.finish().unwrap();
+
+        let target = dir.join("out");
+        extract_with_limit(&zip_path, &target, MAX_EXTRACTED_BYTES)
+            .expect("a symlink entry must not fail the extraction");
+
+        assert!(target.join("solar.json").is_file());
+        assert!(
+            !target.join("evil").exists(),
+            "a symlink entry must not be materialised"
+        );
+
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn archive_at_the_entry_limit_is_accepted() {
+        let dir = scratch("entry_limit");
+
+        let build = |name: &str, count: usize| {
+            let path = dir.join(name);
+            let mut writer = zip::ZipWriter::new(File::create(&path).unwrap());
+            let options = SimpleFileOptions::default();
+
+            for index in 0..count {
+                writer
+                    .start_file(format!("Theme/{index}.txt"), options)
+                    .unwrap();
+            }
+            writer.finish().unwrap();
+
+            path
+        };
+
+        let at_limit = build("at_limit.zip", MAX_ARCHIVE_ENTRIES);
+        let target = dir.join("out");
+        extract_with_limit(&at_limit, &target, MAX_EXTRACTED_BYTES)
+            .expect("an archive exactly at the entry limit is accepted");
+        assert!(target.join("0.txt").is_file());
+        assert!(
+            target
+                .join(format!("{}.txt", MAX_ARCHIVE_ENTRIES - 1))
+                .is_file()
+        );
+
+        let over_limit = build("over_limit.zip", MAX_ARCHIVE_ENTRIES + 1);
+        let over_target = dir.join("over_out");
+        let error = extract_with_limit(&over_limit, &over_target, MAX_EXTRACTED_BYTES)
+            .expect_err("one entry past the limit must be refused")
+            .to_string();
+        assert!(error.contains("too many entries"), "{error}");
+
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn remove_file_on_a_directory_is_an_error() {
+        let dir = scratch("remove_directory");
+        let runtime = tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .unwrap();
+
+        runtime.block_on(async {
+            match remove_file(&dir).await {
+                Err(DwallSettingsError::Io(error)) => {
+                    assert_ne!(
+                        error.kind(),
+                        std::io::ErrorKind::NotFound,
+                        "only a missing file may be swallowed"
+                    );
+                }
+                Ok(()) => panic!("removing a directory must not report success"),
+                Err(other) => panic!("the io error has to be preserved, got {other:?}"),
+            }
+
+            assert!(dir.is_dir(), "the directory must still exist");
+        });
+
+        let _ = fs::remove_dir_all(&dir);
+    }
 }
