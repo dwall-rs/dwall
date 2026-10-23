@@ -368,7 +368,15 @@ const fn default_log_level() -> LevelFilter {
 /// Get log level from environment variable
 ///
 /// Accepts a plain level (`debug`) as well as the `env_logger`-style forms people
-/// reach for out of habit (`dwall=debug`, `dwall=debug,tauri=info`).
+/// reach for out of habit (`dwall=debug`, `dwall=debug,tauri=info`), but only the
+/// first directive is honoured: it supplies the logger's global level.
+///
+/// This is a documented limitation, not an accident. The [`Logger`] built from this
+/// level does support per-target levels, added with [`with_target_level`], and the
+/// environment's remaining directives are deliberately not turned into those filters:
+/// a target filter makes [`Log::enabled` match by prefix only, which would drop
+/// every other target. A value like `dwall=info,tauri=warn` therefore still means
+/// info for everything.
 fn get_log_level() -> LevelFilter {
     let from_env = env::var("DWALL_LOG").or_else(|_| env::var("RUST_LOG")).ok();
 
@@ -379,7 +387,11 @@ fn get_log_level() -> LevelFilter {
         .unwrap_or_else(default_log_level)
 }
 
-/// Parses `debug`, `dwall=debug` or `dwall=debug,tauri=info` into a level.
+/// Parses `debug`, `dwall=debug` or `dwall=debug,tauri=info` into the global level.
+///
+/// Only the first directive is read; the rest are dropped, for the reason documented
+/// on [`get_log_level`]. A leading `target=` prefix on that directive is ignored, so
+/// its level applies to every target.
 fn parse_log_level(value: &str) -> Option<LevelFilter> {
     // Use the first directive, then the part after its optional `target=` prefix.
     let directive = value.trim().split(',').next()?.trim();
