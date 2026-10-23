@@ -452,8 +452,10 @@ impl Default for Config {
 
 /// Intermediate deserialization struct for backward compatibility with legacy configuration files.
 ///
-/// The `github_mirror_template` field was deprecated in 0.2.0 and will be removed in 0.3.0.
-/// At that time, this struct should also be removed, and the standard `Deserialize` derivation of `Config` should be restored.
+/// The `github_mirror_template` field was deprecated in 0.2.0 and is still accepted so
+/// old configuration files keep loading. This struct and the field go away together:
+/// restoring the standard `Deserialize` derivation of `Config` is what removes the
+/// last reason for the migration shim, so no version deadline is promised here.
 #[derive(Debug, Deserialize)]
 pub struct RawConfig {
     #[serde(skip_serializing_if = "Option::is_none")]
