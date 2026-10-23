@@ -253,6 +253,11 @@ jobs:
       - name: Cargo test
         run: cargo test
 
+      # The logging crate's own test target is not built by the daemon's run, so the
+      # `max-level-info` gating test only ever runs here.
+      - name: Cargo test (logging)
+        run: cargo test -p logging --all-features
+
       # The root run uses the default feature set. The daemon ships with all of
       # them, and --all-features also regenerates src/ipc/bindings through the ts
       # feature, which the stale-bindings check above then re-verifies.
