@@ -383,6 +383,7 @@ mod tests {
 
     use super::*;
 
+    use crate::network::testing::{TestServer, response};
     use crate::testing::ScratchDir;
 
     #[test]
@@ -719,64 +720,6 @@ azimuth = 20.0
         );
     }
 
-    /// A one-shot HTTP server on localhost, so the downloader's resume arithmetic can
-    /// be observed through the Range header it sends.
-    struct OneShotServer {
-        url: String,
-        request: std::sync::Arc<std::sync::Mutex<String>>,
-    }
-
-    impl OneShotServer {
-        fn new(response: Vec<u8>) -> Self {
-            use std::io::{Read, Write};
-            use std::net::TcpListener;
-
-            let listener = TcpListener::bind("127.0.0.1:0").expect("a free local port");
-            let url = format!("http://{}", listener.local_addr().unwrap());
-            let request = std::sync::Arc::new(std::sync::Mutex::new(String::new()));
-            let captured = std::sync::Arc::clone(&request);
-
-            std::thread::spawn(move || {
-                let Ok((mut stream, _)) = listener.accept() else {
-                    return;
-                };
-
-                let mut head = Vec::new();
-                let mut buffer = [0u8; 1024];
-                while let Ok(read) = stream.read(&mut buffer) {
-                    if read == 0 {
-                        break;
-                    }
-                    head.extend_from_slice(&buffer[..read]);
-                    if head.windows(4).any(|window| window == b"\r\n\r\n") {
-                        break;
-                    }
-                }
-
-                *captured.lock().unwrap() = String::from_utf8_lossy(&head).into_owned();
-                let _ = stream.write_all(&response);
-                let _ = stream.flush();
-            });
-
-            Self { url, request }
-        }
-
-        fn request_head(&self) -> String {
-            self.request.lock().unwrap().clone()
-        }
-    }
-
-    fn http_response(status: &str, body: &[u8]) -> Vec<u8> {
-        let mut response = format!(
-            "HTTP/1.1 {status}\r\nContent-Length: {}\r\nConnection: close\r\n\r\n",
-            body.len()
-        )
-        .into_bytes();
-        response.extend_from_slice(body);
-
-        response
-    }
-
     /// The downloader reads the bytes already on disk and asks for the rest: this is
     /// the arithmetic download_file cannot do on its own.
     #[test]
@@ -785,7 +728,7 @@ azimuth = 20.0
         let temp_path = root.join("Demo.zip.tmp");
         fs::write(&temp_path, b"aaaa").unwrap();
 
-        let server = OneShotServer::new(http_response("206 Partial Content", b"bbbb"));
+        let server = TestServer::new(response("206 Partial Content", b"bbbb"));
         let cancel = Arc::new(AtomicBool::new(false));
         let no_emitter: Option<&ProgressEmitter<'_, tauri::Wry>> = None;
 
@@ -807,6 +750,38 @@ azimuth = 20.0
                 .contains("range: bytes=4-"),
             "the partial file's length has to become the range start: {}",
             server.request_head()
+        );
+    }
+
+    /// A server error is retried, and the second attempt gets the scripted success:
+    /// this is what the scripted fixture is for.
+    #[test]
+    fn download_with_retry_tries_again_after_a_server_error() {
+        let root = scratch_themes_directory("retry");
+        let temp_path = root.join("Demo.zip.tmp");
+
+        let server = TestServer::scripted(vec![
+            response("500 Internal Server Error", b"nope"),
+            response("200 OK", b"archive"),
+        ]);
+        let cancel = Arc::new(AtomicBool::new(false));
+        let no_emitter: Option<&ProgressEmitter<'_, tauri::Wry>> = None;
+
+        runtime()
+            .block_on(downloader().download_with_retry(
+                &server.url,
+                &temp_path,
+                &cancel,
+                no_emitter,
+                "Demo",
+            ))
+            .unwrap();
+
+        assert_eq!(fs::read(&temp_path).unwrap(), b"archive");
+        assert_eq!(
+            server.requests().len(),
+            2,
+            "the failed attempt has to be retried"
         );
     }
 }

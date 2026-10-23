@@ -230,85 +230,12 @@ impl Clone for HttpClient {
 #[cfg(test)]
 mod tests {
     use std::fs;
-    use std::io::{Read, Write};
-    use std::net::TcpListener;
     use std::path::PathBuf;
     use std::sync::Mutex;
-    use std::thread;
 
     use super::*;
 
-    /// A one-shot HTTP server on localhost.
-    ///
-    /// Answers the first request with a fixed response and records the request head, so
-    /// a test can see whether the client asked for a byte range. Hand-rolled because the
-    /// alternative is a fixture framework this crate does not otherwise need: the client
-    /// only ever does a `GET`, and the interesting behaviour is in how it reads the body.
-    struct TestServer {
-        url: String,
-        request: Arc<Mutex<String>>,
-    }
-
-    impl TestServer {
-        fn new(response: Vec<u8>) -> Self {
-            let listener = TcpListener::bind("127.0.0.1:0").expect("a free local port");
-            let url = format!("http://{}", listener.local_addr().unwrap());
-            let request = Arc::new(Mutex::new(String::new()));
-            let captured = Arc::clone(&request);
-
-            // Detached on purpose: joining would block a failing test on a connection
-            // that never arrives, and the thread ends with the test process.
-            thread::spawn(move || {
-                let Ok((mut stream, _)) = listener.accept() else {
-                    return;
-                };
-
-                let mut head = Vec::new();
-                let mut buffer = [0u8; 1024];
-                while let Ok(read) = stream.read(&mut buffer) {
-                    if read == 0 {
-                        break;
-                    }
-
-                    head.extend_from_slice(&buffer[..read]);
-                    if head.windows(4).any(|window| window == b"\r\n\r\n") {
-                        break;
-                    }
-                }
-
-                *captured.lock().unwrap() = String::from_utf8_lossy(&head).into_owned();
-
-                let _ = stream.write_all(&response);
-                let _ = stream.flush();
-            });
-
-            Self { url, request }
-        }
-
-        fn request_head(&self) -> String {
-            self.request.lock().unwrap().clone()
-        }
-    }
-
-    /// A response that declares its length, the way a real server does.
-    fn response(status: &str, body: &[u8]) -> Vec<u8> {
-        let mut response = format!(
-            "HTTP/1.1 {status}\r\nContent-Length: {}\r\nConnection: close\r\n\r\n",
-            body.len()
-        )
-        .into_bytes();
-        response.extend_from_slice(body);
-
-        response
-    }
-
-    /// A response framed only by closing the connection, so the length is unknown.
-    fn response_without_length(body: &[u8]) -> Vec<u8> {
-        let mut response = b"HTTP/1.0 200 OK\r\nConnection: close\r\n\r\n".to_vec();
-        response.extend_from_slice(body);
-
-        response
-    }
+    use crate::network::testing::{TestServer, response, response_without_length};
 
     /// A limit none of these tests reaches; the bound has tests of its own below.
     const NO_LIMIT: u64 = u64::MAX;
