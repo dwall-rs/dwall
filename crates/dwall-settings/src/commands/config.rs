@@ -16,6 +16,7 @@ pub async fn read_config_file() -> DwallSettingsResult<dwall::Config> {
 
 #[tauri::command]
 pub async fn write_config_file(
+    app: tauri::AppHandle,
     downloader: State<'_, ThemeDownloader>,
     thumbnail_cache: State<'_, ThumbnailCache>,
     config: dwall::Config,
@@ -35,6 +36,10 @@ pub async fn write_config_file(
     let config_path = dwall::DWALL_CONFIG_DIR.join("config.toml");
     let writer = ConfigWriter;
     writer.write_to_path(&config_path, &config)?;
+
+    // The themes directory may have just moved, and the asset protocol would still be
+    // pointing at the old one: without this the library shows nothing until a restart.
+    crate::setup::allow_asset_directories(&app, &config);
 
     // The proxy lives inside the HTTP client, so a changed network setting has to
     // be pushed into it; otherwise it only takes effect after a restart.
