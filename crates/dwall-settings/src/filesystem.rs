@@ -38,12 +38,16 @@ pub fn validate_directory(path: &Path, label: &str) -> DwallSettingsResult<()> {
 ///
 /// Theme ids are directory names: anything containing a separator, a drive/stream
 /// colon, a traversal component or a control character could escape the themes
-/// directory, and the downloader runs `remove_dir_all` on the resulting path.
+/// directory, and the downloader runs `remove_dir_all` on the resulting path. A name
+/// Windows will not keep as written — a reserved device name, a trailing dot or space —
+/// is refused too, because the directory that lands on disk would not be the one the id
+/// names.
 pub fn validate_theme_id(theme_id: &str) -> DwallSettingsResult<()> {
     let invalid = theme_id.is_empty()
         || theme_id.len() > 128
         || theme_id == "."
         || theme_id == ".."
+        || is_unwritable_name(theme_id)
         || theme_id.chars().any(|c| {
             c.is_control() || matches!(c, '/' | '\\' | ':' | '*' | '?' | '"' | '<' | '>' | '|')
         });
@@ -334,6 +338,26 @@ mod tests {
             "a\nb",
         ] {
             assert!(validate_theme_id(id).is_err(), "{id:?} should be rejected");
+        }
+    }
+
+    #[test]
+    fn validate_theme_id_rejects_names_windows_would_not_keep() {
+        for theme_id in ["CON", "nul.txt", "Trailing.", "Trailing "] {
+            assert!(
+                validate_theme_id(theme_id).is_err(),
+                "'{theme_id}' is not a name Windows keeps as written"
+            );
+        }
+    }
+
+    #[test]
+    fn validate_theme_id_accepts_names_that_only_look_reserved() {
+        for theme_id in ["CONSOLE", "COM10", "Sun Rise", "昼与夜"] {
+            assert!(
+                validate_theme_id(theme_id).is_ok(),
+                "'{theme_id}' is usable"
+            );
         }
     }
 
