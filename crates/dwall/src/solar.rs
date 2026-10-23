@@ -1063,4 +1063,103 @@ mod tests {
         );
         assert_eq!(highest_month, Month::November);
     }
+
+    // ── Boundary inputs ─────────────────────────────────────────────────────
+
+    #[test]
+    fn position_new_rejects_nan_and_infinity() {
+        assert!(matches!(
+            Position::new(f64::NAN, 0.0, 0.0),
+            Err(crate::error::DwallError::Position(
+                CoordinateError::InvalidLatitude(latitude)
+            )) if latitude.is_nan()
+        ));
+        assert!(matches!(
+            Position::new(0.0, f64::INFINITY, 0.0),
+            Err(crate::error::DwallError::Position(
+                CoordinateError::InvalidLongitude(longitude)
+            )) if longitude.is_infinite()
+        ));
+    }
+
+    #[test]
+    fn solar_position_at_the_south_pole_and_longitude_dateline() {
+        // The June solstice, so the northern pole is at its highest sun and the
+        // southern one at its lowest.
+        let date = UtcDateTime::new(2026, Month::June, 21, 12, 0, 0).unwrap();
+
+        for longitude in [-180.0, 180.0] {
+            let south =
+                SolarPosition::new(&Position::from_raw_position(-90.0, longitude, 0.0), &date);
+            let north =
+                SolarPosition::new(&Position::from_raw_position(90.0, longitude, 0.0), &date);
+
+            for solar in [&south, &north] {
+                assert!(
+                    (-90.0..=90.0).contains(&solar.altitude()),
+                    "altitude {} is outside [-90, 90]",
+                    solar.altitude()
+                );
+                assert!(
+                    (0.0..360.0).contains(&solar.azimuth()),
+                    "azimuth {} is outside [0, 360)",
+                    solar.azimuth()
+                );
+            }
+
+            // The obliquity at the solstice, and the two poles as mirror images of
+            // each other apart from atmospheric refraction at the lit one.
+            assert!(
+                (north.altitude() - 23.44).abs() < 0.1,
+                "the June sun stands at the obliquity above the north pole, got {}",
+                north.altitude()
+            );
+            assert!(
+                (south.altitude() + 23.44).abs() < 0.1,
+                "and the same below the south pole, got {}",
+                south.altitude()
+            );
+            assert!(
+                (north.altitude() + south.altitude()).abs() < 0.1,
+                "the poles are opposites: north {} south {}",
+                north.altitude(),
+                south.altitude()
+            );
+        }
+    }
+
+    #[test]
+    fn equator_sun_rises_and_sets_once_per_day() {
+        let position = Position::from_raw_position(0.0, 0.0, 0.0);
+        let mut rises = 0u32;
+        let mut sets = 0u32;
+        let mut was_above: Option<bool> = None;
+
+        for second in (0..86_400u32).step_by(60) {
+            let date = UtcDateTime::new(
+                2026,
+                Month::June,
+                21,
+                (second / 3600) as u8,
+                ((second % 3600) / 60) as u8,
+                0,
+            )
+            .unwrap();
+            let above = SolarPosition::new(&position, &date).altitude() > 0.0;
+
+            if let Some(previous) = was_above {
+                if above && !previous {
+                    rises += 1;
+                }
+                if !above && previous {
+                    sets += 1;
+                }
+            }
+
+            was_above = Some(above);
+        }
+
+        assert_eq!(rises, 1, "the equator sees exactly one sunrise a day");
+        assert_eq!(sets, 1, "and exactly one sunset");
+    }
 }

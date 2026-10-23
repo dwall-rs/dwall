@@ -88,3 +88,42 @@ impl TryFrom<u8> for Month {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn month_days_handle_leap_years_and_centuries() {
+        assert_eq!(Month::February.days_in_month(2024), 29);
+        assert_eq!(Month::February.days_in_month(2023), 28);
+        assert_eq!(Month::February.days_in_month(2000), 29);
+        assert_eq!(Month::February.days_in_month(1900), 28);
+        assert_eq!(Month::February.days_in_month(2100), 28);
+
+        for month in [Month::April, Month::June, Month::September, Month::November] {
+            assert_eq!(month.days_in_month(2024), 30, "{month:?} has 30 days");
+        }
+
+        for month in [
+            Month::January,
+            Month::March,
+            Month::May,
+            Month::July,
+            Month::August,
+            Month::October,
+            Month::December,
+        ] {
+            assert_eq!(month.days_in_month(2024), 31, "{month:?} has 31 days");
+        }
+    }
+
+    #[test]
+    fn month_try_from_rejects_zero_and_thirteen() {
+        assert!(matches!(Month::try_from(0), Err(Error::InvalidMonth(0))));
+        assert!(matches!(Month::try_from(13), Err(Error::InvalidMonth(13))));
+        assert_eq!(Month::try_from(1).unwrap(), Month::January);
+        assert_eq!(Month::try_from(12).unwrap(), Month::December);
+        assert_eq!(Month::December.as_u8(), 12);
+    }
+}

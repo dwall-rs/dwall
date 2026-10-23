@@ -248,4 +248,15 @@ mod tests {
         let (y, m, d) = days_to_ymd(u64::from(days));
         assert_eq!((y, m, d), (2024, Month::February, 29));
     }
+
+    #[test]
+    fn days_to_ymd_clamps_beyond_max_and_round_trips_epoch() {
+        assert_eq!(days_to_ymd(0), (1970, Month::January, 1));
+        assert_eq!(days_to_ymd(MAX_DAYS), (9999, Month::December, 31));
+        assert_eq!(days_to_ymd(u64::MAX), (9999, Month::December, 31));
+
+        let epoch = days_since_epoch(1970, Month::January, 1).unwrap();
+        assert_eq!(epoch, 0);
+        assert_eq!(days_to_ymd(u64::from(epoch)), (1970, Month::January, 1));
+    }
 }
