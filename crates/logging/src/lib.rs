@@ -1,3 +1,5 @@
+use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::{env, io::Write, str::FromStr};
 
 // Only the debug formatter asks whether stderr is a terminal.
@@ -26,10 +28,109 @@ pub struct Logger {
     output: ProductionOutput,
 }
 
+/// The size at which the live log is rotated at runtime.
+///
+/// Rotation at process start alone leaves a daemon that is never restarted growing its
+/// log without bound. Together with [`MAX_BACKUP_LOGS`] this bounds the log
+/// directory at six files.
+#[cfg_attr(debug_assertions, allow(dead_code))]
+const MAX_LOG_BYTES: u64 = 5 * 1024 * 1024;
+
+/// The live log file, rotated once it grows past [`MAX_LOG_BYTES`].
+///
+/// The handle lives behind a mutex because [`Log::log`] takes `&self`, and it is an
+/// `Option` so a rotation can close the file before renaming it: Windows refuses
+/// to rename a file that is still open. Every failure drops the line instead of panicking.
+#[cfg_attr(debug_assertions, allow(dead_code))]
+struct LogFile {
+    path: PathBuf,
+    file: std::sync::Mutex<Option<std::fs::File>>,
+    /// Bytes written to the current file, so the size check needs no metadata call.
+    written: AtomicU64,
+}
+
+#[cfg_attr(debug_assertions, allow(dead_code))]
+impl LogFile {
+    /// Wraps an already-open file, counting what it already holds.
+    fn new(path: PathBuf, file: std::fs::File) -> Self {
+        let written = file.metadata().map(|metadata| metadata.len()).unwrap_or(0);
+
+        Self {
+            path,
+            file: std::sync::Mutex::new(Some(file)),
+            written: AtomicU64::new(written),
+        }
+    }
+
+    /// Opens the log for appending, creating it when a rotation removed it.
+    fn open_append(path: &Path) -> std::io::Result<std::fs::File> {
+        std::fs::OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open(path)
+    }
+
+    /// Opens a fresh append handle for `path`, for the runtime-rotation tests.
+    #[cfg(test)]
+    fn open(path: &Path) -> std::io::Result<Self> {
+        let file = Self::open_append(path)?;
+
+        Ok(Self::new(path.to_path_buf(), file))
+    }
+
+    /// Appends one already-formatted line, rotating first once the file is too large.
+    ///
+    /// Never panics: a poisoned mutex or an unusable path drops the line.
+    fn write_line(&self, line: &str) {
+        let Ok(mut file) = self.file.lock() else {
+            return;
+        };
+
+        if self.written.load(Ordering::Relaxed) >= MAX_LOG_BYTES {
+            self.rotate(&mut file);
+        }
+
+        if let Some(file) = file.as_mut() {
+            let _ = writeln!(file, "{line}");
+            self.written
+                .fetch_add(line.len() as u64 + 1, Ordering::Relaxed);
+        }
+    }
+
+    /// Moves the live file into `backup/` and reopens a fresh one.
+    ///
+    /// The handle is closed first, then [`rotate_log_file`] applies the same
+    /// five-file cap the startup path uses. Failures are ignored: a log directory that
+    /// cannot be rotated must not stop the daemon from logging.
+    fn rotate(&self, slot: &mut Option<std::fs::File>) {
+        if let Some(mut file) = slot.take() {
+            let _ = file.flush();
+        }
+
+        let _ = rotate_log_file(&self.path);
+
+        // The counter restarts even when the reopen fails, so an unusable directory is
+        // retried once per limit instead of once per line.
+        self.written.store(0, Ordering::Relaxed);
+
+        if let Ok(file) = Self::open_append(&self.path) {
+            *slot = Some(file);
+        }
+    }
+
+    fn flush(&self) {
+        if let Ok(mut file) = self.file.lock()
+            && let Some(file) = file.as_mut()
+        {
+            let _ = file.flush();
+        }
+    }
+}
+
 #[cfg(not(debug_assertions))]
 enum ProductionOutput {
     Stderr,
-    File(std::sync::Mutex<std::fs::File>),
+    File(LogFile),
 }
 
 impl Logger {
@@ -97,7 +198,7 @@ impl Logger {
             .truncate(true)
             .open(&path)?;
 
-        self.output = ProductionOutput::File(std::sync::Mutex::new(file));
+        self.output = ProductionOutput::File(LogFile::new(path, file));
         Ok(self)
     }
 
@@ -213,15 +314,12 @@ impl Log for Logger {
                         record.args(),
                     );
                 }
-                ProductionOutput::File(mutex) => {
-                    if let Ok(mut file) = mutex.lock() {
-                        let _ = writeln!(
-                            file,
-                            "{timestamp} {level_str} [{}] {}{location}",
-                            record.target(),
-                            record.args(),
-                        );
-                    }
+                ProductionOutput::File(log_file) => {
+                    log_file.write_line(&format!(
+                        "{timestamp} {level_str} [{}] {}{location}",
+                        record.target(),
+                        record.args(),
+                    ));
                 }
             }
         }
@@ -239,11 +337,7 @@ impl Log for Logger {
                 ProductionOutput::Stderr => {
                     let _ = std::io::stderr().flush();
                 }
-                ProductionOutput::File(mutex) => {
-                    if let Ok(mut file) = mutex.lock() {
-                        let _ = file.flush();
-                    }
-                }
+                ProductionOutput::File(log_file) => log_file.flush(),
             }
         }
     }
@@ -578,6 +672,66 @@ mod tests {
             names.len(),
             MAX_BACKUP_LOGS,
             "rotation must not grow the directory without bound: {names:?}"
+        );
+
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    // ── Runtime size rotation ───────────────────────────────────────────────
+
+    /// A live log already at the limit; the next line written rotates it.
+    fn log_file_at_the_limit(log_path: &Path) -> LogFile {
+        std::fs::File::create(log_path)
+            .unwrap()
+            .set_len(MAX_LOG_BYTES)
+            .unwrap();
+
+        LogFile::open(log_path).unwrap()
+    }
+
+    #[test]
+    fn the_live_log_is_rotated_once_it_passes_the_size_limit() {
+        let dir = scratch("runtime_rotate");
+        let log_path = dir.join("dwall.log");
+        let log_file = log_file_at_the_limit(&log_path);
+
+        assert!(
+            !dir.join("backup").exists(),
+            "opening a full log does not rotate it by itself"
+        );
+
+        log_file.write_line("first line past the limit");
+
+        let names = backup_names(&log_path);
+        assert_eq!(names.len(), 1, "the full log moved into backup: {names:?}");
+        assert!(names[0].starts_with("dwall_") && names[0].ends_with(".log"));
+        assert_eq!(
+            std::fs::metadata(&log_path).unwrap().len(),
+            "first line past the limit".len() as u64 + 1,
+            "the fresh log holds only what was written after the rotation"
+        );
+
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn runtime_rotation_keeps_the_backup_count_bounded() {
+        let dir = scratch("runtime_cap");
+        let log_path = dir.join("dwall.log");
+        let log_file = LogFile::open(&log_path).unwrap();
+
+        for run in 0..(MAX_BACKUP_LOGS * 2) {
+            // Pretend the file already reached the limit, then write one line to
+            // trigger the rotation the size check performs.
+            log_file.written.store(MAX_LOG_BYTES, Ordering::Relaxed);
+            log_file.write_line(&format!("run {run}"));
+        }
+
+        let names = backup_names(&log_path);
+        assert_eq!(
+            names.len(),
+            MAX_BACKUP_LOGS,
+            "runtime rotation has to keep the same five-file cap: {names:?}"
         );
 
         let _ = std::fs::remove_dir_all(&dir);
