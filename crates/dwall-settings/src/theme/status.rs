@@ -58,7 +58,19 @@ impl ThemeStatusProvider {
 
 /// Reads the configuration, or `None` when it is missing or unreadable.
 fn read_config(config_path: &Path) -> Option<Config> {
-    ConfigReader::read_from_path(config_path).ok()
+    match ConfigReader::read_from_path(config_path) {
+        Ok(config) => Some(config),
+        Err(e) => {
+            // No configuration is no current theme; the log line is what tells a
+            // broken file apart from the daemon simply not running.
+            warn!(
+                path = %config_path.display(),
+                error = %e,
+                "Could not read the configuration"
+            );
+            None
+        }
+    }
 }
 
 #[cfg(test)]

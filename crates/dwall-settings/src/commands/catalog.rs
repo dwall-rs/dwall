@@ -66,7 +66,19 @@ fn default_config_path() -> PathBuf {
 /// A missing configuration is not an error here: the catalog is still the list of
 /// themes that *could* be installed.
 fn read_config(config_path: &Path) -> Option<Config> {
-    ConfigReader::read_from_path(config_path).ok()
+    match ConfigReader::read_from_path(config_path) {
+        Ok(config) => Some(config),
+        Err(e) => {
+            // The catalog then lists only what could be downloaded; saying so keeps a
+            // broken configuration from looking like an empty one.
+            warn!(
+                path = %config_path.display(),
+                error = %e,
+                "Could not read the configuration"
+            );
+            None
+        }
+    }
 }
 
 /// List the themes available for download, plus the installed custom themes.
@@ -120,8 +132,19 @@ fn custom_catalog_themes(config: Option<&Config>) -> Vec<CatalogTheme> {
     let Some(config) = config else {
         return Vec::new();
     };
-    let Ok(entries) = std::fs::read_dir(config.customized_themes_directory()) else {
-        return Vec::new();
+    let directory = config.customized_themes_directory();
+    let entries = match std::fs::read_dir(directory) {
+        Ok(entries) => entries,
+        Err(e) => {
+            // A customized directory that does not exist yet is normal on a fresh
+            // install, so this is not a warning.
+            debug!(
+                dir = %directory.display(),
+                error = %e,
+                "Could not list the customized themes directory"
+            );
+            return Vec::new();
+        }
     };
 
     entries
@@ -410,6 +433,19 @@ azimuth = 20.0
             5,
             "the thumbnail count comes from the catalog table"
         );
+    }
+
+    /// A configuration that cannot be parsed is reported and treated as absent, so
+    /// the catalog falls back to the downloadable list instead of failing.
+    #[test]
+    fn an_unreadable_configuration_is_treated_as_absent() {
+        let dir = scratch("unreadable_config");
+        let path = dir.join("config.toml");
+        std::fs::write(&path, "not = = toml").unwrap();
+
+        assert!(read_config(&path).is_none());
+
+        let _ = std::fs::remove_dir_all(&dir);
     }
 
     // ── local_thumbnails ────────────────────────────────────────────────────
