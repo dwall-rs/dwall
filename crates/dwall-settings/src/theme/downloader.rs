@@ -380,9 +380,10 @@ fn verify_staged_theme(staging_dir: &Path, config: &dwall::Config) -> DwallSetti
 #[cfg(test)]
 mod tests {
     use std::fs;
-    use std::path::PathBuf;
 
     use super::*;
+
+    use crate::testing::ScratchDir;
 
     #[test]
     fn an_oversized_download_is_not_retried() {
@@ -397,12 +398,8 @@ mod tests {
 
     /// An empty scratch themes directory of its own, so the tests can run in
     /// parallel without sharing a staging path.
-    fn scratch_themes_directory(name: &str) -> PathBuf {
-        let root = std::env::temp_dir().join(format!("dwall_downloader_{name}"));
-        let _ = fs::remove_dir_all(&root);
-        fs::create_dir_all(&root).unwrap();
-
-        root
+    fn scratch_themes_directory(name: &str) -> ScratchDir {
+        ScratchDir::new(&format!("downloader_{name}"))
     }
 
     fn config_for(themes_directory: &Path) -> dwall::Config {
@@ -706,8 +703,6 @@ azimuth = 20.0
             b"partial",
             "a non-empty partial is what the next attempt resumes from"
         );
-
-        let _ = fs::remove_dir_all(&root);
     }
 
     #[test]
@@ -722,8 +717,6 @@ azimuth = 20.0
             !temp_path.exists(),
             "a zero-byte leftover has nothing to resume from"
         );
-
-        let _ = fs::remove_dir_all(&root);
     }
 
     /// A one-shot HTTP server on localhost, so the downloader's resume arithmetic can
@@ -815,7 +808,5 @@ azimuth = 20.0
             "the partial file's length has to become the range start: {}",
             server.request_head()
         );
-
-        let _ = fs::remove_dir_all(&root);
     }
 }
