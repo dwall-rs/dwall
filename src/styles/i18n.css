@@ -8,14 +8,11 @@
      Each language multiplies Tailwind's original ratios by a scaling factor,
      preserving the relative density between size steps while shifting everything up/down.
 
-   Factor table:
-     Latin              × 1.0    base → 1.5
-     Cyrillic           × 1.07   base → 1.6
-     CJK                × 1.2    base → 1.8
-     Devanagari/Bengali × 1.33   base → 2.0
-     Thai               × 1.47   base → 2.2
-     Arabic/Persian     × 1.2    base → 1.8
-     Hebrew             × 1.13   base → 1.7
+   Factor table — one row per scheme `DATA_LANG` (src/i18n/index.ts) can set.
+   The app ships six locales and those map to five schemes; a locale that is not
+   in `LANGUAGES` cannot reach these rules, so it gets no row:
+     Latin (en)              × 1.0    base → 1.5
+     CJK (zh-hans/hant, ja, ko) × 1.2 base → 1.8
    ================================================================ */
 
 /* ----------------------------------------------------------------
@@ -24,7 +21,6 @@
 @theme {
     /* Fonts */
     --font-en: "Inter", system-ui, sans-serif;
-    --font-ru: "Inter", "Noto Sans", "Segoe UI", sans-serif;
     --font-zh-hans:
         "Inter", "Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif;
     --font-zh-hant:
@@ -32,31 +28,20 @@
     --font-ja:
         "Inter", "Noto Sans JP", "Hiragino Sans", "Yu Gothic", sans-serif;
     --font-ko: "Inter", "Noto Sans KR", "Apple SD Gothic Neo", sans-serif;
-    --font-hi: "Inter", "Noto Sans Devanagari", "Mangal", sans-serif;
-    --font-th: "Inter", "Noto Sans Thai", "Leelawadee UI", sans-serif;
-    --font-bn: "Inter", "Noto Sans Bengali", "Vrinda", sans-serif;
-    --font-ar: "Inter", "Noto Sans Arabic", "Tahoma", sans-serif;
-    --font-he: "Inter", "Noto Sans Hebrew", "Arial Hebrew", sans-serif;
     /* Latin/digits stay monospaced, but the default mono stack has no CJK glyphs —
        fall back to the loaded Noto families (kept before `monospace`) for CJK and
        other scripts so labels like "今日主题" don't fall back to an ugly font. */
     --font-mono:
         ui-monospace, "SFMono-Regular", Menlo, Consolas, "Liberation Mono",
         "Noto Sans SC", "Noto Sans TC", "Noto Sans JP", "Noto Sans KR",
-        "Noto Sans Devanagari", "Noto Sans Thai", "Noto Sans Bengali",
-        "Noto Sans Arabic", "Noto Sans Hebrew", "Noto Sans", monospace;
+        "Noto Sans", monospace;
 }
 
 /* ----------------------------------------------------------------
    2. font-family bindings
    ---------------------------------------------------------------- */
-[data-lang="en"],
-[data-lang="fr"],
-[data-lang="de"] {
+[data-lang="en"] {
     font-family: var(--font-en);
-}
-[data-lang="ru"] {
-    font-family: var(--font-ru);
 }
 [data-lang="zh-hans"] {
     font-family: var(--font-zh-hans);
@@ -70,33 +55,13 @@
 [data-lang="ko"] {
     font-family: var(--font-ko);
 }
-[data-lang="hi"] {
-    font-family: var(--font-hi);
-}
-[data-lang="bn"] {
-    font-family: var(--font-bn);
-}
-[data-lang="th"] {
-    font-family: var(--font-th);
-}
-[data-lang="ar"] {
-    font-family: var(--font-ar);
-}
-[data-lang="fa"] {
-    font-family: var(--font-ar);
-}
-[data-lang="he"] {
-    font-family: var(--font-he);
-}
 
 /* ----------------------------------------------------------------
    3. Line-height overrides (Tailwind original ratios × language factors)
    ---------------------------------------------------------------- */
 
-/* Latin (en / fr / de) × 1.0 */
-[data-lang="en"],
-[data-lang="fr"],
-[data-lang="de"] {
+/* Latin (en) × 1.0 */
+[data-lang="en"] {
     --text-xs--line-height: calc(1 / 0.75);
     --text-sm--line-height: calc(1.25 / 0.875);
     --text-base--line-height: calc(1.5 / 1);
@@ -110,23 +75,6 @@
     --text-7xl--line-height: 1;
     --text-8xl--line-height: 1;
     --text-9xl--line-height: 1;
-}
-
-/* Cyrillic (ru) × 1.07 */
-[data-lang="ru"] {
-    --text-xs--line-height: calc(1.07 / 0.75);
-    --text-sm--line-height: calc(1.338 / 0.875);
-    --text-base--line-height: calc(1.605 / 1);
-    --text-lg--line-height: calc(1.873 / 1.125);
-    --text-xl--line-height: calc(1.873 / 1.25);
-    --text-2xl--line-height: calc(2.14 / 1.5);
-    --text-3xl--line-height: calc(2.408 / 1.875);
-    --text-4xl--line-height: calc(2.675 / 2.25);
-    --text-5xl--line-height: 1.07;
-    --text-6xl--line-height: 1.07;
-    --text-7xl--line-height: 1.07;
-    --text-8xl--line-height: 1.07;
-    --text-9xl--line-height: 1.07;
 }
 
 /* CJK (zh-hans / zh-hant / ja / ko) × 1.2 */
@@ -147,92 +95,4 @@
     --text-7xl--line-height: 1.2;
     --text-8xl--line-height: 1.2;
     --text-9xl--line-height: 1.2;
-}
-
-/* Devanagari (hi) × 1.33 */
-[data-lang="hi"] {
-    --text-xs--line-height: calc(1.33 / 0.75);
-    --text-sm--line-height: calc(1.663 / 0.875);
-    --text-base--line-height: calc(1.995 / 1);
-    --text-lg--line-height: calc(2.328 / 1.125);
-    --text-xl--line-height: calc(2.328 / 1.25);
-    --text-2xl--line-height: calc(2.66 / 1.5);
-    --text-3xl--line-height: calc(2.993 / 1.875);
-    --text-4xl--line-height: calc(3.325 / 2.25);
-    --text-5xl--line-height: 1.33;
-    --text-6xl--line-height: 1.33;
-    --text-7xl--line-height: 1.33;
-    --text-8xl--line-height: 1.33;
-    --text-9xl--line-height: 1.33;
-}
-
-/* Bengali (bn) × 1.33 */
-[data-lang="bn"] {
-    --text-xs--line-height: calc(1.33 / 0.75);
-    --text-sm--line-height: calc(1.663 / 0.875);
-    --text-base--line-height: calc(1.995 / 1);
-    --text-lg--line-height: calc(2.328 / 1.125);
-    --text-xl--line-height: calc(2.328 / 1.25);
-    --text-2xl--line-height: calc(2.66 / 1.5);
-    --text-3xl--line-height: calc(2.993 / 1.875);
-    --text-4xl--line-height: calc(3.325 / 2.25);
-    --text-5xl--line-height: 1.33;
-    --text-6xl--line-height: 1.33;
-    --text-7xl--line-height: 1.33;
-    --text-8xl--line-height: 1.33;
-    --text-9xl--line-height: 1.33;
-}
-
-/* Thai (th) × 1.47 */
-[data-lang="th"] {
-    --text-xs--line-height: calc(1.47 / 0.75);
-    --text-sm--line-height: calc(1.837 / 0.875);
-    --text-base--line-height: calc(2.205 / 1);
-    --text-lg--line-height: calc(2.572 / 1.125);
-    --text-xl--line-height: calc(2.572 / 1.25);
-    --text-2xl--line-height: calc(2.94 / 1.5);
-    --text-3xl--line-height: calc(3.308 / 1.875);
-    --text-4xl--line-height: calc(3.675 / 2.25);
-    --text-5xl--line-height: 1.47;
-    --text-6xl--line-height: 1.47;
-    --text-7xl--line-height: 1.47;
-    --text-8xl--line-height: 1.47;
-    --text-9xl--line-height: 1.47;
-}
-
-/* Arabic & Persian (ar / fa) × 1.2 · RTL */
-[data-lang="ar"],
-[data-lang="fa"] {
-    direction: rtl;
-    --text-xs--line-height: calc(1.2 / 0.75);
-    --text-sm--line-height: calc(1.5 / 0.875);
-    --text-base--line-height: calc(1.8 / 1);
-    --text-lg--line-height: calc(2.1 / 1.125);
-    --text-xl--line-height: calc(2.1 / 1.25);
-    --text-2xl--line-height: calc(2.4 / 1.5);
-    --text-3xl--line-height: calc(2.7 / 1.875);
-    --text-4xl--line-height: calc(3 / 2.25);
-    --text-5xl--line-height: 1.2;
-    --text-6xl--line-height: 1.2;
-    --text-7xl--line-height: 1.2;
-    --text-8xl--line-height: 1.2;
-    --text-9xl--line-height: 1.2;
-}
-
-/* Hebrew (he) × 1.13 · RTL */
-[data-lang="he"] {
-    direction: rtl;
-    --text-xs--line-height: calc(1.13 / 0.75);
-    --text-sm--line-height: calc(1.412 / 0.875);
-    --text-base--line-height: calc(1.695 / 1);
-    --text-lg--line-height: calc(1.977 / 1.125);
-    --text-xl--line-height: calc(1.977 / 1.25);
-    --text-2xl--line-height: calc(2.26 / 1.5);
-    --text-3xl--line-height: calc(2.542 / 1.875);
-    --text-4xl--line-height: calc(2.825 / 2.25);
-    --text-5xl--line-height: 1.13;
-    --text-6xl--line-height: 1.13;
-    --text-7xl--line-height: 1.13;
-    --text-8xl--line-height: 1.13;
-    --text-9xl--line-height: 1.13;
 }
