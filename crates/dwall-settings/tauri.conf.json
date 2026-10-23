@@ -4,7 +4,7 @@
   "identifier": "com.thep0y.dwall",
   "build": {
     "beforeDevCommand": "bun run start",
-    "devUrl": "http://localhost:1420",
+    "devUrl": "http://localhost:3339",
     "beforeBuildCommand": "bun run build:vite && bun run build:daemon",
     "frontendDist": "../../dist"
   },
