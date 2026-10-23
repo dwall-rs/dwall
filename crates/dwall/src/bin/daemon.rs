@@ -539,4 +539,102 @@ mod tests {
             );
         }
     }
+
+    // ── Version ─────────────────────────────────────────────────────────────
+
+    /// The version line names the package and the profile the binary was built in,
+    /// which is what a bug report has to carry.
+    #[test]
+    fn version_string_names_the_profile_and_package() {
+        let profile = if cfg!(debug_assertions) {
+            "debug"
+        } else {
+            "release"
+        };
+        let expected = format!(
+            "dwall {} ({} {}, {})",
+            env!("CARGO_PKG_VERSION"),
+            std::env::consts::OS,
+            std::env::consts::ARCH,
+            profile
+        );
+
+        assert_eq!(version_string(), expected);
+        assert!(version_string().contains(env!("CARGO_PKG_NAME")));
+    }
+
+    // ── parse_args: --config next to a command ──────────────────────────────
+
+    /// The path and the command are independent, so either order has to parse the
+    /// same way.
+    #[test]
+    fn parse_args_accepts_config_before_and_after_a_command() {
+        let path = Some(PathBuf::from("other.toml"));
+
+        assert_eq!(
+            parse(&["--config", "other.toml", "--once"]).unwrap(),
+            Options {
+                command: Command::Once,
+                config_path: path.clone()
+            }
+        );
+        assert_eq!(
+            parse(&["--once", "--config", "other.toml"]).unwrap(),
+            Options {
+                command: Command::Once,
+                config_path: path.clone()
+            }
+        );
+        assert_eq!(
+            parse(&["--check-config", "--config=other.toml"]).unwrap(),
+            Options {
+                command: Command::CheckConfig,
+                config_path: path.clone()
+            }
+        );
+    }
+
+    /// A second path replaces the first rather than being an error, matching how
+    /// the loop assigns it.
+    #[test]
+    fn parse_args_keeps_the_last_config_path() {
+        assert_eq!(
+            parse(&["--config", "a.toml", "--config=b.toml"])
+                .unwrap()
+                .config_path,
+            Some(PathBuf::from("b.toml"))
+        );
+    }
+
+    // ── check_config ────────────────────────────────────────────────────────
+
+    /// The documented mapping: a readable configuration is success even when the
+    /// file is missing (defaults are written on first run), and only a file that
+    /// exists but cannot be read is the invalid-config code.
+    #[test]
+    fn check_config_maps_read_failures_to_the_invalid_config_code() {
+        let dir = std::env::temp_dir().join("dwall_bin_check_config");
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+
+        let missing = dir.join("missing.toml");
+        assert_eq!(
+            check_config(Some(missing)),
+            ExitCode::from(exit::SUCCESS),
+            "a missing file falls back to defaults"
+        );
+
+        let valid = dir.join("valid.toml");
+        std::fs::write(&valid, "interval = 600\n").unwrap();
+        assert_eq!(check_config(Some(valid)), ExitCode::from(exit::SUCCESS));
+
+        let invalid = dir.join("invalid.toml");
+        std::fs::write(&invalid, "interval = \"six hundred\"\n").unwrap();
+        assert_eq!(
+            check_config(Some(invalid)),
+            ExitCode::from(exit::INVALID_CONFIG)
+        );
+
+        let _ = std::fs::remove_dir_all(&dir);
+    }
 }
