@@ -215,18 +215,24 @@ headless 文本路径（`docs/headless.md`：`--check-config` / `--once` / `--co
 
 ## 4. 日志
 
+> **修复状态（2026-10-23 核对 `main`）**：以下条目均已处理，条目后标注了对应提交。其中 `parse_log_level`
+> 是按决策收口的——选择把限制写进文档，而不是改解析让 `enabled` 退化成前缀匹配、丢掉其他 target。
+
 - **正面**：分级宏统一、key/value 风格、`debug!` / `trace!` 在发布特性下编译掉、写文件用
   `Mutex<File>` 且失败不 panic、按启动轮转且上限 5、`get_last_daemon_error` 只读尾部 64 KB、
   生产构建把错误镜像回 UI（`logging/src/lib.rs:204`）。
-- **默认级别不可达**：见 2.1。
-- **运行时无大小轮转**：轮转只在进程启动时发生；长期不重启的守护进程日志持续增长（发布版 Info 增速可控，
+- **默认级别不可达**（已修复 `21ab81c`）：见 2.1。
+- **运行时无大小轮转**（已修复 `64b38f8`）：轮转只在进程启动时发生；长期不重启的守护进程日志持续增长（发布版 Info 增速可控，
   自建 `build:daemon-debug` 为 Debug，每 15 s 一条周期日志）。
 - **`parse_log_level` 丢弃后续 target 指令**（`logging/src/lib.rs:291`），与 `Logger` 支持 target
-  的能力不匹配；当前调用方未用到。
-- **敏感 URL**：见 2.2。
-- **等级用词**：`thumbnail/cleanup.rs:148` 等把单个删不掉的缓存文件记为 `error!`，宜降为 `warn!`。
+  的能力不匹配；当前调用方未用到。（已修复 `3ffe699`：文档化该限制，而不是改解析）
+- **敏感 URL**（已修复 `8b2cd1e`）：见 2.2。
+- **等级用词**（已修复 `988a9c6`）：`thumbnail/cleanup.rs:148` 等把单个删不掉的缓存文件记为 `error!`，宜降为 `warn!`。
 
 ## 5. 内存与体积
+
+> **修复状态（2026-10-23 核对 `main`）**：本节的可执行项已处理；CSS 体积审计与安装包重建仍标为未处理，
+> 它们分别是收益有限的清理和发布前的动作，不是代码缺陷。
 
 - **内存：优秀。** 守护进程单线程；缓存是定长结构体 6 槽（`utils.rs:79`），无全局无界容器；主题数据
   用容量 32 的 LRU（`theme.rs:77`）；显示器友好名缓存按已连接显示器收敛；无后台线程。上一轮实测静息态
@@ -235,32 +241,34 @@ headless 文本路径（`docs/headless.md`：`--check-config` / `--once` / `--co
 - **体积：优秀。** `dwall.exe` 649,216 B，`dwall-settings.exe` 4.05 MiB，前端 `dist` 394 KB
   （gzip 后 JS 77 KB + CSS 18 KB）。发布 profile（`lto` / `opt-level="z"` / `panic=abort` /
   `strip`）生效。NSIS 安装包约 1.8 MB。
-- **可优化（低）**：CSS 115.9 KB 对该界面偏大（含 `src/styles/animate.css`、`i18n.css`），可再审计
+- **可优化（低）**（未处理）：CSS 115.9 KB 对该界面偏大（含 `src/styles/animate.css`、`i18n.css`），可再审计
   未用选择器；Tailwind 生成占构建 14.5 s / 20.8 s。
-- **构建目录**：`target/` 本机累计约 82.7 GB（debug 60 GB + release 17 GB），可 `cargo clean`。
-- **依赖（低）**：`package.json` 中 `solid-icons` 与 `jsdom` 无任何引用（图标库是
+- **构建目录**（未处理，本机动作）：`target/` 本机累计约 82.7 GB（debug 60 GB + release 17 GB），可 `cargo clean`。
+- **依赖（低）**（已修复 `203203e`）：`package.json` 中 `solid-icons` 与 `jsdom` 无任何引用（图标库是
   `lucide-solid`；测试未用 jsdom 环境），建议移除。
-- **打包残留**：`target/release/bundle/nsis/` 仍是 `0.3.0-alpha.2` 的安装包，而版本已
+- **打包残留**（未处理，发布前重建）：`target/release/bundle/nsis/` 仍是 `0.3.0-alpha.2` 的安装包，而版本已
   `0.3.0-alpha.6`（非代码问题，发布前重建）。
 
 ## 6. 构建 / CI / 打包
 
+> **修复状态（2026-10-23 核对 `main`）**：以下条目已全部修复，条目后标注了对应提交。
+
 - **CI 质量高**：第三方 action 全部 pin 到 SHA；`pr-check.yml` 有 `concurrency`、绑定新鲜度检查、
   路径过滤；`bun run check` + `bun run test` + `cargo test` 都跑。
-- **`publish.yml` 缺 `concurrency`**：两次发布可并发，互相强推 release / tag。
-- **`delete-nightly-release-and-tag` 无 `needs:`**（`publish.yml:432`）：`if: success()` 一开始即
+- **`publish.yml` 缺 `concurrency`**（已修复 `1b56c32`）：两次发布可并发，互相强推 release / tag。
+- **`delete-nightly-release-and-tag` 无 `needs:`**（`publish.yml:432`，已修复 `ce9d905`）：`if: success()` 一开始即
   成立，会在构建 / 上传进行中删除 `nightly` release 与 tag，与 `nightly.yml` 竞争。
-- **`update-main-version` 失败不影响完成通知**：通知只看 `publish-release.result`，`--ff-only`
+- **`update-main-version` 失败不影响完成通知**（已修复 `4d0b9d3`）：通知只看 `publish-release.result`，`--ff-only`
   合并失败时 release 已发布但版本号未回到 `main`，汇总仍报成功。
-- **`package_version: ${{ env.VERSION }}`**（`publish.yml:67`）：作业级 outputs 求值时机存在取空风险，
+- **`package_version: ${{ env.VERSION }}`**（`publish.yml:67`，已修复 `8f3128b`）：作业级 outputs 求值时机存在取空风险，
   建议改为步骤 `id` 输出。
-- **安装器数据破坏（中）**：`crates/dwall-settings/windows/hooks.nsi:55` 卸载时
+- **安装器数据破坏（中）**（已修复 `3682969`：卸载不再删除 `$APPDATA\dwall`，升级只清缩略图缓存）：`crates/dwall-settings/windows/hooks.nsi:55` 卸载时
   `RMDir /r "$APPDATA\dwall"` 会无提示删除用户所有自定义 / 下载主题与配置；`:39` 每次安装（含升级）
   都清 `$LOCALAPPDATA\dwall` 与 `com.thep0y.dwall`（日志与缩略图缓存）。建议卸载保留用户数据或明确
   询问，升级只清缓存不清日志。
-- **能力过宽**：`crates/dwall-settings/capabilities/default.json:14` 授予 `process:default`（含
+- **能力过宽**（已修复 `a1496a2`；asset scope 另由 `8810696` 收窄）：`crates/dwall-settings/capabilities/default.json:14` 授予 `process:default`（含
   `exit`）而实际只用 `relaunch`；配合 `tauri.conf.json:16` 的 `**/*` asset scope，建议最小化。
-- **两个 tokio 运行时（低）**：`crates/dwall-settings/src/main.rs:34` 用 `#[tokio::main]`，而 Tauri
+- **两个 tokio 运行时（低）**（已修复 `a1be3d3`）：`crates/dwall-settings/src/main.rs:34` 用 `#[tokio::main]`，而 Tauri
   默认另起运行时；可用 `tauri::async_runtime::set` 统一以省一份运行时内存。
 
 ## 7. Rust 还需要补的测试用例
