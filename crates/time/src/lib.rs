@@ -972,4 +972,91 @@ mod tests {
             local_plus8.year() != local_minus5.year() || local_plus8.hour() != local_minus5.hour()
         );
     }
+
+    #[test]
+    fn utc_new_rejects_every_invalid_component() {
+        assert!(matches!(
+            UtcDateTime::new(1969, Month::January, 1, 0, 0, 0),
+            Err(Error::InvalidYear(1969))
+        ));
+        assert!(matches!(
+            UtcDateTime::new(2024, Month::January, 0, 0, 0, 0),
+            Err(Error::InvalidDay(0))
+        ));
+        assert!(matches!(
+            UtcDateTime::new(2024, Month::January, 32, 0, 0, 0),
+            Err(Error::InvalidDay(32))
+        ));
+        assert!(matches!(
+            UtcDateTime::new(2023, Month::February, 29, 0, 0, 0),
+            Err(Error::InvalidDay(29))
+        ));
+        assert!(matches!(
+            UtcDateTime::new(2024, Month::February, 30, 0, 0, 0),
+            Err(Error::InvalidDay(30))
+        ));
+        assert!(matches!(
+            UtcDateTime::new(2024, Month::January, 1, 24, 0, 0),
+            Err(Error::InvalidHour(24))
+        ));
+        assert!(matches!(
+            UtcDateTime::new(2024, Month::January, 1, 0, 60, 0),
+            Err(Error::InvalidMinute(60))
+        ));
+        assert!(matches!(
+            UtcDateTime::new(2024, Month::January, 1, 0, 0, 60),
+            Err(Error::InvalidSecond(60))
+        ));
+
+        let leap_day =
+            UtcDateTime::new(2024, Month::February, 29, 0, 0, 0).expect("2024 is a leap year");
+        assert_eq!(leap_day.ymd(), (2024, Month::February, 29));
+    }
+
+    #[test]
+    fn utc_rfc3339_is_zero_padded_and_carries_millis() {
+        let dt = UtcDateTime::from_timestamp_millis(1_700_000_123_456);
+
+        assert_eq!(dt.to_rfc3339(), "2023-11-14T22:15:23.456Z");
+        assert_eq!(dt.millisecond(), 456);
+        assert_eq!(dt.timestamp(), 1_700_000_123);
+        assert_eq!(dt.timestamp_millis(), 1_700_000_123_456);
+        assert_eq!(dt.ymd_hms(), (2023, Month::November, 14, 22, 15, 23));
+
+        let padded = UtcDateTime::new(2024, Month::January, 2, 3, 4, 5).unwrap();
+        assert_eq!(padded.to_rfc3339(), "2024-01-02T03:04:05.000Z");
+    }
+
+    #[test]
+    fn utc_differences_and_ranges_behave_at_the_boundaries() {
+        let start = UtcDateTime::from_timestamp(1_000);
+        let end = UtcDateTime::from_timestamp(1_000 + 2 * SECONDS_PER_DAY + 5);
+
+        assert_eq!(end.diff_seconds(&start), (2 * SECONDS_PER_DAY + 5) as i64);
+        assert_eq!(
+            start.diff_seconds(&end),
+            -((2 * SECONDS_PER_DAY + 5) as i64)
+        );
+        assert_eq!(end.diff_days(&start), 2);
+        assert_eq!(start.diff_days(&end), -2);
+
+        assert_eq!(
+            end.duration_since(&start).unwrap(),
+            Duration::from_secs(2 * SECONDS_PER_DAY + 5)
+        );
+        assert!(matches!(
+            start.duration_since(&end),
+            Err(Error::NegativeDuration)
+        ));
+
+        // Inclusive endpoints are inside the range, exclusive endpoints are outside it.
+        assert!(start.is_between_inclusive(&start, &end));
+        assert!(end.is_between_inclusive(&start, &end));
+        assert!(!start.is_between_exclusive(&start, &end));
+        assert!(!end.is_between_exclusive(&start, &end));
+
+        let middle = UtcDateTime::from_timestamp(1_000 + SECONDS_PER_DAY);
+        assert!(middle.is_between_exclusive(&start, &end));
+        assert!(middle.is_between_inclusive(&start, &end));
+    }
 }
