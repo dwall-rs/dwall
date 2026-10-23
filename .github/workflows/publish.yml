@@ -71,7 +71,10 @@ jobs:
     if: always() && needs.pre-checks.outputs.should_continue == 'true'
     outputs:
       release_id: ${{ steps.create-release.outputs.result }}
-      package_version: ${{ env.VERSION }}
+      # From a step output, not env.VERSION: a job-level output that reads env is
+      # resolved before the bump step has written $GITHUB_ENV, so every later job saw
+      # an empty version.
+      package_version: ${{ steps.version.outputs.version }}
       changelog: ${{ steps.final_changelog.outputs.changelog }}
 
     steps:
@@ -94,6 +97,7 @@ jobs:
           git config --global user.email 'github-actions[bot]@users.noreply.github.com'
 
       - name: Bump version
+        id: version
         env:
           BUMP_TYPE: ${{ github.event.inputs.bump_type }}
           RELEASE_CHANNEL: ${{ github.event.inputs.release_channel }}
@@ -119,6 +123,7 @@ jobs:
           # build. Refreshing the workspace packages leaves the dependency set alone.
           cargo update --workspace
           echo "VERSION=$VERSION" >> $GITHUB_ENV
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "Bumping version to: $VERSION (channel: $RELEASE_CHANNEL)"
 
       - name: Create and push release branch
