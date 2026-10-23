@@ -31,8 +31,13 @@ extern crate logging;
 
 pub static DAEMON_EXE_PATH: OnceCell<PathBuf> = OnceCell::const_new();
 
-#[tokio::main]
-async fn main() -> DwallSettingsResult<()> {
+/// Starts the settings window.
+///
+/// Deliberately not `#[tokio::main]`: nothing in this function awaits, and Tauri
+/// creates the tokio runtime its async commands run on the first time it needs one.
+/// The attribute therefore only added a second runtime, whose worker threads sat
+/// idle for the life of the process.
+fn main() -> DwallSettingsResult<()> {
     #[cfg(debug_assertions)]
     Logger::default().with_target("dwall").init()?;
     #[cfg(not(debug_assertions))]
