@@ -10,6 +10,6 @@
     "updater:default",
     "updater:deny-check",
     "dialog:allow-open",
-    "process:default"
+    "process:allow-restart"
   ]
 }
