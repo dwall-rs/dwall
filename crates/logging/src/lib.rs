@@ -260,17 +260,15 @@ impl Default for Logger {
     }
 }
 
-/// Get default log level
+/// The level used when neither the runtime nor the build-time environment names one.
 ///
-/// Release builds built with `max-level-info` keep `Info` (the level the release
-/// pipeline is supposed to surface); other release builds embed
-/// `DWALL_LOG=debug` from `build.rs` and therefore never reach this default.
+/// `build.rs` embeds `DWALL_LOG=debug` for every build without `max-level-info`
+/// (debug and release alike), so this default is only reached by a `max-level-info`
+/// build with no environment override — and `Info` is the level the release pipeline
+/// is meant to surface. A `Trace` default for debug builds used to live here, but the
+/// injected variable made that branch unreachable.
 const fn default_log_level() -> LevelFilter {
-    if cfg!(debug_assertions) {
-        LevelFilter::Trace
-    } else {
-        LevelFilter::Info
-    }
+    LevelFilter::Info
 }
 
 /// Get log level from environment variable
