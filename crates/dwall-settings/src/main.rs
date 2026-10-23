@@ -18,6 +18,7 @@ mod commands;
 mod daemon;
 mod error;
 mod filesystem;
+mod monitor_wallpapers;
 mod network;
 mod process;
 mod setup;
@@ -94,6 +95,7 @@ fn main() -> DwallSettingsResult<()> {
             commands::thumbnail::get_or_save_cached_thumbnails_cmd,
             commands::thumbnail::clear_thumbnail_cache_cmd,
             commands::monitor::get_monitors_cmd,
+            commands::monitor::resolve_monitor_themes_cmd,
             commands::system::open_privacy_location_settings,
             commands::system::check_for_updates_cmd,
             commands::theme::get_customized_themes_cmd,

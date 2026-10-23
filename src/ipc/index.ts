@@ -16,4 +16,5 @@ export * from "./system";
 export * from "./solar";
 export * from "./theme";
 export * from "./update";
+export * from "./wallpaper";
 export * from "./window";

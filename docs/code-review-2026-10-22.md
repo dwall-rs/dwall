@@ -142,9 +142,9 @@
 - **Solid 细节（低-中）**（已修复 `226583e`）：`scope/MonitorCard.tsx:20`、`library/ThemeTile.tsx:21` 解构 props
   （违反 AGENTS，目前被父组件重建掩盖）；`hooks/useMediaQuery.ts:9` 的 `query` 非响应式；
   `scene/WallpaperImage.tsx:30` 用裸表达式 `props.path;` 建依赖。
-- **架构（中）**（未处理）：`store/fixed.store.ts:75` 与 `store/random.store.ts:51` 在 JS 里手工拼
+- **架构（中）**（已修复 `4a68eed`、`8298cd1`）：`store/fixed.store.ts:75` 与 `store/random.store.ts:51` 在 JS 里手工拼
   `monitor_specific_wallpapers` 的 union 与 `"all"` 伪显示器——按 AGENTS「业务逻辑在 Rust」，
-  建议下沉为窄命令。
+  建议下沉为窄命令。现由 `resolve_monitor_themes_cmd` 返回有效映射与要写入的模式。
 - **死代码（低）**（部分修复 `7b9e456`；`useScrollEdges` 并非死代码，7 个 IPC 包装各自对应已注册命令，均保留）：`hooks/useScrollEdges.ts` 从未导入；`lib/layout.ts:3` 的 `MIN_WINDOW` /
   `MQ_MIN` / `MQ_SHORT` 未用；`models/monitors.ts:6` 的 `ALL_MONITOR_ID` 未用；
   `store/ui.store.ts:73` 的 `TITLEBAR_BORDER_KEY` 未导出使用；无调用者的 IPC 包装
