@@ -70,9 +70,22 @@ fn read_config(config_path: &Path) -> Option<Config> {
 }
 
 /// List the themes available for download, plus the installed custom themes.
+///
+/// Runs off the main thread: the catalog reads the configuration and stats a directory
+/// per entry, and the library calls it every time it opens.
 #[tauri::command]
-pub fn get_theme_catalog() -> Vec<CatalogTheme> {
-    catalog_from(read_config(&default_config_path()).as_ref())
+pub async fn get_theme_catalog() -> Vec<CatalogTheme> {
+    match tauri::async_runtime::spawn_blocking(|| {
+        catalog_from(read_config(&default_config_path()).as_ref())
+    })
+    .await
+    {
+        Ok(catalog) => catalog,
+        Err(e) => {
+            error!(error = %e, "Failed to build the theme catalog");
+            Vec::new()
+        }
+    }
 }
 
 /// The catalog for an already-read configuration.
@@ -211,8 +224,12 @@ fn is_installed(theme_id: &str, config: Option<&Config>) -> bool {
 ///
 /// Returns an empty list when the theme is not installed.
 #[tauri::command]
-pub fn get_theme_wallpapers(theme_id: String) -> DwallSettingsResult<Vec<SolarAngle>> {
-    installed_solar_angles(&theme_id, read_config(&default_config_path()).as_ref())
+pub async fn get_theme_wallpapers(theme_id: String) -> DwallSettingsResult<Vec<SolarAngle>> {
+    tauri::async_runtime::spawn_blocking(move || {
+        installed_solar_angles(&theme_id, read_config(&default_config_path()).as_ref())
+    })
+    .await
+    .map_err(|e| crate::error::DwallSettingsError::Other(e.to_string()))?
 }
 
 /// Position (in the theme's `solar.json` array) of the entry whose target solar
@@ -221,15 +238,20 @@ pub fn get_theme_wallpapers(theme_id: String) -> DwallSettingsResult<Vec<SolarAn
 /// A theme may reuse one image for several sun positions, so the closest
 /// *entry* — not just its image index — is what the UI needs to highlight.
 #[tauri::command]
-pub fn match_wallpaper(
+pub async fn match_wallpaper(
     theme_id: String,
     altitude: f64,
     azimuth: f64,
 ) -> DwallSettingsResult<Option<usize>> {
-    let angles = installed_solar_angles(&theme_id, read_config(&default_config_path()).as_ref())?;
-    Ok(WallpaperSelector::find_closest_entry(
-        &angles, altitude, azimuth,
-    ))
+    tauri::async_runtime::spawn_blocking(move || -> DwallSettingsResult<Option<usize>> {
+        let angles =
+            installed_solar_angles(&theme_id, read_config(&default_config_path()).as_ref())?;
+        Ok(WallpaperSelector::find_closest_entry(
+            &angles, altitude, azimuth,
+        ))
+    })
+    .await
+    .map_err(|e| crate::error::DwallSettingsError::Other(e.to_string()))?
 }
 
 #[cfg(test)]
