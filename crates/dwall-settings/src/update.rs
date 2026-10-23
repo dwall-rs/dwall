@@ -249,6 +249,43 @@ mod tests {
         assert_eq!(selected("0.3.0", &releases), None);
     }
 
+    /// Equal and older versions are not updates, and semver ignores build metadata:
+    /// 0.3.0+build is the same release as 0.3.0, so it must not be offered.
+    ///
+    /// This currently fails: select_release compares with Version's total Ord, which
+    /// orders by build metadata, so 0.3.0+build is treated as newer than 0.3.0. The
+    /// precedence comparison is Version::cmp_precedence.
+    #[test]
+    fn update_select_release_ignores_equal_and_older_versions() {
+        let releases = [
+            release("v0.3.0", false),
+            release("v0.3.0+build", false),
+            release("v0.2.9", false),
+        ];
+
+        assert_eq!(selected("0.3.0", &releases), None);
+        assert_eq!(selected("0.3.0+build.7", &releases), None);
+
+        // The same list with one genuinely newer release still offers it, so the
+        // assertions above cannot pass by the selection never working.
+        let with_newer = [
+            release("v0.3.0+build", false),
+            release("v0.2.9", false),
+            release("v0.3.1", false),
+        ];
+        assert_eq!(selected("0.3.0", &with_newer), Some("0.3.1".to_string()));
+    }
+
+    /// The tag is read as a version when it is one, with or without the leading v;
+    /// a non-version tag and a two-part version are rejected rather than guessed at.
+    #[test]
+    fn release_version_reads_the_tag_only_when_it_is_a_version() {
+        assert_eq!(release("v1.2.3", false).version(), Some(version("1.2.3")));
+        assert_eq!(release("1.2.3", false).version(), Some(version("1.2.3")));
+        assert_eq!(release("nightly", true).version(), None);
+        assert_eq!(release("v1.2", false).version(), None);
+    }
+
     #[test]
     fn drafts_tags_that_are_not_versions_and_releases_without_a_manifest_are_ignored() {
         let mut draft = release("v0.5.0", false);
