@@ -1059,4 +1059,35 @@ mod tests {
         assert!(middle.is_between_exclusive(&start, &end));
         assert!(middle.is_between_inclusive(&start, &end));
     }
+
+    use proptest::prelude::*;
+
+    proptest! {
+        /// A calendar date written into a Unix timestamp and read back has to be the
+        /// same date: the two conversions use different algorithms, so only a
+        /// round trip catches the one that is off.
+        #[test]
+        fn a_calendar_date_round_trips_through_its_timestamp(
+            (year, month, day, hour, minute, second) in (
+                (1970u16..=9999, 1u8..=12).prop_flat_map(|(year, month)| {
+                    let month = Month::try_from(month).unwrap();
+                    let last_day = month.days_in_month(year);
+                    (Just(year), Just(month), 1u8..=last_day)
+                }),
+                0u8..24,
+                0u8..60,
+                0u8..60,
+            ).prop_map(|((year, month, day), hour, minute, second)| {
+                (year, month, day, hour, minute, second)
+            })
+        ) {
+            let dt = UtcDateTime::new(year, month, day, hour, minute, second).unwrap();
+            let round_tripped = UtcDateTime::from_timestamp(dt.timestamp());
+
+            prop_assert_eq!(
+                round_tripped.ymd_hms(),
+                (year, month, day, hour, minute, second)
+            );
+        }
+    }
 }
