@@ -264,13 +264,11 @@ impl Cleanup {
 mod tests {
     use super::*;
 
-    /// A scratch thumbnail cache.
-    fn scratch(name: &str) -> PathBuf {
-        let dir = std::env::temp_dir().join(format!("dwall_cleanup_{name}"));
-        let _ = std::fs::remove_dir_all(&dir);
-        std::fs::create_dir_all(&dir).unwrap();
+    use crate::testing::ScratchDir;
 
-        dir
+    /// A scratch thumbnail cache.
+    fn scratch(name: &str) -> ScratchDir {
+        ScratchDir::new(&format!("cleanup_{name}"))
     }
 
     fn theme_dir(cache: &Path, theme: &str) -> PathBuf {
@@ -321,8 +319,6 @@ mod tests {
         assert_eq!(cleaned, 10, "only the expired file's bytes are reported");
         assert!(!themes.join("1.jpg").exists(), "expired");
         assert!(themes.join("2.jpg").exists(), "still in use");
-
-        let _ = std::fs::remove_dir_all(&cache);
     }
 
     /// Reading a thumbnail keeps it alive: without that, a cache that is used every
@@ -341,8 +337,6 @@ mod tests {
 
         assert_eq!(cleaned, 0, "a file in use is not expired");
         assert!(thumbnail.exists());
-
-        let _ = std::fs::remove_dir_all(&cache);
     }
 
     #[test]
@@ -363,8 +357,6 @@ mod tests {
             !already_empty.exists(),
             "an empty directory is removed whether or not this run emptied it"
         );
-
-        let _ = std::fs::remove_dir_all(&cache);
     }
 
     #[test]
@@ -378,8 +370,6 @@ mod tests {
             0
         );
         assert!(themes.join("1.jpg").exists());
-
-        let _ = std::fs::remove_dir_all(&cache);
     }
 
     /// The oldest files go first, and only until the cache is back under the limit.
@@ -401,8 +391,6 @@ mod tests {
             themes.join("new.jpg").exists(),
             "the newest file is kept to reach the limit"
         );
-
-        let _ = std::fs::remove_dir_all(&cache);
     }
 
     #[test]
@@ -414,7 +402,5 @@ mod tests {
         std::fs::write(second.join("1.jpg"), vec![b'x'; 50]).unwrap();
 
         assert_eq!(block_on(Storage::get_directory_size(&cache)).unwrap(), 150);
-
-        let _ = std::fs::remove_dir_all(&cache);
     }
 }

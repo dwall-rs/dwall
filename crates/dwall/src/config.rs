@@ -1119,6 +1119,67 @@ mod tests {
         });
     }
 
+    // These types are exported to the frontend by the ts feature, so a renamed or
+    // retyped field changes src/ipc/bindings/** silently. The snapshots are the
+    // guard, one per type so a failure names the type that moved.
+
+    #[test]
+    fn snapshot_image_format() {
+        insta::assert_json_snapshot!("image_format", [ImageFormat::Jpeg, ImageFormat::Png]);
+    }
+
+    #[test]
+    fn snapshot_position_source() {
+        insta::assert_json_snapshot!(
+            "position_source",
+            [
+                PositionSource::default(),
+                PositionSource::Manual {
+                    latitude: 39.9042,
+                    longitude: 116.4074,
+                    altitude: 43.5,
+                },
+            ]
+        );
+    }
+
+    #[test]
+    fn snapshot_wallpaper_mode() {
+        insta::assert_json_snapshot!(
+            "wallpaper_mode",
+            [
+                WallpaperMode::Fixed {
+                    monitor_specific_wallpapers: MonitorSpecificWallpapers::All(
+                        "Big Sur".to_string()
+                    ),
+                },
+                WallpaperMode::Fixed {
+                    monitor_specific_wallpapers: MonitorSpecificWallpapers::Individual(
+                        HashMap::from([("MONITOR#1".to_string(), "Big Sur".to_string())])
+                    ),
+                },
+                WallpaperMode::Random { pool: None },
+                WallpaperMode::Random {
+                    pool: Some(vec!["Big Sur".to_string(), "Catalina".to_string()]),
+                },
+            ]
+        );
+    }
+
+    #[test]
+    fn snapshot_network() {
+        insta::assert_json_snapshot!(
+            "network",
+            [
+                Network::GitHubMirrorTemplate("https://mirror.example.com/{url}".to_string()),
+                Network::Socks5 {
+                    host: "127.0.0.1".to_string(),
+                    port: 1080,
+                },
+            ]
+        );
+    }
+
     // ── cache_minutes validation ──────────────────────────────────────────────
 
     fn config_with_cache_minutes(cache_minutes: u64) -> Config {

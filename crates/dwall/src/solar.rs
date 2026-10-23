@@ -1162,4 +1162,44 @@ mod tests {
         assert_eq!(rises, 1, "the equator sees exactly one sunrise a day");
         assert_eq!(sets, 1, "and exactly one sunset");
     }
+
+    use proptest::prelude::*;
+
+    proptest! {
+        /// The ranges are a contract the frame matcher relies on: an altitude outside
+        /// [-90, 90] or an azimuth outside [0, 360) means the geometry broke, and a
+        /// NaN silently selects nothing. The fixed positions above only sample a few
+        /// coordinates, so the boundary cases are left to the generator.
+        #[test]
+        fn solar_position_stays_in_range_for_any_position_and_instant(
+            latitude in -90.0f64..=90.0,
+            longitude in -180.0f64..=180.0,
+            seconds in 0u64..=4_102_444_800,
+        ) {
+            let position = Position::from_raw_position(latitude, longitude, 0.0);
+            let date_time = UtcDateTime::from_timestamp(seconds);
+            let solar = SolarPosition::new(&position, &date_time);
+
+            prop_assert!(
+                solar.altitude().is_finite(),
+                "altitude {} at ({latitude}, {longitude}) @ {seconds}",
+                solar.altitude()
+            );
+            prop_assert!(
+                (-90.0..=90.0).contains(&solar.altitude()),
+                "altitude {} at ({latitude}, {longitude}) @ {seconds}",
+                solar.altitude()
+            );
+            prop_assert!(
+                solar.azimuth().is_finite(),
+                "azimuth {} at ({latitude}, {longitude}) @ {seconds}",
+                solar.azimuth()
+            );
+            prop_assert!(
+                (0.0..360.0).contains(&solar.azimuth()),
+                "azimuth {} at ({latitude}, {longitude}) @ {seconds}",
+                solar.azimuth()
+            );
+        }
+    }
 }

@@ -273,53 +273,19 @@ impl Log for Logger {
                 );
             } else {
                 // Redirected output (file, pipe, CI) must not receive escape codes.
-                let level_str = match record.level() {
-                    log::Level::Error => "ERROR",
-                    log::Level::Warn => "WARN",
-                    log::Level::Info => "INFO",
-                    log::Level::Debug => "DEBUG",
-                    log::Level::Trace => "TRACE",
-                };
-
-                let _ = writeln!(
-                    std::io::stderr(),
-                    "{timestamp} {level_str} [{target}] {msg} at {file}:{line}",
-                    target = record.target(),
-                );
+                let _ = write_record(&mut std::io::stderr(), &timestamp, record);
             }
         }
 
         #[cfg(not(debug_assertions))]
         {
-            let level_str = match record.level() {
-                log::Level::Error => "ERROR",
-                log::Level::Warn => "WARN",
-                log::Level::Info => "INFO",
-                log::Level::Debug => "DEBUG",
-                log::Level::Trace => "TRACE",
-            };
-
-            let location = match (record.file(), record.line()) {
-                (Some(file), Some(line)) => format!(" at {file}:{line}"),
-                _ => String::new(),
-            };
-
             match &self.output {
                 ProductionOutput::Stderr => {
                     let mut stderr = std::io::stderr().lock();
-                    let _ = writeln!(
-                        stderr,
-                        "{timestamp} {level_str} [{}] {}{location}",
-                        record.target(),
-                        record.args(),
-                    );
+                    let _ = write_record(&mut stderr, &timestamp, record);
                 }
                 ProductionOutput::File(log_file) => {
-                    log_file.write_line(&format!(
-                        "{timestamp} {level_str} [{}] {}{location}",
-                        record.target(),
-                        record.args(),
-                    ));
+                    log_file.write_line(&format_record(&timestamp, record));
                 }
             }
         }
@@ -341,6 +307,42 @@ impl Log for Logger {
             }
         }
     }
+}
+
+/// Formats one record in the plain shape shared by pipes, files and release builds.
+///
+/// Split out of Log::log so a test can capture the format in a buffer instead of
+/// stderr, and so the redirected and release paths cannot drift apart. LogFile
+/// takes the finished line, because it owns the rotation policy the write needs.
+fn format_record(timestamp: &str, record: &log::Record<'_>) -> String {
+    let level_str = match record.level() {
+        log::Level::Error => "ERROR",
+        log::Level::Warn => "WARN",
+        log::Level::Info => "INFO",
+        log::Level::Debug => "DEBUG",
+        log::Level::Trace => "TRACE",
+    };
+
+    let location = match (record.file(), record.line()) {
+        (Some(file), Some(line)) => format!(" at {file}:{line}"),
+        _ => String::new(),
+    };
+
+    format!(
+        "{timestamp} {level_str} [{}] {}{location}",
+        record.target(),
+        record.args(),
+    )
+}
+
+/// Writes one record in the plain shape shared by pipes, files and release builds.
+#[doc(hidden)]
+pub fn write_record(
+    out: &mut dyn std::io::Write,
+    timestamp: &str,
+    record: &log::Record<'_>,
+) -> std::io::Result<()> {
+    writeln!(out, "{}", format_record(timestamp, record))
 }
 
 impl Default for Logger {
@@ -925,5 +927,58 @@ mod tests {
         {
             assert_eq!(__fmt_key("theme_id"), "theme_id");
         }
+    }
+
+    /// The redirected format is what a file or CI sees, and it is the only shape a
+    /// release build writes: pin it.
+    #[test]
+    fn the_redirected_record_format_is_stable() {
+        let args = format_args!("loaded theme_id={}", "Big Sur");
+        let record = log::Record::builder()
+            .level(log::Level::Info)
+            .target("dwall::config")
+            .args(args)
+            .file(Some("src/config.rs"))
+            .line(Some(79))
+            .build();
+
+        let mut out = Vec::new();
+        write_record(&mut out, "2026-06-01T01:27:42+08:00", &record).unwrap();
+
+        assert_eq!(
+            String::from_utf8(out).unwrap(),
+            "2026-06-01T01:27:42+08:00 INFO [dwall::config] loaded theme_id=Big Sur at src/config.rs:79\n"
+        );
+    }
+
+    /// With max-level-info on, the release build must not pay for the arguments of
+    /// debug! and trace! even when the log filter is wide open. A side effect is the
+    /// only way to see that: the counter stays put only if the expressions never ran.
+    #[cfg(feature = "max-level-info")]
+    #[test]
+    fn debug_and_trace_arguments_are_not_evaluated() {
+        use std::sync::atomic::{AtomicUsize, Ordering};
+
+        static EVALUATED: AtomicUsize = AtomicUsize::new(0);
+
+        fn bump() -> usize {
+            EVALUATED.fetch_add(1, Ordering::Relaxed)
+        }
+
+        // Open the filter so the log crate itself would evaluate the arguments.
+        log::set_max_level(LevelFilter::Trace);
+
+        // info! is not gated: it proves the counter would move if the macros ran.
+        crate::info!(value = bump(), "always evaluated");
+        assert_eq!(EVALUATED.load(Ordering::Relaxed), 1);
+
+        crate::debug!(value = bump(), "compiled out");
+        crate::trace!(value = bump(), "compiled out");
+
+        assert_eq!(
+            EVALUATED.load(Ordering::Relaxed),
+            1,
+            "debug! and trace! must not evaluate their arguments with max-level-info on"
+        );
     }
 }

@@ -288,6 +288,8 @@ mod tests {
 
     use super::*;
 
+    use crate::testing::ScratchDir;
+
     /// A zip archive built in memory from `(name, contents)` pairs.
     fn archive(entries: &[(&str, &[u8])]) -> Vec<u8> {
         let mut writer = zip::ZipWriter::new(Cursor::new(Vec::new()));
@@ -301,12 +303,8 @@ mod tests {
         writer.finish().unwrap().into_inner()
     }
 
-    fn scratch(name: &str) -> PathBuf {
-        let dir = std::env::temp_dir().join(format!("dwall_archive_{name}"));
-        let _ = fs::remove_dir_all(&dir);
-        fs::create_dir_all(&dir).unwrap();
-
-        dir
+    fn scratch(name: &str) -> ScratchDir {
+        ScratchDir::new(&format!("archive_{name}"))
     }
 
     /// Rewrites the uncompressed size the central directory declares, leaving the
@@ -331,7 +329,7 @@ mod tests {
 
     /// Extracts `entries` with `limit` into a fresh scratch directory, returning
     /// `(extraction target, scratch directory)`.
-    fn extract_ok(name: &str, entries: &[(&str, &[u8])], limit: u64) -> (PathBuf, PathBuf) {
+    fn extract_ok(name: &str, entries: &[(&str, &[u8])], limit: u64) -> (PathBuf, ScratchDir) {
         let dir = scratch(name);
         let zip_path = write_archive(&dir, &archive(entries));
         let target = dir.join("out");
@@ -343,7 +341,7 @@ mod tests {
 
     #[test]
     fn a_single_shared_root_directory_is_unwrapped() {
-        let (target, dir) = extract_ok(
+        let (target, _dir) = extract_ok(
             "unwrap",
             &[("Theme/solar.json", b"[]"), ("Theme/jpg/1.jpg", b"image")],
             MAX_EXTRACTED_BYTES,
@@ -352,15 +350,13 @@ mod tests {
         assert!(target.join("solar.json").is_file());
         assert!(target.join("jpg").join("1.jpg").is_file());
         assert!(!target.join("Theme").exists());
-
-        let _ = fs::remove_dir_all(&dir);
     }
 
     #[test]
     fn a_stray_top_level_file_keeps_the_root_directory() {
         // The daemon refuses a theme that sits one level down, so the layout has to
         // stay visible rather than being silently flattened or dropped.
-        let (target, dir) = extract_ok(
+        let (target, _dir) = extract_ok(
             "stray",
             &[("Theme/solar.json", b"[]"), ("README.md", b"# notes")],
             MAX_EXTRACTED_BYTES,
@@ -368,13 +364,11 @@ mod tests {
 
         assert!(target.join("Theme").join("solar.json").is_file());
         assert!(target.join("README.md").is_file());
-
-        let _ = fs::remove_dir_all(&dir);
     }
 
     #[test]
     fn junk_entries_are_left_out_when_a_root_is_unwrapped() {
-        let (target, dir) = extract_ok(
+        let (target, _dir) = extract_ok(
             "junk",
             &[
                 ("Theme/solar.json", b"[]"),
@@ -387,13 +381,11 @@ mod tests {
         assert!(target.join("solar.json").is_file());
         assert!(!target.join(".DS_Store").exists());
         assert!(!target.join("__MACOSX").exists());
-
-        let _ = fs::remove_dir_all(&dir);
     }
 
     #[test]
     fn a_nested_directory_is_created_on_demand() {
-        let (target, dir) = extract_ok(
+        let (target, _dir) = extract_ok(
             "nested",
             &[("Theme/a/b/c/deep.txt", b"deep")],
             MAX_EXTRACTED_BYTES,
@@ -403,8 +395,6 @@ mod tests {
             fs::read_to_string(target.join("a").join("b").join("c").join("deep.txt")).unwrap(),
             "deep"
         );
-
-        let _ = fs::remove_dir_all(&dir);
     }
 
     /// An archive whose entries lie about their size is refused, and none of it is left
@@ -431,8 +421,6 @@ mod tests {
             !target.join("big.bin").is_file(),
             "the oversized file must not be left behind"
         );
-
-        let _ = fs::remove_dir_all(&dir);
     }
 
     /// A size that is over the budget before anything is decompressed is refused
@@ -452,8 +440,6 @@ mod tests {
             "the refusal has to name the budget it was given: {error}"
         );
         assert!(!target.join("big.bin").is_file());
-
-        let _ = fs::remove_dir_all(&dir);
     }
 
     /// A colon opens an alternate data stream, `CON` and `NUL` address devices, and a
@@ -521,8 +507,6 @@ mod tests {
             result.unwrap_err().to_string().contains("too many entries"),
             "the entry limit must be what rejected it"
         );
-
-        let _ = fs::remove_dir_all(&dir);
     }
 
     #[test]
@@ -534,8 +518,6 @@ mod tests {
         let result = extract_with_limit(&zip_path, &dir.join("out"), MAX_EXTRACTED_BYTES);
 
         assert!(result.is_err());
-
-        let _ = fs::remove_dir_all(&dir);
     }
 
     #[test]
@@ -549,8 +531,6 @@ mod tests {
         );
 
         assert!(result.is_err());
-
-        let _ = fs::remove_dir_all(&dir);
     }
 
     #[test]
@@ -618,8 +598,6 @@ mod tests {
             assert!(!present.exists());
             assert!(remove_file(&present).await.is_ok());
         });
-
-        let _ = fs::remove_dir_all(&dir);
     }
 
     #[test]
@@ -641,8 +619,6 @@ mod tests {
             !dir.join("escape.txt").exists(),
             "nothing may be written outside the extraction directory"
         );
-
-        let _ = fs::remove_dir_all(&dir);
     }
 
     #[test]
@@ -668,8 +644,6 @@ mod tests {
             !target.join("evil").exists(),
             "a symlink entry must not be materialised"
         );
-
-        let _ = fs::remove_dir_all(&dir);
     }
 
     #[test]
@@ -708,8 +682,6 @@ mod tests {
             .expect_err("one entry past the limit must be refused")
             .to_string();
         assert!(error.contains("too many entries"), "{error}");
-
-        let _ = fs::remove_dir_all(&dir);
     }
 
     #[test]
@@ -735,7 +707,5 @@ mod tests {
 
             assert!(dir.is_dir(), "the directory must still exist");
         });
-
-        let _ = fs::remove_dir_all(&dir);
     }
 }

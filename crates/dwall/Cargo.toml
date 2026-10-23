@@ -64,6 +64,7 @@ windows-future = { version = "0.3", default-features = false }
 [dev-dependencies]
 mockall = "0"
 insta = { version = "1", features = ["json", "redactions"] }
+proptest = "1"
 
 [features]
 default = []

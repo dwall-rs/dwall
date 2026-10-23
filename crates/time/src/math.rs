@@ -259,4 +259,23 @@ mod tests {
         assert_eq!(epoch, 0);
         assert_eq!(days_to_ymd(u64::from(epoch)), (1970, Month::January, 1));
     }
+
+    use proptest::prelude::*;
+
+    proptest! {
+        /// The calendar math has to be its own inverse across the whole range the
+        /// crate claims to represent, leap days included: a wrong cumulative table
+        /// or an off-by-one in the leap rule shows up as a specific date here.
+        #[test]
+        fn days_and_dates_round_trip(
+            (year, month, day) in (1970u16..=9999, 1u8..=12).prop_flat_map(|(year, month)| {
+                let month = Month::try_from(month).unwrap();
+                let last_day = month.days_in_month(year);
+                (Just(year), Just(month), 1u8..=last_day)
+            })
+        ) {
+            let days = days_since_epoch(year, month, day).unwrap();
+            prop_assert_eq!(days_to_ymd(u64::from(days)), (year, month, day));
+        }
+    }
 }

@@ -145,6 +145,16 @@ mod tests {
         let _ = fs::remove_dir_all(&dir);
     }
 
+    /// The settings UI reads this file, so the field names are an interface; the
+    /// snapshot fails if either is renamed.
+    #[test]
+    fn snapshot_random_selection() {
+        insta::assert_json_snapshot!(
+            "random_selection",
+            RandomSelection::new(&Date::new(2026, Month::June, 21), "Big Sur".to_string())
+        );
+    }
+
     #[test]
     fn writing_creates_the_directory() {
         let dir = scratch("creates").join("nested");

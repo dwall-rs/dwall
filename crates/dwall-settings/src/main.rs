@@ -21,6 +21,8 @@ mod filesystem;
 mod network;
 mod process;
 mod setup;
+#[cfg(test)]
+mod testing;
 mod theme;
 mod thumbnail;
 mod update;

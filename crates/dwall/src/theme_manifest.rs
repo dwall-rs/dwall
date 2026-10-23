@@ -7,7 +7,7 @@
 use std::fs;
 use std::path::Path;
 
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 use crate::config::ImageFormat;
 use crate::theme::ThemeError;
@@ -20,7 +20,7 @@ pub const THEME_MANIFEST_FILENAME: &str = "theme.toml";
 pub const SUPPORTED_SCHEMA: u32 = 1;
 
 /// `theme.toml` top-level structure.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct ThemeManifest {
     pub schema: u32,
     pub theme: ThemeInfo,
@@ -34,7 +34,7 @@ pub struct ThemeManifest {
 }
 
 /// Descriptive theme information (`[theme]`).
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct ThemeInfo {
     pub id: String,
     pub name: String,
@@ -51,14 +51,14 @@ pub struct ThemeInfo {
 }
 
 /// Light/dark image indices (`[appearance]`).
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct Appearance {
     pub light: usize,
     pub dark: usize,
 }
 
 /// Solar-angle data (`[solar]`); tagged by `mode`.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 #[serde(tag = "mode", rename_all = "snake_case")]
 pub enum SolarSection {
     /// macOS HEIC embedded angles; frames carry no time.
@@ -77,7 +77,7 @@ pub enum SolarSection {
 }
 
 /// A `native` solar frame.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct NativeFrame {
     pub index: usize,
     pub altitude: f64,
@@ -85,7 +85,7 @@ pub struct NativeFrame {
 }
 
 /// A `calculated`/`hours` solar frame.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct TimedFrame {
     pub index: usize,
     pub hour: u8,
@@ -95,7 +95,7 @@ pub struct TimedFrame {
 }
 
 /// Reference date for `calculated` solar data.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct DateInput {
     pub year: u16,
     pub month: u8,
@@ -103,7 +103,7 @@ pub struct DateInput {
 }
 
 /// Maker-side image provenance (`[[images]]`).
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct ThemeImage {
     pub index: usize,
     #[serde(default)]
@@ -401,5 +401,47 @@ azimuth = 90.0
             ))) => {}
             other => panic!("expected FrameIndexOutOfRange(256), got {other:?}"),
         }
+    }
+
+    /// The manifest is the format Dwall Maker writes, so a renamed field breaks
+    /// every custom theme; the snapshot pins the parsed shape.
+    #[test]
+    fn snapshot_theme_manifest() {
+        let manifest: ThemeManifest = toml::from_str(&format!(
+            r#"{THEME_HEADER}
+email = "alice@example.com"
+homepage = "https://example.com"
+description = "Demo theme"
+
+[appearance]
+light = 0
+dark = 1
+
+[solar]
+mode = "calculated"
+latitude = 39.9042
+longitude = 116.4074
+altitude = 43.5
+
+[solar.reference_date]
+year = 2026
+month = 6
+day = 21
+
+[[solar.frames]]
+index = 0
+hour = 6
+minute = 0
+altitude = 5.0
+azimuth = 90.0
+
+[[images]]
+index = 0
+original = "0.jpg"
+"#
+        ))
+        .unwrap();
+
+        insta::assert_json_snapshot!("theme_manifest", manifest);
     }
 }

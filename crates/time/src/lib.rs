@@ -660,9 +660,26 @@ impl Date {
         Self { year, month, day }
     }
 
+    /// Creates a local date-time on this date in the machine's time zone.
+    ///
+    /// The zone is read from the system, so the result depends on where this
+    /// runs; [`with_hms_offset`](Self::with_hms_offset) is the variant a caller
+    /// that needs a reproducible instant uses.
     pub fn with_hms(&self, hour: u8, minute: u8, second: u8) -> Result<OffsetDateTime> {
-        let offset = Offset::local_offset();
+        self.with_hms_offset(hour, minute, second, Offset::local_offset())
+    }
 
+    /// Creates a local date-time on this date in the given time zone.
+    ///
+    /// The injectable half of [`with_hms`](Self::with_hms): it is the seam a
+    /// test uses to pin the offset instead of inheriting the machine's.
+    pub fn with_hms_offset(
+        &self,
+        hour: u8,
+        minute: u8,
+        second: u8,
+        offset: Offset,
+    ) -> Result<OffsetDateTime> {
         OffsetDateTime::new(
             self.year, self.month, self.day, hour, minute, second, offset,
         )
@@ -862,6 +879,27 @@ mod tests {
         assert_eq!(utc.hour(), 6);
     }
 
+    /// The offset is the whole input to the conversion: the same wall-clock time
+    /// on the same date is a different instant in a different zone.
+    #[test]
+    fn a_date_with_hms_uses_the_offset_it_is_given() {
+        let date = Date::new(2025, Month::June, 15);
+
+        let beijing = date.with_hms_offset(14, 30, 0, offset_plus_8()).unwrap();
+        let utc = beijing.assume_utc();
+        assert_eq!(
+            (utc.year(), utc.month(), utc.day(), utc.hour(), utc.minute()),
+            (2025, Month::June, 15, 6, 30)
+        );
+
+        let new_york = date.with_hms_offset(14, 30, 0, offset_minus_5()).unwrap();
+        let utc = new_york.assume_utc();
+        assert_eq!(
+            (utc.year(), utc.month(), utc.day(), utc.hour(), utc.minute()),
+            (2025, Month::June, 15, 19, 30)
+        );
+    }
+
     #[test]
     fn test_offset_before_epoch_rejected() {
         // UTC 1970-01-01T00:00:00 + positive offset => local time is ok,
@@ -1058,5 +1096,36 @@ mod tests {
         let middle = UtcDateTime::from_timestamp(1_000 + SECONDS_PER_DAY);
         assert!(middle.is_between_exclusive(&start, &end));
         assert!(middle.is_between_inclusive(&start, &end));
+    }
+
+    use proptest::prelude::*;
+
+    proptest! {
+        /// A calendar date written into a Unix timestamp and read back has to be the
+        /// same date: the two conversions use different algorithms, so only a
+        /// round trip catches the one that is off.
+        #[test]
+        fn a_calendar_date_round_trips_through_its_timestamp(
+            (year, month, day, hour, minute, second) in (
+                (1970u16..=9999, 1u8..=12).prop_flat_map(|(year, month)| {
+                    let month = Month::try_from(month).unwrap();
+                    let last_day = month.days_in_month(year);
+                    (Just(year), Just(month), 1u8..=last_day)
+                }),
+                0u8..24,
+                0u8..60,
+                0u8..60,
+            ).prop_map(|((year, month, day), hour, minute, second)| {
+                (year, month, day, hour, minute, second)
+            })
+        ) {
+            let dt = UtcDateTime::new(year, month, day, hour, minute, second).unwrap();
+            let round_tripped = UtcDateTime::from_timestamp(dt.timestamp());
+
+            prop_assert_eq!(
+                round_tripped.ymd_hms(),
+                (year, month, day, hour, minute, second)
+            );
+        }
     }
 }

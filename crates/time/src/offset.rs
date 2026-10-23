@@ -659,4 +659,18 @@ mod tests {
     fn the_cache_starts_empty() {
         assert_eq!(CachedOffset::default().value, None);
     }
+
+    use proptest::prelude::*;
+
+    proptest! {
+        /// Display and FromStr are a pair: any offset the type can hold has to
+        /// survive the trip, not only the round time zones the table above lists.
+        #[test]
+        fn display_and_parse_round_trip(seconds in -50400i32..=50400) {
+            let offset = Offset { seconds };
+            let parsed: Offset = offset.to_string().parse().unwrap();
+
+            prop_assert_eq!(parsed, offset);
+        }
+    }
 }

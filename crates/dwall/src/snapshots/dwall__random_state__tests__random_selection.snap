@@ -1,0 +1,8 @@
+---
+source: crates/dwall/src/random_state.rs
+expression: "RandomSelection::new(&Date::new(2026, Month::June, 21), \"Big Sur\".to_string())"
+---
+{
+  "date": "2026-06-21",
+  "theme_id": "Big Sur"
+}

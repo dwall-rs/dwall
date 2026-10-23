@@ -337,6 +337,8 @@ pub async fn move_directory(
 mod tests {
     use super::*;
 
+    use crate::testing::ScratchDir;
+
     #[test]
     fn validate_theme_id_accepts_real_theme_names() {
         for id in ["Big Sur", "Big.Sur", "Solar-Gradients_2", "地球"] {
@@ -548,10 +550,9 @@ mod tests {
 
     /// A source tree with a top-level file and a nested one, inside a parent that
     /// also holds the destination.
-    fn scratch_tree(name: &str) -> (PathBuf, PathBuf) {
-        let root = std::env::temp_dir().join(name);
+    fn scratch_tree(name: &str) -> (ScratchDir, PathBuf) {
+        let root = ScratchDir::new(name);
         let source = root.join("source");
-        let _ = std::fs::remove_dir_all(&root);
         std::fs::create_dir_all(source.join("nested")).unwrap();
         std::fs::write(source.join("a.txt"), b"a").unwrap();
         std::fs::write(source.join("nested").join("b.txt"), b"b").unwrap();
@@ -561,7 +562,7 @@ mod tests {
 
     #[tokio::test]
     async fn move_directory_moves_a_tree_and_removes_the_source() {
-        let (root, source) = scratch_tree("dwall_move_ok");
+        let (root, source) = scratch_tree("move_ok");
         let destination = root.join("destination");
 
         move_directory(source.clone(), destination.clone())
@@ -578,15 +579,13 @@ mod tests {
             !staging_directory(&destination).exists(),
             "the staging directory must not survive a successful move"
         );
-
-        let _ = std::fs::remove_dir_all(&root);
     }
 
     /// A move that died between the copy and the rename used to leave the destination
     /// half written, and the next attempt refused it with `DestinationExists`.
     #[tokio::test]
     async fn a_leftover_staging_directory_does_not_block_the_next_move() {
-        let (root, source) = scratch_tree("dwall_move_stale");
+        let (root, source) = scratch_tree("move_stale");
         let destination = root.join("destination");
         let staging = staging_directory(&destination);
 
@@ -603,13 +602,11 @@ mod tests {
             "the stale staging contents must not reach the destination"
         );
         assert!(!staging.exists());
-
-        let _ = std::fs::remove_dir_all(&root);
     }
 
     #[tokio::test]
     async fn move_directory_refuses_an_existing_destination_and_keeps_the_source() {
-        let (root, source) = scratch_tree("dwall_move_taken");
+        let (root, source) = scratch_tree("move_taken");
         let destination = root.join("destination");
         std::fs::create_dir_all(&destination).unwrap();
 
@@ -618,21 +615,17 @@ mod tests {
             Err(DirectoryMoveError::DestinationExists)
         ));
         assert!(source.exists(), "the source must survive a refused move");
-
-        let _ = std::fs::remove_dir_all(&root);
     }
 
     #[tokio::test]
     async fn move_directory_with_a_missing_source_is_a_no_op() {
         let root = std::env::temp_dir().join("dwall_move_missing");
-        let _ = std::fs::remove_dir_all(&root);
 
         move_directory(root.join("absent"), root.join("destination"))
             .await
             .unwrap();
 
         assert!(!root.join("destination").exists());
-        let _ = std::fs::remove_dir_all(&root);
     }
 
     // ── find_files_in_dir ───────────────────────────────────────────────────

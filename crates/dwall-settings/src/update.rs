@@ -133,8 +133,20 @@ pub async fn prerelease_endpoint(
     http_client: &HttpClient,
     current: &Version,
 ) -> DwallSettingsResult<Option<PrereleaseSource>> {
+    prerelease_endpoint_from(RELEASES_API, http_client, current).await
+}
+
+/// [`prerelease_endpoint`] against an arbitrary releases endpoint.
+///
+/// Split out so a test can point the check at a local server: `api.github.com`
+/// needs the network and a rate limit to exercise the error paths.
+async fn prerelease_endpoint_from(
+    endpoint: &str,
+    http_client: &HttpClient,
+    current: &Version,
+) -> DwallSettingsResult<Option<PrereleaseSource>> {
     let body = http_client
-        .get_text(RELEASES_API, RELEASES_API_MAX_BYTES)
+        .get_text(endpoint, RELEASES_API_MAX_BYTES)
         .await?;
 
     let releases: Vec<Release> = serde_json::from_str(&body).map_err(|e| {
@@ -178,6 +190,8 @@ pub fn retag_manifest_url(url: &str, tag: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    use crate::network::testing::{TestServer, response};
 
     fn release(tag: &str, prerelease: bool) -> Release {
         Release {
@@ -401,4 +415,22 @@ mod tests {
         ]
       }
     ]"#;
+
+    /// A release list that is not JSON has to be an error the caller reports, not a
+    /// silent "up to date": an unreachable or misbehaving API is not evidence that
+    /// no update exists.
+    #[tokio::test]
+    async fn prerelease_endpoint_reports_invalid_json() {
+        let server = TestServer::new(response("200 OK", b"<html>not a release list</html>"));
+        let http = HttpClient::new(None).unwrap();
+
+        let error = prerelease_endpoint_from(&server.url, &http, &version("0.3.0-alpha.0"))
+            .await
+            .expect_err("an HTML body is not a release list");
+
+        assert!(
+            error.to_string().contains("not valid JSON"),
+            "the error has to name what was wrong: {error}"
+        );
+    }
 }

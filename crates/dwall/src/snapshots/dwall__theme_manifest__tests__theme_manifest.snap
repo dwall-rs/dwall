@@ -1,0 +1,48 @@
+---
+source: crates/dwall/src/theme_manifest.rs
+expression: manifest
+---
+{
+  "schema": 1,
+  "theme": {
+    "id": "demo",
+    "name": "Demo",
+    "author": "alice",
+    "version": 2,
+    "created_at": 1700000000,
+    "image_format": "jpeg",
+    "email": "alice@example.com",
+    "homepage": "https://example.com",
+    "description": "Demo theme"
+  },
+  "appearance": {
+    "light": 0,
+    "dark": 1
+  },
+  "solar": {
+    "mode": "calculated",
+    "latitude": 39.9042,
+    "longitude": 116.4074,
+    "altitude": 43.5,
+    "reference_date": {
+      "year": 2026,
+      "month": 6,
+      "day": 21
+    },
+    "frames": [
+      {
+        "index": 0,
+        "hour": 6,
+        "minute": 0,
+        "altitude": 5.0,
+        "azimuth": 90.0
+      }
+    ]
+  },
+  "images": [
+    {
+      "index": 0,
+      "original": "0.jpg"
+    }
+  ]
+}

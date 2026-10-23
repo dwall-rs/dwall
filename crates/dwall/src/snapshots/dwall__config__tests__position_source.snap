@@ -1,0 +1,17 @@
+---
+source: crates/dwall/src/config.rs
+expression: "[PositionSource::default(), PositionSource::Manual\n{ latitude: 39.9042, longitude: 116.4074, altitude: 43.5, },]"
+---
+[
+  {
+    "type": "AUTOMATIC",
+    "update_on_each_calculation": false,
+    "cache_minutes": 30
+  },
+  {
+    "type": "MANUAL",
+    "latitude": 39.9042,
+    "longitude": 116.4074,
+    "altitude": 43.5
+  }
+]
