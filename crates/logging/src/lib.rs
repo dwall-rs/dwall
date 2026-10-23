@@ -926,4 +926,35 @@ mod tests {
             assert_eq!(__fmt_key("theme_id"), "theme_id");
         }
     }
+
+    /// With max-level-info on, the release build must not pay for the arguments of
+    /// debug! and trace! even when the log filter is wide open. A side effect is the
+    /// only way to see that: the counter stays put only if the expressions never ran.
+    #[cfg(feature = "max-level-info")]
+    #[test]
+    fn debug_and_trace_arguments_are_not_evaluated() {
+        use std::sync::atomic::{AtomicUsize, Ordering};
+
+        static EVALUATED: AtomicUsize = AtomicUsize::new(0);
+
+        fn bump() -> usize {
+            EVALUATED.fetch_add(1, Ordering::Relaxed)
+        }
+
+        // Open the filter so the log crate itself would evaluate the arguments.
+        log::set_max_level(LevelFilter::Trace);
+
+        // info! is not gated: it proves the counter would move if the macros ran.
+        crate::info!(value = bump(), "always evaluated");
+        assert_eq!(EVALUATED.load(Ordering::Relaxed), 1);
+
+        crate::debug!(value = bump(), "compiled out");
+        crate::trace!(value = bump(), "compiled out");
+
+        assert_eq!(
+            EVALUATED.load(Ordering::Relaxed),
+            1,
+            "debug! and trace! must not evaluate their arguments with max-level-info on"
+        );
+    }
 }
