@@ -43,9 +43,14 @@ export function MainView() {
       {/* Theme library: smallest tier = right drawer, xl+ = inline third column (same instance) */}
       <div
         class={clsx(
-          "absolute inset-y-0 right-0 z-30 w-85 transform bg-background shadow-[-24px_0_60px_rgba(0,0,0,.4)] transition-transform duration-300 ease-[cubic-bezier(.22,.61,.36,1)]",
-          uiStore.libOpen ? "translate-x-0" : "translate-x-full",
-          "xl:static xl:z-auto xl:w-auto xl:translate-x-0 xl:transform-none xl:bg-transparent xl:shadow-none xl:transition-none",
+          "absolute inset-y-0 right-0 z-30 w-85 transform bg-background shadow-[-24px_0_60px_rgba(0,0,0,.4)] transition-[transform,visibility] duration-300 ease-[cubic-bezier(.22,.61,.36,1)]",
+          // Closed means off-screen, and off-screen still takes focus: `invisible` is
+          // what keeps Tab out of a drawer nobody can see. At xl this same element is
+          // an inline column, so it stays visible there whatever the drawer state is.
+          uiStore.libOpen
+            ? "visible translate-x-0"
+            : "invisible translate-x-full",
+          "xl:visible xl:static xl:z-auto xl:w-auto xl:translate-x-0 xl:transform-none xl:bg-transparent xl:shadow-none xl:transition-none",
         )}
       >
         <LibraryColumn />
