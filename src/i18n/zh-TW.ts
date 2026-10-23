@@ -36,6 +36,11 @@ export const dict: RawDictionary = {
     hintFixed: "點擊指定給{{ name }}",
     hintRandom: "點擊加入 / 移出候選池",
     search: "搜尋主題…",
+    loadFailed: "無法讀取主題清單",
+    empty: "還沒有主題",
+    emptyDesc: "把主題放進主題目錄，然後重新載入。",
+    noMatch: "沒有符合「{{ query }}」的主題",
+    reload: "重新載入",
   },
 
   scope: {
