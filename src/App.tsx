@@ -43,7 +43,10 @@ export default function App() {
           <p class="font-display text-[15px] font-semibold">
             {t("common.operationFailed")}
           </p>
-          <p class="max-w-150 font-mono text-[11.5px] text-muted-foreground">
+          <p
+            data-selectable
+            class="max-w-150 font-mono text-[11.5px] text-muted-foreground"
+          >
             {String(error)}
           </p>
           <Button variant="outline" size="sm" onClick={reset}>

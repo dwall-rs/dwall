@@ -58,7 +58,10 @@ export function PathsSection() {
           desc={t("settings.paths.themesDirDesc")}
           control={
             <div class="flex justify-between gap-2">
-              <div class="flex flex-1 items-center gap-2 overflow-hidden rounded-lg border border-border-2 bg-secondary px-3 py-2.25 font-mono text-[12px] text-muted-foreground">
+              <div
+                data-selectable
+                class="flex flex-1 items-center gap-2 overflow-hidden rounded-lg border border-border-2 bg-secondary px-3 py-2.25 font-mono text-[12px] text-muted-foreground"
+              >
                 <Folder class="size-3.5 shrink-0 text-muted-foreground" />
                 <span class="truncate">
                   {settingsStore.config?.themes_directory}
