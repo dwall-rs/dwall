@@ -1321,4 +1321,100 @@ mod tests {
 
         let _ = fs::remove_dir_all(&dir);
     }
+
+    // ── Coordinate and format validation ──────────────────────────────────────
+
+    #[test]
+    fn config_validate_rejects_out_of_range_manual_coordinates() {
+        let with_manual = |latitude: f64, longitude: f64| Config {
+            position_source: PositionSource::Manual {
+                latitude,
+                longitude,
+                altitude: 0.0,
+            },
+            ..Config::default()
+        };
+
+        for (latitude, longitude) in [(90.1, 0.0), (0.0, 180.1), (-90.1, 0.0), (0.0, -180.1)] {
+            let error = with_manual(latitude, longitude)
+                .validate()
+                .expect_err("out-of-range manual coordinates must be refused");
+
+            assert!(
+                matches!(
+                    error,
+                    crate::error::DwallError::Config(ConfigError::Validation { .. })
+                ),
+                "the refusal has to be a validation error, got {error:?}"
+            );
+        }
+
+        for (latitude, longitude) in [(90.0, 180.0), (-90.0, -180.0), (0.0, 0.0)] {
+            with_manual(latitude, longitude)
+                .validate()
+                .expect("the inclusive coordinate bounds are valid");
+        }
+    }
+
+    #[test]
+    fn image_format_rejects_an_unknown_string() {
+        assert_eq!(ImageFormat::Png.as_str(), "png");
+        assert_eq!(ImageFormat::Jpeg.as_str(), "jpg");
+
+        assert_eq!(
+            serde_json::from_str::<ImageFormat>(r#""png""#).unwrap(),
+            ImageFormat::Png
+        );
+        assert_eq!(
+            serde_json::from_str::<ImageFormat>(r#""jpeg""#).unwrap(),
+            ImageFormat::Jpeg
+        );
+
+        for unknown in [r#""webp""#, r#""JPEG""#] {
+            let error = serde_json::from_str::<ImageFormat>(unknown)
+                .expect_err("an unknown image format must be refused")
+                .to_string();
+
+            assert!(
+                error.contains("unknown variant"),
+                "{unknown} has to be refused as an unknown variant: {error}"
+            );
+        }
+    }
+
+    #[test]
+    fn monitor_specific_wallpapers_all_variant_helpers() {
+        let all = MonitorSpecificWallpapers::All("theme1".to_string());
+        assert!(all.is_all());
+        assert!(!all.is_empty());
+        assert_eq!(all.get("any-monitor").map(String::as_str), Some("theme1"));
+
+        let empty = MonitorSpecificWallpapers::Individual(std::collections::HashMap::new());
+        assert!(!empty.is_all());
+        assert!(empty.is_empty());
+        assert_eq!(empty.get("monitor1"), None);
+
+        let mut map = std::collections::HashMap::new();
+        map.insert("monitor1".to_string(), "theme1".to_string());
+        let individual = MonitorSpecificWallpapers::Individual(map);
+        assert!(!individual.is_all());
+        assert!(!individual.is_empty());
+        assert_eq!(
+            individual.get("monitor1").map(String::as_str),
+            Some("theme1")
+        );
+        assert_eq!(individual.get("monitor2"), None);
+    }
+
+    #[test]
+    fn wallpaper_mode_rejects_an_unknown_tag() {
+        let error = serde_json::from_str::<WallpaperMode>(r#"{"mode":"shuffle"}"#)
+            .expect_err("shuffle is not a wallpaper mode")
+            .to_string();
+
+        assert!(
+            error.contains("unknown variant"),
+            "the refusal has to name the unknown mode: {error}"
+        );
+    }
 }
