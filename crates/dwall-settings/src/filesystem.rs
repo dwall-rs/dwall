@@ -38,12 +38,16 @@ pub fn validate_directory(path: &Path, label: &str) -> DwallSettingsResult<()> {
 ///
 /// Theme ids are directory names: anything containing a separator, a drive/stream
 /// colon, a traversal component or a control character could escape the themes
-/// directory, and the downloader runs `remove_dir_all` on the resulting path.
+/// directory, and the downloader runs `remove_dir_all` on the resulting path. A name
+/// Windows will not keep as written — a reserved device name, a trailing dot or space —
+/// is refused too, because the directory that lands on disk would not be the one the id
+/// names.
 pub fn validate_theme_id(theme_id: &str) -> DwallSettingsResult<()> {
     let invalid = theme_id.is_empty()
         || theme_id.len() > 128
         || theme_id == "."
         || theme_id == ".."
+        || is_unwritable_name(theme_id)
         || theme_id.chars().any(|c| {
             c.is_control() || matches!(c, '/' | '\\' | ':' | '*' | '?' | '"' | '<' | '>' | '|')
         });
@@ -55,6 +59,31 @@ pub fn validate_theme_id(theme_id: &str) -> DwallSettingsResult<()> {
     }
 
     Ok(())
+}
+
+// ── Windows name rules ──────────────────────────────────────────────────────
+
+/// Whether Windows refuses to write `name` as an ordinary file in a directory.
+///
+/// A colon opens an alternate data stream instead of a file, `CON`/`NUL`/`COM1`
+/// address a device rather than a path, and a trailing dot or space is silently
+/// dropped. Anything named that way ends up somewhere other than where it says, which
+/// is why both an archive entry and a theme id are checked against this before a path
+/// is built from them.
+pub(crate) fn is_unwritable_name(name: &str) -> bool {
+    if name.is_empty() || name.ends_with('.') || name.ends_with(' ') || name.contains(':') {
+        return true;
+    }
+
+    // The device names stay reserved with any extension (`NUL.txt` is still the NUL
+    // device) but only up to nine, and only as the whole stem: `COM10` and `CONSOLE`
+    // are ordinary files.
+    let stem = name.split('.').next().unwrap_or(name).to_ascii_uppercase();
+
+    matches!(stem.as_str(), "CON" | "PRN" | "AUX" | "NUL")
+        || (stem.len() == 4
+            && (stem.starts_with("COM") || stem.starts_with("LPT"))
+            && matches!(stem.as_bytes()[3], b'1'..=b'9'))
 }
 
 /// Validates the two theme roots a configuration carries.
@@ -338,6 +367,26 @@ mod tests {
             "a\nb",
         ] {
             assert!(validate_theme_id(id).is_err(), "{id:?} should be rejected");
+        }
+    }
+
+    #[test]
+    fn validate_theme_id_rejects_names_windows_would_not_keep() {
+        for theme_id in ["CON", "nul.txt", "Trailing.", "Trailing "] {
+            assert!(
+                validate_theme_id(theme_id).is_err(),
+                "'{theme_id}' is not a name Windows keeps as written"
+            );
+        }
+    }
+
+    #[test]
+    fn validate_theme_id_accepts_names_that_only_look_reserved() {
+        for theme_id in ["CONSOLE", "COM10", "Sun Rise", "昼与夜"] {
+            assert!(
+                validate_theme_id(theme_id).is_ok(),
+                "'{theme_id}' is usable"
+            );
         }
     }
 
