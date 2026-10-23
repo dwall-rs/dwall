@@ -189,3 +189,49 @@ impl Drop for RegistryKey {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use windows::Win32::Foundation::ERROR_FILE_NOT_FOUND;
+    use windows::Win32::System::Registry::{KEY_READ, KEY_WRITE};
+
+    use super::*;
+
+    /// Only HKCU\Software is touched: it always exists for the user running the
+    /// test, and neither test writes a value (opening a key for write is not a write,
+    /// and deleting a name that does not exist is a no-op).
+    const SAFE_KEY: &str = "Software";
+
+    fn unique_name(prefix: &str) -> String {
+        format!("{prefix}_{}", std::process::id())
+    }
+
+    #[test]
+    fn registry_delete_of_a_missing_value_succeeds() {
+        let key = RegistryKey::open(SAFE_KEY, KEY_WRITE).expect("HKCU Software opens");
+        let missing = unique_name("DwallTestMissingValue");
+
+        // Deleting a value that was never written is the documented cleanup path:
+        // uninstalling auto-start twice must not fail.
+        match key.delete(&missing) {
+            Ok(()) => {}
+            Err(error) => panic!("deleting a missing value must succeed, got {error}"),
+        }
+    }
+
+    #[test]
+    fn registry_open_of_a_missing_key_errors() {
+        let path = format!("{SAFE_KEY}\\DwallTest_{}\\Missing", std::process::id());
+
+        match RegistryKey::open(&path, KEY_READ) {
+            Ok(_) => panic!("opening '{path}' must fail"),
+            Err(RegistryError::Open(error)) => {
+                assert_eq!(
+                    error, ERROR_FILE_NOT_FOUND,
+                    "a missing key is reported as such"
+                );
+            }
+            Err(other) => panic!("expected an open error, got {other}"),
+        }
+    }
+}
