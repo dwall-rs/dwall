@@ -4,6 +4,7 @@ import {
   createEffect,
   createSignal,
   type JSXElement,
+  on,
   onCleanup,
   Show,
 } from "solid-js";
@@ -27,11 +28,15 @@ export function WallpaperImage(props: Props) {
   const [showSkeleton, setShowSkeleton] = createSignal(false);
 
   // Reset when the source changes so a new image shows its loading state again.
-  createEffect(() => {
-    props.path;
-    setLoaded(false);
-    setErrored(false);
-  });
+  createEffect(
+    on(
+      () => props.path,
+      () => {
+        setLoaded(false);
+        setErrored(false);
+      },
+    ),
+  );
 
   createEffect(() => {
     if (loaded() || errored()) {

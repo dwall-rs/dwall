@@ -17,12 +17,12 @@ interface Props {
   id: string;
 }
 
-export function MonitorCard({ id }: Props) {
-  const mon = createMemo(() => monitorById(id));
+export function MonitorCard(props: Props) {
+  const mon = createMemo(() => monitorById(props.id));
   const sel = createMemo(
-    () => !fixedStore.allUnified && fixedStore.curMon === id,
+    () => !fixedStore.allUnified && fixedStore.curMon === props.id,
   );
-  const themeId = createMemo(() => themeForMon(id));
+  const themeId = createMemo(() => themeForMon(props.id));
   const theme = createMemo(() => themeById(themeId()));
 
   return (
@@ -43,10 +43,10 @@ export function MonitorCard({ id }: Props) {
           contain another one, and this is what the keyboard can reach. */}
       <button
         type="button"
-        aria-label={mon()?.name ?? id}
+        aria-label={mon()?.name ?? props.id}
         aria-pressed={sel()}
         disabled={fixedStore.allUnified}
-        onClick={() => selectMon(id)}
+        onClick={() => selectMon(props.id)}
         class="absolute inset-0 cursor-pointer rounded-lg border border-transparent outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
       />
       <div class="h-9.5 w-13.5 shrink-0 overflow-hidden rounded-[7px] shadow-[0_2px_8px_rgba(0,0,0,.45)]">
@@ -61,7 +61,7 @@ export function MonitorCard({ id }: Props) {
       </div>
       <div class="min-w-0 flex-1">
         <div class="truncate font-display text-[13.5px] font-bold">
-          {mon()?.name ?? id}
+          {mon()?.name ?? props.id}
         </div>
         <div class="mt-0.75 flex items-center gap-1.5 font-mono text-[11px] text-muted-foreground">
           <span class="text-foreground/80">{theme().name}</span>
@@ -70,9 +70,9 @@ export function MonitorCard({ id }: Props) {
       <Switch
         class="z-10"
         size="sm"
-        checked={isApplied(id)}
+        checked={isApplied(props.id)}
         disabled={fixedStore.allUnified}
-        onCheckedChange={() => void toggleApply(id)}
+        onCheckedChange={() => void toggleApply(props.id)}
       />
     </div>
   );
