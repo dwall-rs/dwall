@@ -247,6 +247,18 @@ fn resolved_form(path: &Path) -> Option<PathBuf> {
     }
 }
 
+/// The sibling directory a move is staged in, so the destination only ever appears
+/// complete.
+///
+/// The name is derived from the destination rather than randomised: a crash between
+/// the copy and the rename leaves it behind, and the next attempt has to find and
+/// clear exactly the same directory.
+fn staging_directory(destination: &Path) -> PathBuf {
+    let mut name = destination.file_name().unwrap_or_default().to_os_string();
+    name.push(".dwall-partial");
+    destination.with_file_name(name)
+}
+
 async fn perform_directory_move(
     source: &Path,
     destination: &Path,
@@ -255,9 +267,26 @@ async fn perform_directory_move(
         return Ok(());
     }
 
-    copy_dir(source, destination)
-        .await
-        .map_err(DirectoryMoveError::CopyFailed)?;
+    let staging = staging_directory(destination);
+
+    // A previous attempt that died between the copy and the rename left this behind;
+    // it is ours by construction, so clearing it is not destructive.
+    if staging.exists() {
+        let _ = fs::remove_dir_all(&staging).await;
+    }
+
+    // Copy beside the destination and rename it into place: a copy that fails halfway
+    // leaves the destination untouched, so the move can be retried instead of failing
+    // on a half-written tree that `DestinationExists` then refuses forever.
+    if let Err(err) = copy_dir(source, &staging).await {
+        let _ = fs::remove_dir_all(&staging).await;
+        return Err(DirectoryMoveError::CopyFailed(err));
+    }
+
+    if let Err(err) = fs::rename(&staging, destination).await {
+        let _ = fs::remove_dir_all(&staging).await;
+        return Err(DirectoryMoveError::CopyFailed(err));
+    }
 
     fs::remove_dir_all(source)
         .await
@@ -464,5 +493,96 @@ mod tests {
             validate_directory_move(Path::new(r"D:\Themes"), Path::new(r"d:\themes\new")),
             Err(DirectoryMoveError::CopyFailed(_))
         ));
+    }
+
+    // ── move_directory ──────────────────────────────────────────────────────
+
+    /// A source tree with a top-level file and a nested one, inside a parent that
+    /// also holds the destination.
+    fn scratch_tree(name: &str) -> (PathBuf, PathBuf) {
+        let root = std::env::temp_dir().join(name);
+        let source = root.join("source");
+        let _ = std::fs::remove_dir_all(&root);
+        std::fs::create_dir_all(source.join("nested")).unwrap();
+        std::fs::write(source.join("a.txt"), b"a").unwrap();
+        std::fs::write(source.join("nested").join("b.txt"), b"b").unwrap();
+
+        (root, source)
+    }
+
+    #[tokio::test]
+    async fn move_directory_moves_a_tree_and_removes_the_source() {
+        let (root, source) = scratch_tree("dwall_move_ok");
+        let destination = root.join("destination");
+
+        move_directory(source.clone(), destination.clone())
+            .await
+            .unwrap();
+
+        assert!(!source.exists(), "the source should be gone");
+        assert_eq!(std::fs::read(destination.join("a.txt")).unwrap(), b"a");
+        assert_eq!(
+            std::fs::read(destination.join("nested").join("b.txt")).unwrap(),
+            b"b"
+        );
+        assert!(
+            !staging_directory(&destination).exists(),
+            "the staging directory must not survive a successful move"
+        );
+
+        let _ = std::fs::remove_dir_all(&root);
+    }
+
+    /// A move that died between the copy and the rename used to leave the destination
+    /// half written, and the next attempt refused it with `DestinationExists`.
+    #[tokio::test]
+    async fn a_leftover_staging_directory_does_not_block_the_next_move() {
+        let (root, source) = scratch_tree("dwall_move_stale");
+        let destination = root.join("destination");
+        let staging = staging_directory(&destination);
+
+        std::fs::create_dir_all(&staging).unwrap();
+        std::fs::write(staging.join("half-written.txt"), b"junk").unwrap();
+
+        move_directory(source.clone(), destination.clone())
+            .await
+            .unwrap();
+
+        assert_eq!(std::fs::read(destination.join("a.txt")).unwrap(), b"a");
+        assert!(
+            !destination.join("half-written.txt").exists(),
+            "the stale staging contents must not reach the destination"
+        );
+        assert!(!staging.exists());
+
+        let _ = std::fs::remove_dir_all(&root);
+    }
+
+    #[tokio::test]
+    async fn move_directory_refuses_an_existing_destination_and_keeps_the_source() {
+        let (root, source) = scratch_tree("dwall_move_taken");
+        let destination = root.join("destination");
+        std::fs::create_dir_all(&destination).unwrap();
+
+        assert!(matches!(
+            move_directory(source.clone(), destination.clone()).await,
+            Err(DirectoryMoveError::DestinationExists)
+        ));
+        assert!(source.exists(), "the source must survive a refused move");
+
+        let _ = std::fs::remove_dir_all(&root);
+    }
+
+    #[tokio::test]
+    async fn move_directory_with_a_missing_source_is_a_no_op() {
+        let root = std::env::temp_dir().join("dwall_move_missing");
+        let _ = std::fs::remove_dir_all(&root);
+
+        move_directory(root.join("absent"), root.join("destination"))
+            .await
+            .unwrap();
+
+        assert!(!root.join("destination").exists());
+        let _ = std::fs::remove_dir_all(&root);
     }
 }
