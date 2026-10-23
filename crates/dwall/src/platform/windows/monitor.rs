@@ -396,8 +396,26 @@ fn get_device_friendly_name(
 ) -> DwallResult<String> {
     debug!("Getting device friendly name");
 
+    // A null buffer asks the API for the size the property needs; the call itself fails
+    // with ERROR_INSUFFICIENT_BUFFER, which is the expected answer. The fixed 512-byte
+    // buffer this replaces made a longer friendly name fail with that same error and
+    // fall back, and long names do exist.
     let mut required_size = 0;
-    let mut buffer = vec![0u8; 512];
+    unsafe {
+        let _ = SetupDiGetDeviceRegistryPropertyW(
+            device_info_set.as_raw(),
+            device_info_data,
+            SPDRP_FRIENDLYNAME,
+            None,
+            None,
+            Some(&mut required_size),
+        );
+    }
+
+    // A zero size means the property is unavailable; the second call then fails and
+    // reports it, so the caller still gets its fallback name.
+    let mut buffer = vec![0u8; required_size as usize];
+    let mut written = 0;
 
     unsafe {
         SetupDiGetDeviceRegistryPropertyW(
@@ -406,7 +424,7 @@ fn get_device_friendly_name(
             SPDRP_FRIENDLYNAME,
             None,
             Some(buffer.as_mut()),
-            Some(&mut required_size),
+            Some(&mut written),
         )
         .map_err(|e| {
             error!(
@@ -421,7 +439,7 @@ fn get_device_friendly_name(
         .as_chunks::<2>()
         .0
         .iter()
-        .take((required_size / 2) as usize)
+        .take((written / 2) as usize)
         .map(|chunk| u16::from_le_bytes(*chunk))
         .collect();
 

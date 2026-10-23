@@ -29,7 +29,9 @@ const ACCESS_REQUEST_TIMEOUT: Duration = Duration::from_secs(10);
 /// Converts a [`Duration`] into a WinRT `TimeSpan` (100-nanosecond ticks).
 fn time_span(duration: Duration) -> TimeSpan {
     TimeSpan {
-        Duration: (duration.as_secs() as i64) * 10_000_000,
+        // Saturating: a Duration can name more seconds than a TimeSpan holds, and this
+        // process aborts on a panic, so an overflow here must not be one.
+        Duration: (duration.as_secs() as i64).saturating_mul(10_000_000),
     }
 }
 
@@ -195,6 +197,16 @@ mod tests {
     #[test]
     fn time_span_truncates_sub_second_parts() {
         assert_eq!(time_span(Duration::from_millis(1_999)).Duration, 10_000_000);
+    }
+
+    /// A Duration longer than a TimeSpan can hold saturates instead of overflowing:
+    /// this process aborts on a panic, and an impossible budget must not become one.
+    #[test]
+    fn time_span_saturates_instead_of_overflowing() {
+        assert_eq!(
+            time_span(Duration::from_secs(i64::MAX as u64)).Duration,
+            i64::MAX
+        );
     }
 
     #[test]

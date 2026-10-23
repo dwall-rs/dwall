@@ -143,17 +143,28 @@ where
         // change that.
         self.last_position.set(Some(*position));
 
+        // The lock screen shows the theme of the first monitor that applied
+        // successfully, in monitor order. A HashMap has no order, so taking the first
+        // configured theme instead would let the lock screen change every cycle when
+        // each monitor maps to a different theme.
+        let mut lock_screen_theme = None;
         let outcome = apply_monitor_targets(
             monitor_targets(
                 self.config.monitor_specific_wallpapers(),
                 &available_monitors,
             ),
-            |monitor_id, theme_id| self.process_single(monitor_id, theme_id, &solar_position),
+            |monitor_id, theme_id| {
+                let result = self.process_single(monitor_id, theme_id, &solar_position);
+                if result.is_ok() && lock_screen_theme.is_none() {
+                    lock_screen_theme = Some(theme_id.to_string());
+                }
+
+                result
+            },
         );
 
-        if outcome.applied > 0
-            && let Some(theme_id) = self.get_first_configured_theme()
-            && let Err(e) = self.process_lock_screen(&solar_position, &theme_id)
+        if let Some(theme_id) = lock_screen_theme.as_deref()
+            && let Err(e) = self.process_lock_screen(&solar_position, theme_id)
         {
             warn!(error = %e, theme_id = theme_id, "Failed to apply lock screen wallpaper");
         }
@@ -305,14 +316,6 @@ where
         Ok(image_path)
     }
 
-    fn get_first_configured_theme(&self) -> Option<String> {
-        match self.config.monitor_specific_wallpapers() {
-            Some(MonitorSpecificWallpapers::All(theme_id)) => Some(theme_id.clone()),
-            Some(MonitorSpecificWallpapers::Individual(map)) => map.values().next().cloned(),
-            None => None,
-        }
-    }
-
     /// The image index every configured monitor would show at `solar_position`.
     ///
     /// Read-only: nothing is applied, and the selection goes through the same
@@ -438,11 +441,22 @@ impl MonitorPassOutcome {
 }
 
 /// The (monitor, theme) pairs a cycle should apply, in monitor order.
+///
+/// A HashMap has no order, so the displays are sorted by the position the system
+/// enumerated them in (the device path breaks a tie). The cycle then applies them and
+/// the lock screen picks the first successful theme from the same order on every run.
 fn monitor_targets<'a>(
     configs: Option<&'a MonitorSpecificWallpapers>,
     monitors: &'a HashMap<String, DisplayMonitor>,
 ) -> impl Iterator<Item = (&'a str, &'a str)> + 'a {
-    monitors.keys().filter_map(move |monitor_id| {
+    let mut ordered: Vec<(&String, &DisplayMonitor)> = monitors.iter().collect();
+    ordered.sort_by(|(left_id, left), (right_id, right)| {
+        left.position_index()
+            .cmp(&right.position_index())
+            .then_with(|| left_id.cmp(right_id))
+    });
+
+    ordered.into_iter().filter_map(move |(monitor_id, _)| {
         let Some(theme_id) = configs.and_then(|configs| configs.get(monitor_id)) else {
             debug!(monitor_id = monitor_id, "No theme config, skipping");
             return None;
@@ -766,11 +780,29 @@ mod tests {
             themes: &[(&str, &[u32])],
             frames: &str,
         ) -> Self {
+            let themes: Vec<(&str, &str, &[u32])> = themes
+                .iter()
+                .map(|(theme_id, images)| (*theme_id, frames, *images))
+                .collect();
+
+            Self::new_with_theme_frames(name, monitors, mode, &themes)
+        }
+
+        /// [`new`](Self::new) with frames chosen per theme.
+        ///
+        /// A test that has to tell two themes apart by the image a frame selects needs
+        /// this: with shared frames every theme resolves to the same image.
+        fn new_with_theme_frames(
+            name: &str,
+            monitors: &[&str],
+            mode: WallpaperMode,
+            themes: &[(&str, &str, &[u32])],
+        ) -> Self {
             let directory = scratch(name);
             let themes_directory = directory.join("themes");
             fs::create_dir_all(&themes_directory).unwrap();
 
-            for (theme_id, images) in themes {
+            for (theme_id, frames, images) in themes {
                 write_theme(&themes_directory, theme_id, frames, "jpg", images);
             }
 
@@ -1198,21 +1230,35 @@ azimuth = 0.0
         // screen has to pick the same theme every cycle, not whichever one the map
         // happens to yield first.
         for _ in 0..5 {
-            let fixture = Fixture::new(
+            // Alpha's two-frame theme selects its daylight frame at noon; Beta's
+            // single-frame theme always selects its only frame, so the image name tells
+            // which theme reached the lock screen.
+            let fixture = Fixture::new_with_theme_frames(
                 "lock_deterministic",
                 &["MON-A", "MON-B"],
                 individual(&[("MON-A", "Alpha"), ("MON-B", "Beta")]),
-                &[("Alpha", &[1, 2]), ("Beta", &[1, 2])],
+                &[("Alpha", TWO_FRAMES, &[1, 2]), ("Beta", ONE_FRAME, &[1])],
             )
             .with_lock_screen();
 
             fixture.run().unwrap();
 
+            assert_eq!(
+                fixture.wallpapers.images_for("MON-A"),
+                vec!["2.jpg".to_string()],
+                "MON-A's theme picks the daylight frame"
+            );
+            assert_eq!(
+                fixture.wallpapers.images_for("MON-B"),
+                vec!["1.jpg".to_string()],
+                "MON-B's theme picks a different image, so the two are distinguishable"
+            );
+
             let applied = fixture.wallpapers.lock_screen_images();
             assert_eq!(applied.len(), 1, "the lock screen is set once per cycle");
             assert_eq!(
                 applied[0], "2.jpg",
-                "both themes declare the same frames, so the image name must match"
+                "the lock screen shows the first monitor's theme, not whichever one the map yields"
             );
 
             fixture.cleanup();

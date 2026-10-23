@@ -7,7 +7,7 @@ use std::time::{Duration, Instant};
 use std::{ffi::OsStr, os::windows::ffi::OsStrExt};
 
 use crate::color_scheme::{CachedDaylightState, CachedThreshold, DaylightState, ThresholdConfig};
-use crate::solar::{Position, SolarPosition};
+use crate::solar::Position;
 
 // ── Wide string helpers ─────────────────────────────────────────────────────
 
@@ -122,7 +122,6 @@ define_cache! {
     Position / position => Position,
     ThresholdConfig / threshold_config => ThresholdConfig,
     DaylightState / daylight_state => DaylightState,
-    SolarPosition / solar_position => SolarPosition,
     CachedThreshold / cached_threshold => CachedThreshold,
     CachedDaylightState / cached_daylight_state => CachedDaylightState,
 }
@@ -309,7 +308,7 @@ mod tests {
 
         assert!(cache.get::<Position>().is_some());
         assert!(
-            cache.get::<SolarPosition>().is_none(),
+            cache.get::<DaylightState>().is_none(),
             "another type shares no slot with Position"
         );
     }
