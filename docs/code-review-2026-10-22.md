@@ -231,8 +231,8 @@ headless 文本路径（`docs/headless.md`：`--check-config` / `--once` / `--co
 
 ## 5. 内存与体积
 
-> **修复状态（2026-10-23 核对 `main`）**：本节的可执行项已处理；CSS 体积审计与安装包重建仍标为未处理，
-> 它们分别是收益有限的清理和发布前的动作，不是代码缺陷。
+> **修复状态（2026-10-23 核对 `main`）**：本节的可执行项已处理；只剩安装包重建标为未处理，那是发布前的
+> 动作，不是代码缺陷。CSS 审计的结论见该条自身。
 
 - **内存：优秀。** 守护进程单线程；缓存是定长结构体 6 槽（`utils.rs:79`），无全局无界容器；主题数据
   用容量 32 的 LRU（`theme.rs:77`）；显示器友好名缓存按已连接显示器收敛；无后台线程。上一轮实测静息态
@@ -241,8 +241,10 @@ headless 文本路径（`docs/headless.md`：`--check-config` / `--once` / `--co
 - **体积：优秀。** `dwall.exe` 649,216 B，`dwall-settings.exe` 4.05 MiB，前端 `dist` 394 KB
   （gzip 后 JS 77 KB + CSS 18 KB）。发布 profile（`lto` / `opt-level="z"` / `panic=abort` /
   `strip`）生效。NSIS 安装包约 1.8 MB。
-- **可优化（低）**（未处理）：CSS 115.9 KB 对该界面偏大（含 `src/styles/animate.css`、`i18n.css`），可再审计
-  未用选择器；Tailwind 生成占构建 14.5 s / 20.8 s。
+- **可优化（低）**（已处理 `a0b9d07`，见 #764）：审计结论是 CSS 体积**不**来自手写选择器。114,177 B 中
+  Tailwind 生成的 utility 占 94,882 B（83.1%）、preflight 4,035 B、`@property` 4,057 B，手写 CSS 合计约
+  6.9 KB；删掉 9 个不可能被选中的语言方案后（-3,318 B）已无手写规则可删。要再压缩只能收窄 `@source`
+  或删除未被引用的 `components/ui` 目录。另：review 的 115.9 KB 测于 `a7070d7`，在 `main` 上早已不成立。
 - **构建目录**（未处理，本机动作）：`target/` 本机累计约 82.7 GB（debug 60 GB + release 17 GB），可 `cargo clean`。
 - **依赖（低）**（已修复 `203203e`）：`package.json` 中 `solid-icons` 与 `jsdom` 无任何引用（图标库是
   `lucide-solid`；测试未用 jsdom 环境），建议移除。
