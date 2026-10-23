@@ -48,6 +48,9 @@ pub fn setup_app(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>>
             dwall::Config::default()
         }
     };
+    // Before anything can ask the webview to show an image.
+    allow_asset_directories(app.handle(), &config);
+
     let should_run_daemon = crate::daemon::should_run(&config);
     let http_client = HttpClient::new(config.network())?;
 
@@ -87,6 +90,37 @@ pub fn setup_app(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>>
     info!("Application setup completed successfully");
 
     Ok(())
+}
+
+/// Lets the asset protocol read the directories the webview shows images from.
+///
+/// The scope in `tauri.conf.json` used to be `**/*`, which let the renderer ask for any
+/// file on the disk. A pattern there cannot be narrowed to what is actually needed either:
+/// the themes directory is whatever the configuration says, and it can be moved. So the
+/// configuration is read instead, and only these three directories are reachable through
+/// `asset:` — a theme's frames live in the first two, and the library's thumbnails in the
+/// cache.
+pub fn allow_asset_directories(app: &tauri::AppHandle, config: &dwall::Config) {
+    let scope = app.asset_protocol_scope();
+    let directories = [
+        config.themes_directory().to_path_buf(),
+        config.customized_themes_directory().to_path_buf(),
+        dwall::DWALL_CACHE_DIR.join("thumbnails"),
+    ];
+
+    for directory in directories {
+        match scope.allow_directory(&directory, true) {
+            Ok(()) => debug!(
+                path = %directory.display(),
+                "Allowed the asset protocol to read a directory"
+            ),
+            Err(e) => error!(
+                error = %e,
+                path = %directory.display(),
+                "Failed to allow the asset protocol to read a directory"
+            ),
+        }
+    }
 }
 
 /// Locate `dwall.exe` next to the settings executable.
