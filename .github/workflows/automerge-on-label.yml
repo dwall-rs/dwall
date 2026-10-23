@@ -1,0 +1,82 @@
+name: Auto-merge a labelled pull request
+
+# `pr-check` does not re-run when a label is added, so its own `auto-merge` job only
+# ever sees a label that was already there when its run started. A pull request that
+# was checked first and labelled `automerge` afterwards therefore sat open for ever.
+#
+# This is the second way in, and it deliberately does not repeat the checks: it reads
+# the `pr-check` run that already happened. When that run is still going, its own
+# auto-merge job is the one that will see the label, so this job stays out of its way
+# rather than racing it.
+on:
+  pull_request:
+    types: [labeled]
+
+concurrency:
+  group: automerge-on-label-${{ github.event.pull_request.number }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  merge-if-green:
+    name: Merge if pr-check already passed
+    runs-on: ubuntu-latest
+    # A pull request from a fork gets a read-only token, so it could not merge even
+    # if it should; `pr-check`'s own job skips it for the same reason.
+    if: >-
+      github.event.label.name == 'automerge'
+      && github.event.pull_request.draft == false
+      && github.event.pull_request.head.repo.full_name == github.repository
+    timeout-minutes: 10
+    steps:
+      - name: Merge when pr-check is already green
+        env:
+          TOKEN: ${{ secrets.AUTOMERGE_TOKEN }}
+          NUMBER: ${{ github.event.pull_request.number }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          # There is no checkout here, so `gh` cannot infer the repository from a
+          # remote; without this it fails before it reads a single run.
+          GH_REPO: ${{ github.repository }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+
+          if [[ -z "${TOKEN:-}" ]]; then
+            echo "::error::AUTOMERGE_TOKEN is not set, so this labelled pull request cannot be merged."
+            exit 1
+          fi
+
+          # `--limit 1` is the newest run: a re-run of the same workflow replaces the
+          # verdict of the older one instead of adding a second one to weigh.
+          run=$(gh run list --workflow pr-check.yml --commit "${HEAD_SHA}" --limit 1 \
+                  --json status,conclusion --jq '.[0] // empty') || {
+            echo "::error::Could not read the pr-check runs of ${HEAD_SHA}."
+            exit 1
+          }
+
+          if [[ -z "${run}" ]]; then
+            echo "::warning::No pr-check run for ${HEAD_SHA}, so there is nothing to trust. Merge this one by hand."
+            exit 0
+          fi
+
+          status=$(jq -r '.status' <<< "${run}")
+          conclusion=$(jq -r '.conclusion // ""' <<< "${run}")
+          echo "pr-check for ${HEAD_SHA}: status=${status} conclusion=${conclusion}"
+
+          if [[ "${status}" != "completed" ]]; then
+            echo "::notice::pr-check is still ${status}; its own auto-merge job will see the label."
+            exit 0
+          fi
+
+          if [[ "${conclusion}" != "success" ]]; then
+            echo "::warning::pr-check concluded ${conclusion}, so this pull request is not merged."
+            exit 0
+          fi
+
+          # `AUTOMERGE_TOKEN`, not `GITHUB_TOKEN`: GitHub starts no workflow for the
+          # events the repository token causes, so a merge made with it would leave
+          # `delete-merged-branch.yml` with nothing to hear.
+          GH_TOKEN="${TOKEN}" gh pr merge "${NUMBER}" --merge
