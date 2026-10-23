@@ -114,7 +114,7 @@ export const dict: RawDictionary = {
 
   settings: {
     title: "설정",
-    subtitle: "preferences",
+    subtitle: "환경 설정",
     unsaved: "저장 안 됨",
     saveFailed: "저장 실패",
     loadFailed: "설정을 불러오지 못했습니다",
