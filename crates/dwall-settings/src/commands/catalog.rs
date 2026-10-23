@@ -411,4 +411,62 @@ azimuth = 20.0
             "the thumbnail count comes from the catalog table"
         );
     }
+
+    // ── local_thumbnails ────────────────────────────────────────────────────
+
+    /// Thumbnails are ordered by their numeric file stem, not lexically, so image 10
+    /// follows image 2. A file that is not an image, or whose stem is not a number,
+    /// is not a thumbnail, and the extension matches regardless of case.
+    #[test]
+    fn local_thumbnails_are_ordered_numerically_and_filtered() {
+        let dir = scratch("thumbnail_order");
+        let theme_dir = dir.join("themes").join("Big Sur");
+        let thumbnails = theme_dir.join("thumbnails");
+        std::fs::create_dir_all(&thumbnails).unwrap();
+        for name in ["10.JPG", "2.jpg", "1.jpg", "notes.txt", "cover.jpg"] {
+            std::fs::write(thumbnails.join(name), "image").unwrap();
+        }
+
+        let names: Vec<String> = local_thumbnails(&theme_dir, &ImageFormat::Jpeg)
+            .iter()
+            .map(|path| {
+                Path::new(path)
+                    .file_name()
+                    .unwrap()
+                    .to_string_lossy()
+                    .into_owned()
+            })
+            .collect();
+
+        assert_eq!(names, vec!["1.jpg", "2.jpg", "10.JPG"]);
+
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    /// thumbnails/ wins over images/ when both exist, and images/ is the fallback for
+    /// a theme that ships no thumbnails.
+    #[test]
+    fn local_thumbnails_prefer_the_thumbnails_directory_then_fall_back() {
+        let dir = scratch("thumbnail_fallback");
+        let theme_dir = dir.join("themes").join("Big Sur");
+        std::fs::create_dir_all(theme_dir.join("thumbnails")).unwrap();
+        std::fs::create_dir_all(theme_dir.join("images")).unwrap();
+        std::fs::write(theme_dir.join("images").join("1.jpg"), "image").unwrap();
+
+        let from_images = local_thumbnails(&theme_dir, &ImageFormat::Jpeg);
+        assert_eq!(from_images.len(), 1);
+        assert!(from_images[0].contains("images"), "{}", from_images[0]);
+
+        std::fs::write(theme_dir.join("thumbnails").join("2.jpg"), "image").unwrap();
+
+        let from_thumbnails = local_thumbnails(&theme_dir, &ImageFormat::Jpeg);
+        assert_eq!(from_thumbnails.len(), 1);
+        assert!(
+            from_thumbnails[0].contains("thumbnails"),
+            "{}",
+            from_thumbnails[0]
+        );
+
+        let _ = std::fs::remove_dir_all(&dir);
+    }
 }
