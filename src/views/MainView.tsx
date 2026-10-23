@@ -21,9 +21,6 @@ export function MainView() {
   // focus back on the toggle. Without this, Tab walked the page behind the drawer and
   // closing dropped focus on <body>, so a keyboard user lost their place.
   //
-  // The move is deferred to a microtask because the class that makes the drawer visible is
-  // applied by an effect created after this one, and an invisible element cannot be
-  // focused.
   createEffect(
     on(
       () => uiStore.libOpen,
@@ -31,13 +28,22 @@ export function MainView() {
         // At xl the library is an inline column and libOpen is ignored there, so there is
         // neither a drawer to move into nor a toggle to come back to.
         if (isXl()) return;
-        queueMicrotask(() => {
-          if (open) {
-            drawer?.focus();
-            return;
-          }
-          document.getElementById(LIBRARY_TOGGLE_ID)?.focus();
-        });
+
+        if (open) {
+          // Two frames, not a microtask. The class that makes the drawer visible is applied
+          // by an effect created after this one, and the visibility transition it starts
+          // still reports the old value for the frame that begins it. An element that is
+          // hidden at that moment refuses focus, so the move waits for the frame after.
+          requestAnimationFrame(() =>
+            requestAnimationFrame(() => drawer?.focus()),
+          );
+          return;
+        }
+
+        // The toggle is visible either way, so it can take focus straight away.
+        queueMicrotask(() =>
+          document.getElementById(LIBRARY_TOGGLE_ID)?.focus(),
+        );
       },
       { defer: true },
     ),
