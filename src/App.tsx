@@ -25,7 +25,7 @@ export default function App() {
     await Promise.all([loadSettings(), loadCatalog()]);
 
     const config = settingsStore.config;
-    syncFixed(config);
+    await syncFixed(config);
     // Only themes on disk can be applied, so only those can enter the pool.
     syncRandom(config, availableThemeIds());
     if (config?.wallpaper_mode?.mode === "random") setMode("random");
