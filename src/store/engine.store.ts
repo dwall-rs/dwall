@@ -41,21 +41,36 @@ const [engineStore, setEngineStore] = createStore<EngineState>({
   pendingTimer: undefined,
 });
 
+/** Set while a refresh is failing, so the 5 s poll reports the outage once per streak. */
+let refreshFailed = false;
+/** Latest refresh issued; an older, slower one must not write its result over a newer one. */
+let refreshSeq = 0;
+
 /** In sync with the real daemon state */
 const refresh = async () => {
+  const seq = ++refreshSeq;
   try {
     const running = await getEngineStatus();
+    // A newer refresh started while this one was in flight; its result is the current one.
+    if (seq !== refreshSeq) return;
+    refreshFailed = false;
     setEngineStore("running", running);
 
     // Only a running daemon has a log worth reading, and the check runs every few
     // seconds.
     if (running) {
-      setEngineStore("lastError", await getDaemonLastError());
+      const lastError = await getDaemonLastError();
+      if (seq !== refreshSeq) return;
+      setEngineStore("lastError", lastError);
     } else {
       setEngineStore("lastError", null);
     }
   } catch (e) {
-    notifyFailure("query engine status", e);
+    if (seq !== refreshSeq) return;
+    // The poll runs every few seconds; one toast per failure streak is a report, one
+    // per tick is spam.
+    if (!refreshFailed) notifyFailure("query engine status", e);
+    refreshFailed = true;
   }
 };
 

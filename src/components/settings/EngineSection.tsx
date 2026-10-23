@@ -25,6 +25,7 @@ import { Field, FieldGroup, FieldLabel } from "../ui/field";
 import { Input } from "../ui/input";
 import { checkAutoStart, disableAutoStart, enableAutoStart } from "@/ipc";
 import { resourceValue } from "@/lib/resource";
+import { toast } from "@/components/ui/toast";
 
 export function EngineSection() {
   const [flash, setFlash] = createSignal<string | null>(null);
@@ -59,11 +60,18 @@ export function EngineSection() {
             <Switch
               checked={resourceValue(autoStart) ?? false}
               onCheckedChange={async (checked) => {
-                if (checked) {
-                  await enableAutoStart();
-                } else {
-                  await disableAutoStart();
+                try {
+                  if (checked) {
+                    await enableAutoStart();
+                  } else {
+                    await disableAutoStart();
+                  }
+                } catch (e) {
+                  toast.error(t("common.operationFailed"), {
+                    description: String(e),
+                  });
                 }
+                // Re-read either way: on failure the switch falls back to the real state.
                 refetchAutoStart();
               }}
             />

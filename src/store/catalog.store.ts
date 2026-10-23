@@ -40,13 +40,31 @@ const [catalogStore, setCatalogStore] = createStore<CatalogState>({
 
 const load = async () => {
   setCatalogStore("status", "loading");
+  // A download can finish while the catalog is being read. Its installed flag is set on
+  // the list already in the store, which the fresh list would otherwise replace; the
+  // revision tells us whether one did.
+  const revisionBefore = catalogStore.installedRevision;
   try {
     const [themes, monitors] = await Promise.all([
       getThemeCatalog(),
       getMonitors(),
     ]);
+    const installedDuringLoad =
+      catalogStore.installedRevision === revisionBefore
+        ? null
+        : new Set(
+            catalogStore.themes
+              .filter((theme) => theme.installed)
+              .map((theme) => theme.id),
+          );
     setCatalogStore({
-      themes,
+      themes: installedDuringLoad
+        ? themes.map((theme) =>
+            installedDuringLoad.has(theme.id)
+              ? { ...theme, installed: true }
+              : theme,
+          )
+        : themes,
       monitors: Object.values(monitors),
       status: "ready",
       error: "",

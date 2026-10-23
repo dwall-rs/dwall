@@ -100,7 +100,12 @@ const toggleApply = async (key: string) => {
     nextMode = { mode: "fixed", monitor_specific_wallpapers: fixedMap };
   }
 
-  await applyWallpaperMode(nextMode);
+  try {
+    await applyWallpaperMode(nextMode);
+  } catch {
+    // applyWallpaperMode has already reported the failure to the user; the callers are
+    // fire-and-forget, so the rejection must not escape as an unhandled one.
+  }
 };
 
 const toggleUnified = () => {
