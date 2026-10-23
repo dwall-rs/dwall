@@ -100,9 +100,6 @@ export const dict: RawDictionary = {
   commit: {
     applied: "已套用 {{ theme }}",
     notApplied: "未套用",
-    unsaved: "未儲存的變更",
-    saved: "已儲存",
-    savedAt: "已儲存 {{ time }}",
     discard: "放棄",
     saving: "寫入中…",
     save: "儲存設定",

@@ -105,9 +105,6 @@ export const dict: RawDictionary = {
   commit: {
     applied: "適用済み {{ theme }}",
     notApplied: "未適用",
-    unsaved: "未保存の変更",
-    saved: "保存済み",
-    savedAt: "保存済み {{ time }}",
     discard: "破棄",
     saving: "保存中…",
     save: "設定を保存",

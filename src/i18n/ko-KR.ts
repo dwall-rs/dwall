@@ -104,9 +104,6 @@ export const dict: RawDictionary = {
   commit: {
     applied: "적용됨 {{ theme }}",
     notApplied: "적용 안 됨",
-    unsaved: "저장되지 않은 변경",
-    saved: "저장됨",
-    savedAt: "저장됨 {{ time }}",
     discard: "취소",
     saving: "저장 중…",
     save: "설정 저장",
