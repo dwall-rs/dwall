@@ -28,8 +28,10 @@ export function WallpaperStrip(props: Props) {
           const sel = wp.index === props.selIndex;
           const matched = wp.index === props.matchedIndex;
           return (
-            <div
+            <button
+              type="button"
               onClick={() => props.onSelect(sel ? null : wp.index)}
+              aria-pressed={sel}
               style={{ width: "104px", "animation-delay": `${i * 40}ms` }}
               class={clsx(
                 "group relative h-16 shrink-0 cursor-pointer overflow-hidden rounded-lg border transition-all duration-200 animate-rise hover:-translate-y-0.5",
@@ -50,7 +52,7 @@ export function WallpaperStrip(props: Props) {
                 {formatAngle(wp.solar.altitude)}° ·{" "}
                 {formatAngle(wp.solar.azimuth)}°
               </div>
-            </div>
+            </button>
           );
         })}
       </div>
