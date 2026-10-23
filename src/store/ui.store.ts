@@ -69,11 +69,4 @@ const setTitlebarBorder = (titlebarBorder: boolean) => {
   }
 };
 
-export {
-  TITLEBAR_BORDER_KEY,
-  uiStore,
-  toggleView,
-  setLibOpen,
-  toggleLib,
-  setTitlebarBorder,
-};
+export { uiStore, toggleView, setLibOpen, toggleLib, setTitlebarBorder };

@@ -43,7 +43,9 @@ export function FixedStage() {
 
   const [matchedEntry] = createResource(
     () => {
-      const cur = current();
+      // Read through the guard: the source runs as a computation, so an accessor in
+      // its error state would throw past the stage's own fallback to the shell boundary.
+      const cur = resourceValue(current);
       const id = themeId();
       return id && cur ? { id, cur } : null;
     },

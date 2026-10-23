@@ -141,3 +141,39 @@ describe("engine store: start and stop", () => {
     expect(mocks.toastError).toHaveBeenCalled();
   });
 });
+
+describe("engine store: poll hygiene", () => {
+  test("a failure that keeps repeating is reported once, not on every tick", async () => {
+    mocks.getEngineStatus.mockRejectedValue(new Error("ipc down"));
+
+    const store = await freshStore();
+    await store.refresh();
+    await store.refresh();
+    await store.refresh();
+
+    expect(mocks.toastError).toHaveBeenCalledTimes(1);
+  });
+
+  test("an older refresh that resolves late does not overwrite a newer one", async () => {
+    let resolveOlder!: (running: boolean) => void;
+    mocks.getEngineStatus
+      .mockImplementationOnce(
+        () =>
+          new Promise<boolean>((resolve) => {
+            resolveOlder = resolve;
+          }),
+      )
+      .mockResolvedValueOnce(false);
+
+    const store = await freshStore();
+    const older = store.refresh();
+    const newer = store.refresh();
+    await newer;
+    expect(store.engineStore.running).toBe(false);
+
+    resolveOlder(true);
+    await older;
+
+    expect(store.engineStore.running).toBe(false);
+  });
+});

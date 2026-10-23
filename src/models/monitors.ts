@@ -3,7 +3,7 @@ import type { DisplayMonitor } from "@/ipc";
 import type { Monitor } from "./types";
 
 /** Pseudo-monitor whose settings apply to every monitor. */
-export const ALL_MONITOR_ID = "all";
+const ALL_MONITOR_ID = "all";
 
 /** Build the UI monitor list, prepending the (already localized) "all monitors" entry. */
 export const monitorList = (

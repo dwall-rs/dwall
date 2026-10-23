@@ -13,7 +13,7 @@ import { createEffect, on, Show } from "solid-js";
 
 export function MainView() {
   const fixed = () => modeStore.mode === "fixed";
-  const isXl = useMediaQuery(MQ_XL);
+  const isXl = useMediaQuery(() => MQ_XL);
   let drawer: HTMLDivElement | undefined;
 
   // The drawer covers the page, so it has to behave like one: opening it moves focus
