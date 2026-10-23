@@ -17,6 +17,19 @@ body {
     -ms-user-select: none;
 }
 
+/* The blanket rule above is what makes the window feel like an app rather than a web
+   page, but on its own it also takes away the only way to get a path or an error
+   message out of the app. A field is there to be edited and `[data-selectable]` marks
+   the read-only text the app shows for copying. */
+input,
+textarea,
+[data-selectable] {
+    user-select: text;
+    -moz-user-select: text;
+    -webkit-user-select: text;
+    -ms-user-select: text;
+}
+
 @layer base {
     :root {
         --success: oklch(62.7% 0.194 149.214); /* supplement: completed/running */
