@@ -98,9 +98,6 @@ export const dict = {
   commit: {
     applied: "Applied {{ theme }}",
     notApplied: "Not applied",
-    unsaved: "Unsaved changes",
-    saved: "Saved",
-    savedAt: "Saved {{ time }}",
     discard: "Discard",
     saving: "Saving…",
     save: "Save",
