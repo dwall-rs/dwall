@@ -2,7 +2,7 @@
 
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
-use std::sync::atomic::AtomicBool;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
 
 use tauri::Runtime;
@@ -29,6 +29,54 @@ struct DownloadTaskGuard<'a> {
 impl Drop for DownloadTaskGuard<'_> {
     fn drop(&mut self) {
         self.tracker.remove_task(self.theme_id);
+    }
+}
+
+/// Removes the scratch paths of a download whose future is dropped before it
+/// finishes.
+///
+/// Cancelling an invoke, or closing the window, drops the download future, and the
+/// cleanup on the error path never runs: the staging directory, the intermediate
+/// archive and the partial download stayed behind until the next download of the
+/// same theme happened to overwrite them. The guard is disarmed on the one path that
+/// deliberately keeps a file — a failed transfer keeps a non-empty partial so the
+/// next attempt can resume it.
+struct ScratchGuard {
+    staging_dir: PathBuf,
+    zip_path: PathBuf,
+    temp_path: PathBuf,
+    armed: bool,
+}
+
+impl ScratchGuard {
+    fn new(staging_dir: PathBuf, zip_path: PathBuf, temp_path: PathBuf) -> Self {
+        Self {
+            staging_dir,
+            zip_path,
+            temp_path,
+            armed: true,
+        }
+    }
+
+    /// Leaves the paths to the explicit cleanup, which knows what to keep.
+    fn disarm(&mut self) {
+        self.armed = false;
+    }
+}
+
+impl Drop for ScratchGuard {
+    fn drop(&mut self) {
+        if !self.armed {
+            return;
+        }
+
+        // Blocking removals, best effort: the future is being dropped, so there is no
+        // async context left to await in and nothing to report the result to. A
+        // staging directory left half written by an extraction that was already on a
+        // blocking thread is cleared by the next download before it writes again.
+        let _ = std::fs::remove_dir_all(&self.staging_dir);
+        let _ = std::fs::remove_file(&self.zip_path);
+        let _ = std::fs::remove_file(&self.temp_path);
     }
 }
 
@@ -70,6 +118,11 @@ impl ThemeDownloader {
         let zip_path = ThemePathResolver::zip_path(config, theme_id);
         let temp_path = ThemePathResolver::temp_zip_path(config, theme_id);
 
+        // Cleans these up if this future is dropped before the download finishes; the
+        // one path that keeps a file disarms it below.
+        let mut scratch =
+            ScratchGuard::new(staging_dir.clone(), zip_path.clone(), temp_path.clone());
+
         // Always start from a clean staging directory; the installed theme (if any)
         // is left untouched until the swap below.
         if staging_dir.exists() {
@@ -90,7 +143,19 @@ impl ThemeDownloader {
         if let Err(e) = download_result {
             cleanup_dir(&staging_dir).await;
             self.handle_download_error(&temp_path).await;
+            // A non-empty partial is kept on purpose: the next attempt resumes it.
+            scratch.disarm();
             return Err(e);
+        }
+
+        // The transfer can finish just as the user cancels, so the flag is checked
+        // again between the stages: a cancelled download must not be extracted, nor
+        // swapped in, after the work it already did.
+        if cancel_flag.load(Ordering::Relaxed) {
+            cleanup_dir(&staging_dir).await;
+            let _ = fs::remove_file(&temp_path).await;
+            scratch.disarm();
+            return Err(DwallSettingsError::Cancelled);
         }
 
         let extract_result = stage_archive(&temp_path, &zip_path, &staging_dir).await;
@@ -98,6 +163,11 @@ impl ThemeDownloader {
         if let Err(e) = extract_result {
             cleanup_dir(&staging_dir).await;
             return Err(e);
+        }
+
+        if cancel_flag.load(Ordering::Relaxed) {
+            cleanup_dir(&staging_dir).await;
+            return Err(DwallSettingsError::Cancelled);
         }
 
         // Extraction succeeding only means the archive unpacked. `archive::extract_zip`
@@ -537,6 +607,57 @@ azimuth = 20.0
             !zip_path.exists(),
             "a failed extraction must not leave the archive on disk"
         );
+    }
+
+    // ── ScratchGuard ────────────────────────────────────────────────────────
+
+    /// Dropping the future is what cancelling an invoke does; the scratch paths must
+    /// not survive it.
+    #[test]
+    fn a_dropped_scratch_guard_removes_the_staging_directory_and_archives() {
+        let root = scratch_themes_directory("scratch_drop");
+        let staging = root.join("Demo.staging");
+        let zip_path = root.join("Demo.zip");
+        let temp_path = root.join("Demo.zip.tmp");
+        fs::create_dir_all(&staging).unwrap();
+        fs::write(&temp_path, b"partial").unwrap();
+        fs::write(&zip_path, b"archive").unwrap();
+
+        drop(ScratchGuard::new(
+            staging.clone(),
+            zip_path.clone(),
+            temp_path.clone(),
+        ));
+
+        assert!(!staging.exists(), "the staging directory must go");
+        assert!(!zip_path.exists(), "the intermediate archive must go");
+        assert!(!temp_path.exists(), "the partial download must go");
+
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    /// The failure path keeps a non-empty partial on purpose, so the guard is disarmed
+    /// once the explicit cleanup has decided what to keep.
+    #[test]
+    fn a_disarmed_scratch_guard_removes_nothing() {
+        let root = scratch_themes_directory("scratch_disarmed");
+        let staging = root.join("Demo.staging");
+        let temp_path = root.join("Demo.zip.tmp");
+        fs::create_dir_all(&staging).unwrap();
+        fs::write(&temp_path, b"partial").unwrap();
+
+        let mut guard =
+            ScratchGuard::new(staging.clone(), root.join("Demo.zip"), temp_path.clone());
+        guard.disarm();
+        drop(guard);
+
+        assert!(
+            temp_path.exists(),
+            "a disarmed guard must leave the partial alone"
+        );
+        assert!(staging.exists(), "a disarmed guard removes nothing");
+
+        let _ = fs::remove_dir_all(&root);
     }
 
     // ── is_retryable ────────────────────────────────────────────────────────

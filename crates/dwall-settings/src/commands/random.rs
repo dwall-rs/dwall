@@ -23,10 +23,18 @@ pub fn get_random_selection() -> DwallSettingsResult<Option<RandomSelection>> {
         return Ok(None);
     }
 
-    Ok(dwall::random_state::read()
-        .unwrap_or(None)
-        .map(|selection| RandomSelection {
-            date: selection.date,
-            theme_id: selection.theme_id,
-        }))
+    let selection = match dwall::random_state::read() {
+        Ok(selection) => selection,
+        Err(e) => {
+            // A corrupt state file means "no selection" to the UI; say why rather than
+            // reporting the same None as random mode being off.
+            warn!(error = %e, "Could not read the random-mode state");
+            None
+        }
+    };
+
+    Ok(selection.map(|selection| RandomSelection {
+        date: selection.date,
+        theme_id: selection.theme_id,
+    }))
 }

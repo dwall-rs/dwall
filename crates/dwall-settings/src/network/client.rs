@@ -130,6 +130,17 @@ impl HttpClient {
             return Err(DwallSettingsError::DownloadTooLarge { limit: max_bytes });
         }
 
+        // A declared length over the bound is refused before the body is read, and
+        // before any file is created: the server has already said how much it will
+        // send, so there is nothing worth streaming for a download that cannot fit.
+        // A resumed response declares only the bytes still to come, which is why the
+        // partial file's length is added back in.
+        if let Some(length) = response.content_length()
+            && already_written.saturating_add(length) > max_bytes
+        {
+            return Err(DwallSettingsError::DownloadTooLarge { limit: max_bytes });
+        }
+
         let total_size = already_written + response.content_length().unwrap_or(0);
 
         let mut file = if resume {
@@ -529,11 +540,12 @@ mod tests {
         assert_eq!(read(&target), "0123456789");
     }
 
-    /// The check happens before the write, so an oversized body is refused whole
-    /// rather than silently truncated at the boundary.
+    /// Without a declared length the bound still has to hold while the body is
+    /// streamed: the check happens before the write, so an oversized body is refused
+    /// whole rather than silently truncated at the boundary.
     #[test]
-    fn a_body_over_the_limit_is_refused_and_not_written() {
-        let server = TestServer::new(response("200 OK", b"0123456789"));
+    fn a_streamed_body_over_the_limit_is_refused_and_not_written() {
+        let server = TestServer::new(response_without_length(b"0123456789"));
         let target = scratch("too_large").join("theme.zip");
 
         let error = tokio::runtime::Runtime::new()
@@ -553,6 +565,35 @@ mod tests {
             DwallSettingsError::DownloadTooLarge { limit: 4 }
         ));
         assert_eq!(read(&target), "", "nothing past the limit may be written");
+    }
+
+    /// A declared Content-Length over the bound is refused before the body is read,
+    /// so a download that cannot fit never creates a file at all.
+    #[test]
+    fn a_declared_length_over_the_limit_is_refused_before_the_body() {
+        let server = TestServer::new(response("200 OK", b"0123456789"));
+        let target = scratch("declared_too_large").join("theme.zip");
+
+        let error = tokio::runtime::Runtime::new()
+            .unwrap()
+            .block_on(HttpClient::new(None).unwrap().download_file(
+                &server.url,
+                &target,
+                0,
+                4,
+                None,
+                None,
+            ))
+            .unwrap_err();
+
+        assert!(matches!(
+            error,
+            DwallSettingsError::DownloadTooLarge { limit: 4 }
+        ));
+        assert!(
+            !target.exists(),
+            "a declared oversized download must create nothing"
+        );
     }
 
     /// The bytes already on disk count, so a resumed transfer cannot walk past the
