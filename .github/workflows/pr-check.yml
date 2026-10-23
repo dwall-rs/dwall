@@ -253,6 +253,19 @@ jobs:
       - name: Cargo test
         run: cargo test
 
+      # The root run uses the default feature set. The daemon ships with all of
+      # them, and --all-features also regenerates src/ipc/bindings through the ts
+      # feature, which the stale-bindings check above then re-verifies.
+      - name: Cargo test (daemon, all features)
+        run: cargo test -p dwall --all-features
+
+      # The settings crate has no library target, so its tests live in the binary
+      # and the per-crate form has to name --bins explicitly.
+      - name: Cargo test (settings)
+        env:
+          DWALL_SKIP_BUILD: 1
+        run: cargo test -p dwall-settings --bins
+
   auto-merge:
     name: Auto Merge PR
     runs-on: ubuntu-latest
