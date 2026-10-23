@@ -584,4 +584,182 @@ mod tests {
 
         let _ = std::fs::remove_dir_all(&dir);
     }
+
+    // ── Level parsing and target filters ────────────────────────────────────
+
+    /// Only the first directive is read; anything after the first comma is ignored,
+    /// including a valid level that could otherwise mask a typo.
+    #[test]
+    fn parse_log_level_takes_the_first_directive_only() {
+        assert_eq!(parse_log_level("warn,debug"), Some(LevelFilter::Warn));
+        assert_eq!(parse_log_level("nonsense,debug"), None);
+        assert_eq!(
+            parse_log_level("dwall=warn,dwall=debug"),
+            Some(LevelFilter::Warn)
+        );
+    }
+
+    /// with_target captures the level in effect at the call, which is the documented
+    /// ordering trap: setting the level afterwards does not reach the target.
+    #[test]
+    fn with_target_captures_the_level_in_effect_at_the_call() {
+        let _lock = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        let default_level = Logger::default().level;
+
+        let ordered = Logger::default()
+            .with_level(LevelFilter::Error)
+            .with_target("dwall");
+        assert_eq!(ordered.targets.as_ref().unwrap()[0].1, LevelFilter::Error);
+
+        let misordered = Logger::default()
+            .with_target("dwall")
+            .with_level(LevelFilter::Error);
+        assert_eq!(misordered.level, LevelFilter::Error);
+        assert_eq!(
+            misordered.targets.as_ref().unwrap()[0].1,
+            default_level,
+            "the target kept the default level, not the one set afterwards"
+        );
+        assert_ne!(default_level, LevelFilter::Error);
+    }
+
+    /// with_target_level exists precisely to avoid that trap.
+    #[test]
+    fn with_target_level_does_not_depend_on_the_order() {
+        let logger = Logger::default()
+            .with_target_level("dwall::config", LevelFilter::Debug)
+            .with_level(LevelFilter::Error);
+
+        assert_eq!(logger.targets.as_ref().unwrap()[0].1, LevelFilter::Debug);
+        assert_eq!(logger.effective_max_level(), LevelFilter::Debug);
+    }
+
+    fn metadata(target: &'static str, level: log::Level) -> log::Metadata<'static> {
+        log::MetadataBuilder::new()
+            .level(level)
+            .target(target)
+            .build()
+    }
+
+    /// A target filter covers the target itself and everything below it, and nothing
+    /// above it.
+    #[test]
+    fn enabled_matches_targets_by_prefix() {
+        let logger = Logger::default().with_target_level("dwall::config", LevelFilter::Debug);
+
+        assert!(logger.enabled(&metadata("dwall::config", log::Level::Debug)));
+        assert!(
+            logger.enabled(&metadata("dwall::config::inner", log::Level::Debug)),
+            "a child module matches the target prefix"
+        );
+        assert!(
+            !logger.enabled(&metadata("dwall::config", log::Level::Trace)),
+            "a level above the target own is filtered out"
+        );
+        assert!(
+            !logger.enabled(&metadata("dwall::other", log::Level::Debug)),
+            "a sibling target is not covered"
+        );
+        assert!(
+            !logger.enabled(&metadata("dwall", log::Level::Debug)),
+            "the parent does not match the child prefix"
+        );
+    }
+
+    // ── Environment ─────────────────────────────────────────────────────────
+
+    /// Serialises the tests that mutate the process environment; the test harness runs
+    /// tests in parallel threads.
+    static ENV_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
+
+    /// Restores DWALL_LOG and RUST_LOG when the test ends, panic included.
+    struct EnvGuard {
+        d_wall: Option<std::ffi::OsString>,
+        rust_log: Option<std::ffi::OsString>,
+    }
+
+    impl EnvGuard {
+        fn set(d_wall: Option<&str>, rust_log: Option<&str>) -> Self {
+            let guard = Self {
+                d_wall: env::var_os("DWALL_LOG"),
+                rust_log: env::var_os("RUST_LOG"),
+            };
+
+            Self::apply(
+                d_wall.map(std::ffi::OsStr::new),
+                rust_log.map(std::ffi::OsStr::new),
+            );
+            guard
+        }
+
+        fn apply(d_wall: Option<&std::ffi::OsStr>, rust_log: Option<&std::ffi::OsStr>) {
+            unsafe {
+                match d_wall {
+                    Some(value) => env::set_var("DWALL_LOG", value),
+                    None => env::remove_var("DWALL_LOG"),
+                }
+                match rust_log {
+                    Some(value) => env::set_var("RUST_LOG", value),
+                    None => env::remove_var("RUST_LOG"),
+                }
+            }
+        }
+    }
+
+    impl Drop for EnvGuard {
+        fn drop(&mut self) {
+            Self::apply(self.d_wall.as_deref(), self.rust_log.as_deref());
+        }
+    }
+
+    #[test]
+    fn get_log_level_prefers_dwall_log_over_rust_log() {
+        let _lock = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+
+        {
+            let _guard = EnvGuard::set(Some("warn"), Some("trace"));
+            assert_eq!(get_log_level(), LevelFilter::Warn);
+        }
+        {
+            let _guard = EnvGuard::set(None, Some("error"));
+            assert_eq!(get_log_level(), LevelFilter::Error);
+        }
+        {
+            let _guard = EnvGuard::set(Some("debug"), None);
+            assert_eq!(get_log_level(), LevelFilter::Debug);
+        }
+    }
+
+    // ── Formatting helpers ──────────────────────────────────────────────────
+
+    #[cfg(debug_assertions)]
+    #[test]
+    fn restore_color_reapplies_the_base_colour_after_a_reset() {
+        use crate::rich::{CYAN, RESET, restore_color};
+
+        assert_eq!(restore_color("plain", CYAN), "plain");
+        assert_eq!(
+            restore_color(&format!("a{RESET}b"), CYAN),
+            format!("a{RESET}{CYAN}b"),
+            "every reset has to be followed by the base colour again"
+        );
+    }
+
+    #[test]
+    fn fmt_key_is_wrapped_only_in_debug_builds() {
+        #[cfg(debug_assertions)]
+        {
+            use crate::rich::{BOLD, ITALIC, RESET};
+
+            assert_eq!(
+                __fmt_key("theme_id"),
+                format!("{BOLD}{ITALIC}theme_id{RESET}")
+            );
+        }
+
+        #[cfg(not(debug_assertions))]
+        {
+            assert_eq!(__fmt_key("theme_id"), "theme_id");
+        }
+    }
 }

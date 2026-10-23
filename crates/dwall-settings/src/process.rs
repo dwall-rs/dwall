@@ -444,4 +444,27 @@ mod tests {
 
         assert!(wait_for_exit(pid, Duration::from_secs(5)).unwrap());
     }
+
+    // ── image_name_matches ──────────────────────────────────────────────────
+
+    /// The executable name is compared case-insensitively, so a daemon installed as
+    /// DWALL.EXE is still recognised as the one to stop.
+    #[test]
+    fn image_name_matching_is_case_insensitive() {
+        let handle = HandleWrapper::new(
+            unsafe { OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, false, std::process::id()) }
+                .expect("a handle to this process"),
+        );
+
+        let path = process_image_path(&handle).expect("this process has an image path");
+        let name = Path::new(&path)
+            .file_name()
+            .expect("an executable name")
+            .to_string_lossy()
+            .into_owned();
+
+        assert!(image_name_matches(&handle, &name));
+        assert!(image_name_matches(&handle, &name.to_ascii_uppercase()));
+        assert!(!image_name_matches(&handle, "definitely-not-this.exe"));
+    }
 }

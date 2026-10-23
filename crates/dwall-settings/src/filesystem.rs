@@ -634,4 +634,31 @@ mod tests {
         assert!(!root.join("destination").exists());
         let _ = std::fs::remove_dir_all(&root);
     }
+
+    // ── find_files_in_dir ───────────────────────────────────────────────────
+
+    /// The listing is flat and matches the extension case-insensitively, which is
+    /// what a Windows theme directory needs: 1.JPG and 2.jpg are both frames, and a
+    /// nested sub/3.jpg is not one of this directory's.
+    #[tokio::test]
+    async fn find_files_in_dir_is_flat_and_case_insensitive() {
+        let dir = std::env::temp_dir().join("dwall_find_files");
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(dir.join("sub")).unwrap();
+        std::fs::write(dir.join("1.JPG"), b"1").unwrap();
+        std::fs::write(dir.join("2.jpg"), b"2").unwrap();
+        std::fs::write(dir.join("notes.txt"), b"n").unwrap();
+        std::fs::write(dir.join("sub").join("3.jpg"), b"3").unwrap();
+
+        let mut found = find_files_in_dir(&dir, "jpg").await.unwrap();
+        found.sort();
+
+        assert_eq!(
+            found,
+            vec![dir.join("1.JPG"), dir.join("2.jpg")],
+            "the extension match ignores case and does not recurse into sub/"
+        );
+
+        let _ = std::fs::remove_dir_all(&dir);
+    }
 }

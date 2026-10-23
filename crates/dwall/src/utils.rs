@@ -338,4 +338,18 @@ mod tests {
             -10.0
         );
     }
+
+    /// A TTL so large that the expiry instant would overflow has to fall back to a
+    /// bounded one instead of panicking: this process aborts invisibly on a panic.
+    #[test]
+    fn cache_huge_ttl_does_not_panic() {
+        let cache = get_cache();
+
+        cache.set(ThresholdConfig::default_civil(), Duration::MAX);
+
+        assert!(
+            cache.get::<ThresholdConfig>().is_some(),
+            "the value is stored under the fallback expiry"
+        );
+    }
 }

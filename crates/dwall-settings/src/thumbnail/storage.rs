@@ -88,3 +88,42 @@ impl Storage {
         Ok(total_size)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::path::PathBuf;
+
+    fn block_on<F: std::future::Future>(future: F) -> F::Output {
+        tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .unwrap()
+            .block_on(future)
+    }
+
+    fn scratch(name: &str) -> PathBuf {
+        let dir = std::env::temp_dir().join(format!("dwall_storage_{name}"));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+
+        dir
+    }
+
+    /// The size is recursive: a nested theme directory contributes its files too, not
+    /// just the entries directly under the cache root.
+    #[test]
+    fn the_directory_size_includes_nested_directories() {
+        let cache = scratch("nested");
+        let theme = cache.join("Big Sur");
+        let nested = theme.join("jpg");
+        std::fs::create_dir_all(&nested).unwrap();
+        std::fs::write(cache.join("root.bin"), vec![b'x'; 7]).unwrap();
+        std::fs::write(theme.join("1.jpg"), vec![b'x'; 100]).unwrap();
+        std::fs::write(nested.join("2.jpg"), vec![b'x'; 50]).unwrap();
+
+        assert_eq!(block_on(Storage::get_directory_size(&cache)).unwrap(), 157);
+
+        let _ = std::fs::remove_dir_all(&cache);
+    }
+}

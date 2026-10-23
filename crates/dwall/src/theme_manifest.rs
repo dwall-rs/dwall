@@ -298,4 +298,108 @@ azimuth = 90.0
         );
         assert!(ThemeManifest::read(&dir).unwrap().solar_angles().is_err());
     }
+
+    /// The hours mode carries local times, and the top-level [[images]] section is
+    /// Maker provenance that parses alongside the solar data.
+    #[test]
+    fn parses_hours_frames_and_the_images_section() {
+        let dir = manifest_dir("hours");
+        write(
+            &dir,
+            &format!(
+                r#"{THEME_HEADER}
+[[images]]
+index = 0
+original = "sunrise.heic"
+
+[[images]]
+index = 1
+
+[solar]
+mode = "hours"
+
+[[solar.frames]]
+index = 0
+hour = 5
+minute = 30
+altitude = -6.0
+azimuth = 60.0
+
+[[solar.frames]]
+index = 1
+hour = 19
+minute = 45
+altitude = -4.0
+azimuth = 300.0
+"#
+            ),
+        );
+
+        let manifest = ThemeManifest::read(&dir).unwrap();
+        assert_eq!(manifest.images.len(), 2);
+        assert_eq!(manifest.images[0].index, 0);
+        assert_eq!(manifest.images[0].original.as_deref(), Some("sunrise.heic"));
+        assert_eq!(manifest.images[1].index, 1);
+        assert_eq!(manifest.images[1].original, None);
+
+        let angles = manifest.solar_angles().unwrap();
+        assert_eq!(angles.len(), 2);
+        assert_eq!(angles[0].index(), 0);
+        assert_eq!(angles[1].index(), 1);
+    }
+
+    /// A missing manifest is an IO error; a malformed one is a parse error, and neither
+    /// is silently treated as an empty theme.
+    #[test]
+    fn exists_and_read_report_missing_and_malformed_files() {
+        let dir = manifest_dir("missing");
+        assert!(!ThemeManifest::exists(&dir));
+
+        match ThemeManifest::read(&dir) {
+            Err(crate::error::DwallError::Io(error)) => {
+                assert_eq!(error.kind(), std::io::ErrorKind::NotFound);
+            }
+            other => panic!("expected a not-found IO error, got {other:?}"),
+        }
+
+        write(&dir, "schema = ");
+        assert!(ThemeManifest::exists(&dir));
+        match ThemeManifest::read(&dir) {
+            Err(crate::error::DwallError::ThemeProcessing(ThemeError::ThemeManifestParse(_))) => {}
+            other => panic!("expected a manifest parse error, got {other:?}"),
+        }
+    }
+
+    /// 255 is the largest frame index a theme can carry; 256 cannot be a u8 and the
+    /// error names the index it was given.
+    #[test]
+    fn frame_index_255_is_accepted_and_256_is_rejected() {
+        let dir = manifest_dir("index_boundary");
+        let frames = |index: usize| {
+            format!(
+                r#"{THEME_HEADER}
+[solar]
+mode = "native"
+
+[[solar.frames]]
+index = {index}
+altitude = 10.0
+azimuth = 90.0
+"#
+            )
+        };
+
+        write(&dir, &frames(255));
+        let angles = ThemeManifest::read(&dir).unwrap().solar_angles().unwrap();
+        assert_eq!(angles.len(), 1);
+        assert_eq!(angles[0].index(), 255);
+
+        write(&dir, &frames(256));
+        match ThemeManifest::read(&dir).unwrap().solar_angles() {
+            Err(crate::error::DwallError::ThemeProcessing(ThemeError::FrameIndexOutOfRange(
+                256,
+            ))) => {}
+            other => panic!("expected FrameIndexOutOfRange(256), got {other:?}"),
+        }
+    }
 }

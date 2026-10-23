@@ -315,4 +315,31 @@ mod tests {
             }
         }
     }
+
+    /// A theme may reuse one image for several sun positions, so a match has to name
+    /// the closest *entry*: returning the first entry that shares the winning image
+    /// would highlight the wrong frame in the settings UI.
+    #[test]
+    fn a_reused_image_index_reports_the_closest_entry() {
+        let angles = vec![
+            SolarAngle::new(0, 10.0, 0.0),
+            SolarAngle::new(0, 50.0, 0.0),
+            SolarAngle::new(1, 80.0, 0.0),
+        ];
+
+        assert_eq!(
+            WallpaperSelector::find_closest_entry(&angles, 49.0, 0.0),
+            Some(1),
+            "the second entry is closer even though it shares image 0"
+        );
+        assert_eq!(
+            WallpaperSelector::find_closest_entry(&angles, 11.0, 0.0),
+            Some(0)
+        );
+        assert_eq!(
+            WallpaperSelector::find_closest_image(&angles, 79.0, 0.0),
+            Some(1),
+            "the image index is still what the wallpaper layer applies"
+        );
+    }
 }

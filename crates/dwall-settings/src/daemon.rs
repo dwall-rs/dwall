@@ -273,4 +273,42 @@ mod tests {
 
         let _ = std::fs::remove_dir_all(&dir);
     }
+
+    // ── should_run ──────────────────────────────────────────────────────────
+
+    /// Random mode always needs the daemon, because the daemon is what draws the
+    /// daily theme; fixed mode only needs one once a monitor is configured.
+    #[test]
+    fn should_run_follows_the_wallpaper_mode() {
+        use dwall::config::{MonitorSpecificWallpapers, WallpaperMode};
+        use std::collections::HashMap;
+
+        let mut config = dwall::Config::default();
+
+        config.set_wallpaper_mode(WallpaperMode::Random { pool: None });
+        assert!(should_run(&config), "random mode always runs the daemon");
+
+        config.set_wallpaper_mode(WallpaperMode::Fixed {
+            monitor_specific_wallpapers: MonitorSpecificWallpapers::Individual(HashMap::new()),
+        });
+        assert!(
+            !should_run(&config),
+            "fixed mode with no monitors has nothing to apply"
+        );
+
+        let mut one_monitor = HashMap::new();
+        one_monitor.insert("monitor-1".to_string(), "Big Sur".to_string());
+        config.set_wallpaper_mode(WallpaperMode::Fixed {
+            monitor_specific_wallpapers: MonitorSpecificWallpapers::Individual(one_monitor),
+        });
+        assert!(should_run(&config), "a configured monitor needs the daemon");
+
+        config.set_wallpaper_mode(WallpaperMode::Fixed {
+            monitor_specific_wallpapers: MonitorSpecificWallpapers::All("Big Sur".to_string()),
+        });
+        assert!(
+            should_run(&config),
+            "one theme for all monitors is still a configured monitor"
+        );
+    }
 }

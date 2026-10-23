@@ -234,4 +234,29 @@ mod tests {
         assert_eq!(found, Some(Duration::from_secs(1)));
         assert!(found.unwrap() >= MIN_WAIT);
     }
+
+    /// A zero step would make the scan revisit the same instant forever; it is forced
+    /// to one second, the finest resolution the search can express.
+    #[test]
+    fn a_zero_step_is_forced_to_one_second() {
+        let start = start();
+        let base = start.timestamp();
+        let found = next_change_with_step(
+            &start,
+            Duration::from_secs(60),
+            Duration::ZERO,
+            move |at: &OffsetDateTime| Some(at.timestamp().saturating_sub(base) >= 1),
+        );
+
+        assert_eq!(found, Some(Duration::from_secs(1)));
+    }
+
+    /// The horizon is inclusive: a decision that changes at exactly the horizon is
+    /// still reported, not dropped as "past it".
+    #[test]
+    fn a_change_exactly_on_the_horizon_is_found() {
+        let found = next_change(&start(), Duration::from_secs(60), switches_on_at(60));
+
+        assert_eq!(found, Some(Duration::from_secs(60)));
+    }
 }

@@ -1553,6 +1553,16 @@ azimuth = 0.0
         );
     }
 
+    /// A sub-second event is raised to the one-second floor rather than being
+    /// truncated towards zero.
+    #[test]
+    fn a_sub_second_change_is_clamped_up_to_the_minimum_wait() {
+        assert_eq!(
+            scheduled_wait(Duration::from_secs(600), Some(Duration::from_millis(250))),
+            crate::schedule::MIN_WAIT
+        );
+    }
+
     #[test]
     fn no_scheduled_change_means_the_plain_interval() {
         assert_eq!(

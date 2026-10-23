@@ -79,7 +79,7 @@ impl Release {
 /// Picks the release a pre-release build should update to.
 ///
 /// `None` means "nothing newer": every entry is a draft, not a version, missing its
-/// updater manifest, or not newer than `current`.
+/// updater manifest, or not newer than `current` by semver precedence.
 pub fn select_release<'a>(current: &Version, releases: &'a [Release]) -> Option<&'a Release> {
     let mut stable: Option<(Version, &Release)> = None;
     let mut prerelease: Option<(Version, &Release)> = None;
@@ -92,7 +92,10 @@ pub fn select_release<'a>(current: &Version, releases: &'a [Release]) -> Option<
         let Some(version) = release.version() else {
             continue;
         };
-        if version <= *current {
+        // By precedence, not `Version`'s total `Ord`: build metadata takes no part in a
+        // version's precedence (semver 10), so `0.3.0+build` is the same release as
+        // `0.3.0`, and comparing the two with `<=` would offer it as an update forever.
+        if version.cmp_precedence(current).is_le() {
             continue;
         }
 
@@ -101,7 +104,10 @@ pub fn select_release<'a>(current: &Version, releases: &'a [Release]) -> Option<
         } else {
             &mut stable
         };
-        if slot.as_ref().is_none_or(|(best, _)| version > *best) {
+        if slot
+            .as_ref()
+            .is_none_or(|(best, _)| version.cmp_precedence(best).is_gt())
+        {
             *slot = Some((version, release));
         }
     }
@@ -247,6 +253,39 @@ mod tests {
         assert_eq!(selected("0.3.0-alpha.2", &releases), None);
         // A pre-release is never a downgrade target for a newer stable build either.
         assert_eq!(selected("0.3.0", &releases), None);
+    }
+
+    /// Equal and older versions are not updates, and semver ignores build metadata:
+    /// 0.3.0+build is the same release as 0.3.0, so it must not be offered.
+    #[test]
+    fn update_select_release_ignores_equal_and_older_versions() {
+        let releases = [
+            release("v0.3.0", false),
+            release("v0.3.0+build", false),
+            release("v0.2.9", false),
+        ];
+
+        assert_eq!(selected("0.3.0", &releases), None);
+        assert_eq!(selected("0.3.0+build.7", &releases), None);
+
+        // The same list with one genuinely newer release still offers it, so the
+        // assertions above cannot pass by the selection never working.
+        let with_newer = [
+            release("v0.3.0+build", false),
+            release("v0.2.9", false),
+            release("v0.3.1", false),
+        ];
+        assert_eq!(selected("0.3.0", &with_newer), Some("0.3.1".to_string()));
+    }
+
+    /// The tag is read as a version when it is one, with or without the leading v;
+    /// a non-version tag and a two-part version are rejected rather than guessed at.
+    #[test]
+    fn release_version_reads_the_tag_only_when_it_is_a_version() {
+        assert_eq!(release("v1.2.3", false).version(), Some(version("1.2.3")));
+        assert_eq!(release("1.2.3", false).version(), Some(version("1.2.3")));
+        assert_eq!(release("nightly", true).version(), None);
+        assert_eq!(release("v1.2", false).version(), None);
     }
 
     #[test]
