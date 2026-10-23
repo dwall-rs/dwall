@@ -145,7 +145,9 @@ impl Cleanup {
                     cleaned_bytes += file_size;
                     debug!(file = %file_path.display(), size = file_size, "Removed cache file");
                 } else {
-                    error!(file = %file_path.display(), "Failed to remove cache file");
+                    // One file the cache could not delete is not an error: the walk
+                    // continues and the file is simply retried on the next cleanup.
+                    warn!(file = %file_path.display(), "Failed to remove cache file");
                 }
             }
         }
@@ -224,7 +226,7 @@ impl Cleanup {
                 cleaned_bytes += file.size;
                 debug!(file = %file.path.display(), size = file.size, "Removed cache file");
             } else {
-                error!(file = %file.path.display(), "Failed to remove cache file");
+                warn!(file = %file.path.display(), "Failed to remove cache file");
             }
         }
 
