@@ -143,6 +143,27 @@ bun run build   # release: vite build + daemon release + tauri bundle
   or i18n access. Adapters that read stores belong in `store/` (e.g.
   `store/catalog.selectors.ts`).
 
+## Accessibility
+
+The GUI is deliberately not held to screen-reader-level conformance: the product is a
+wallpaper, the visual result is the point, and a headless text path already exists
+(`docs/headless.md`: `--check-config`, `--once`, `--config`) for anyone who cannot see it.
+That is a decision, not an oversight. What the GUI does owe its users is the part that has
+nothing to do with vision:
+
+- **Keyboard operability.** Anything clickable is reachable and operable from the keyboard,
+  a click target is a `<button>` or carries the equivalent roles, and focus follows the
+  surface it belongs to — hidden controls are out of the tab order, and a drawer or dialog
+  that opens takes focus and gives it back when it closes.
+- **Motion.** An animation that loops forever is suppressed under
+  `prefers-reduced-motion: reduce` (see `src/styles/index.css`).
+- **Text selection.** Fields and the read-only text the app shows for copying stay
+  selectable, and the context menu stays available over them (`src/index.tsx`).
+
+Control names, an `aria-label` on every control, `role="img"` on decorative SVG, hover-only
+readouts and live-region wording are **not** requirements. Needing one of those is a new
+decision, not a review finding to re-litigate.
+
 ## Commits
 
 ### One commit per change
@@ -232,6 +253,13 @@ gh pr create --base main --fill
   job then merges it with `pascalgn/automerge-action` (a merge commit) as soon as every
   check is green — a skipped check is fine, a failed one is not. Without the label the
   pull request waits for a human.
+- **Label the pull request by its type.** There is no `test`, `ci` or `chore` label, so map
+  the commit type onto the labels that exist: `fix` → `fix`, `feat` → `feature`, `perf` →
+  `performance`, `refactor` → `refactor`, `style` → `style`, `ci` → `github_actions`,
+  `chore(deps)` → `dependencies`, `chore(docs)` → `documentation`. A `test` pull request
+  that also changes behaviour takes the type of the behaviour. Add the area label when it is
+  clear (`rust`, `typescript`, `javascript`); a type with no label of its own gets none
+  rather than an approximate one.
 - **The branch is deleted for you.** `delete-merged-branch.yml` removes the ref of a
   merged pull request, keeping the long-lived branches (`main`, `dev`, `old`) and any
   branch another open pull request still uses. It hears about the merge because
