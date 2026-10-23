@@ -640,8 +640,22 @@ pub fn config_path() -> PathBuf {
 /// runs), so a plain `fs::write` — truncate, then write — exposes a window in which
 /// a reader sees a half-written document. `fs::rename` replaces the destination
 /// atomically (MOVEFILE_REPLACE_EXISTING on Windows).
+/// The sibling temporary file [`write_atomically`] writes through.
+///
+/// The configured file's own name is kept, so `--config foo.conf` does not turn
+/// into `foo.toml.tmp`, and the process id is appended so two instances pointed
+/// at the same directory cannot overwrite each other's temporary file.
+fn temporary_path(path: &Path) -> PathBuf {
+    let name = path
+        .file_name()
+        .map(|name| name.to_string_lossy().into_owned())
+        .unwrap_or_else(|| "config.toml".to_string());
+
+    path.with_file_name(format!("{name}.{}.tmp", std::process::id()))
+}
+
 fn write_atomically(path: &Path, contents: &[u8]) -> std::io::Result<()> {
-    let temp_path = path.with_extension("toml.tmp");
+    let temp_path = temporary_path(path);
 
     fs::write(&temp_path, contents)?;
 
@@ -754,9 +768,29 @@ mod tests {
         write_atomically(&path, b"interval = 45").unwrap();
 
         assert_eq!(fs::read_to_string(&path).unwrap(), "interval = 45");
-        assert!(!dir.join("config.toml.tmp").exists());
+        assert_eq!(
+            temporary_path(&path),
+            dir.join(format!("config.toml.{}.tmp", std::process::id())),
+            "the temporary file keeps the configured name and names the process"
+        );
+        assert!(
+            !temporary_path(&path).exists(),
+            "the temporary file is renamed away, not left behind"
+        );
 
         let _ = fs::remove_dir_all(&dir);
+    }
+
+    /// `--config foo.conf` used to be written through `foo.toml.tmp`, so
+    /// two instances sharing a directory overwrote each other's temporary file.
+    #[test]
+    fn the_temporary_file_keeps_the_configured_name_and_names_the_process() {
+        let path = Path::new("custom.conf");
+
+        assert_eq!(
+            temporary_path(path),
+            PathBuf::from(format!("custom.conf.{}.tmp", std::process::id()))
+        );
     }
 
     /// Test full config roundtrip serialization
