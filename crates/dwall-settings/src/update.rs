@@ -79,7 +79,7 @@ impl Release {
 /// Picks the release a pre-release build should update to.
 ///
 /// `None` means "nothing newer": every entry is a draft, not a version, missing its
-/// updater manifest, or not newer than `current`.
+/// updater manifest, or not newer than `current` by semver precedence.
 pub fn select_release<'a>(current: &Version, releases: &'a [Release]) -> Option<&'a Release> {
     let mut stable: Option<(Version, &Release)> = None;
     let mut prerelease: Option<(Version, &Release)> = None;
@@ -92,7 +92,10 @@ pub fn select_release<'a>(current: &Version, releases: &'a [Release]) -> Option<
         let Some(version) = release.version() else {
             continue;
         };
-        if version <= *current {
+        // By precedence, not `Version`'s total `Ord`: build metadata takes no part in a
+        // version's precedence (semver 10), so `0.3.0+build` is the same release as
+        // `0.3.0`, and comparing the two with `<=` would offer it as an update forever.
+        if version.cmp_precedence(current).is_le() {
             continue;
         }
 
@@ -101,7 +104,10 @@ pub fn select_release<'a>(current: &Version, releases: &'a [Release]) -> Option<
         } else {
             &mut stable
         };
-        if slot.as_ref().is_none_or(|(best, _)| version > *best) {
+        if slot
+            .as_ref()
+            .is_none_or(|(best, _)| version.cmp_precedence(best).is_gt())
+        {
             *slot = Some((version, release));
         }
     }
@@ -251,10 +257,6 @@ mod tests {
 
     /// Equal and older versions are not updates, and semver ignores build metadata:
     /// 0.3.0+build is the same release as 0.3.0, so it must not be offered.
-    ///
-    /// This currently fails: select_release compares with Version's total Ord, which
-    /// orders by build metadata, so 0.3.0+build is treated as newer than 0.3.0. The
-    /// precedence comparison is Version::cmp_precedence.
     #[test]
     fn update_select_release_ignores_equal_and_older_versions() {
         let releases = [
