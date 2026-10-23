@@ -71,7 +71,11 @@ pub fn setup_app(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>>
         return Ok(());
     }
 
-    tokio::spawn(async move {
+    // `tauri::async_runtime::spawn`, not `tokio::spawn`: this runs from the setup hook on
+    // the main thread, where no Tokio runtime is current. Tauri creates its own runtime on
+    // first use, so this works from here; `tokio::spawn` panicked with "there is no reactor
+    // running".
+    tauri::async_runtime::spawn(async move {
         // A daemon installed anywhere in this session counts, not only the copy
         // next to this executable.
         let already_running = crate::daemon::is_daemon_running().unwrap_or(false);
