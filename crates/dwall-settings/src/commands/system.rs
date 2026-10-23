@@ -142,10 +142,12 @@ pub async fn check_for_updates_cmd<R: tauri::Runtime>(
                 .inspect_err(|e| error!(error = ?e, "Failed to parse download URL"))
                 .map_err(|e| invalid_url("download", &e))?;
 
+            // The host alone, never the whole URL: a private mirror can embed a
+            // token in it, and the log file is one click away in the settings window.
             info!(
                 version = update.version,
                 date = ?update.date,
-                url = %update.download_url,
+                host = update.download_url.host_str().unwrap_or("<none>"),
                 proxy = update.proxy.as_ref().map(|p| p.as_str()),
                 "Update available"
             );
