@@ -14,8 +14,13 @@ export function GlobalBar() {
     <div class="flex min-h-15 shrink-0 flex-wrap items-center gap-x-4.5 gap-y-2 border-b border-border px-5 py-3">
       <div
         class={clsx(
-          "transition-opacity duration-300",
-          inMain() ? "opacity-100" : "pointer-events-none opacity-0",
+          // `invisible` is what keeps the controls out of the tab order: fading them
+          // out leaves them focusable, so Tab would land on a button nobody can see.
+          // Visibility still transitions, so the fade itself is unchanged.
+          "transition-[opacity,visibility] duration-300",
+          inMain()
+            ? "visible opacity-100"
+            : "invisible pointer-events-none opacity-0",
         )}
       >
         <ModeToggle />
@@ -23,8 +28,10 @@ export function GlobalBar() {
       <EngineStatus />
       <div
         class={clsx(
-          "ml-auto transition-opacity duration-300",
-          inMain() ? "opacity-100" : "pointer-events-none opacity-0",
+          "ml-auto transition-[opacity,visibility] duration-300",
+          inMain()
+            ? "visible opacity-100"
+            : "invisible pointer-events-none opacity-0",
         )}
       >
         <CommitSlot />
