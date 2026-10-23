@@ -436,7 +436,12 @@ jobs:
               // Don't let this failure block the whole workflow
             }
 
+  # Without a dependency this job starts the moment the workflow does, because
+  # success() is already true when nothing precedes it: it deleted the nightly release
+  # and tag while the build and upload were still running, racing nightly.yml over the
+  # same tag. It has to follow the release it exists to supersede.
   delete-nightly-release-and-tag:
+    needs: publish-release
     permissions:
       contents: write
     runs-on: ubuntu-latest
