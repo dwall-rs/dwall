@@ -105,7 +105,7 @@ export const dict: RawDictionary = {
 
   settings: {
     title: "設定",
-    subtitle: "preferences",
+    subtitle: "偏好設定",
     unsaved: "未儲存",
     saveFailed: "儲存失敗",
     loadFailed: "無法讀取設定",
