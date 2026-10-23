@@ -565,4 +565,136 @@ azimuth = 20.0
             "Download cancelled"
         );
     }
+
+    // ── Partial downloads ───────────────────────────────────────────────────
+
+    fn downloader() -> ThemeDownloader {
+        ThemeDownloader::new(HttpClient::new(None).unwrap())
+    }
+
+    #[test]
+    fn a_non_empty_partial_download_is_kept_for_the_next_attempt() {
+        let root = scratch_themes_directory("keep_partial");
+        let temp_path = root.join("Demo.zip.tmp");
+        fs::write(&temp_path, b"partial").unwrap();
+
+        runtime().block_on(downloader().handle_download_error(&temp_path));
+
+        assert_eq!(
+            fs::read(&temp_path).unwrap(),
+            b"partial",
+            "a non-empty partial is what the next attempt resumes from"
+        );
+
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn an_empty_partial_download_is_removed() {
+        let root = scratch_themes_directory("drop_empty");
+        let temp_path = root.join("Demo.zip.tmp");
+        fs::write(&temp_path, b"").unwrap();
+
+        runtime().block_on(downloader().handle_download_error(&temp_path));
+
+        assert!(
+            !temp_path.exists(),
+            "a zero-byte leftover has nothing to resume from"
+        );
+
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    /// A one-shot HTTP server on localhost, so the downloader's resume arithmetic can
+    /// be observed through the Range header it sends.
+    struct OneShotServer {
+        url: String,
+        request: std::sync::Arc<std::sync::Mutex<String>>,
+    }
+
+    impl OneShotServer {
+        fn new(response: Vec<u8>) -> Self {
+            use std::io::{Read, Write};
+            use std::net::TcpListener;
+
+            let listener = TcpListener::bind("127.0.0.1:0").expect("a free local port");
+            let url = format!("http://{}", listener.local_addr().unwrap());
+            let request = std::sync::Arc::new(std::sync::Mutex::new(String::new()));
+            let captured = std::sync::Arc::clone(&request);
+
+            std::thread::spawn(move || {
+                let Ok((mut stream, _)) = listener.accept() else {
+                    return;
+                };
+
+                let mut head = Vec::new();
+                let mut buffer = [0u8; 1024];
+                while let Ok(read) = stream.read(&mut buffer) {
+                    if read == 0 {
+                        break;
+                    }
+                    head.extend_from_slice(&buffer[..read]);
+                    if head.windows(4).any(|window| window == b"\r\n\r\n") {
+                        break;
+                    }
+                }
+
+                *captured.lock().unwrap() = String::from_utf8_lossy(&head).into_owned();
+                let _ = stream.write_all(&response);
+                let _ = stream.flush();
+            });
+
+            Self { url, request }
+        }
+
+        fn request_head(&self) -> String {
+            self.request.lock().unwrap().clone()
+        }
+    }
+
+    fn http_response(status: &str, body: &[u8]) -> Vec<u8> {
+        let mut response = format!(
+            "HTTP/1.1 {status}\r\nContent-Length: {}\r\nConnection: close\r\n\r\n",
+            body.len()
+        )
+        .into_bytes();
+        response.extend_from_slice(body);
+
+        response
+    }
+
+    /// The downloader reads the bytes already on disk and asks for the rest: this is
+    /// the arithmetic download_file cannot do on its own.
+    #[test]
+    fn download_with_retry_resumes_from_the_bytes_already_on_disk() {
+        let root = scratch_themes_directory("resume_retry");
+        let temp_path = root.join("Demo.zip.tmp");
+        fs::write(&temp_path, b"aaaa").unwrap();
+
+        let server = OneShotServer::new(http_response("206 Partial Content", b"bbbb"));
+        let cancel = Arc::new(AtomicBool::new(false));
+        let no_emitter: Option<&ProgressEmitter<'_, tauri::Wry>> = None;
+
+        runtime()
+            .block_on(downloader().download_with_retry(
+                &server.url,
+                &temp_path,
+                &cancel,
+                no_emitter,
+                "Demo",
+            ))
+            .unwrap();
+
+        assert_eq!(fs::read(&temp_path).unwrap(), b"aaaabbbb");
+        assert!(
+            server
+                .request_head()
+                .to_lowercase()
+                .contains("range: bytes=4-"),
+            "the partial file's length has to become the range start: {}",
+            server.request_head()
+        );
+
+        let _ = fs::remove_dir_all(&root);
+    }
 }
