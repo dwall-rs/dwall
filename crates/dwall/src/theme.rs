@@ -1316,4 +1316,140 @@ mode = "native"
         let next = selector.select_next(&themes);
         assert!(next.is_some());
     }
+
+    // ── Theme directory resolution ──────────────────────────────────────────
+
+    /// Writes a configuration naming the two theme roots and reads it back, the way
+    /// the daemon does.
+    fn config_with_directories(name: &str, themes: &Path, customized: &Path) -> (Config, PathBuf) {
+        let dir = scratch(name);
+        let config_path = dir.join("config.toml");
+        let themes = themes.display().to_string().replace('\\', "/");
+        let customized = customized.display().to_string().replace('\\', "/");
+        fs::write(
+            &config_path,
+            format!(
+                "themes_directory = \"{themes}\"\ncustomized_themes_directory = \"{customized}\"\n"
+            ),
+        )
+        .unwrap();
+
+        (
+            crate::config::ConfigReader::read_from_path(&config_path).unwrap(),
+            dir,
+        )
+    }
+
+    /// The bundled directory is checked first; the custom one is the fallback, and the
+    /// returned flag says which was used.
+    #[test]
+    fn get_theme_directory_path_prefers_the_bundled_directory_then_the_custom_one() {
+        let bundled = scratch("path_bundled");
+        let custom = scratch("path_custom");
+        let (config, config_dir) = config_with_directories("path_config", &bundled, &custom);
+
+        // Present in neither: the custom path is the fallback.
+        let (path, customized) = get_theme_directory_path(&config, "Absent");
+        assert_eq!(path, custom.join("Absent"));
+        assert!(customized);
+
+        // Present in the custom root alone: it is used and reported as custom.
+        fs::create_dir_all(custom.join("OnlyCustom")).unwrap();
+        let (path, customized) = get_theme_directory_path(&config, "OnlyCustom");
+        assert_eq!(path, custom.join("OnlyCustom"));
+        assert!(customized);
+
+        // Present in both: the bundled one wins and is not reported as custom.
+        fs::create_dir_all(bundled.join("Both")).unwrap();
+        fs::create_dir_all(custom.join("Both")).unwrap();
+        let (path, customized) = get_theme_directory_path(&config, "Both");
+        assert_eq!(path, bundled.join("Both"));
+        assert!(!customized);
+
+        let _ = fs::remove_dir_all(&bundled);
+        let _ = fs::remove_dir_all(&custom);
+        let _ = fs::remove_dir_all(&config_dir);
+    }
+
+    #[test]
+    fn is_theme_directory_needs_solar_json_or_a_manifest() {
+        let dir = scratch("is_theme");
+
+        let solar = dir.join("solar_theme");
+        fs::create_dir_all(&solar).unwrap();
+        fs::write(solar.join(SOLAR_CONFIG_FILENAME), "[]").unwrap();
+        assert!(is_theme_directory(&solar));
+
+        let manifest = dir.join("manifest_theme");
+        fs::create_dir_all(&manifest).unwrap();
+        fs::write(manifest.join(THEME_MANIFEST_FILENAME), "").unwrap();
+        assert!(is_theme_directory(&manifest));
+
+        let empty = dir.join("empty");
+        fs::create_dir_all(&empty).unwrap();
+        assert!(!is_theme_directory(&empty));
+        assert!(!is_theme_directory(&dir.join("absent")));
+
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    /// A malformed solar.json and a missing one are different failures, so the log and
+    /// the caller can tell "corrupt theme" from "not a theme".
+    #[test]
+    fn a_corrupt_solar_json_is_a_parse_error_not_a_missing_file() {
+        let dir = scratch("corrupt_solar");
+
+        let broken = dir.join("Broken");
+        fs::create_dir_all(&broken).unwrap();
+        fs::write(broken.join(SOLAR_CONFIG_FILENAME), "{not json").unwrap();
+        match read_solar_angles(&broken) {
+            Err(crate::error::DwallError::SerdeJson(_)) => {}
+            other => panic!("expected a JSON parse error, got {other:?}"),
+        }
+
+        let missing = dir.join("Missing");
+        fs::create_dir_all(&missing).unwrap();
+        match read_solar_angles(&missing) {
+            Err(crate::error::DwallError::ThemeProcessing(
+                ThemeError::SolarConfigurationMissing,
+            )) => {}
+            other => panic!("expected SolarConfigurationMissing, got {other:?}"),
+        }
+
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    // ── SimpleRng ───────────────────────────────────────────────────────────
+
+    #[test]
+    fn simple_rng_new_zero_is_never_stuck_at_zero() {
+        let mut rng = SimpleRng::new(0);
+        assert_eq!(rng.state, 1, "xorshift needs a non-zero state");
+
+        let first = rng.next();
+        assert_ne!(first, 0, "the first draw cannot be zero from state 1");
+        let second = rng.next();
+        assert_ne!(second, first, "the state has to keep moving");
+    }
+
+    #[test]
+    fn shuffle_is_a_permutation() {
+        let mut values: Vec<u32> = (0..64).collect();
+        let original = values.clone();
+
+        SimpleRng::new(0).shuffle(&mut values);
+
+        let mut sorted = values.clone();
+        sorted.sort_unstable();
+        assert_eq!(sorted, original, "every element has to survive the shuffle");
+
+        // Empty and single-element slices are no-ops, not panics.
+        let mut empty: Vec<u32> = Vec::new();
+        SimpleRng::new(0).shuffle(&mut empty);
+        assert!(empty.is_empty());
+
+        let mut single = vec![7];
+        SimpleRng::new(0).shuffle(&mut single);
+        assert_eq!(single, vec![7]);
+    }
 }
