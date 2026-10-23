@@ -1,6 +1,7 @@
 // Responsibility: Button layout on the right of the top bar; adds the "theme library drawer" toggle, visible only at the smallest tier (<xl).
 import { uiStore, toggleLib } from "@/store/ui.store";
 import { t } from "@/i18n";
+import { LIBRARY_TOGGLE_ID } from "@/lib/layout";
 import {
   Tooltip,
   TooltipContent,
@@ -20,6 +21,7 @@ export function RightCluster() {
       {/* Smallest tier: the theme library collapses into a drawer, expanded/collapsed by this button; hidden at xl+ (the library is inline) */}
       <Tooltip>
         <TooltipTrigger
+          id={LIBRARY_TOGGLE_ID}
           aria-label={libLabel()}
           onClick={toggleLib}
           class="xl:hidden"

@@ -5,12 +5,43 @@ import { modeStore } from "@/store/mode.store";
 import { StageColumn } from "@/stage/StageColumn";
 import { LibraryColumn } from "@/library/LibraryColumn";
 import { t } from "@/i18n";
+import { LIBRARY_TOGGLE_ID, MQ_XL } from "@/lib/layout";
+import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { clsx } from "@/utils";
 import { ScopeColumn } from "~/scope/ScopeColumn";
-import { Show } from "solid-js";
+import { createEffect, on, Show } from "solid-js";
 
 export function MainView() {
   const fixed = () => modeStore.mode === "fixed";
+  const isXl = useMediaQuery(MQ_XL);
+  let drawer: HTMLDivElement | undefined;
+
+  // The drawer covers the page, so it has to behave like one: opening it moves focus
+  // inside, and closing it — with the toggle, the backdrop, or by picking a theme — puts
+  // focus back on the toggle. Without this, Tab walked the page behind the drawer and
+  // closing dropped focus on <body>, so a keyboard user lost their place.
+  //
+  // The move is deferred to a microtask because the class that makes the drawer visible is
+  // applied by an effect created after this one, and an invisible element cannot be
+  // focused.
+  createEffect(
+    on(
+      () => uiStore.libOpen,
+      (open) => {
+        // At xl the library is an inline column and libOpen is ignored there, so there is
+        // neither a drawer to move into nor a toggle to come back to.
+        if (isXl()) return;
+        queueMicrotask(() => {
+          if (open) {
+            drawer?.focus();
+            return;
+          }
+          document.getElementById(LIBRARY_TOGGLE_ID)?.focus();
+        });
+      },
+      { defer: true },
+    ),
+  );
 
   return (
     <div
@@ -42,8 +73,12 @@ export function MainView() {
 
       {/* Theme library: smallest tier = right drawer, xl+ = inline third column (same instance) */}
       <div
+        ref={drawer}
+        tabindex="-1"
         class={clsx(
-          "absolute inset-y-0 right-0 z-30 w-85 transform bg-background shadow-[-24px_0_60px_rgba(0,0,0,.4)] transition-[transform,visibility] duration-300 ease-[cubic-bezier(.22,.61,.36,1)]",
+          // outline-none: this element only ever takes focus as the drawer's landing
+          // point, so it must not paint a ring of its own.
+          "absolute inset-y-0 right-0 z-30 w-85 transform bg-background shadow-[-24px_0_60px_rgba(0,0,0,.4)] outline-none transition-[transform,visibility] duration-300 ease-[cubic-bezier(.22,.61,.36,1)]",
           // Closed means off-screen, and off-screen still takes focus: `invisible` is
           // what keeps Tab out of a drawer nobody can see. At xl this same element is
           // an inline column, so it stays visible there whatever the drawer state is.
