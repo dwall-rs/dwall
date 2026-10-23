@@ -57,32 +57,36 @@
 
 ## 2. 功能实现
 
+> **修复状态（2026-10-23 核对 `main`）**：以下条目大多在 review 之后已修复，条目后标注了对应提交。
+> #756（设置后端）、#758（守护进程与日志）已合并；#757（前端）仍在评审中，其提交标注为「见 #757」。
+> 没有标注的条目尚未核对，或仍未处理。
+
 ### 2.1 守护进程（`crates/dwall`）
 
-- **锁屏主题不确定**：`theme_engine.rs:308` 的 `get_first_configured_theme` 对 `Individual` 用
+- **锁屏主题不确定**（已修复 `f51e77c`）：`theme_engine.rs:308` 的 `get_first_configured_theme` 对 `Individual` 用
   `map.values().next()`。`HashMap` 迭代顺序随机，多显示器各配不同主题时锁屏每天可能换一个。建议按
   显示器顺序取第一个成功应用的主题。
-- **日志默认级别分支实际不可达**：`logging/src/lib.rs:263` 的 `default_log_level()` 在 debug 下返回
+- **日志默认级别分支实际不可达**（已修复 `21ab81c`）：`logging/src/lib.rs:263` 的 `default_log_level()` 在 debug 下返回
   `Trace`，但 `logging/build.rs:4` 对所有未启用 `max-level-info` 的构建（含 debug）注入
   `DWALL_LOG=debug`，`option_env!` 永远命中。建议 build.rs 仅在 `not(debug_assertions)` 时注入，
   或删掉 `Trace` 分支并同步注释。
-- **原子写临时文件命名**：`config.rs:643` 用 `path.with_extension("toml.tmp")`，`--config foo.conf`
+- **原子写临时文件命名**（已修复 `563f913`）：`config.rs:643` 用 `path.with_extension("toml.tmp")`，`--config foo.conf`
   会生成 `foo.toml.tmp`。同一目录跑两个不同配置实例会互相覆盖临时文件。建议用
   `with_file_name(format!("{name}.tmp"))` 并加 PID。
-- **死代码 / 陈旧注释**：`with_themes_directory`（`config.rs:379`）无调用者；
+- **死代码 / 陈旧注释**（已修复 `2ba1b11`；其中 `with_themes_directory` 仍有调用者，未删）：`with_themes_directory`（`config.rs:379`）无调用者；
   `ThemeError::DefaultThemeMissing`（`theme.rs:25`）从不构造；缓存槽 `SolarPosition`
   （`utils.rs:125`）只读不写；`RawConfig` 注释写「will be removed in 0.3.0」而当前已是
   `0.3.0-alpha.6`（`config.rs:455`）。
-- **理论溢出**：`geolocation.rs:122` 的 `(duration.as_secs() as i64) * 10_000_000` 无 `checked_mul`。
+- **理论溢出**（已修复 `01cb477`，实际位置是 `geolocation.rs:32`）：`geolocation.rs:122` 的 `(duration.as_secs() as i64) * 10_000_000` 无 `checked_mul`。
   建议 `saturating_mul`。
-- **显示器友好名定长缓冲**：`monitor.rs:414` 固定 512 字节，超长名会 `ERROR_INSUFFICIENT_BUFFER`
+- **显示器友好名定长缓冲**（已修复 `5b68565`）：`monitor.rs:414` 固定 512 字节，超长名会 `ERROR_INSUFFICIENT_BUFFER`
   并回落；可先查长度。
-- **配置变更检测精度**：靠 mtime 比较（`config.rs:689`）。NTFS 为 100 ns，没问题；FAT/exFAT 或网络盘
+- **配置变更检测精度**（未处理，低风险）：靠 mtime 比较（`config.rs:689`）。NTFS 为 100 ns，没问题；FAT/exFAT 或网络盘
   为 2 s 粒度，可能漏检同一秒内的两次写入。低风险。
 
 ### 2.2 设置后端（`crates/dwall-settings`）
 
-- **镜像对稳定版更新检查失效（F2）**：`network/mirror.rs:46` 对 `releases/latest/download/<asset>`
+- **镜像对稳定版更新检查失效（F2）**（已修复 `b960a51`）：`network/mirror.rs:46` 对 `releases/latest/download/<asset>`
   先请求 `https://api.github.com/.../releases/latest`，且用临时 `reqwest::Client`（无连接复用、不走
   SOCKS5）；失败则返回原始 `github.com` URL。稳定版清单 `update.rs:26` 恰好走这条分支。建议：`latest`
   路由直接套模板、复用共享 `HttpClient`、配置镜像时绝不回落 `github.com`。
@@ -90,58 +94,58 @@
   `#[tauri::command]` 在主线程执行；`get_theme_catalog` 对 15 个目录逐个做 `is_dir()` + 未缓存的
   `solar.json` / `theme.toml` 读取解析，自定义主题再各做一次 `read_dir`。建议改 async +
   `spawn_blocking` 或复用路径键缓存。
-- **路径穿越（F8）**：`commands/catalog.rs:208` 的 `get_theme_wallpapers` / `match_wallpaper` 直接
+- **路径穿越（F8）**（已修复 `6c9c4de`，并由 `8810696` 收窄 asset scope）：`commands/catalog.rs:208` 的 `get_theme_wallpapers` / `match_wallpaper` 直接
   `join(theme_id)`；`commands/theme.rs:17` 的 `validate_theme_cmd` 接受任意 `themes_directory`。
   写路径 `commands/download.rs:18` 已调用 `validate_theme_id`，读路径却漏了。配合
   `tauri.conf.json:16` 的 `assetProtocol.scope = ["**/*"]` 影响被放大。建议读路径一律校验并收窄 scope。
-- **缩略图锁表无界（F9）**：`thumbnail/store.rs:29`，条目只在手动清缓存时移除。建议 Drop 守卫删除
+- **缩略图锁表无界（F9）**（已修复 `12f8e7d`）：`thumbnail/store.rs:29`，条目只在手动清缓存时移除。建议 Drop 守卫删除
   key，或改有界 LRU。
-- **下载无界且无校验（F10）**：`network/client.rs:94` 的 `download_file` 无 `max_bytes`、无
+- **下载无界且无校验（F10）**（已修复 `60d6ebf`，`max_bytes` 更早已有；SHA-256 未做，发布资产没有可比对的校验和）：`network/client.rs:94` 的 `download_file` 无 `max_bytes`、无
   `Content-Length` 校验、无 SHA-256。
-- **目录移动非原子（F11）**：`filesystem.rs:250`，失败时目标目录残留，重试撞 `DestinationExists`。
+- **目录移动非原子（F11）**（已修复 `677beb7`）：`filesystem.rs:250`，失败时目标目录残留，重试撞 `DestinationExists`。
   建议先复制到临时同级目录再 rename。
-- **遍历静默截断（F12）**：`thumbnail/cleanup.rs:88`、`:120`、`:164`、`:188`、
+- **遍历静默截断（F12）**（已修复 `96b9258`）：`thumbnail/cleanup.rs:88`、`:120`、`:164`、`:188`、
   `thumbnail/storage.rs:54`。建议 `match` 错误后 `warn!` + `break`。
-- **进程匹配 fail-open（F13）**：`process.rs:129`、`:242`。未知会话 / 无法取镜像名时判为自家进程。
-- **取消无法阻止解压、staging 泄漏**：`theme/downloader.rs:96`、`:228`。future 被 drop 时
+- **进程匹配 fail-open（F13）**（已修复 `8baa60e`）：`process.rs:129`、`:242`。未知会话 / 无法取镜像名时判为自家进程。
+- **取消无法阻止解压、staging 泄漏**（已修复 `b12d071`）：`theme/downloader.rs:96`、`:228`。future 被 drop 时
   `<id>.staging` / `.zip.tmp` 残留。建议阶段间复查取消标志并用 Drop 守卫清理。
-- **归档加固**：`archive.rs:74` 报错信息硬编码 8 GiB 而非 `max_bytes`；`archive.rs:100` 的
+- **归档加固**（已修复 `87b0eda`、`395bc02`）：`archive.rs:74` 报错信息硬编码 8 GiB 而非 `max_bytes`；`archive.rs:100` 的
   `enclosed_name()` 不拒绝 `:`（NTFS ADS）与 `NUL`/`CON` 等设备名。zip-slip 本身已正确处理。
-- **主题 id 校验缺口**：`filesystem.rs:42` 未拒绝 Windows 保留名与结尾点 / 空格；
+- **主题 id 校验缺口**（已修复 `ecc666b`、`76656ec`）：`filesystem.rs:42` 未拒绝 Windows 保留名与结尾点 / 空格；
   `theme/download_url.rs:8` 未做 URL 编码（空格转 `.`），`#` / `?` / `%` 会静默改变请求。
-- **日志敏感信息**：`commands/system.rs:145` 在 `info!` 记录完整 `download_url`（私有镜像可能内嵌
+- **日志敏感信息**（已修复 `8b2cd1e`）：`commands/system.rs:145` 在 `info!` 记录完整 `download_url`（私有镜像可能内嵌
   token），建议只记 host。
-- **被吞掉的错误**：`commands/catalog.rs:67`、`:109`、`theme/status.rs:60`、
+- **被吞掉的错误**（已修复 `0c727b0`）：`commands/catalog.rs:67`、`:109`、`theme/status.rs:60`、
   `network/mirror.rs:57`、`commands/random.rs:26`。建议至少 `debug!` / `warn!`。
 
 ### 2.3 前端（`src/`）
 
-- **F1（高）资源错误态击穿整棵树**：Solid 的资源访问器在错误态会 `throw`
+- **F1（高）资源错误态击穿整棵树**（主要部分更早合并，剩余缺口 `83a0b5c`，见 #757）：Solid 的资源访问器在错误态会 `throw`
   （`solid-js/dist/solid.js:328`：`if (err !== undefined && !pr) throw err;`），而全应用无
   `ErrorBoundary`。最现实的触发路径是用户拒绝定位权限：`commands/solar.rs:45` 用 `?` 直接抛错，
   `src/hooks/useSolarPosition.ts:16` 的资源随即进入错误态，`FixedStage.tsx:82`、
   `EngineStatus.tsx:42`、`SunPathPanel.tsx:57` 的无保护访问即抛错。注意：主题未安装**不是**错误
   （`catalog.rs:188` 返回 `Ok(vec![])`），损坏的 `theme.toml` / `solar.json` 才是。修复：统一
   `res.error ? fallback : res()`，并加 `<ErrorBoundary>` 与重试 UI（`ThemeThumbnail.tsx:56` 是范例）。
-- **F5（高）应用操作提交未保存设置**：`settings.store.ts:222` 从草稿 `{ ...config, wallpaper_mode }`
+- **F5（高）应用操作提交未保存设置**（已修复 `c7f0fb7`）：`settings.store.ts:222` 从草稿 `{ ...config, wallpaper_mode }`
   写盘并 `s.saved = snapshot(next)`。用户改了表单没保存、却在舞台点了「应用主题」时，这些改动被静默写入。
   建议只补丁 `wallpaper_mode`。
-- **F6（高）搜索重建全部 tile**：`store/catalog.selectors.ts:24` → `models/themes.ts:18` 每次调用
+- **F6（高）搜索重建全部 tile**（已修复 `6705c10`）：`store/catalog.selectors.ts:24` → `models/themes.ts:18` 每次调用
   都产生新对象数组，`<For>` 按引用协调，导致每次按键全部重挂载并重新 `mirrorUrl` +
   `getOrSaveCachedThumbnails`。建议让 `themeList` 在目录不变时保持引用稳定。
-- **F7（高）下载监听注册失败即卡死**：`store/download.store.ts:60` 在 `try` 之前 await；
+- **F7（高）下载监听注册失败即卡死**（已修复 `2647070`）：`store/download.store.ts:60` 在 `try` 之前 await；
   `cancelDownload`（`:98`）无 catch，调用方均 `void`。
-- **状态管理（中）**：轮询失败每 5 s 弹一次 toast（`store/engine.store.ts:45` + `App.tsx:20`）；
+- **状态管理（中）**（已修复 `90e9ef3`；其中 F14 由 `c40821c` 修复）：轮询失败每 5 s 弹一次 toast（`store/engine.store.ts:45` + `App.tsx:20`）；
   并发刷新可写回陈旧状态；`toggleApply`（`store/fixed.store.ts:75`）与 autostart 切换
   （`components/settings/EngineSection.tsx:60`）的 rejection 未处理；目录选择失败静默（F14）；
   catalog 重载可覆盖并发安装标记（`store/catalog.store.ts:33`）。
-- **Solid 细节（低-中）**：`scope/MonitorCard.tsx:20`、`library/ThemeTile.tsx:21` 解构 props
+- **Solid 细节（低-中）**（已修复 `226583e`）：`scope/MonitorCard.tsx:20`、`library/ThemeTile.tsx:21` 解构 props
   （违反 AGENTS，目前被父组件重建掩盖）；`hooks/useMediaQuery.ts:9` 的 `query` 非响应式；
   `scene/WallpaperImage.tsx:30` 用裸表达式 `props.path;` 建依赖。
-- **架构（中）**：`store/fixed.store.ts:75` 与 `store/random.store.ts:51` 在 JS 里手工拼
+- **架构（中）**（未处理）：`store/fixed.store.ts:75` 与 `store/random.store.ts:51` 在 JS 里手工拼
   `monitor_specific_wallpapers` 的 union 与 `"all"` 伪显示器——按 AGENTS「业务逻辑在 Rust」，
   建议下沉为窄命令。
-- **死代码（低）**：`hooks/useScrollEdges.ts` 从未导入；`lib/layout.ts:3` 的 `MIN_WINDOW` /
+- **死代码（低）**（部分修复 `7b9e456`；`useScrollEdges` 并非死代码，7 个 IPC 包装各自对应已注册命令，均保留）：`hooks/useScrollEdges.ts` 从未导入；`lib/layout.ts:3` 的 `MIN_WINDOW` /
   `MQ_MIN` / `MQ_SHORT` 未用；`models/monitors.ts:6` 的 `ALL_MONITOR_ID` 未用；
   `store/ui.store.ts:73` 的 `TITLEBAR_BORDER_KEY` 未导出使用；无调用者的 IPC 包装
   `requestLocationPermission`、`openPrivacyLocationSettings`、`openConfigDir`、`validateTheme`、
