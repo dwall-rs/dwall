@@ -1,0 +1,8 @@
+---
+source: crates/dwall/src/config.rs
+expression: "[ImageFormat::Jpeg, ImageFormat::Png]"
+---
+[
+  "jpeg",
+  "png"
+]

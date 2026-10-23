@@ -1,0 +1,27 @@
+---
+source: crates/dwall/src/config.rs
+expression: "[WallpaperMode::Fixed\n{\n    monitor_specific_wallpapers:\n    MonitorSpecificWallpapers::All(\"Big Sur\".to_string()),\n}, WallpaperMode::Fixed\n{\n    monitor_specific_wallpapers:\n    MonitorSpecificWallpapers::Individual(HashMap::from([(\"MONITOR#1\".to_string(),\n    \"Big Sur\".to_string())])),\n}, WallpaperMode::Random { pool: None }, WallpaperMode::Random\n{ pool: Some(vec![\"Big Sur\".to_string(), \"Catalina\".to_string()]), },]"
+---
+[
+  {
+    "mode": "fixed",
+    "monitor_specific_wallpapers": "Big Sur"
+  },
+  {
+    "mode": "fixed",
+    "monitor_specific_wallpapers": {
+      "MONITOR#1": "Big Sur"
+    }
+  },
+  {
+    "mode": "random",
+    "pool": null
+  },
+  {
+    "mode": "random",
+    "pool": [
+      "Big Sur",
+      "Catalina"
+    ]
+  }
+]

@@ -1,0 +1,11 @@
+---
+source: crates/dwall/src/config.rs
+expression: "[Network::GitHubMirrorTemplate(\"https://mirror.example.com/{url}\".to_string()),\nNetwork::Socks5 { host: \"127.0.0.1\".to_string(), port: 1080, },]"
+---
+[
+  "https://mirror.example.com/{url}",
+  {
+    "host": "127.0.0.1",
+    "port": 1080
+  }
+]
