@@ -669,10 +669,33 @@ fn write_atomically(path: &Path, contents: &[u8]) -> std::io::Result<()> {
     Ok(())
 }
 
-/// Watches a configuration file for modification-time changes.
+/// The identity of the configuration file at one instant.
+///
+/// The modification time alone is not enough where the filesystem clock is
+/// coarse: FAT and exFAT store it with a two-second resolution and a network
+/// share can be no better, so a rewrite inside the same tick keeps the old
+/// timestamp and the daemon would keep running on the previous configuration.
+/// The length comes from the same `fs::metadata` result and catches the common
+/// case — a rewrite that changes the document's size — for the cost of eight
+/// bytes and one comparison, with no extra syscall, content read or allocation.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct FileStamp {
+    modified: SystemTime,
+    len: u64,
+}
+
+/// Whether `current` describes a different file than `last`.
+///
+/// `None` is the file being absent, so appearing and disappearing are changes.
+/// Both fields of [`FileStamp`] are compared.
+fn stamp_differs(last: Option<FileStamp>, current: Option<FileStamp>) -> bool {
+    last != current
+}
+
+/// Watches a configuration file for changes.
 pub(crate) struct ConfigWatcher {
     config_path: PathBuf,
-    last_modified: Option<SystemTime>,
+    last_stamp: Option<FileStamp>,
 }
 
 impl ConfigWatcher {
@@ -680,7 +703,7 @@ impl ConfigWatcher {
     pub(crate) fn new(config_path: PathBuf) -> Self {
         Self {
             config_path,
-            last_modified: None,
+            last_stamp: None,
         }
     }
 
@@ -689,33 +712,32 @@ impl ConfigWatcher {
         &self.config_path
     }
 
-    fn get_file_modified_time(&self) -> DwallResult<Option<SystemTime>> {
+    fn get_file_stamp(&self) -> DwallResult<Option<FileStamp>> {
         if !self.config_path.exists() {
             return Ok(None);
         }
 
         let metadata = fs::metadata(&self.config_path)?;
-        Ok(Some(metadata.modified()?))
+        Ok(Some(FileStamp {
+            modified: metadata.modified()?,
+            len: metadata.len(),
+        }))
     }
 
     /// Checks if the configuration file has changed since the last check.
     ///
     /// Returns `true` when the file appeared, disappeared, or its modification
-    /// time differs from the last known one.
+    /// time or length differs from the last known stamp.
     pub(crate) fn has_changed(&self) -> DwallResult<bool> {
-        let current_modified = self.get_file_modified_time()?;
+        let current = self.get_file_stamp()?;
 
-        let has_changed = match (self.last_modified, current_modified) {
-            (None, None) => false,
-            (Some(_), None) | (None, Some(_)) => true,
-            (Some(last), Some(current)) => last != current,
-        };
+        let has_changed = stamp_differs(self.last_stamp, current);
 
         if has_changed {
             debug!(
                 path = %self.config_path.display(),
-                last_modified = ?self.last_modified,
-                current_modified = ?current_modified,
+                last = ?self.last_stamp,
+                current = ?current,
                 "Configuration file change detected"
             );
         }
@@ -723,9 +745,9 @@ impl ConfigWatcher {
         Ok(has_changed)
     }
 
-    /// Updates the last known modification time
-    pub(crate) fn update_modified_time(&mut self) -> DwallResult<()> {
-        self.last_modified = self.get_file_modified_time()?;
+    /// Records the file's current stamp as the baseline for [`Self::has_changed`].
+    pub(crate) fn update_stamp(&mut self) -> DwallResult<()> {
+        self.last_stamp = self.get_file_stamp()?;
         Ok(())
     }
 }
@@ -1381,13 +1403,13 @@ mod tests {
         (ConfigWatcher::new(path.clone()), path, dir)
     }
 
-    /// The daemon records the modification time before its first cycle, so the file
+    /// The daemon records the file's stamp before its first cycle, so the file
     /// that is already there is not a change.
     #[test]
     fn the_startup_baseline_is_not_a_change() {
         let (mut watcher, path, dir) = watcher("baseline");
         fs::write(&path, "interval = 30\n").unwrap();
-        watcher.update_modified_time().unwrap();
+        watcher.update_stamp().unwrap();
 
         assert!(!watcher.has_changed().unwrap());
 
@@ -1399,24 +1421,51 @@ mod tests {
         let (mut watcher, path, dir) = watcher("changes");
 
         // Missing at startup, then created: a change.
-        watcher.update_modified_time().unwrap();
+        watcher.update_stamp().unwrap();
         assert!(!watcher.has_changed().unwrap(), "still missing");
 
         fs::write(&path, "interval = 30\n").unwrap();
         assert!(watcher.has_changed().unwrap(), "appeared");
 
-        watcher.update_modified_time().unwrap();
+        watcher.update_stamp().unwrap();
         assert!(!watcher.has_changed().unwrap(), "recorded");
 
         std::thread::sleep(std::time::Duration::from_millis(20));
         fs::write(&path, "interval = 45\n").unwrap();
         assert!(watcher.has_changed().unwrap(), "modified");
 
-        watcher.update_modified_time().unwrap();
+        watcher.update_stamp().unwrap();
         fs::remove_file(&path).unwrap();
         assert!(watcher.has_changed().unwrap(), "disappeared");
 
         let _ = fs::remove_dir_all(&dir);
+    }
+
+    /// The regression test for the coarse-clock window the review found: on FAT,
+    /// exFAT and network shares the modification time has a two-second resolution,
+    /// so a rewrite inside the same tick keeps the old timestamp. The length, read
+    /// from the same metadata call, still differs for the common rewrite, and the
+    /// decision is a pure comparison so the exact values can be pinned here.
+    #[test]
+    fn a_same_timestamp_rewrite_that_changes_length_is_a_change() {
+        let modified = SystemTime::UNIX_EPOCH + std::time::Duration::from_secs(1_700_000_000);
+        let recorded = FileStamp { modified, len: 40 };
+
+        assert!(!stamp_differs(Some(recorded), Some(recorded)));
+        assert!(stamp_differs(
+            Some(recorded),
+            Some(FileStamp { modified, len: 41 })
+        ));
+        assert!(stamp_differs(
+            Some(recorded),
+            Some(FileStamp {
+                modified: modified + std::time::Duration::from_secs(2),
+                len: 40,
+            })
+        ));
+        assert!(stamp_differs(None, Some(recorded)));
+        assert!(stamp_differs(Some(recorded), None));
+        assert!(!stamp_differs(None, None));
     }
 
     // ── Coordinate and format validation ──────────────────────────────────────

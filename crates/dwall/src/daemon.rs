@@ -227,10 +227,10 @@ impl DaemonApplication {
 
     /// Runs the daemon application
     pub fn run(&mut self) -> DwallResult<()> {
-        // Establish the baseline modification time so the first loop iteration does
+        // Establish the baseline file stamp so the first loop iteration does
         // not report a change that never happened.
-        if let Err(e) = self.config_watcher.update_modified_time() {
-            warn!(error = %e, "Failed to read the initial configuration modification time");
+        if let Err(e) = self.config_watcher.update_stamp() {
+            warn!(error = %e, "Failed to read the initial configuration file stamp");
         }
 
         loop {
@@ -495,8 +495,8 @@ impl DaemonApplication {
 
             if config_changed {
                 info!("Configuration file change detected, reloading configuration");
-                if let Err(e) = self.config_watcher.update_modified_time() {
-                    warn!(error = %e, "Failed to record the configuration modification time");
+                if let Err(e) = self.config_watcher.update_stamp() {
+                    warn!(error = %e, "Failed to record the configuration file stamp");
                 }
                 return Ok(());
             }
@@ -535,7 +535,7 @@ impl DaemonApplication {
             theme_engine.reload_if_monitors_changed();
 
             // `continue` rather than sleeping and then re-checking: the top of the
-            // loop records the new modification time and rebuilds the engine.
+            // loop records the new file stamp and rebuilds the engine.
             if wait_for_config_change(&self.config_watcher, next_interval) {
                 continue;
             }
@@ -869,7 +869,7 @@ mod tests {
 
     // ── wait_for_config_change ──────────────────────────────────────────────
 
-    /// A watcher over a scratch config file, with its modification time recorded.
+    /// A watcher over a scratch config file, with its file stamp recorded.
     fn watcher_for(name: &str) -> (ConfigWatcher, PathBuf) {
         let dir = std::env::temp_dir().join(format!("dwall_daemon_wait_{name}"));
         let _ = std::fs::remove_dir_all(&dir);
@@ -879,7 +879,7 @@ mod tests {
         std::fs::write(&path, "interval = 600\n").unwrap();
 
         let mut watcher = ConfigWatcher::new(path.clone());
-        watcher.update_modified_time().unwrap();
+        watcher.update_stamp().unwrap();
 
         (watcher, path)
     }
