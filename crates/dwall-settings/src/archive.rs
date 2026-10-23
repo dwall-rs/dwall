@@ -2,13 +2,14 @@
 
 use std::fs::{self, File};
 use std::io::{Read, Write};
-use std::path::{Path, PathBuf};
+use std::path::{Component, Path, PathBuf};
 
 use tokio::fs as async_fs;
 use zip::ZipArchive;
 use zip::read::root_dir_common_filter;
 
 use crate::error::{DwallSettingsError, DwallSettingsResult};
+use crate::filesystem::is_unwritable_name;
 
 /// Bytes an archive may expand to, and the most this module is willing to write.
 const MAX_EXTRACTED_BYTES: u64 = 8 * 1024 * 1024 * 1024; // 8 GiB
@@ -114,6 +115,26 @@ fn extract_with_limit(
             // directory entry itself, which the unwrapping already accounts for.
             continue;
         };
+
+        // A name Windows will not write as an ordinary file is refused before anything
+        // is created: an entry that names an alternate data stream or a device would put
+        // its content somewhere other than the path the entry claims.
+        if let Some(name) = relative
+            .components()
+            .filter_map(|component| match component {
+                Component::Normal(name) => name.to_str(),
+                _ => None,
+            })
+            .find(|name| is_unwritable_name(name))
+        {
+            error!(
+                entry = name,
+                "Archive entry names a path Windows cannot write"
+            );
+            return Err(DwallSettingsError::Other(format!(
+                "Archive entry '{name}' is not a name Windows can write"
+            )));
+        }
 
         let out_path = target_dir.join(&relative);
 
@@ -428,6 +449,50 @@ mod tests {
         assert!(!target.join("big.bin").is_file());
 
         let _ = fs::remove_dir_all(&dir);
+    }
+
+    /// A colon opens an alternate data stream, `CON` and `NUL` address devices, and a
+    /// trailing dot is dropped: an archive must not be able to write through any of them.
+    #[test]
+    fn entries_windows_cannot_write_as_files_are_refused() {
+        for name in [
+            "Theme/evil.txt:ads",
+            "Theme/CON",
+            "Theme/nul.txt",
+            "Theme/trailing.",
+        ] {
+            let dir = scratch("unwritable");
+            let zip_path = write_archive(&dir, &archive(&[(name, b"payload")]));
+            let target = dir.join("out");
+
+            let error = extract_with_limit(&zip_path, &target, MAX_EXTRACTED_BYTES)
+                .expect_err("a name Windows cannot write must be refused")
+                .to_string();
+
+            assert!(error.contains("is not a name Windows can write"), "{error}");
+            assert!(
+                !target.join("evil.txt").exists(),
+                "the refused entry must not be written anywhere"
+            );
+
+            let _ = fs::remove_dir_all(&dir);
+        }
+    }
+
+    /// The device names are reserved with an extension but only up to nine, and only as
+    /// the whole stem, so these are ordinary files.
+    #[test]
+    fn names_that_merely_start_like_a_device_are_written() {
+        for name in ["Theme/CONSOLE.txt", "Theme/COM10.txt", "Theme/PRINTER.txt"] {
+            let dir = scratch("writable");
+            let zip_path = write_archive(&dir, &archive(&[(name, b"payload")]));
+            let target = dir.join("out");
+
+            extract_with_limit(&zip_path, &target, MAX_EXTRACTED_BYTES)
+                .expect("this is an ordinary file name on Windows");
+
+            let _ = fs::remove_dir_all(&dir);
+        }
     }
 
     #[test]
