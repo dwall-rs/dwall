@@ -36,6 +36,11 @@ export const dict: RawDictionary = {
     hintFixed: "点击指定给{{ name }}",
     hintRandom: "点击加入 / 移出候选池",
     search: "搜索主题…",
+    loadFailed: "无法读取主题列表",
+    empty: "还没有主题",
+    emptyDesc: "把主题放进主题目录，然后重新加载。",
+    noMatch: "没有匹配“{{ query }}”的主题",
+    reload: "重新加载",
   },
 
   scope: {

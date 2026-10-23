@@ -36,6 +36,11 @@ export const dict: RawDictionary = {
     hintFixed: "クリックして{{ name }}に割り当て",
     hintRandom: "クリックしてプールに追加/削除",
     search: "テーマを検索…",
+    loadFailed: "テーマ一覧を読み込めませんでした",
+    empty: "テーマがまだありません",
+    emptyDesc: "テーマディレクトリにテーマを追加して、再読み込みしてください。",
+    noMatch: "「{{ query }}」に一致するテーマはありません",
+    reload: "再読み込み",
   },
 
   scope: {

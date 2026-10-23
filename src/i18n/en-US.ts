@@ -34,6 +34,11 @@ export const dict = {
     hintFixed: "Click to assign to {{ name }}",
     hintRandom: "Click to add / remove from the pool",
     search: "Search themes…",
+    loadFailed: "Could not read the themes",
+    empty: "No themes yet",
+    emptyDesc: "Put themes in the themes directory, then reload.",
+    noMatch: "No theme matches “{{ query }}”",
+    reload: "Reload",
   },
 
   scope: {

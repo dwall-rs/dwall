@@ -36,6 +36,11 @@ export const dict: RawDictionary = {
     hintFixed: "클릭하여 {{ name }}에 지정",
     hintRandom: "클릭하여 풀에 추가/제거",
     search: "테마 검색…",
+    loadFailed: "테마 목록을 읽지 못했습니다",
+    empty: "아직 테마가 없습니다",
+    emptyDesc: "테마 디렉터리에 테마를 넣고 다시 불러오세요.",
+    noMatch: "“{{ query }}”와 일치하는 테마가 없습니다",
+    reload: "다시 불러오기",
   },
 
   scope: {

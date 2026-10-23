@@ -12,6 +12,13 @@ const log = logger.child("catalog");
 
 interface CatalogState {
   status: "idle" | "loading" | "ready" | "error";
+  /**
+   * Why the last load failed, for the library to show.
+   *
+   * The toast is long gone by the time the user looks at the library, so a failure has
+   * to be readable where the themes would have been — and retryable from there.
+   */
+  error: string;
   themes: CatalogTheme[];
   monitors: DisplayMonitor[];
   /**
@@ -25,6 +32,7 @@ interface CatalogState {
 
 const [catalogStore, setCatalogStore] = createStore<CatalogState>({
   status: "idle",
+  error: "",
   themes: [],
   monitors: [],
   installedRevision: 0,
@@ -41,10 +49,11 @@ const load = async () => {
       themes,
       monitors: Object.values(monitors),
       status: "ready",
+      error: "",
     });
   } catch (e) {
     log.error("Failed to load catalog", e);
-    setCatalogStore("status", "error");
+    setCatalogStore({ status: "error", error: String(e) });
     toast.error(t("common.operationFailed"), { description: String(e) });
   }
 };
