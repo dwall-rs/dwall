@@ -33,10 +33,13 @@ pub static DAEMON_EXE_PATH: OnceCell<PathBuf> = OnceCell::const_new();
 
 /// Starts the settings window.
 ///
-/// Deliberately not `#[tokio::main]`: nothing in this function awaits, and Tauri
-/// creates the tokio runtime its async commands run on the first time it needs one.
-/// The attribute therefore only added a second runtime, whose worker threads sat
-/// idle for the life of the process.
+/// Deliberately not `#[tokio::main]`: nothing in this function awaits, and Tauri creates
+/// the tokio runtime its async commands run on the first time it needs one, so the
+/// attribute only added a second runtime.
+///
+/// Nothing reached from the main thread may call `tokio::spawn`, `tokio::task::spawn_blocking`
+/// or anything else that needs a runtime to be current — without the attribute there is
+/// none, and such a call panics instead of failing. Use `tauri::async_runtime` there.
 fn main() -> DwallSettingsResult<()> {
     #[cfg(debug_assertions)]
     Logger::default().with_target("dwall").init()?;
