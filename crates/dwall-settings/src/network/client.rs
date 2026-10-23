@@ -633,4 +633,48 @@ mod tests {
 
         assert!(error.to_string().contains("UTF-8"), "{error}");
     }
+
+    // ── Reconfiguring and the proxy branch ──────────────────────────────────
+
+    fn socks5(host: &str) -> dwall::config::Network {
+        dwall::config::Network::Socks5 {
+            host: host.to_string(),
+            port: 1080,
+        }
+    }
+
+    #[test]
+    fn a_socks5_configuration_builds_a_client() {
+        let proxy = socks5("127.0.0.1");
+
+        assert!(HttpClient::new(Some(&proxy)).is_ok());
+    }
+
+    #[test]
+    fn reconfigure_installs_the_new_client() {
+        let http = HttpClient::new(None).unwrap();
+        let before = http.current();
+
+        http.reconfigure(Some(&socks5("127.0.0.1"))).unwrap();
+
+        assert!(
+            !Arc::ptr_eq(&before, &http.current()),
+            "a successful reconfigure has to install the client it built"
+        );
+    }
+
+    /// The rebuild is the only thing that can fail; when it does, the request path
+    /// must keep using the client that already works.
+    #[test]
+    fn reconfigure_keeps_the_previous_client_when_the_new_one_cannot_be_built() {
+        let http = HttpClient::new(None).unwrap();
+        let before = http.current();
+
+        // A space cannot appear in a host, so the proxy URL cannot be built.
+        assert!(http.reconfigure(Some(&socks5("not a host"))).is_err());
+        assert!(
+            Arc::ptr_eq(&before, &http.current()),
+            "a failed reconfigure must not drop the working client"
+        );
+    }
 }

@@ -295,4 +295,68 @@ mod tests {
 
         assert_eq!(MirrorUrlResolver::resolve(network.as_ref(), url).await, url);
     }
+
+    // ── resolve: the pass-through cases ─────────────────────────────────────
+
+    /// No network setting, a SOCKS5 proxy, and a URL that is not GitHub: all three
+    /// have to leave the URL exactly as it was, because only a mirror template
+    /// rewrites anything.
+    #[tokio::test]
+    async fn resolve_passes_none_a_proxy_and_non_github_urls_through_unchanged() {
+        let github = "https://github.com/dwall-rs/dwall/releases/download/v0.3.0/latest.json";
+        let elsewhere = "https://example.com/releases/download/v0.3.0/latest.json";
+
+        assert_eq!(MirrorUrlResolver::resolve(None, github).await, github);
+
+        let proxy = Some(Network::Socks5 {
+            host: "127.0.0.1".to_string(),
+            port: 1080,
+        });
+        assert_eq!(
+            MirrorUrlResolver::resolve(proxy.as_ref(), github).await,
+            github
+        );
+
+        let template = mirror("https://ghproxy.cc/https://github.com/<owner>/<repo>");
+        assert_eq!(
+            MirrorUrlResolver::resolve(template.as_ref(), elsewhere).await,
+            elsewhere,
+            "only github.com URLs can be rewritten through a mirror"
+        );
+    }
+
+    // ── resolve_raw: the degenerate cases ───────────────────────────────────
+
+    /// A template with only one of the two placeholders is not usable and the URL is
+    /// kept, rather than being half-substituted into a URL that 404s.
+    #[test]
+    fn resolve_raw_keeps_the_url_when_a_placeholder_is_missing() {
+        let url = "https://github.com/dwall-rs/dwall-assets/raw/refs/heads/main/thumbnails/1.avif";
+
+        for template in [
+            "https://ghproxy.cc/https://github.com/<owner>",
+            "https://ghproxy.cc/https://github.com/<repo>",
+        ] {
+            assert_eq!(
+                MirrorUrlResolver::resolve_raw(mirror(template).as_ref(), url),
+                url,
+                "{template} is missing a placeholder"
+            );
+        }
+    }
+
+    /// A GitHub URL that is not a raw file has no path to append, so the base the
+    /// template builds is the whole answer.
+    #[test]
+    fn resolve_raw_without_a_raw_path_keeps_the_mirrored_base() {
+        let network = mirror("https://ghproxy.cc/https://github.com/<owner>/<repo>");
+
+        assert_eq!(
+            MirrorUrlResolver::resolve_raw(
+                network.as_ref(),
+                "https://github.com/dwall-rs/dwall-assets",
+            ),
+            "https://ghproxy.cc/https://github.com/dwall-rs/dwall-assets"
+        );
+    }
 }
