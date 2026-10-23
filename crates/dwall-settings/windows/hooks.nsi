@@ -39,8 +39,11 @@
 !macro NSIS_HOOK_PREINSTALL
   # NOTE: Clear incomplete thumbnails saved by old versions
   # ---- start: This hook will be removed in the future ----
+  # Only the thumbnail cache, not the whole cache directory: the logs live beside it
+  # and are the record of a problem the user has already hit, so an upgrade must not
+  # take them away. $LOCALAPPDATA\dwall is the pre-identifier layout of older versions.
+  RMDir /r "$LOCALAPPDATA\com.thep0y.dwall\thumbnails"
   RMDir /r "$LOCALAPPDATA\dwall"
-  RMDir /r "$LOCALAPPDATA\com.thep0y.dwall"
   # ---- end ----
 
   !insertmacro TerminateDwallProcess
@@ -53,6 +56,10 @@
 !macroend
 
 !macro NSIS_HOOK_POSTUNINSTALL
-  RMDir /r "$APPDATA\dwall"
+  # $APPDATA\dwall holds config.toml, the downloaded themes and the custom themes. The
+  # custom ones are the only files here that cannot be downloaded again, and deleting
+  # the directory destroyed them without asking, so an uninstall leaves it alone. What
+  # is cleared below is regenerated on the next run.
+  RMDir /r "$LOCALAPPDATA\com.thep0y.dwall"
   RMDir /r "$LOCALAPPDATA\dwall"
 !macroend
