@@ -45,19 +45,34 @@ export function ThemeTile({ id, index }: Props) {
 
   return (
     <div
-      onClick={onClick}
-      aria-disabled={!selectable()}
       title={selectable() ? undefined : t("stage.notInstalled")}
       style={{ "animation-delay": `${index * 40}ms` }}
       class={clsx(
         "group relative aspect-16/10 overflow-hidden rounded-lg border transition-all duration-200 animate-rise",
+        // The ring is drawn on the tile rather than on the button inside it: the tile
+        // clips its contents, so a ring around the button would be cut off.
+        "has-[:focus-visible]:border-ring has-[:focus-visible]:ring-3 has-[:focus-visible]:ring-ring/50",
         selectable()
-          ? "cursor-pointer hover:-translate-y-1 hover:scale-[1.02] hover:border-border-2 hover:shadow-[0_12px_26px_rgba(0,0,0,.5)]"
+          ? "hover:-translate-y-1 hover:scale-[1.02] hover:border-border-2 hover:shadow-[0_12px_26px_rgba(0,0,0,.5)]"
           : "cursor-default",
         on() && modeStore.mode === "fixed" && "border-primary",
         on() && modeStore.mode === "random" && "border-warning",
       )}
     >
+      {/* The tile selects a theme and can carry a download button of its own, so the
+          click target is a button laid over the tile rather than the tile itself: a
+          button may not contain another one, and this is what the keyboard reaches. */}
+      <button
+        type="button"
+        aria-label={theme().name}
+        aria-pressed={on()}
+        disabled={!selectable()}
+        onClick={onClick}
+        class={clsx(
+          "absolute inset-0 z-10 rounded-lg",
+          selectable() ? "cursor-pointer" : "cursor-default",
+        )}
+      />
       <ThemeThumbnail
         themeId={id}
         class="transition-transform duration-500 group-hover:scale-105"
@@ -79,7 +94,7 @@ export function ThemeTile({ id, index }: Props) {
       {/* A theme that is not on disk is offered for download right here, so both modes
           install themes from the same place instead of only the fixed-mode stage. */}
       <Show when={theme().needsDownload}>
-        <div class="absolute bottom-1.5 right-1.5">
+        <div class="absolute bottom-1.5 right-1.5 z-20">
           <ThemeDownloadButton themeId={id} />
         </div>
       </Show>
