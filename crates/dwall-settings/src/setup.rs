@@ -5,8 +5,13 @@ use std::{env, path::PathBuf};
 use tauri::Manager;
 
 use crate::{
-    DAEMON_EXE_PATH, daemon::DaemonLauncher, network::HttpClient,
-    theme::downloader::ThemeDownloader, thumbnail::ThumbnailCache, window::build_window,
+    DAEMON_EXE_PATH,
+    daemon::{DaemonLauncher, DaemonStartup, daemon_path, plan_daemon_startup},
+    network::HttpClient,
+    process::stop_daemon,
+    theme::downloader::ThemeDownloader,
+    thumbnail::ThumbnailCache,
+    window::build_window,
 };
 
 pub fn setup_app(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
@@ -82,8 +87,41 @@ pub fn setup_app(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>>
         // A daemon installed anywhere in this session counts, not only the copy
         // next to this executable.
         let already_running = crate::daemon::is_daemon_running().unwrap_or(false);
-        if !already_running && let Err(e) = DaemonLauncher::launch() {
-            error!(error = %e, "Failed to start the daemon");
+
+        match plan_daemon_startup(cfg!(debug_assertions), already_running) {
+            DaemonStartup::Start => {
+                if let Err(e) = DaemonLauncher::launch() {
+                    error!(error = %e, "Failed to start the daemon");
+                }
+            }
+            DaemonStartup::Adopt => {
+                info!("A daemon is already running, leaving it alone");
+            }
+            DaemonStartup::Replace => {
+                // A debug build must run the daemon it was built alongside, so the
+                // installed one is stopped first rather than adopted: adopting it
+                // would leave the dev session exercising a release binary.
+                // `stop_daemon` waits on the process handle (up to five seconds), so it
+                // runs off the async runtime thread that drives the window.
+                match tauri::async_runtime::spawn_blocking(stop_daemon).await {
+                    Ok(Ok(Some(pid))) => info!(
+                        pid = pid,
+                        "Stopped the running daemon to start this debug build's daemon"
+                    ),
+                    Ok(Ok(None)) => info!("No daemon process found to stop"),
+                    Ok(Err(e)) => error!(error = %e, "Failed to stop the running daemon"),
+                    Err(e) => error!(error = %e, "Stopping the running daemon failed"),
+                }
+
+                match daemon_path() {
+                    Ok(path) => info!(path = %path.display(), "Starting the debug daemon"),
+                    Err(e) => error!(error = %e, "Daemon executable path not configured"),
+                }
+
+                if let Err(e) = DaemonLauncher::launch() {
+                    error!(error = %e, "Failed to start the debug daemon");
+                }
+            }
         }
     });
 

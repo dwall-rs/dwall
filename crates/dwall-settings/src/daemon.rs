@@ -47,6 +47,32 @@ pub fn is_daemon_running() -> DwallSettingsResult<bool> {
     Ok(dwall::daemon_is_running())
 }
 
+/// What the settings app does about the daemon when its window opens.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum DaemonStartup {
+    /// No daemon is running: start the one built alongside this settings app.
+    Start,
+    /// A daemon is already running and a release build leaves it alone.
+    Adopt,
+    /// A daemon is already running and a debug build replaces it with its own.
+    Replace,
+}
+
+/// Decides what to do about a daemon that may already be running.
+///
+/// A release build adopts whatever daemon is running, so opening the settings window
+/// does not kill an engine the user started. A debug build replaces it instead: the
+/// daemon a dev session runs has to be the debug binary built alongside this settings
+/// app, or the binary under test is never exercised. The build profile is a parameter
+/// rather than a `cfg!` so both arms are testable from one test binary.
+pub(crate) fn plan_daemon_startup(debug_build: bool, already_running: bool) -> DaemonStartup {
+    match (debug_build, already_running) {
+        (_, false) => DaemonStartup::Start,
+        (false, true) => DaemonStartup::Adopt,
+        (true, true) => DaemonStartup::Replace,
+    }
+}
+
 /// Launches the daemon process
 pub struct DaemonLauncher;
 
@@ -309,6 +335,46 @@ mod tests {
         assert!(
             should_run(&config),
             "one theme for all monitors is still a configured monitor"
+        );
+    }
+
+    // ── plan_daemon_startup ─────────────────────────────────────────────────
+
+    /// A release build adopts an already-running daemon: opening the settings window
+    /// must not kill an engine the user started.
+    #[test]
+    fn a_release_build_adopts_a_running_daemon() {
+        assert_eq!(
+            plan_daemon_startup(false, true),
+            DaemonStartup::Adopt,
+            "a release build leaves the running daemon alone"
+        );
+    }
+
+    /// A debug build stops it and starts its own, so a dev session always runs the
+    /// debug daemon built alongside the settings app.
+    #[test]
+    fn a_debug_build_replaces_a_running_daemon() {
+        assert_eq!(
+            plan_daemon_startup(true, true),
+            DaemonStartup::Replace,
+            "a debug build replaces the running daemon with its own"
+        );
+    }
+
+    /// With nothing running there is nothing to adopt or replace: both profiles start
+    /// the daemon built alongside them.
+    #[test]
+    fn no_running_daemon_is_started_in_either_profile() {
+        assert_eq!(
+            plan_daemon_startup(false, false),
+            DaemonStartup::Start,
+            "a release build starts its daemon when none is running"
+        );
+        assert_eq!(
+            plan_daemon_startup(true, false),
+            DaemonStartup::Start,
+            "a debug build starts its daemon when none is running"
         );
     }
 }
