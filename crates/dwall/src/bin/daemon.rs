@@ -9,6 +9,7 @@
 //! `docs/headless.md`.
 
 use std::ffi::OsString;
+use std::io::Write;
 use std::path::PathBuf;
 use std::process::ExitCode;
 
@@ -294,16 +295,20 @@ fn check_config(path: Option<PathBuf>) -> ExitCode {
 
     match ConfigReader::read_from_path(&path) {
         Ok(config) => {
-            println!("configuration OK: {}", path.display());
+            let stdout = std::io::stdout();
+            let mut out = stdout.lock();
+
+            let _ = writeln!(out, "configuration OK: {}", path.display());
 
             if !path.is_file() {
-                println!(
+                let _ = writeln!(
+                    out,
                     "  note: the file does not exist yet; defaults are in effect and a \
                      default file is written on first run"
                 );
             }
 
-            print_summary(&config);
+            let _ = print_summary(&config, &mut out);
             ExitCode::from(exit::SUCCESS)
         }
         Err(e) => {
@@ -314,25 +319,32 @@ fn check_config(path: Option<PathBuf>) -> ExitCode {
     }
 }
 
-/// Prints the non-sensitive configuration summary (never the coordinates).
-fn print_summary(config: &Config) {
-    println!("  interval: {}s", config.interval());
-    println!("  image format: {:?}", config.image_format());
-    println!(
+/// Writes the non-sensitive configuration summary (never the coordinates).
+///
+/// Takes the writer so the output can be captured in a test instead of the real
+/// stdout.
+fn print_summary(config: &Config, out: &mut impl Write) -> std::io::Result<()> {
+    writeln!(out, "  interval: {}s", config.interval())?;
+    writeln!(out, "  image format: {:?}", config.image_format())?;
+    writeln!(
+        out,
         "  auto-detect colour scheme: {}",
         config.auto_detect_color_scheme()
-    );
+    )?;
 
     for (label, directory) in [
         ("themes", config.themes_directory()),
         ("customized themes", config.customized_themes_directory()),
     ] {
-        println!(
+        writeln!(
+            out,
             "  {label} directory: {} ({})",
             directory.display(),
             if directory.is_dir() { "ok" } else { "missing" }
-        );
+        )?;
     }
+
+    Ok(())
 }
 
 /// Registers this executable to start at sign-in.
@@ -493,6 +505,45 @@ mod tests {
             "--config is meaningless for auto-start"
         );
         assert!(parse(&["--check-config", "--check-config"]).is_err());
+    }
+
+    /// The summary is what a user pastes into a report, so it lists the documented
+    /// keys and never the coordinates.
+    #[test]
+    fn the_summary_lists_the_documented_keys_and_hides_the_coordinates() {
+        let path = std::env::temp_dir().join(format!("dwall_summary_{}.toml", std::process::id()));
+        std::fs::write(
+            &path,
+            "[position_source]\ntype = \"MANUAL\"\nlatitude = 39.9042\nlongitude = 116.4074\naltitude = 43.5\n",
+        )
+        .unwrap();
+
+        let config = ConfigReader::read_from_path(&path).unwrap();
+        let mut out = Vec::new();
+        print_summary(&config, &mut out).unwrap();
+        let summary = String::from_utf8(out).unwrap();
+
+        for key in [
+            "interval",
+            "image format",
+            "auto-detect colour scheme",
+            "themes directory",
+            "customized themes directory",
+        ] {
+            assert!(
+                summary.contains(key),
+                "the summary has to name {key}: {summary}"
+            );
+        }
+
+        for coordinate in ["39.9042", "116.4074", "43.5"] {
+            assert!(
+                !summary.contains(coordinate),
+                "the summary must not print {coordinate}: {summary}"
+            );
+        }
+
+        let _ = std::fs::remove_file(&path);
     }
 
     // ── Exit codes ──────────────────────────────────────────────────────────
