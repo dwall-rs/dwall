@@ -71,11 +71,11 @@ fn extract_with_limit(
     // The declared sizes first: reading them decompresses nothing and rejects an
     // honest bomb before the first byte is written. The limit below is what the
     // guarantee rests on, and the two report different messages so a test can tell
-    // which one fired.
+    // which one fired. Both name the limit they were given rather than the compiled-in
+    // default, so a caller with a smaller budget is not told about a number it never set.
     if declared_size(&mut zip)? > max_bytes {
         return Err(DwallSettingsError::Other(format!(
-            "Archive declares more than {} GiB",
-            MAX_EXTRACTED_BYTES / (1024 * 1024 * 1024)
+            "Archive declares more than {max_bytes} bytes"
         )));
     }
 
@@ -199,11 +199,12 @@ fn declared_size(zip: &mut ZipArchive<File>) -> DwallSettingsResult<u64> {
     Ok(declared_bytes)
 }
 
-fn expanded_too_much_error() -> DwallSettingsError {
-    DwallSettingsError::Other(format!(
-        "Archive expands to more than {} GiB",
-        MAX_EXTRACTED_BYTES / (1024 * 1024 * 1024)
-    ))
+/// The refusal for an entry that does not fit what is left of the budget.
+///
+/// It names the limit that fired rather than the compiled-in default, so a caller
+/// with a smaller budget is not told about a number it never set.
+fn expanded_too_much_error(limit: u64) -> DwallSettingsError {
+    DwallSettingsError::Other(format!("Archive expands to more than {limit} bytes"))
 }
 
 /// Where an entry that resolved to `path` is written, relative to the target.
@@ -247,7 +248,7 @@ fn copy_bounded(
                 limit = limit,
                 "Archive entry expands past the remaining size limit"
             );
-            return Err(expanded_too_much_error());
+            return Err(expanded_too_much_error(limit));
         }
 
         writer.write_all(&buffer[..read])?;
@@ -443,8 +444,8 @@ mod tests {
             .to_string();
 
         assert!(
-            error.contains("declares more than"),
-            "the declared-size check has to reject it first: {error}"
+            error.contains("declares more than 1024 bytes"),
+            "the refusal has to name the budget it was given: {error}"
         );
         assert!(!target.join("big.bin").is_file());
 
@@ -569,7 +570,7 @@ mod tests {
             .to_string();
 
         assert_eq!(sink.len(), 0, "the oversized chunk must not be written");
-        assert!(error.contains("expands to more than"), "{error}");
+        assert!(error.contains("expands to more than 10 bytes"), "{error}");
     }
 
     #[test]
