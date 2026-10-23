@@ -711,6 +711,162 @@ mod tests {
         }
     }
 
+    /// The boundaries the review names: zero failures is still a valid delay, the
+    /// first failure is the base, and 17 failures are already past the cap.
+    #[test]
+    fn the_backoff_is_defined_at_the_reviewed_boundaries() {
+        assert_eq!(failure_backoff(0), FAILURE_BACKOFF_BASE);
+        assert_eq!(failure_backoff(1), FAILURE_BACKOFF_BASE);
+        assert_eq!(failure_backoff(17), FAILURE_BACKOFF_MAX);
+        assert_eq!(failure_backoff(u32::MAX), FAILURE_BACKOFF_MAX);
+    }
+
+    // ── Random mode ─────────────────────────────────────────────────────────
+
+    #[test]
+    fn random_pool_is_the_configured_pool_only_in_random_mode() {
+        let mut config = Config::default();
+
+        config.set_wallpaper_mode(WallpaperMode::Random { pool: None });
+        assert_eq!(random_pool(&config), None, "no pool means every theme");
+
+        let pool = vec!["Alpha".to_string(), "Beta".to_string()];
+        config.set_wallpaper_mode(WallpaperMode::Random {
+            pool: Some(pool.clone()),
+        });
+        assert_eq!(random_pool(&config), Some(&pool));
+
+        config.set_wallpaper_mode(WallpaperMode::Fixed {
+            monitor_specific_wallpapers: MonitorSpecificWallpapers::All("Alpha".to_string()),
+        });
+        assert_eq!(random_pool(&config), None, "fixed mode has no pool");
+    }
+
+    /// A scratch themes root with one valid theme in it, plus a config file that
+    /// points both theme roots at the scratch directory. The state file the random
+    /// mode writes lives next to that config file.
+    fn random_config(name: &str, mode: WallpaperMode) -> (Config, PathBuf, PathBuf) {
+        let dir = std::env::temp_dir().join(format!("dwall_daemon_random_{name}"));
+        let _ = std::fs::remove_dir_all(&dir);
+        let themes = dir.join("themes");
+        let customized = dir.join("customized");
+        let theme_dir = themes.join("Alpha");
+        std::fs::create_dir_all(&theme_dir).unwrap();
+        std::fs::create_dir_all(&customized).unwrap();
+        std::fs::write(theme_dir.join("solar.json"), "[]").unwrap();
+
+        let config_path = dir.join("config.toml");
+        let themes = themes.display().to_string().replace('\\', "/");
+        let customized = customized.display().to_string().replace('\\', "/");
+        std::fs::write(
+            &config_path,
+            format!(
+                "themes_directory = \"{themes}\"\ncustomized_themes_directory = \"{customized}\"\n"
+            ),
+        )
+        .unwrap();
+
+        let mut config = ConfigReader::read_from_path(&config_path).unwrap();
+        config.set_wallpaper_mode(mode);
+
+        (config, config_path, dir)
+    }
+
+    /// Fixed mode drops any in-memory random state, so switching back to random draws
+    /// afresh rather than reusing a theme chosen for another mode.
+    #[test]
+    fn fixed_mode_clears_the_random_state() {
+        let mut daemon = DaemonApplication::with_config_path(
+            std::env::temp_dir().join("dwall_daemon_fixed.toml"),
+        );
+        daemon.random_state = Some(RandomModeState {
+            selector: DailyRandomThemeSelector::new(),
+            current_theme: Some("Alpha".to_string()),
+        });
+
+        let mut config = Config::default();
+        config.set_wallpaper_mode(WallpaperMode::Fixed {
+            monitor_specific_wallpapers: MonitorSpecificWallpapers::All("Alpha".to_string()),
+        });
+
+        daemon.apply_wallpaper_mode(&mut config).unwrap();
+
+        assert!(daemon.random_state.is_none());
+    }
+
+    /// An empty pool is a configured state, not an error: nothing is selected, the
+    /// mode stays Random, and no state file is written.
+    #[test]
+    fn handle_random_mode_with_an_empty_pool_selects_nothing() {
+        let (mut config, config_path, dir) = random_config(
+            "empty_pool",
+            WallpaperMode::Random {
+                pool: Some(Vec::new()),
+            },
+        );
+        let mut daemon = DaemonApplication::with_config_path(config_path);
+
+        daemon.handle_random_mode(&mut config).unwrap();
+
+        assert!(
+            daemon
+                .random_state
+                .as_ref()
+                .unwrap()
+                .current_theme
+                .is_none()
+        );
+        assert!(matches!(
+            config.wallpaper_mode(),
+            WallpaperMode::Random { .. }
+        ));
+        assert!(!dir.join("random_selection.json").exists());
+
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    /// A persisted draw naming a theme that has since been deleted must not fail the
+    /// cycle: the selector redraws from what is still installed and persists that.
+    #[test]
+    fn handle_random_mode_redraws_when_todays_theme_was_deleted() {
+        let (mut config, config_path, dir) =
+            random_config("deleted", WallpaperMode::Random { pool: None });
+        let today = OffsetDateTime::now_local().unwrap().date();
+        crate::random_state::write_to(
+            &dir,
+            &crate::random_state::RandomSelection::new(&today, "Gone".to_string()),
+        )
+        .unwrap();
+
+        let mut daemon = DaemonApplication::with_config_path(config_path);
+        daemon.handle_random_mode(&mut config).unwrap();
+
+        assert_eq!(
+            daemon
+                .random_state
+                .as_ref()
+                .unwrap()
+                .current_theme
+                .as_deref(),
+            Some("Alpha")
+        );
+        match config.wallpaper_mode() {
+            WallpaperMode::Fixed {
+                monitor_specific_wallpapers,
+            } => assert_eq!(
+                monitor_specific_wallpapers,
+                &MonitorSpecificWallpapers::All("Alpha".to_string())
+            ),
+            other => panic!("expected the selected theme to be carried as Fixed, got {other:?}"),
+        }
+
+        let persisted = crate::random_state::read_from(&dir).unwrap().unwrap();
+        assert_eq!(persisted.date, crate::random_state::date_key(&today));
+        assert_eq!(persisted.theme_id, "Alpha");
+
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
     // ── wait_for_config_change ──────────────────────────────────────────────
 
     /// A watcher over a scratch config file, with its modification time recorded.
