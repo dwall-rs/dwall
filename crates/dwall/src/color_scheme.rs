@@ -1185,4 +1185,69 @@ mod tests {
             ],
         );
     }
+
+    // ── White-night half band ───────────────────────────────────────────────
+
+    /// The white-night branch is a three-way decision: at or above the midpoint plus
+    /// half the amplitude margin it is Light, strictly below the midpoint minus that
+    /// half band it is Dark, and inside the band the current scheme is kept. The band
+    /// is built around a real SolarPosition's altitude so the boundaries are exact.
+    #[test]
+    fn white_night_band_endpoints_decide_light_dark_or_keep() {
+        let position = mock_position(0.0);
+        let time = OffsetDateTime::new(2026, Month::March, 20, 12, 0, 0, "+00:00".parse().unwrap())
+            .unwrap();
+        let sun = solar_position(&position, time);
+        let altitude = sun.altitude();
+        let config = ThresholdConfig::default_civil();
+
+        // altitude == midpoint + half band: the Light comparison is inclusive.
+        let light_edge = DaylightState::WhiteNight {
+            min_altitude: altitude - 4.0,
+            max_altitude: altitude,
+        };
+        assert_eq!(
+            determine_color_scheme_with_hysteresis(
+                &sun,
+                &ColorScheme::Dark,
+                &config,
+                &time,
+                &light_edge,
+            ),
+            ColorScheme::Light
+        );
+
+        // altitude == midpoint - half band: the Dark comparison is strict, so the
+        // current scheme survives at the edge.
+        let dark_edge = DaylightState::WhiteNight {
+            min_altitude: altitude + 1.0,
+            max_altitude: altitude + 3.0,
+        };
+        assert_eq!(
+            determine_color_scheme_with_hysteresis(
+                &sun,
+                &ColorScheme::Light,
+                &config,
+                &time,
+                &dark_edge,
+            ),
+            ColorScheme::Light
+        );
+
+        // Just past the lower edge: Dark, even from a Light scheme.
+        let below = DaylightState::WhiteNight {
+            min_altitude: altitude + 2.0,
+            max_altitude: altitude + 4.0,
+        };
+        assert_eq!(
+            determine_color_scheme_with_hysteresis(
+                &sun,
+                &ColorScheme::Light,
+                &config,
+                &time,
+                &below,
+            ),
+            ColorScheme::Dark
+        );
+    }
 }
