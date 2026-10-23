@@ -51,9 +51,10 @@ jobs:
         run: |
           set -euo pipefail
 
-          # `dev` is where changes are integrated before `main`, and `old` is kept for
-          # history: a merged pull request must never take either of them away.
-          long_lived=(main dev old)
+          # `main` takes every change now, and `old` is kept for history: a merged pull
+          # request must never take either of them away. `dev` was the integration branch
+          # until it was retired, so it is no longer protected here.
+          long_lived=(main old)
           for kept in "${long_lived[@]}"; do
             if [[ "${BRANCH}" == "${kept}" ]]; then
               echo "::notice::${BRANCH} is a long-lived branch; keeping it"
