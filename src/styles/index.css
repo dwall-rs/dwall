@@ -106,6 +106,24 @@
     }
 }
 
+/* The three ambient loops above run for as long as their element is on screen — an
+   engine status dot, the mark that settings are unsaved, a match badge — and stopping
+   them loses no information: each is decoration over a state the UI already spells out
+   in words. A reader who asked their system for less motion gets them held at rest.
+   The spinners are deliberately left alone: `animate-spin` and `animate-pulse` are how
+   a wait is reported, and freezing them would take away the only sign of activity.
+
+   Overriding the tokens rather than the classes keeps this working for anything that
+   animates through `--animate-*` later, without an `!important` or a class list that
+   has to be kept in step. */
+@media (prefers-reduced-motion: reduce) {
+    :root {
+        --animate-bdot: none;
+        --animate-breathe: none;
+        --animate-pulse-ring: none;
+    }
+}
+
 @theme inline {
     --color-background: var(--background);
     --color-foreground: var(--foreground);
