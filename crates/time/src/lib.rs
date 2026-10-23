@@ -660,9 +660,26 @@ impl Date {
         Self { year, month, day }
     }
 
+    /// Creates a local date-time on this date in the machine's time zone.
+    ///
+    /// The zone is read from the system, so the result depends on where this
+    /// runs; [`with_hms_offset`](Self::with_hms_offset) is the variant a caller
+    /// that needs a reproducible instant uses.
     pub fn with_hms(&self, hour: u8, minute: u8, second: u8) -> Result<OffsetDateTime> {
-        let offset = Offset::local_offset();
+        self.with_hms_offset(hour, minute, second, Offset::local_offset())
+    }
 
+    /// Creates a local date-time on this date in the given time zone.
+    ///
+    /// The injectable half of [`with_hms`](Self::with_hms): it is the seam a
+    /// test uses to pin the offset instead of inheriting the machine's.
+    pub fn with_hms_offset(
+        &self,
+        hour: u8,
+        minute: u8,
+        second: u8,
+        offset: Offset,
+    ) -> Result<OffsetDateTime> {
         OffsetDateTime::new(
             self.year, self.month, self.day, hour, minute, second, offset,
         )
@@ -860,6 +877,27 @@ mod tests {
         let local = OffsetDateTime::new(2025, Month::June, 15, 1, 0, 0, offset).unwrap();
         let utc = local.utc().unwrap();
         assert_eq!(utc.hour(), 6);
+    }
+
+    /// The offset is the whole input to the conversion: the same wall-clock time
+    /// on the same date is a different instant in a different zone.
+    #[test]
+    fn a_date_with_hms_uses_the_offset_it_is_given() {
+        let date = Date::new(2025, Month::June, 15);
+
+        let beijing = date.with_hms_offset(14, 30, 0, offset_plus_8()).unwrap();
+        let utc = beijing.assume_utc();
+        assert_eq!(
+            (utc.year(), utc.month(), utc.day(), utc.hour(), utc.minute()),
+            (2025, Month::June, 15, 6, 30)
+        );
+
+        let new_york = date.with_hms_offset(14, 30, 0, offset_minus_5()).unwrap();
+        let utc = new_york.assume_utc();
+        assert_eq!(
+            (utc.year(), utc.month(), utc.day(), utc.hour(), utc.minute()),
+            (2025, Month::June, 15, 19, 30)
+        );
     }
 
     #[test]

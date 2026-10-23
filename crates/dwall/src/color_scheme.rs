@@ -4,7 +4,7 @@ use std::fmt;
 use std::time::Duration;
 
 use serde::Deserialize;
-use time::{Date, OffsetDateTime};
+use time::{Date, Offset, OffsetDateTime};
 
 use crate::config::Config;
 use crate::error::DwallResult;
@@ -213,9 +213,22 @@ pub enum DaylightState {
 impl DaylightState {
     /// Detect the extreme state by sampling solar altitudes at 24 whole hours.
     pub fn detect(position: &Position, date: Date, config: &ThresholdConfig) -> Self {
+        Self::detect_at(position, date, config, Offset::local_offset())
+    }
+
+    /// [`detect`](Self::detect) with the time zone supplied.
+    ///
+    /// The 24 samples are taken on the local clock, so the machine's zone moves
+    /// them; pinning the offset is what makes the result reproducible in a test.
+    fn detect_at(
+        position: &Position,
+        date: Date,
+        config: &ThresholdConfig,
+        offset: Offset,
+    ) -> Self {
         let altitudes: Vec<f64> = (0u8..24)
             .filter_map(|h| {
-                date.with_hms(h, 0, 0)
+                date.with_hms_offset(h, 0, 0, offset)
                     .ok()
                     .map(|dt| SolarPosition::new(position, &dt.assume_utc()).altitude())
             })
@@ -533,6 +546,12 @@ mod tests {
         Date::new(year, month, day)
     }
 
+    /// A fixed zone for the detection tests: the machine's own zone would move
+    /// the 24-sample grid and make the expected state depend on where this runs.
+    fn utc() -> Offset {
+        "+00:00".parse().unwrap()
+    }
+
     #[test]
     fn the_threshold_is_reused_while_the_position_is_unchanged() {
         let position = mock_position(35.0);
@@ -708,7 +727,7 @@ mod tests {
         let threshold = ThresholdConfig::from_position(&position);
         let day = date(2026, Month::June, 21);
 
-        let state = DaylightState::detect(&position, day, &threshold);
+        let state = DaylightState::detect_at(&position, day, &threshold, utc());
 
         assert_eq!(state, DaylightState::MidnightSun);
     }
@@ -720,7 +739,7 @@ mod tests {
         let threshold = ThresholdConfig::from_position(&position);
         let day = date(2026, Month::December, 21);
 
-        let state = DaylightState::detect(&position, day, &threshold);
+        let state = DaylightState::detect_at(&position, day, &threshold, utc());
 
         assert_eq!(state, DaylightState::PolarNight);
     }
@@ -778,7 +797,7 @@ mod tests {
             (Month::December, 21),
         ] {
             assert_eq!(
-                DaylightState::detect(&position, date(2026, month, day), &threshold),
+                DaylightState::detect_at(&position, date(2026, month, day), &threshold, utc()),
                 DaylightState::Normal,
                 "{month:?} {day}"
             );
