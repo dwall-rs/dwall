@@ -98,9 +98,6 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-frontend-
 
-      - name: Setup Biome CLI
-        uses: biomejs/setup-biome@4c91541eaada48f67d7dbd7833600ce162b68f51 # v2.7.1
-
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
