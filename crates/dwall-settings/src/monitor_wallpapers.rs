@@ -110,25 +110,54 @@ fn resolve_wallpapers(
             (true, themes, configured)
         }
         MonitorSpecificWallpapers::Individual(entries) => {
-            let mut themes = Vec::with_capacity(entries.len() + 1);
+            // A hash map has no order of its own, so the order the stage sees is taken
+            // from the monitors as they are reported: one with an entry comes first, in
+            // display order. Anything left over — a monitor that is no longer attached,
+            // or a headless run that reports none — follows sorted by id, so starting
+            // twice on the same configuration resolves the same way both times.
+            let mut ordered: Vec<(&str, &String)> = Vec::with_capacity(entries.len());
+
+            if let Some(theme_id) = entries.get(ALL_MONITORS) {
+                ordered.push((ALL_MONITORS, theme_id));
+            }
+            for monitor_id in monitors {
+                if let Some(theme_id) = entries.get(monitor_id) {
+                    ordered.push((monitor_id.as_str(), theme_id));
+                }
+            }
+
+            let mut leftover: Vec<(&str, &String)> = entries
+                .iter()
+                .filter(|(monitor_id, _)| {
+                    monitor_id.as_str() != ALL_MONITORS && !monitors.contains(monitor_id)
+                })
+                .map(|(monitor_id, theme_id)| (monitor_id.as_str(), theme_id))
+                .collect();
+            leftover.sort_by_key(|(monitor_id, _)| *monitor_id);
+            ordered.extend(leftover);
+
+            let mut themes = Vec::with_capacity(ordered.len() + 1);
 
             // An individual map has no single theme, so the "all monitors" scope shows
             // the first stored entry — the rule the stage has always used.
             if !entries.contains_key(ALL_MONITORS)
-                && let Some(theme_id) = entries.values().next()
+                && let Some((_, theme_id)) = ordered.first()
             {
                 themes.push(MonitorTheme {
                     monitor_id: ALL_MONITORS.to_string(),
-                    theme_id: theme_id.clone(),
+                    theme_id: (*theme_id).clone(),
                 });
             }
 
-            themes.extend(entries.iter().map(|(monitor_id, theme_id)| MonitorTheme {
-                monitor_id: monitor_id.clone(),
-                theme_id: theme_id.clone(),
+            themes.extend(ordered.iter().map(|(monitor_id, theme_id)| MonitorTheme {
+                monitor_id: (*monitor_id).to_string(),
+                theme_id: (*theme_id).clone(),
             }));
 
-            let configured = entries.keys().cloned().collect::<Vec<_>>();
+            let configured = ordered
+                .iter()
+                .map(|(monitor_id, _)| (*monitor_id).to_string())
+                .collect::<Vec<_>>();
 
             (false, themes, configured)
         }
@@ -263,44 +292,71 @@ mod tests {
     }
 
     #[test]
-    fn the_all_scope_representative_is_the_first_stored_entry() {
-        let wallpapers = individual(&[("MONITOR#1", "Catalina"), ("MONITOR#2", "Big Sur")]);
-        let first = match &wallpapers {
-            MonitorSpecificWallpapers::Individual(entries) => entries
-                .iter()
-                .next()
-                .map(|(monitor, theme_id)| (monitor.clone(), theme_id.clone()))
-                .unwrap(),
-            MonitorSpecificWallpapers::All(_) => unreachable!(),
-        };
-
-        let resolved = resolve(&fixed(wallpapers.clone()), &[], None);
+    fn the_all_scope_representative_is_the_first_reported_monitor_with_an_entry() {
+        // Stored in the opposite order to the monitors, and in an order a hash map
+        // would not preserve: the representative follows the display order, not the
+        // map, so it cannot change between two starts of the same configuration.
+        let resolved = resolve(
+            &fixed(individual(&[
+                ("MONITOR#2", "Big Sur"),
+                ("MONITOR#1", "Catalina"),
+            ])),
+            &monitors(&["MONITOR#1", "MONITOR#2"]),
+            None,
+        );
 
         assert_eq!(
             resolved.themes.first(),
-            Some(&theme(ALL_MONITORS, &first.1))
+            Some(&theme(ALL_MONITORS, "Catalina"))
         );
     }
 
     #[test]
-    fn stored_entries_keep_their_order() {
-        let wallpapers = individual(&[
-            ("MONITOR#1", "Catalina"),
-            ("MONITOR#2", "Big Sur"),
-            ("MONITOR#3", "Mojave"),
-        ]);
-        let entries = match &wallpapers {
-            MonitorSpecificWallpapers::Individual(entries) => entries,
-            MonitorSpecificWallpapers::All(_) => unreachable!(),
-        };
+    fn stored_entries_follow_the_reported_monitor_order() {
+        let resolved = resolve(
+            &fixed(individual(&[
+                ("MONITOR#3", "Mojave"),
+                ("MONITOR#1", "Catalina"),
+                ("MONITOR#2", "Big Sur"),
+            ])),
+            &monitors(&["MONITOR#1", "MONITOR#2", "MONITOR#3"]),
+            None,
+        );
 
-        let resolved = resolve(&fixed(wallpapers.clone()), &[], None);
+        assert_eq!(
+            &resolved.themes[1..],
+            &[
+                theme("MONITOR#1", "Catalina"),
+                theme("MONITOR#2", "Big Sur"),
+                theme("MONITOR#3", "Mojave"),
+            ]
+        );
+        assert_eq!(
+            resolved.configured,
+            vec!["MONITOR#1", "MONITOR#2", "MONITOR#3"]
+        );
+    }
 
-        let expected = entries
-            .iter()
-            .map(|(monitor, theme_id)| theme(monitor, theme_id))
-            .collect::<Vec<_>>();
-        assert_eq!(&resolved.themes[1..], expected.as_slice());
+    #[test]
+    fn an_entry_for_a_monitor_that_is_not_reported_comes_last_in_id_order() {
+        let resolved = resolve(
+            &fixed(individual(&[
+                ("ZZZ#detached", "Mojave"),
+                ("MONITOR#1", "Catalina"),
+                ("AAA#detached", "Big Sur"),
+            ])),
+            &monitors(&["MONITOR#1"]),
+            None,
+        );
+
+        assert_eq!(
+            &resolved.themes[1..],
+            &[
+                theme("MONITOR#1", "Catalina"),
+                theme("AAA#detached", "Big Sur"),
+                theme("ZZZ#detached", "Mojave"),
+            ]
+        );
     }
 
     #[test]
