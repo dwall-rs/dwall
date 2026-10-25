@@ -162,7 +162,7 @@ jobs:
       - name: Fallback changelog from commits
         id: fallback_changelog
         if: steps.github_release_changelog.outputs.changelog == ''
-        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7.1.0
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         env:
           FROM: ${{ steps.changelog_range.outputs.fromTag }}
         with:
@@ -226,7 +226,7 @@ jobs:
 
       - name: Create release
         id: create-release
-        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7.1.0
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         env:
           changelog: ${{ steps.final_changelog.outputs.changelog }}
           PRERELEASE: ${{ github.event.inputs.release_channel != 'stable' }}
@@ -354,7 +354,7 @@ jobs:
     steps:
       - name: Publish release
         id: publish-release
-        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7.1.0
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         env:
           release_id: ${{ needs.create-release.outputs.release_id }}
           PACKAGE_VERSION: ${{ needs.create-release.outputs.package_version }}
@@ -431,7 +431,7 @@ jobs:
     if: success()
     steps:
       - name: Delete release branch
-        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7.1.0
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         with:
           script: |
             try {
