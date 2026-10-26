@@ -351,6 +351,11 @@ automation ignores is not a rule.
 - `crates/dwall-settings/build.rs` reads `DWALL_SKIP_BUILD`; CI's Rust job
   builds only the daemon and mocks `target/release/dwall.exe` before running
   clippy/tests.
+- Dependabot-triggered runs never receive the repository secrets, so the merge job in
+  `pr-check` skips instead of failing when they are absent. Store `AUTOMERGE_TOKEN` under
+  Settings → Secrets and variables → Dependabot to merge those automatically, or add the
+  `automerge` label by hand: a label added by a person runs `automerge-on-label.yml`,
+  which does receive it.
 
 ## Don't
 
