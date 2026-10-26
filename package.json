@@ -32,19 +32,19 @@
     "@tauri-apps/plugin-shell": "^2.5.0",
     "@tauri-apps/plugin-updater": "^2.14.0",
     "class-variance-authority": "^0.7.1",
-    "lucide-solid": "^1.57.0",
+    "lucide-solid": "^1.61.0",
     "solid-js": "^1.9.17",
     "tailwind-merge": "^3.7.0"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.5.15",
+    "@biomejs/biome": "2.5.15",
     "@tailwindcss/vite": "^4.3.3",
-    "@tauri-apps/cli": "^2.12.3",
+    "@tauri-apps/cli": "^2.12.4",
     "@types/node": "^26.6.5",
     "@typescript/native-preview": "^7.0.0-dev.20260707.2",
     "cross-env": "^10.1.0",
     "tailwindcss": "^4.3.3",
-    "vite": "^8.3.4",
+    "vite": "^8.3.5",
     "vite-plugin-solid": "^2.11.14",
     "vitest": "^5.0.5"
   }
