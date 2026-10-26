@@ -2,7 +2,7 @@
 
 use std::fs::{self, File};
 use std::io::{Read, Write};
-use std::path::{Component, Path, PathBuf};
+use std::path::{Path, PathBuf};
 
 use tokio::fs as async_fs;
 use zip::ZipArchive;
@@ -102,15 +102,35 @@ fn extract_with_limit(
     for index in 0..zip.len() {
         let mut entry = zip.by_index(index)?;
 
-        let Some(path) = entry.enclosed_name() else {
-            let name = entry.name()?;
+        // The entry's own name is checked before it is resolved into a path: a name
+        // that Windows cannot write as an ordinary file — an alternate data stream or
+        // a device — would put its content somewhere other than the path the entry
+        // claims, and `enclosed_name` refuses some of them as escaping the directory,
+        // which is not what happened.
+        let entry_name = entry.name()?.to_string();
+        if let Some(name) = entry_name
+            .split(['/', '\\'])
+            // `.` and `..` are not file names; escaping the directory is the next check's
+            // job and is reported as such.
+            .filter(|segment| !segment.is_empty() && *segment != "." && *segment != "..")
+            .find(|segment| is_unwritable_name(segment))
+        {
             error!(
-                entry = name,
+                entry = %entry_name,
+                "Archive entry names a path Windows cannot write"
+            );
+            return Err(DwallSettingsError::Other(format!(
+                "Archive entry '{name}' is not a name Windows can write"
+            )));
+        }
+
+        let Some(path) = entry.enclosed_name() else {
+            error!(
+                entry = %entry_name,
                 "Archive entry resolves to a path outside the extraction directory"
             );
             return Err(DwallSettingsError::Other(format!(
-                "Archive entry '{}' escapes the extraction directory",
-                name
+                "Archive entry '{entry_name}' escapes the extraction directory"
             )));
         };
 
@@ -119,26 +139,6 @@ fn extract_with_limit(
             // directory entry itself, which the unwrapping already accounts for.
             continue;
         };
-
-        // A name Windows will not write as an ordinary file is refused before anything
-        // is created: an entry that names an alternate data stream or a device would put
-        // its content somewhere other than the path the entry claims.
-        if let Some(name) = relative
-            .components()
-            .filter_map(|component| match component {
-                Component::Normal(name) => name.to_str(),
-                _ => None,
-            })
-            .find(|name| is_unwritable_name(name))
-        {
-            error!(
-                entry = name,
-                "Archive entry names a path Windows cannot write"
-            );
-            return Err(DwallSettingsError::Other(format!(
-                "Archive entry '{name}' is not a name Windows can write"
-            )));
-        }
 
         let out_path = target_dir.join(&relative);
 
