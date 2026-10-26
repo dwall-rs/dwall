@@ -52,7 +52,7 @@ jobs:
           bun-version: latest
 
       - name: Cache frontend dependencies
-        uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5.1.0
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: |
             ~/.bun
@@ -78,7 +78,7 @@ jobs:
           targets: x86_64-pc-windows-msvc
 
       - name: Cache cargo registry
-        uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5.1.0
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: |
             ~/.cargo/bin/
@@ -90,7 +90,7 @@ jobs:
             ${{ runner.os }}-cargo-registry-
 
       - name: Cache Rust debug dependencies
-        uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5.1.0
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: |
             target/debug/.fingerprint
@@ -101,7 +101,7 @@ jobs:
             ${{ runner.os }}-rust-debug-${{ steps.rust-toolchain.outputs.cachekey }}-
 
       - name: Cache Rust release dependencies
-        uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5.1.0
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: |
             target/release/.fingerprint
