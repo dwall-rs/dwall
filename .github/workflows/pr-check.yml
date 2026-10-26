@@ -247,7 +247,15 @@ jobs:
             exit 1
           }
 
+      # Skipping the build script is not only about time here: it copies the bundle
+      # resource from `tauri.conf.json` into `target/debug`, that resource is the empty
+      # mock of `dwall.exe` created above, and the copy overwrites the daemon binary
+      # cargo just linked — `headless_cli` then fails running a zero-byte file with
+      # "not a valid Win32 application". The settings test step below has the same
+      # reason.
       - name: Cargo test
+        env:
+          DWALL_SKIP_BUILD: 1
         run: cargo test
 
       # The logging crate's own test target is not built by the daemon's run, so the
