@@ -296,17 +296,26 @@ jobs:
       # read through the API rather than from the payload, because a label added
       # after the run started is not in the payload while the action reads it live.
       - name: Check that the merge token is configured
+        id: token
         env:
           TOKEN: ${{ secrets.AUTOMERGE_TOKEN }}
           NUMBER: ${{ github.event.pull_request.number }}
+          ACTOR: ${{ github.actor }}
           # There is no checkout in this job, so `gh` cannot infer the repository
           # from a remote; without this it fails before it reads a single label.
           GH_REPO: ${{ github.repository }}
           GH_TOKEN: ${{ github.token }}
         run: |
+          # The merge step is skipped rather than failed when the token is missing:
+          # a workflow with nothing to merge with is not a failing check. A missing
+          # token is only actionable when a person labelled the pull request, so
+          # Dependabot runs say what to do instead of going red.
           if [[ -n "${TOKEN:-}" ]]; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
             exit 0
           fi
+
+          echo "present=false" >> "$GITHUB_OUTPUT"
 
           labels=$(gh pr view "${NUMBER}" --json labels --jq '.labels[].name') || {
             echo "::error::Could not read the labels of #${NUMBER}."
@@ -318,6 +327,14 @@ jobs:
             exit 0
           fi
 
+          if [[ "${ACTOR}" == "dependabot[bot]" ]]; then
+            echo "::notice::This run was triggered by Dependabot, which never receives the repository secrets."
+            echo "::notice::Store the token under Settings -> Secrets and variables -> Dependabot to merge these"
+            echo "::notice::automatically, or add the label by hand: a label added by a person runs"
+            echo "::notice::automerge-on-label.yml, which does receive it."
+            exit 0
+          fi
+
           echo "::error::AUTOMERGE_TOKEN is not set, so this labelled pull request cannot be merged."
           echo "::error::Create a fine-grained personal access token for this repository with"
           echo "::error::Contents, Pull requests and Workflows set to read and write, then store it:"
@@ -325,6 +342,7 @@ jobs:
           exit 1
 
       - name: Auto merge PR
+        if: steps.token.outputs.present == 'true'
         uses: pascalgn/automerge-action@7961b8b5eec56cc088c140b56d864285eabd3f67 # v0.16.4
         env:
           # `AUTOMERGE_TOKEN`, not `GITHUB_TOKEN`: GitHub starts no workflow for
