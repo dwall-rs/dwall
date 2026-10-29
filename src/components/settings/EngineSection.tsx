@@ -86,6 +86,7 @@ export function EngineSection() {
               <InputGroupInput
                 type="number"
                 min={1}
+                max={3600}
                 value={settingsStore.config?.interval}
                 onChange={(v) => {
                   patch({ interval: v || 15 });
@@ -142,6 +143,9 @@ export function EngineSection() {
                     <FieldLabel>{t("settings.engine.latitude")}</FieldLabel>
                     <Input
                       type="number"
+                      min={-90}
+                      max={90}
+                      step={0.0001}
                       value={manual().latitude}
                       onChange={(v) => patchPosition({ latitude: v })}
                     />
@@ -150,6 +154,9 @@ export function EngineSection() {
                     <FieldLabel>{t("settings.engine.longitude")}</FieldLabel>
                     <Input
                       type="number"
+                      min={-180}
+                      max={180}
+                      step={0.0001}
                       value={manual().longitude}
                       onChange={(v) => patchPosition({ longitude: v })}
                     />
@@ -158,6 +165,9 @@ export function EngineSection() {
                     <FieldLabel>{t("settings.engine.altitude")}</FieldLabel>
                     <Input
                       type="number"
+                      min={-500}
+                      max={9000}
+                      step={1}
                       value={manual().altitude}
                       onChange={(v) => patchPosition({ altitude: v })}
                     />
