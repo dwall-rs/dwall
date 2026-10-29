@@ -202,7 +202,12 @@ export function SunPathPanel(props: Props) {
                   top: `${clampY(wp.solar.altitude, domain())}%`,
                 }}
                 class={clsx(
-                  "absolute -translate-x-1/2 -translate-y-1/2 rounded-full ring-1 ring-card transition-all",
+                  "absolute -translate-x-1/2 -translate-y-1/2 rounded-full ring-1 ring-card transition-all outline-none",
+                  // A 7px dot is hard to hit and a keyboard focus ring is the only
+                  // way to tell which marker Tab landed on. The pseudo-element
+                  // enlarges the hit area without changing the drawn dot.
+                  "before:absolute before:-inset-2 before:content-['']",
+                  "focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-card",
                   band(wp.solar.altitude),
                   hov() || sel() ? "size-2.5" : "size-1.75",
                   (mat() || sel()) &&
