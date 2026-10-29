@@ -1,6 +1,7 @@
 use std::{
     collections::HashMap,
     fs,
+    io::Write,
     path::{Path, PathBuf},
     sync::atomic::{AtomicU64, Ordering},
     time::SystemTime,
@@ -706,7 +707,12 @@ fn temporary_path(path: &Path) -> PathBuf {
 fn write_atomically(path: &Path, contents: &[u8]) -> std::io::Result<()> {
     let temp_path = temporary_path(path);
 
-    fs::write(&temp_path, contents)?;
+    let mut file = fs::File::create(&temp_path)?;
+    file.write_all(contents)?;
+    // The rename is only atomic with respect to the directory entry; without the
+    // sync a power loss can leave the new name pointing at unwritten blocks.
+    file.sync_all()?;
+    drop(file);
 
     if let Err(e) = fs::rename(&temp_path, path) {
         let _ = fs::remove_file(&temp_path);
