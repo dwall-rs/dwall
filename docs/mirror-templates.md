@@ -35,5 +35,10 @@ A template that only swaps the host (for example `https://kkgithub.com/<owner>/<
 works for raw files but cannot express a release asset, so theme downloads and update
 checks fall back to GitHub.
 
+The template applies to file downloads only: thumbnails, theme archives and the
+`latest.json` updater manifest. The release-list request a pre-release build makes to
+`api.github.com` is not rewritten, because a download mirror is not an API proxy and
+the API response is not a file the template can name.
+
 The settings window stores this template in `config.toml` as the string value of
 `network`; an empty value is the same as no mirror.
