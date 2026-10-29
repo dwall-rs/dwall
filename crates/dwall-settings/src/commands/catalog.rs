@@ -2,8 +2,8 @@
 
 use std::path::{Path, PathBuf};
 
-use dwall::config::{Config, ConfigReader, ImageFormat};
 use dwall::ThemeValidator;
+use dwall::config::{Config, ConfigReader, ImageFormat};
 use dwall::theme::{get_theme_directory_path, read_solar_angles};
 use dwall::theme_manifest::ThemeManifest;
 use dwall::wallpaper::WallpaperSelector;
