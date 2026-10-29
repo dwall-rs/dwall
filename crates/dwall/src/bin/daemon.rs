@@ -264,6 +264,12 @@ fn exit_code_for(error: &dwall::error::DwallError) -> u8 {
         return exit::LOCATION_UNAVAILABLE;
     }
 
+    // A configuration that cannot be read or validated is the same condition
+    // `--check-config` reports as 3; `--once` used to call it a generic fatal error.
+    if matches!(error, dwall::error::DwallError::Config(_)) {
+        return exit::INVALID_CONFIG;
+    }
+
     exit::FATAL
 }
 
@@ -559,6 +565,15 @@ mod tests {
         let switched_off: dwall::error::DwallError =
             dwall::solar::GeolocationAccessError::Unspecified.into();
         assert_eq!(exit_code_for(&switched_off), exit::LOCATION_UNAVAILABLE);
+    }
+
+    #[test]
+    fn an_invalid_configuration_uses_the_config_code() {
+        let error = dwall::error::DwallError::Config(dwall::error::ConfigError::Validation {
+            reason: "interval is out of range".to_string(),
+        });
+
+        assert_eq!(exit_code_for(&error), exit::INVALID_CONFIG);
     }
 
     /// Everything else is the generic failure code: the distinction only exists for the
