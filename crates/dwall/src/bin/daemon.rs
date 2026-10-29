@@ -221,6 +221,11 @@ fn run(options: Options, once: bool) -> ExitCode {
         }
     };
 
+    if let Err(e) = init_logger() {
+        eprintln!("error: failed to initialise logging: {e}");
+        return ExitCode::from(exit::FATAL);
+    }
+
     let mut app = match &options.config_path {
         Some(path) => DaemonApplication::with_config_path(path.clone()),
         None => DaemonApplication::new(),
