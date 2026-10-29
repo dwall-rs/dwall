@@ -15,7 +15,7 @@ a project's language or architecture.
 | | DWALL | WinDynamicDesktop | Auto Dark Mode |
 | --- | --- | --- | --- |
 | Purpose | Wallpaper frames chosen by the sun's position | macOS Mojave Dynamic Desktop port for Windows | Windows dark/light theme on a schedule |
-| What drives a change | Solar altitude and azimuth computed locally | Sunrise/sunset times from the location, or a fixed 24-hour schedule | Fixed times, sun times, Night Light, ambient light, hotkeys, scripts |
+| What drives a change | Solar altitude and azimuth computed locally | Sunrise/sunset times from the location, or a fixed 24-hour schedule — frames sit at clock offsets, so the sun behind a frame drifts with season and latitude | Fixed times, sun times, Night Light, ambient light, hotkeys, scripts |
 | System light/dark theme | Both values switched — apps and the system/taskbar — by solar position; a config switch turns it off | Not switched (removed in v4; a community script does it) | Switched — its core feature |
 | Lock screen | Yes, optional | Yes (`lockScreenTheme`) | No lock-screen feature documented |
 | Per-monitor wallpapers | Yes — a theme per monitor, falling back to the global theme where a monitor has none | Yes (`activeThemes` per display) | Yes (per-monitor images per theme) |
