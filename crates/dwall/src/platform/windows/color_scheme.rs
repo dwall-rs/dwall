@@ -33,39 +33,61 @@ impl Default for ColorSchemeScheduler {
     }
 }
 
-impl ColorSchemeProvider for ColorSchemeScheduler {
-    /// Retrieve the current system color scheme from registry
-    fn get_current_scheme(&self) -> DwallResult<ColorScheme> {
-        debug!("Retrieving current system color scheme");
-        let registry_key = RegistryKey::open(Self::PERSONALIZE_KEY_PATH, KEY_QUERY_VALUE)?;
-
+impl ColorSchemeScheduler {
+    /// Reads one of the two `*UseLightTheme` values.
+    fn read_scheme(
+        &self,
+        registry_key: &RegistryKey,
+        value_name: &str,
+    ) -> DwallResult<ColorScheme> {
         let mut data: u32 = 0;
         let mut data_size = std::mem::size_of_val(&data) as u32;
         let mut data_type = REG_DWORD;
 
         registry_key.query(
-            Self::APPS_THEME_VALUE,
+            value_name,
             Some(std::ptr::addr_of_mut!(data_type)),
             Some(std::ptr::addr_of_mut!(data) as *mut u8),
             Some(&mut data_size),
         )?;
 
-        debug!(value = data, "Retrieved app theme value from registry");
+        debug!(value = data, value_name = value_name, "Read theme value");
 
-        let scheme = if data == 1 {
-            debug!("Current color scheme is Light");
+        Ok(if data == 1 {
             ColorScheme::Light
         } else {
-            debug!("Current color scheme is Dark");
             ColorScheme::Dark
-        };
+        })
+    }
 
-        Ok(scheme)
+    /// Both values the daemon writes: apps and the system/taskbar.
+    ///
+    /// A missing system value is treated as equal to the apps value; the write path
+    /// then repairs it instead of failing the whole cycle over one absent value.
+    fn current_schemes(&self) -> DwallResult<(ColorScheme, ColorScheme)> {
+        let registry_key = RegistryKey::open(Self::PERSONALIZE_KEY_PATH, KEY_QUERY_VALUE)?;
+        let apps = self.read_scheme(&registry_key, Self::APPS_THEME_VALUE)?;
+        let system = self
+            .read_scheme(&registry_key, Self::SYSTEM_THEME_VALUE)
+            .unwrap_or_else(|e| {
+                warn!(error = ?e, "Could not read the system theme value; assuming it matches apps");
+                apps
+            });
+
+        Ok((apps, system))
+    }
+}
+
+impl ColorSchemeProvider for ColorSchemeScheduler {
+    /// Retrieve the current app color scheme from registry.
+    fn get_current_scheme(&self) -> DwallResult<ColorScheme> {
+        debug!("Retrieving current system color scheme");
+        Ok(self.current_schemes()?.0)
     }
 
     fn set_color_scheme(&self, scheme: ColorScheme) -> DwallResult<()> {
-        let current_color_scheme = self.get_current_scheme()?;
-        if current_color_scheme == scheme {
+        let (apps, system) = self.current_schemes()?;
+        if apps == scheme && system == scheme {
             // Runs once per cycle, so keep it out of the info stream.
             debug!(scheme = %scheme, "Color scheme is already set");
             return Ok(());
