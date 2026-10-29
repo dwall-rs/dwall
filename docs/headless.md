@@ -108,11 +108,8 @@ location or switch to `[position_source] type = "MANUAL"` and start it again.
 `dwall.exe` is a **GUI-subsystem** executable, so auto-start never flashes a console
 window — and `cmd`/PowerShell therefore return to the prompt without waiting, which
 means a bare `dwall.exe --check-config` shows its output but gives the shell no exit
-code. In scripts, use a waiting invocation:
-
-```bat
-cmd /c dwall.exe --check-config || echo configuration is broken
-```
+code. `cmd /c dwall.exe --check-config` does **not** wait either; it returns at once,
+before the child has printed anything. In scripts, use a waiting invocation:
 
 ```powershell
 $check = Start-Process dwall.exe -ArgumentList --check-config -Wait -PassThru
