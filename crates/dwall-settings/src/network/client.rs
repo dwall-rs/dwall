@@ -111,6 +111,21 @@ impl HttpClient {
         }
 
         let mut response = request.send().await?;
+
+        // A partial file can already hold the whole resource: the process may have
+        // been killed after the transfer and before extraction. The server then
+        // answers `416 Range Not Satisfiable`; retrying the same range forever is
+        // worse than letting the extractor decide whether the bytes are a complete
+        // archive. A genuinely corrupt partial is removed by the extraction path.
+        if downloaded_bytes > 0 && response.status() == StatusCode::RANGE_NOT_SATISFIABLE {
+            debug!(
+                url = url,
+                downloaded_bytes = downloaded_bytes,
+                "The partial download already covers the resource"
+            );
+            return Ok(downloaded_bytes);
+        }
+
         response.error_for_status_ref()?;
 
         let resume = downloaded_bytes > 0 && response.status() == StatusCode::PARTIAL_CONTENT;
@@ -310,6 +325,30 @@ mod tests {
 
         assert_eq!(written, 2);
         assert_eq!(read(&target), "cc");
+    }
+
+    /// A partial that already holds the whole resource makes the server answer
+    /// 416. That is a completed transfer, not a reason to retry the same range.
+    #[test]
+    fn a_416_on_a_complete_partial_is_treated_as_complete() {
+        let server = TestServer::new(response("416 Range Not Satisfiable", b""));
+        let target = scratch("range_not_satisfiable").join("theme.zip");
+        write(&target, "complete");
+
+        let written = tokio::runtime::Runtime::new()
+            .unwrap()
+            .block_on(HttpClient::new(None).unwrap().download_file(
+                &server.url,
+                &target,
+                8,
+                NO_LIMIT,
+                None,
+                None,
+            ))
+            .unwrap();
+
+        assert_eq!(written, 8);
+        assert_eq!(read(&target), "complete");
     }
 
     #[test]
