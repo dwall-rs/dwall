@@ -85,23 +85,22 @@ impl WallpaperSetter {
         // by `CoUninitialize`.
         let should_cleanup_com = unsafe { CoInitialize(None).is_ok() };
 
-        let desktop_wallpaper: IDesktopWallpaper = match unsafe {
-            CoCreateInstance(&DesktopWallpaper as *const _, None, CLSCTX_ALL)
-        } {
-            Ok(wallpaper) => wallpaper,
-            Err(e) => {
-                error!(
-                    error = %e,
-                    "Failed to create desktop wallpaper COM instance"
-                );
-                if should_cleanup_com {
-                    unsafe {
-                        CoUninitialize();
+        let desktop_wallpaper: IDesktopWallpaper =
+            match unsafe { CoCreateInstance(&DesktopWallpaper as *const _, None, CLSCTX_ALL) } {
+                Ok(wallpaper) => wallpaper,
+                Err(e) => {
+                    error!(
+                        error = %e,
+                        "Failed to create desktop wallpaper COM instance"
+                    );
+                    if should_cleanup_com {
+                        unsafe {
+                            CoUninitialize();
+                        }
                     }
+                    return Err(WallpaperError::Instance(e));
                 }
-                return Err(WallpaperError::Instance(e));
-            }
-        };
+            };
 
         Ok(Self {
             desktop_wallpaper: Some(desktop_wallpaper),
@@ -289,20 +288,19 @@ impl WallpaperSetter {
             return Ok(false);
         };
 
-        let current_wallpaper_ptr =
-            match unsafe { desktop_wallpaper.GetWallpaper(monitor_path) } {
-                Ok(path) => path,
-                Err(e) => {
-                    // Treat "unknown" as "not the requested wallpaper" so a transient
-                    // COM failure does not stop the cycle from applying it.
-                    warn!(
-                        error = %e,
-                        monitor_path = %monitor_path,
-                        "Failed to read the current wallpaper; applying anyway"
-                    );
-                    return Ok(false);
-                }
-            };
+        let current_wallpaper_ptr = match unsafe { desktop_wallpaper.GetWallpaper(monitor_path) } {
+            Ok(path) => path,
+            Err(e) => {
+                // Treat "unknown" as "not the requested wallpaper" so a transient
+                // COM failure does not stop the cycle from applying it.
+                warn!(
+                    error = %e,
+                    monitor_path = %monitor_path,
+                    "Failed to read the current wallpaper; applying anyway"
+                );
+                return Ok(false);
+            }
+        };
 
         let current_wallpaper_path = unsafe {
             // SAFETY: `GetWallpaper` returned an owned `LPWSTR`; the guard frees it
@@ -343,8 +341,7 @@ impl WallpaperSetter {
             return Err(WallpaperError::NotInitialized);
         };
 
-        let applied =
-            unsafe { desktop_wallpaper.SetWallpaper(&device_path, &wallpaper_path) };
+        let applied = unsafe { desktop_wallpaper.SetWallpaper(&device_path, &wallpaper_path) };
 
         match applied {
             Ok(()) => {
