@@ -257,19 +257,36 @@ const discard = () =>
 
 /** Move the themes directory to `dir` (when it changed) and persist the config. */
 const changeThemesDirectory = async (dir: string) => {
+  const current = settingsStore.config?.themes_directory;
+  if (!current || current === dir) return;
+
   try {
-    const current = settingsStore.config?.themes_directory;
-    if (current && current !== dir) {
-      await moveDirectory(current, dir);
-    }
-    patch({ themes_directory: dir });
-    await save();
+    await moveDirectory(current, dir);
   } catch (e) {
     // The move is what can fail here (a non-empty destination, a permission
     // problem). Without this the user's choice was discarded with only a log line,
     // while the row kept showing the old directory as if nothing had happened.
     log.error("Failed to move themes directory", e);
     toast.error(t("common.operationFailed"), { description: String(e) });
+    return;
+  }
+
+  patch({ themes_directory: dir });
+  await save();
+
+  // `save` reports failure through the store instead of throwing. The directory is
+  // already at the new path, so leaving the old config behind would make the next
+  // start look at an empty directory; move it back and keep the old value.
+  if (settingsStore.saveError) {
+    patch({ themes_directory: current });
+    log.error("Themes directory moved but the configuration was not saved");
+
+    try {
+      await moveDirectory(dir, current);
+    } catch (e) {
+      log.error("Failed to move the themes directory back", e);
+      toast.error(t("common.operationFailed"), { description: String(e) });
+    }
   }
 };
 
