@@ -18,7 +18,7 @@ a project's language or architecture.
 | What drives a change | Solar altitude and azimuth computed locally | Sunrise/sunset times from the location, or a fixed 24-hour schedule — frames sit at clock offsets, so the sun behind a frame drifts with season and latitude | Fixed times, sun times, Night Light, ambient light, hotkeys, scripts |
 | System light/dark theme | Both values switched — apps and the system/taskbar — by solar position; a config switch turns it off | Not switched (removed in v4; a community script does it) | Switched — its core feature |
 | Lock screen | Yes, optional | Yes (`lockScreenTheme`) | No lock-screen feature documented |
-| Per-monitor wallpapers | Yes — a theme per monitor, falling back to the global theme where a monitor has none | Yes (`activeThemes` per display) | Yes (per-monitor images per theme) |
+| Per-monitor wallpapers | Yes — a theme per monitor; a monitor with no entry is left without a wallpaper | Yes (`activeThemes` per display) | Yes (per-monitor images per theme) |
 | Random/daily variation | Daily random theme from a pool | Shuffle within a theme | Wallpaper slideshow advance |
 | Virtual desktops | One wallpaper set across them: Windows applies a desktop's wallpaper to every virtual desktop | Documented limitation: one image set for all | Documented limitation on single-monitor setups |
 | Extensibility | Documented theme format (`theme.toml`, [Dwall Maker](https://github.com/dwall-rs/maker)) and a custom-theme directory; a config file the daemon re-reads when it changes, so it can be driven without a restart; no scripting engine | PowerShell scripts, CLI arguments | Custom scripts, hotkeys, conditions |
