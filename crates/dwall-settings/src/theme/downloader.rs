@@ -142,7 +142,7 @@ impl ThemeDownloader {
 
         if let Err(e) = download_result {
             cleanup_dir(&staging_dir).await;
-            self.handle_download_error(&temp_path).await;
+            self.handle_download_error(&temp_path, &e).await;
             // A non-empty partial is kept on purpose: the next attempt resumes it.
             scratch.disarm();
             return Err(e);
@@ -271,11 +271,17 @@ impl ThemeDownloader {
         ))
     }
 
-    async fn handle_download_error(&self, temp_path: &std::path::Path) {
+    async fn handle_download_error(&self, temp_path: &std::path::Path, error: &DwallSettingsError) {
         // Keep a non-empty partial file: the next attempt resumes it with a range
         // request. Only a zero-byte leftover is useless.
+        //
+        // An oversized transfer is different: the server already sent more than the
+        // extractor will ever accept, so resuming would only append to the same
+        // dead file and fail again. Remove it and let the next attempt start clean.
+        let remove = matches!(error, DwallSettingsError::DownloadTooLarge { .. });
+
         if let Ok(metadata) = fs::metadata(temp_path).await
-            && metadata.len() == 0
+            && (remove || metadata.len() == 0)
         {
             let _ = fs::remove_file(temp_path).await;
         }
@@ -697,7 +703,9 @@ azimuth = 20.0
         let temp_path = root.join("Demo.zip.tmp");
         fs::write(&temp_path, b"partial").unwrap();
 
-        runtime().block_on(downloader().handle_download_error(&temp_path));
+        runtime().block_on(
+            downloader().handle_download_error(&temp_path, &DwallSettingsError::Cancelled),
+        );
 
         assert_eq!(
             fs::read(&temp_path).unwrap(),
@@ -712,11 +720,30 @@ azimuth = 20.0
         let temp_path = root.join("Demo.zip.tmp");
         fs::write(&temp_path, b"").unwrap();
 
-        runtime().block_on(downloader().handle_download_error(&temp_path));
+        runtime().block_on(
+            downloader().handle_download_error(&temp_path, &DwallSettingsError::Cancelled),
+        );
 
         assert!(
             !temp_path.exists(),
             "a zero-byte leftover has nothing to resume from"
+        );
+    }
+
+    #[test]
+    fn an_oversized_partial_download_is_removed_instead_of_resumed() {
+        let root = scratch_themes_directory("drop_oversized");
+        let temp_path = root.join("Demo.zip.tmp");
+        fs::write(&temp_path, b"too much").unwrap();
+
+        runtime().block_on(downloader().handle_download_error(
+            &temp_path,
+            &DwallSettingsError::DownloadTooLarge { limit: 1 },
+        ));
+
+        assert!(
+            !temp_path.exists(),
+            "resuming an oversized transfer can only fail again"
         );
     }
 
