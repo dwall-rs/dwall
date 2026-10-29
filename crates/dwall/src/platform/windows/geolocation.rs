@@ -193,5 +193,4 @@ mod tests {
             i64::MAX
         );
     }
-
 }
