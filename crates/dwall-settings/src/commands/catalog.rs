@@ -2,6 +2,7 @@
 
 use std::path::{Path, PathBuf};
 
+use dwall::ThemeValidator;
 use dwall::config::{Config, ConfigReader, ImageFormat};
 use dwall::theme::{get_theme_directory_path, read_solar_angles};
 use dwall::theme_manifest::ThemeManifest;
@@ -157,12 +158,25 @@ fn custom_catalog_themes(config: Option<&Config>) -> Vec<CatalogTheme> {
                 return None;
             }
             let manifest = ThemeManifest::read(&dir).ok()?;
+            // A custom theme whose frame images are missing cannot be applied; listing
+            // it as installed would leave the user with no download button and no
+            // explanation. Skip it like the customized-theme listing does.
+            if let Err(e) = ThemeValidator::validate_uncached(
+                config.customized_themes_directory(),
+                &id,
+                true,
+                manifest.image_format(),
+            ) {
+                warn!(theme_id = %id, error = %e, "Skipping an incomplete custom theme");
+                return None;
+            }
             Some(CatalogTheme {
                 id,
                 name: manifest.theme.name.clone(),
                 source: "custom".to_string(),
                 thumbnails: local_thumbnails(&dir, manifest.image_format()),
-                // The directory and its manifest are what makes a custom theme exist.
+                // The directory, its manifest and its frames are what make a custom
+                // theme exist.
                 installed: true,
             })
         })
@@ -232,15 +246,28 @@ fn installed_solar_angles(
     Ok(read_solar_angles(&dir)?)
 }
 
-/// Whether a theme's frames are readable from disk.
+/// Whether a theme is complete enough for the daemon to apply.
 ///
-/// A theme whose directory or `solar.json` cannot be read counts as not installed,
-/// which is exactly how the stage treats it: it would have no frames to show and
-/// would offer the download.
+/// Frames alone are not enough: a directory can have a valid `solar.json` and a
+/// missing frame image. The daemon refuses that theme at apply time, but the library
+/// used to call it installed and hid the only download entry that could repair it.
 fn is_installed(theme_id: &str, config: Option<&Config>) -> bool {
-    !installed_solar_angles(theme_id, config)
-        .unwrap_or_default()
-        .is_empty()
+    let Some(config) = config else {
+        return false;
+    };
+
+    let (directory, is_customized) = get_theme_directory_path(config, theme_id);
+    if !directory.is_dir() {
+        return false;
+    }
+
+    let root = if is_customized {
+        config.customized_themes_directory()
+    } else {
+        config.themes_directory()
+    };
+
+    ThemeValidator::validate_uncached(root, theme_id, is_customized, config.image_format()).is_ok()
 }
 
 /// Wallpapers (with their target solar angles) for an installed theme.
@@ -360,6 +387,21 @@ mod tests {
         let theme_dir = dir.join("themes").join("Big Sur");
         std::fs::create_dir_all(theme_dir.join("jpg")).unwrap();
         std::fs::write(theme_dir.join("jpg").join("1.jpg"), "image").unwrap();
+
+        let catalog = catalog_from(Some(&config_at(&dir)));
+
+        assert!(!entry(&catalog, "Big Sur").unwrap().installed);
+
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    /// A theme with frames but no image for a frame cannot be applied. It must not be
+    /// reported as installed, or the library hides the download that could repair it.
+    #[test]
+    fn a_theme_with_a_missing_frame_image_is_not_installed() {
+        let dir = scratch("missing_image");
+        write_legacy_theme(&dir.join("themes"), "Big Sur");
+        std::fs::remove_file(dir.join("themes").join("Big Sur").join("jpg").join("1.jpg")).unwrap();
 
         let catalog = catalog_from(Some(&config_at(&dir)));
 
