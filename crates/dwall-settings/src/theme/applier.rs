@@ -16,6 +16,10 @@ pub struct ThemeApplier;
 impl ThemeApplier {
     /// Apply a theme configuration by restarting the daemon
     pub async fn apply(config: Config) -> DwallSettingsResult<()> {
+        // The renderer can send any interval or coordinate pair; writing an invalid
+        // one used to make the daemon fail to read its own configuration after the
+        // restart that this command performs.
+        config.validate()?;
         validate_theme_roots(&config)?;
 
         // The configuration is written *before* the daemon is stopped: stopping it

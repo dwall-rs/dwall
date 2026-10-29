@@ -23,6 +23,7 @@ pub async fn write_config_file(
 ) -> DwallSettingsResult<()> {
     // These paths drive recursive filesystem operations, so validate what the
     // renderer sent before persisting it.
+    config.validate()?;
     validate_theme_roots(&config)?;
 
     // Not the whole configuration: it carries the user's coordinates, the proxy

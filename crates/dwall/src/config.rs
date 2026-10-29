@@ -211,6 +211,35 @@ pub enum Network {
     Socks5 { host: String, port: u16 },
 }
 
+impl Network {
+    /// Whether the settings window can build a usable HTTP client from this value.
+    ///
+    /// An invalid SOCKS5 host used to be accepted by the config and only fail later
+    /// in `HttpClient::new`, which runs from `setup_app` before the window exists:
+    /// the user then had no UI left to correct the value. The daemon itself never
+    /// uses the network, but the config is shared, so validation belongs here.
+    pub fn validate(&self) -> bool {
+        match self {
+            Network::GitHubMirrorTemplate(template) => {
+                // An empty template is the "mirror selected, nothing typed yet"
+                // state the settings window starts in; it falls back to the direct
+                // URL. A non-empty one has to look like an HTTP(S) URL.
+                template.trim().is_empty()
+                    || template.starts_with("https://")
+                    || template.starts_with("http://")
+            }
+            Network::Socks5 { host, port } => {
+                let host = host.trim();
+                !host.is_empty()
+                    && *port != 0
+                    && !host.chars().any(char::is_whitespace)
+                    && !host.contains("://")
+                    && !host.contains('/')
+            }
+        }
+    }
+}
+
 #[cfg_attr(feature = "ts", derive(ts_rs::TS))]
 #[cfg_attr(feature = "ts", ts(export))]
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
@@ -355,6 +384,16 @@ impl Config {
             };
 
             return Err(ConfigError::Validation { reason }.into());
+        }
+
+        if let Some(network) = &self.network
+            && !network.validate()
+        {
+            error!("Network configuration is invalid");
+            return Err(ConfigError::Validation {
+                reason: "Network settings are invalid".to_string(),
+            }
+            .into());
         }
 
         Ok(())
@@ -1237,6 +1276,77 @@ mod tests {
                 "cache_minutes = {cache_minutes} should be usable"
             );
         }
+    }
+
+    // ── network validation ──────────────────────────────────────────────────
+
+    fn config_with_network(network: Network) -> Config {
+        let mut config = Config::default();
+        config.network = Some(network);
+        config
+    }
+
+    /// An invalid SOCKS5 host used to be written to disk and only fail when the
+    /// settings window tried to build its HTTP client, before any UI existed.
+    #[test]
+    fn validate_rejects_an_unusable_socks5_proxy() {
+        for host in ["", "   ", "not a host", "socks5://127.0.0.1", "host/path"] {
+            let error = config_with_network(Network::Socks5 {
+                host: host.to_string(),
+                port: 1080,
+            })
+            .validate()
+            .expect_err("an unusable proxy host must be refused");
+
+            assert!(
+                error.to_string().contains("Network"),
+                "the message has to name the setting: {error}"
+            );
+        }
+
+        assert!(
+            config_with_network(Network::Socks5 {
+                host: "127.0.0.1".to_string(),
+                port: 0,
+            })
+            .validate()
+            .is_err(),
+            "port 0 is not a usable proxy port"
+        );
+    }
+
+    #[test]
+    fn validate_accepts_a_usable_socks5_proxy_and_mirror() {
+        assert!(
+            config_with_network(Network::Socks5 {
+                host: "127.0.0.1".to_string(),
+                port: 1080,
+            })
+            .validate()
+            .is_ok()
+        );
+        assert!(
+            config_with_network(Network::Socks5 {
+                host: "::1".to_string(),
+                port: 1080,
+            })
+            .validate()
+            .is_ok(),
+            "IPv6 loopback is a valid host"
+        );
+        assert!(
+            config_with_network(Network::GitHubMirrorTemplate(
+                "https://ghproxy.example/<owner>/<repo>/<asset>".to_string()
+            ))
+            .validate()
+            .is_ok()
+        );
+        assert!(
+            config_with_network(Network::GitHubMirrorTemplate(String::new()))
+                .validate()
+                .is_ok(),
+            "an empty mirror template falls back to the direct URL"
+        );
     }
 
     /// The tightest frame spacing to design against, in the selector's metric
