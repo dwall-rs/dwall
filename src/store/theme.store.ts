@@ -7,8 +7,16 @@ const STORAGE_KEY = "theme-mode";
 
 function readStoredMode(): ThemeMode {
   if (typeof window === "undefined") return "system";
-  const v = window.localStorage.getItem(STORAGE_KEY);
-  return v === "light" || v === "dark" || v === "system" ? v : "system";
+
+  try {
+    const v = window.localStorage.getItem(STORAGE_KEY);
+    return v === "light" || v === "dark" || v === "system" ? v : "system";
+  } catch {
+    // Storage can be unavailable — private mode, a blocked origin, an enterprise
+    // policy — and throwing here would take down module evaluation and with it the
+    // whole app. The system preference is a perfectly good fallback.
+    return "system";
+  }
 }
 
 function computeResolved(mode: ThemeMode): ResolvedTheme {
@@ -24,9 +32,10 @@ interface ThemeState {
   resolved: ResolvedTheme;
 }
 
+const storedMode = readStoredMode();
 const [themeStore, setThemeStore] = createStore<ThemeState>({
-  mode: readStoredMode(),
-  resolved: computeResolved(readStoredMode()),
+  mode: storedMode,
+  resolved: computeResolved(storedMode),
 });
 
 const setMode = (mode: ThemeMode) => {
