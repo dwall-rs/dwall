@@ -23,6 +23,9 @@ plain cost/benefit view of DWALL: what it gives you and what it asks in return.
   and a CLI (`--check-config`, `--once`, `--install-autostart`, `--uninstall-autostart`)
   for scripts and scheduled tasks. The daemon re-reads `config.toml` when it changes, so
   rewriting the file is enough to change its behaviour — no restart.
+- **Everything beyond the wallpaper is optional.** The light/dark switch and the
+  lock-screen wallpaper are config keys, not separate builds: turn both off and the
+  daemon only ever sets wallpapers.
 - **No telemetry and no account.** The daemon makes no network requests at all; theme and
   thumbnail downloads happen in the settings window, and honour a mirror template or a
   SOCKS5 proxy for networks that cannot reach GitHub.
@@ -56,7 +59,7 @@ plain cost/benefit view of DWALL: what it gives you and what it asks in return.
 | Getting the most out of Windows dark mode (accent colour, cursors, taskbar, conditions, scripts) | [Auto Dark Mode](./dwall-vs-auto-dark-mode.md) | Those areas are its feature set, not a side effect. |
 | A large ready-made theme catalogue and `.ddw` files, on any Windows or architecture | [WinDynamicDesktop](./dwall-vs-windynamicdesktop.md) | Community library, ARM64/x86 support, Store install, scripting. |
 | Headless or managed deployment from a config file | DWALL | Portable daemon archive, CLI, no WebView2 needed for the daemon. |
-| Touch nothing but the wallpaper | [WinDynamicDesktop](./dwall-vs-windynamicdesktop.md) | It no longer switches the system theme at all. |
+| Touch nothing but the wallpaper | DWALL, with two switches off | `auto_detect_color_scheme = false` and `lock_screen_wallpaper_enabled = false` leave it setting wallpapers and nothing else. [WinDynamicDesktop](./dwall-vs-windynamicdesktop.md) arrives at the same state the other way round: it has no theme switching to turn off. |
 
 Running DWALL alongside either alternative is possible — they install side by side and
 touch different settings — but both would be setting wallpapers, so pick one for that.

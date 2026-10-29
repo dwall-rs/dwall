@@ -19,6 +19,8 @@
   无界面机器使用的 0.35 MB 守护进程压缩包（0.63 MB 可执行文件），以及供脚本与计划任务
   使用的 CLI（`--check-config`、`--once`、`--install-autostart`、`--uninstall-autostart`）。
   守护进程会在 `config.toml` 变更时重新读取它，所以改写这个文件就能改变它的行为，无需重启。
+- **壁纸之外的行为都是可选项。** 浅色/深色切换与锁屏壁纸都是配置项，而不是不同的构建：
+  把两项都关掉，守护进程就只设置壁纸。
 - **无遥测，无账号。** 守护进程完全不发网络请求；主题与缩略图下载在设置窗口中进行，
   并会遵循镜像模板或 SOCKS5 代理，以应对无法访问 GitHub 的网络。
 
@@ -48,7 +50,7 @@
 | 充分发挥 Windows 深色模式的潜力（主题色、光标、任务栏、条件、脚本） | [Auto Dark Mode](./dwall-vs-auto-dark-mode.zh-CN.md) | 这些正是它的功能集，而不是副作用。 |
 | 在任何 Windows 版本或架构上使用大型现成主题库与 `.ddw` 文件 | [WinDynamicDesktop](./dwall-vs-windynamicdesktop.zh-CN.md) | 社区库、ARM64/x86 支持、商店安装、脚本能力。 |
 | 依据配置文件进行无界面或受管部署 | DWALL | 便携式守护进程压缩包、CLI，守护进程不需要 WebView2。 |
-| 除了壁纸什么都不碰 | [WinDynamicDesktop](./dwall-vs-windynamicdesktop.zh-CN.md) | 它已完全不切换系统主题。 |
+| 除了壁纸什么都不碰 | DWALL（关掉两个开关即可） | 把 `auto_detect_color_scheme` 与 `lock_screen_wallpaper_enabled` 都设为 `false`，它就只设置壁纸。 [WinDynamicDesktop](./dwall-vs-windynamicdesktop.zh-CN.md) 则是另一条路到达同一状态：它根本没有主题切换功能可关。 |
 
 DWALL 可以与任一替代方案并存 —— 它们可以并行安装，且触及的设置不同 —— 但两者都会设置
 壁纸，所以这方面请只选其一。

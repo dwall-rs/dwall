@@ -11,7 +11,7 @@ drives the switch and how much of Windows they touch.
 | Primary job | Wallpaper frames chosen by the sun's position          | Windows dark/light theme on a schedule                                              |
 | Switch signal | Solar altitude/azimuth computed locally (refraction, altitude, polar latitudes) or manual coordinates | Fixed times, sun times from Windows location, Night Light state, ambient-light sensor, hotkeys, scripts |
 | Wallpaper  | Theme = frames bound to sun positions, matched continuously; per-monitor; optional lock screen | One image per monitor per theme, solid colour or slideshow; no lock-screen feature documented |
-| Also changes | Both light/dark theme values — apps and the system/taskbar — and the lock-screen wallpaper | App/system theme, accent colour, mouse cursors, `.theme` files, taskbar/title bars, grayscale |
+| Also changes | Both light/dark theme values — apps and the system/taskbar — and the lock-screen wallpaper; both are switches, so it can be left setting wallpapers only | App/system theme, accent colour, mouse cursors, `.theme` files, taskbar/title bars, grayscale |
 | Extensibility | A documented theme format (`theme.toml`, Dwall Maker) with custom theme directories, and a config file the daemon re-reads when it changes; no scripts or condition modules | Custom scripts, conditions (gaming, battery, Night Light), hotkeys                  |
 | Stack      | Rust daemon (no async runtime) + Tauri/SolidJS GUI     | .NET 9: WinUI 3 GUI, WinForms-based engine, console CLI shell                        |
 | Footprint  | Daemon ≈2 MB private working set (3–8 MB private bytes), 0.63 MB exe; no tray icon | Not documented by the project; tray icon and named-pipe command server               |
