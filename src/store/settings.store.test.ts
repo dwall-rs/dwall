@@ -357,4 +357,29 @@ describe("settings store: moving the themes directory", () => {
     );
     expect(mocks.writeConfigFile).not.toHaveBeenCalled();
   });
+
+  test("a failed save moves the themes directory back", async () => {
+    mocks.readConfigFile.mockResolvedValue(config());
+    mocks.moveDirectory.mockResolvedValue(undefined);
+    mocks.writeConfigFile.mockRejectedValue(new Error("read-only file"));
+
+    const store = await freshStore();
+    await store.load();
+
+    await store.changeThemesDirectory("D:\\themes");
+
+    expect(mocks.moveDirectory).toHaveBeenNthCalledWith(
+      1,
+      "C:\\Users\\test\\AppData\\Roaming\\dwall\\themes",
+      "D:\\themes",
+    );
+    expect(mocks.moveDirectory).toHaveBeenNthCalledWith(
+      2,
+      "D:\\themes",
+      "C:\\Users\\test\\AppData\\Roaming\\dwall\\themes",
+    );
+    expect(store.settingsStore.config?.themes_directory).toBe(
+      "C:\\Users\\test\\AppData\\Roaming\\dwall\\themes",
+    );
+  });
 });
