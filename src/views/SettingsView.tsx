@@ -92,7 +92,10 @@ export function SettingsView() {
           <TriangleAlert class="mt-0.5 size-4 shrink-0 text-destructive" />
           <div class="min-w-0 flex-1">
             <p class="text-[13px] font-medium">{t("settings.loadFailed")}</p>
-            <p class="mt-1 text-[12px] leading-relaxed break-all text-muted-foreground">
+            <p
+              data-selectable
+              class="mt-1 text-[12px] leading-relaxed break-all text-muted-foreground"
+            >
               {settingsStore.error}
             </p>
             <Button
