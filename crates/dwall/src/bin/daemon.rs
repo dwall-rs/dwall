@@ -199,11 +199,6 @@ fn main() -> ExitCode {
 
 /// Runs the daemon (or a single cycle), claiming the per-session instance mutex.
 fn run(options: Options, once: bool) -> ExitCode {
-    if let Err(e) = init_logger() {
-        eprintln!("error: failed to initialise logging: {e}");
-        return ExitCode::from(exit::FATAL);
-    }
-
     // The guard has to stay alive for the whole run; it is what marks this process
     // as *the* daemon of this session.
     let _instance: DaemonInstance = match dwall::acquire_daemon_instance() {
@@ -225,6 +220,11 @@ fn run(options: Options, once: bool) -> ExitCode {
             return ExitCode::from(exit::FATAL);
         }
     };
+
+    if let Err(e) = init_logger() {
+        eprintln!("error: failed to initialise logging: {e}");
+        return ExitCode::from(exit::FATAL);
+    }
 
     let mut app = match &options.config_path {
         Some(path) => DaemonApplication::with_config_path(path.clone()),
