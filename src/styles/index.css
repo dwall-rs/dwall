@@ -106,12 +106,11 @@
     }
 }
 
-/* The three ambient loops above run for as long as their element is on screen — an
-   engine status dot, the mark that settings are unsaved, a match badge — and stopping
-   them loses no information: each is decoration over a state the UI already spells out
-   in words. A reader who asked their system for less motion gets them held at rest.
-   The spinners are deliberately left alone: `animate-spin` and `animate-pulse` are how
-   a wait is reported, and freezing them would take away the only sign of activity.
+/* Every loop that runs for as long as its element is on screen — an engine status
+   dot, the mark that settings are unsaved, a match badge, a loading spinner or a
+   skeleton — is held at rest for a reader who asked their system for less motion.
+   The state each one signals is already spelled out in words or in the layout, so
+   stopping the loop loses no information.
 
    Overriding the tokens rather than the classes keeps this working for anything that
    animates through `--animate-*` later, without an `!important` or a class list that
@@ -121,6 +120,8 @@
         --animate-bdot: none;
         --animate-breathe: none;
         --animate-pulse-ring: none;
+        --animate-spin: none;
+        --animate-pulse: none;
     }
 }
 
