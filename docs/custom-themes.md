@@ -26,8 +26,9 @@ same id exists under both roots, the one under `themes_directory` wins.
 Wallpapers are chosen by matching the current solar position against the frames
 declared in `theme.toml` (altitude in `[-90, 90]`, azimuth in `[0, 360)`), so a theme
 defines the sun positions its images correspond to. Drop the directory into
-`customized_themes_directory` and it appears in the theme library; nothing else is
-needed — no import step, no restart.
+`customized_themes_directory` and restart the settings window; it then appears in
+the theme library. There is no import step, and the daemon picks the directory up on
+its next cycle — but the open library does not watch the directory for changes.
 
 The manifest format is owned by the **Dwall Maker** project, which also generates
 these directories: [github.com/dwall-rs/maker](https://github.com/dwall-rs/maker) →
