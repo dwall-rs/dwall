@@ -179,6 +179,8 @@ export function PathsSection() {
                       <FieldLabel>{t("settings.paths.port")}</FieldLabel>
                       <Input
                         type="number"
+                        min={1}
+                        max={65535}
                         value={socks().port}
                         onChange={(v) => patchSocks5({ port: v })}
                         class="font-mono text-[12px]"
