@@ -226,6 +226,30 @@ describe("settings store: writing", () => {
     expect(store.isConfigDirty(store.settingsStore)).toBe(false);
   });
 
+  test("an edit made while the save is in flight stays dirty", async () => {
+    mocks.readConfigFile.mockResolvedValue(config());
+    let finishWrite!: () => void;
+    mocks.writeConfigFile.mockImplementationOnce(
+      () =>
+        new Promise<void>((resolve) => {
+          finishWrite = resolve;
+        }),
+    );
+
+    const store = await freshStore();
+    await store.load();
+    store.patch({ interval: 30 });
+
+    const saving = store.save();
+    // The write is still pending; this edit is not in the payload that was sent.
+    store.patch({ interval: 60 });
+    finishWrite();
+    await saving;
+
+    expect(store.settingsStore.saved?.interval).toBe(30);
+    expect(store.isConfigDirty(store.settingsStore)).toBe(true);
+  });
+
   test("a failed save keeps the draft dirty and surfaces the error", async () => {
     mocks.readConfigFile.mockResolvedValue(config());
     mocks.writeConfigFile.mockRejectedValue(new Error("read-only file"));
