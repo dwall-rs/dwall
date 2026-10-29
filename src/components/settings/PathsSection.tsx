@@ -12,7 +12,7 @@ import {
 } from "@/store/settings.store";
 import { isSocks5 } from "@/models/config";
 import { t } from "@/i18n";
-import { openDir, pickDirectory } from "@/ipc";
+import { openDir, openUrl, pickDirectory } from "@/ipc";
 import { SettingsGroup } from "./SettingsGroup";
 import { SettingsRow } from "./SettingsRow";
 import { createMemo, Match, Switch } from "solid-js";
@@ -32,6 +32,9 @@ import {
 import { Tabs, TabsList, TabsTrigger } from "../ui/tabs";
 import { Field, FieldGroup, FieldLabel } from "../ui/field";
 import { Input } from "../ui/input";
+
+const MIRROR_TEMPLATES_URL =
+  "https://github.com/dwall-rs/dwall/blob/main/docs/mirror-templates.md";
 
 export function PathsSection() {
   const network = createMemo(networkType);
@@ -129,9 +132,13 @@ export function PathsSection() {
               desc={
                 <>
                   {t("settings.paths.mirrorDesc")}{" "}
-                  <span class="cursor-pointer text-primary underline">
+                  <button
+                    type="button"
+                    class="cursor-pointer text-primary underline"
+                    onClick={() => void openUrl(MIRROR_TEMPLATES_URL)}
+                  >
                     {t("settings.paths.viewTemplates")}
-                  </span>
+                  </button>
                 </>
               }
               control={
@@ -139,7 +146,7 @@ export function PathsSection() {
                   <InputGroupInput
                     value={settingsStore.config?.network as string}
                     onChange={(v) => patch({ network: v })}
-                    placeholder="https://mirror.example.com/{repo}"
+                    placeholder="https://ghproxy.example/https://github.com/<owner>/<repo>"
                     class="font-mono text-[12px]"
                   />
                   <InputGroupAddon align="inline-end">
