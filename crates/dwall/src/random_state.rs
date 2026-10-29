@@ -66,10 +66,24 @@ pub fn write(selection: &RandomSelection) -> DwallResult<()> {
 }
 
 /// Persists the selection in `directory`, creating it when needed.
+///
+/// Writes through a sibling temporary file and renames it into place. A crash in
+/// the middle of `fs::write` used to leave a truncated JSON document, and the next
+/// start could only discard it and draw a different theme.
 pub fn write_to(directory: &Path, selection: &RandomSelection) -> DwallResult<()> {
     let content = serde_json::to_string_pretty(selection)?;
     fs::create_dir_all(directory)?;
-    fs::write(path_in(directory), content)?;
+
+    let path = path_in(directory);
+    let temporary = path.with_extension("json.tmp");
+
+    fs::write(&temporary, content)?;
+
+    if let Err(e) = fs::rename(&temporary, &path) {
+        let _ = fs::remove_file(&temporary);
+        return Err(e.into());
+    }
+
     Ok(())
 }
 
@@ -129,6 +143,10 @@ mod tests {
 
         // It lands next to the configuration, not in the cache directory.
         assert!(dir.join("random_selection.json").is_file());
+        assert!(
+            !dir.join("random_selection.json.tmp").exists(),
+            "the temporary file is renamed away"
+        );
 
         let _ = fs::remove_dir_all(&dir);
     }
