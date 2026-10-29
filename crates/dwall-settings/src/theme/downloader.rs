@@ -271,11 +271,7 @@ impl ThemeDownloader {
         ))
     }
 
-    async fn handle_download_error(
-        &self,
-        temp_path: &std::path::Path,
-        error: &DwallSettingsError,
-    ) {
+    async fn handle_download_error(&self, temp_path: &std::path::Path, error: &DwallSettingsError) {
         // Keep a non-empty partial file: the next attempt resumes it with a range
         // request. Only a zero-byte leftover is useless.
         //
