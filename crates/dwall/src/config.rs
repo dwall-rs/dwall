@@ -2,6 +2,7 @@ use std::{
     collections::HashMap,
     fs,
     path::{Path, PathBuf},
+    sync::atomic::{AtomicU64, Ordering},
     time::SystemTime,
 };
 
@@ -648,12 +649,19 @@ pub fn config_path() -> PathBuf {
 /// into `foo.toml.tmp`, and the process id is appended so two instances pointed
 /// at the same directory cannot overwrite each other's temporary file.
 fn temporary_path(path: &Path) -> PathBuf {
+    static SEQUENCE: AtomicU64 = AtomicU64::new(0);
+
     let name = path
         .file_name()
         .map(|name| name.to_string_lossy().into_owned())
         .unwrap_or_else(|| "config.toml".to_string());
 
-    path.with_file_name(format!("{name}.{}.tmp", std::process::id()))
+    // The process id separates instances; the counter separates two writes in the
+    // same process (save and apply can overlap). Without the counter both wrote the
+    // same `.tmp`, and one rename could remove the other's file.
+    let sequence = SEQUENCE.fetch_add(1, Ordering::Relaxed);
+
+    path.with_file_name(format!("{name}.{}.{sequence}.tmp", std::process::id()))
 }
 
 fn write_atomically(path: &Path, contents: &[u8]) -> std::io::Result<()> {
@@ -792,13 +800,22 @@ mod tests {
         write_atomically(&path, b"interval = 45").unwrap();
 
         assert_eq!(fs::read_to_string(&path).unwrap(), "interval = 45");
-        assert_eq!(
-            temporary_path(&path),
-            dir.join(format!("config.toml.{}.tmp", std::process::id())),
-            "the temporary file keeps the configured name and names the process"
+
+        let temp_path = temporary_path(&path);
+        assert!(
+            temp_path.starts_with(&dir),
+            "the temporary file stays next to the configured file"
         );
         assert!(
-            !temporary_path(&path).exists(),
+            temp_path
+                .file_name()
+                .unwrap()
+                .to_string_lossy()
+                .starts_with(&format!("config.toml.{}.", std::process::id())),
+            "the temporary file names the process"
+        );
+        assert!(
+            !temp_path.exists(),
             "the temporary file is renamed away, not left behind"
         );
 
@@ -810,10 +827,19 @@ mod tests {
     #[test]
     fn the_temporary_file_keeps_the_configured_name_and_names_the_process() {
         let path = Path::new("custom.conf");
+        let first = temporary_path(path);
+        let second = temporary_path(path);
 
-        assert_eq!(
-            temporary_path(path),
-            PathBuf::from(format!("custom.conf.{}.tmp", std::process::id()))
+        assert!(
+            first
+                .file_name()
+                .unwrap()
+                .to_string_lossy()
+                .starts_with(&format!("custom.conf.{}.", std::process::id()))
+        );
+        assert_ne!(
+            first, second,
+            "two writes in one process must not share a temporary file"
         );
     }
 
