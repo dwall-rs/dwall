@@ -24,7 +24,7 @@ use windows::Win32::{
         DisplayConfigGetDeviceInfo, GUID_DEVINTERFACE_MONITOR, GetDisplayConfigBufferSizes,
         QDC_ALL_PATHS, QueryDisplayConfig,
     },
-    Foundation::ERROR_SUCCESS,
+    Foundation::{ERROR_SUCCESS, LUID},
 };
 use windows::core::{Error as WindowsError, Free, GUID, PCWSTR};
 use windows::{Win32::Foundation::ERROR_INSUFFICIENT_BUFFER, core::HRESULT};
@@ -72,7 +72,7 @@ const DISPLAYCONFIG_PATH_ACTIVE: u32 = 0x00000001;
 
 /// Represents a display path with adapter and target identifiers
 struct DisplayPath {
-    adapter_id: u32,
+    adapter_id: LUID,
     target_id: u32,
 }
 
@@ -84,7 +84,7 @@ fn query_display_paths() -> DwallResult<Vec<DisplayPath>> {
         .into_iter()
         .filter(|path| path.flags & DISPLAYCONFIG_PATH_ACTIVE != 0)
         .map(|path| DisplayPath {
-            adapter_id: path.targetInfo.adapterId.LowPart,
+            adapter_id: path.targetInfo.adapterId,
             target_id: path.targetInfo.id,
         })
         .collect())
@@ -92,11 +92,12 @@ fn query_display_paths() -> DwallResult<Vec<DisplayPath>> {
 
 /// Queries the target device name for a specific display adapter and target
 fn query_target_name(
-    adapter_id: u32,
+    adapter_id: LUID,
     target_id: u32,
 ) -> DwallResult<DISPLAYCONFIG_TARGET_DEVICE_NAME> {
     debug!(
-        adapter_id = adapter_id,
+        adapter_id_low = adapter_id.LowPart,
+        adapter_id_high = adapter_id.HighPart,
         target_id = target_id,
         "Querying target device name"
     );
@@ -105,10 +106,7 @@ fn query_target_name(
 
     target_name.header = DISPLAYCONFIG_DEVICE_INFO_HEADER {
         size: mem::size_of::<DISPLAYCONFIG_TARGET_DEVICE_NAME>() as u32,
-        adapterId: windows::Win32::Foundation::LUID {
-            LowPart: adapter_id,
-            HighPart: 0,
-        },
+        adapterId: adapter_id,
         id: target_id,
         r#type: DISPLAYCONFIG_DEVICE_INFO_GET_TARGET_NAME,
     };
@@ -748,7 +746,21 @@ fn fetch_system_monitors() -> DwallResult<HashMap<String, DisplayMonitor>> {
     let mut monitors = HashMap::new();
 
     for (index, display_path) in query_display_paths()?.into_iter().enumerate() {
-        let target_info = query_target_name(display_path.adapter_id, display_path.target_id)?;
+        // One target the shell cannot describe must not hide every other display:
+        // the old `?` turned a single bad adapter/target pair into "no monitors".
+        let target_info = match query_target_name(display_path.adapter_id, display_path.target_id) {
+            Ok(target_info) => target_info,
+            Err(e) => {
+                warn!(
+                    error = %e,
+                    adapter_id_low = display_path.adapter_id.LowPart,
+                    adapter_id_high = display_path.adapter_id.HighPart,
+                    target_id = display_path.target_id,
+                    "Skipping a display whose target name could not be queried"
+                );
+                continue;
+            }
+        };
         let device_path = target_info.monitorDevicePath.to_string();
 
         let friendly_name = friendly_name_for(&device_path, index, || {
