@@ -11,6 +11,10 @@ export function RandomStats() {
   // all, so it is neither pooled nor "excluded".
   const selectable = createMemo(() => availableThemes().length);
   const empty = createMemo(() => n() === 0);
+  // With no installed themes, "0 of 0" is not "all"; and a selected theme that has
+  // since been removed can make n greater than the denominator.
+  const all = createMemo(() => selectable() > 0 && n() === selectable());
+  const excluded = createMemo(() => Math.max(0, selectable() - n()));
   return (
     <div class="flex flex-wrap gap-7.5">
       <Stat
@@ -20,9 +24,9 @@ export function RandomStats() {
       />
       <Stat
         value={
-          n() === selectable()
+          all()
             ? t("stage.stats.all")
-            : t("stage.stats.exclude", { n: selectable() - n() })
+            : t("stage.stats.exclude", { n: excluded() })
         }
         label={t("stage.stats.range")}
         small
