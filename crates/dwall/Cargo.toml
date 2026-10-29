@@ -58,7 +58,7 @@ windows = { workspace = true, features = [
 # are not re-exported by `windows`. It is already in the dependency tree via
 # `windows`; naming it directly is what lets us wait on those operations with a
 # timeout instead of the `INFINITE` wait inside `windows-future`'s blocking helpers.
-windows-future = { version = "0.3", default-features = false }
+windows-future = { version = "0.100", default-features = false }
 
 
 [dev-dependencies]
