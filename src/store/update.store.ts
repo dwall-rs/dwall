@@ -7,6 +7,7 @@ import { t } from "@/i18n";
 import { checkForUpdates, type Update, relaunchApp } from "@/ipc";
 import { logger } from "@/utils";
 import { settingsStore } from "./settings.store";
+import { toggleView, uiStore } from "./ui.store";
 
 const log = logger.child("update");
 
@@ -71,9 +72,16 @@ const announceUpdate = (version: string) => {
     action: {
       label: t("settings.about.updateToastAction"),
       onClick: () => {
-        globalThis.document
-          ?.getElementById(ABOUT_SECTION_ID)
-          ?.scrollIntoView({ behavior: "smooth", block: "center" });
+        // The About group is mounted inside the settings view, which is hidden while
+        // the user is on the stage; scrolling it into view without switching first
+        // does nothing visible.
+        if (uiStore.view !== "settings") toggleView();
+
+        requestAnimationFrame(() => {
+          globalThis.document
+            ?.getElementById(ABOUT_SECTION_ID)
+            ?.scrollIntoView({ behavior: "smooth", block: "center" });
+        });
       },
     },
   });
