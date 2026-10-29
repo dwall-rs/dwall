@@ -5,6 +5,18 @@ import type { Monitor } from "./types";
 /** Pseudo-monitor whose settings apply to every monitor. */
 const ALL_MONITOR_ID = "all";
 
+/** Sort monitors by the order Windows enumerates their displays. */
+export const sortMonitors = (monitors: DisplayMonitor[]): DisplayMonitor[] =>
+  [...monitors].sort((left, right) => {
+    const leftIndex = left.position_index ?? Number.MAX_SAFE_INTEGER;
+    const rightIndex = right.position_index ?? Number.MAX_SAFE_INTEGER;
+
+    return (
+      leftIndex - rightIndex ||
+      left.device_path.localeCompare(right.device_path)
+    );
+  });
+
 /** Build the UI monitor list, prepending the (already localized) "all monitors" entry. */
 export const monitorList = (
   monitors: DisplayMonitor[],

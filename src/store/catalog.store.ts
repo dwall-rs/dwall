@@ -4,6 +4,7 @@ import { createStore } from "solid-js/store";
 
 import { getMonitors, getThemeCatalog } from "@/ipc";
 import type { CatalogTheme, DisplayMonitor } from "@/ipc";
+import { sortMonitors } from "@/models/monitors";
 import { toast } from "@/components/ui/toast";
 import { t } from "@/i18n";
 import { logger } from "@/utils";
@@ -65,7 +66,7 @@ const load = async () => {
               : theme,
           )
         : themes,
-      monitors: Object.values(monitors),
+      monitors: sortMonitors(Object.values(monitors)),
       status: "ready",
       error: "",
     });
