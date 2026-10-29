@@ -57,7 +57,19 @@ pub fn setup_app(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>>
     allow_asset_directories(app.handle(), &config);
 
     let should_run_daemon = crate::daemon::should_run(&config);
-    let http_client = HttpClient::new(config.network())?;
+    // A hand-edited or stale configuration can still name a proxy this machine
+    // cannot build a client for. The window has to open anyway: it is the only place
+    // the user can correct the value.
+    let http_client = match HttpClient::new(config.network()) {
+        Ok(client) => client,
+        Err(e) => {
+            warn!(
+                error = %e,
+                "Failed to build the HTTP client from the configured proxy; using a direct connection"
+            );
+            HttpClient::new(None)?
+        }
+    };
 
     let theme_downloader = ThemeDownloader::new(http_client.clone());
     app.manage(theme_downloader);
