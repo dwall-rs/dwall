@@ -21,6 +21,7 @@ import { toast } from "@/components/ui/toast";
 import { t } from "@/i18n";
 import { logger } from "@/utils";
 import { refresh as refreshEngine } from "./engine.store";
+import { registerSettingsReload } from "./settings-refresh";
 
 const log = logger.child("settings");
 
@@ -299,6 +300,8 @@ const isConfigDirty = (s: SettingsState): boolean =>
   !!s.config &&
   !!s.saved &&
   JSON.stringify(s.config) !== JSON.stringify(s.saved);
+
+registerSettingsReload(load);
 
 export {
   settingsStore,

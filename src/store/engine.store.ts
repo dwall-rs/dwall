@@ -10,6 +10,7 @@ import {
 } from "@/ipc";
 import { toast } from "@/components/ui/toast";
 import { t } from "@/i18n";
+import { reloadSettings } from "./settings-refresh";
 import { logger } from "@/utils";
 
 const log = logger.child("engine");
@@ -81,6 +82,8 @@ const toggle = async () => {
       if (engineStore.pendingTimer) clearTimeout(engineStore.pendingTimer);
       try {
         await stopEngine();
+        // The command cleared the theme in config.toml; drop the stale draft too.
+        await reloadSettings();
         setEngineStore({
           running: false,
           lastError: null,
