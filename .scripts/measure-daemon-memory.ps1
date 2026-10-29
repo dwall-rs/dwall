@@ -164,15 +164,22 @@ function Measure-Daemon {
             break
         }
 
+        # Task Manager's Memory column shows the private working set, not the private
+        # bytes the row also carries: a document that quotes one while a reader checks
+        # the other looks wrong in whichever direction they differ.
+        $perf = Get-CimInstance Win32_PerfFormattedData_PerfProc_Process `
+            -Filter "IDProcess = $($process.Id)" -ErrorAction SilentlyContinue
+
         # Not `$samples`: PowerShell variable names are case-insensitive, so a local
         # `$samples` would overwrite the `$Samples` parameter this loop counts to.
         $rows += [pscustomobject]@{
-            Label        = $Label
-            Sample       = $i
-            PrivateMB    = [math]::Round($running.PrivateMemorySize64 / 1MB, 2)
-            WorkingSetMB = [math]::Round($running.WorkingSet64 / 1MB, 2)
-            Handles      = $running.HandleCount
-            Threads      = $running.Threads.Count
+            Label              = $Label
+            Sample             = $i
+            PrivateMB          = [math]::Round($running.PrivateMemorySize64 / 1MB, 2)
+            PrivateWorkingSetMB = if ($perf) { [math]::Round($perf.WorkingSetPrivate / 1MB, 2) } else { $null }
+            WorkingSetMB       = [math]::Round($running.WorkingSet64 / 1MB, 2)
+            Handles            = $running.HandleCount
+            Threads            = $running.Threads.Count
         }
 
         Start-Sleep -Seconds $SampleSeconds
@@ -232,13 +239,17 @@ $all |
     Group-Object Label |
     ForEach-Object {
         $private = $_.Group.PrivateMB | Measure-Object -Minimum -Maximum -Average
+        $privateWorkingSet = $_.Group.PrivateWorkingSetMB |
+            Where-Object { $null -ne $_ } |
+            Measure-Object -Minimum -Maximum -Average
         $handles = $_.Group.Handles | Measure-Object -Minimum -Maximum
         $threads = $_.Group.Threads | Measure-Object -Minimum -Maximum
         $applied = $_.Group[0].AppliedWallpapers
         $lockScreen = $_.Group[0].LockScreenLines
         $geolocations = $_.Group[0].GeolocationWarnings
-        '{0,-28} private {1:N2}–{2:N2} MB (avg {3:N2})  handles {4}–{5}  threads {6}–{7}  working set {8:N1} MB  applied {9}  lock-screen lines {10}  geolocation warnings {11}' -f `
+        '{0,-28} private bytes {1:N2}–{2:N2} MB (avg {3:N2})  private working set {4:N2}–{5:N2} MB (avg {6:N2}, Task Manager shows this)  handles {7}–{8}  threads {9}–{10}  working set {11:N1} MB  applied {12}  lock-screen lines {13}  geolocation warnings {14}' -f `
             $_.Name, $private.Minimum, $private.Maximum, $private.Average, `
+            $privateWorkingSet.Minimum, $privateWorkingSet.Maximum, $privateWorkingSet.Average, `
             $handles.Minimum, $handles.Maximum, $threads.Minimum, $threads.Maximum, `
             ($_.Group.WorkingSetMB | Measure-Object -Average).Average, $applied, $lockScreen, $geolocations
     }

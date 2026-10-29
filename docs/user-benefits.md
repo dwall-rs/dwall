@@ -10,7 +10,8 @@ plain cost/benefit view of DWALL: what it gives you and what it asks in return.
 - **Wallpapers that follow the sun, not a clock.** The frame whose solar altitude and
   azimuth best match the current position is applied, so transitions land where the
   theme author put them regardless of season or latitude.
-- **A resident cost you can forget.** One single-threaded daemon, 3–8 MB private memory,
+- **A resident cost you can forget.** One single-threaded daemon, ≈2 MB private working
+  set (3–8 MB private bytes),
   no notification-area icon, no webview and no HTTP stack while the settings window is
   closed.
 - **Both light/dark theme values switched with the same calculation** — apps and the
@@ -51,7 +52,7 @@ plain cost/benefit view of DWALL: what it gives you and what it asks in return.
 
 | Priority | Better fit | Why |
 | --- | --- | --- |
-| Sun-accurate wallpaper transitions at the lowest possible background cost | DWALL | Frame selection is a solar-angle match; 3–8 MB daemon, no tray. |
+| Sun-accurate wallpaper transitions at the lowest possible background cost | DWALL | Frame selection is a solar-angle match; ≈2 MB daemon (private working set), no tray. |
 | Getting the most out of Windows dark mode (accent colour, cursors, taskbar, conditions, scripts) | [Auto Dark Mode](./dwall-vs-auto-dark-mode.md) | Those areas are its feature set, not a side effect. |
 | A large ready-made theme catalogue and `.ddw` files, on any Windows or architecture | [WinDynamicDesktop](./dwall-vs-windynamicdesktop.md) | Community library, ARM64/x86 support, Store install, scripting. |
 | Headless or managed deployment from a config file | DWALL | Portable daemon archive, CLI, no WebView2 needed for the daemon. |
