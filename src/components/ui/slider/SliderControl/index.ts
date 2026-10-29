@@ -1,1 +1,0 @@
-export { SliderControl } from "./SliderControl";
