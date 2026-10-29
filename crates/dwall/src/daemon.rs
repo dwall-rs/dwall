@@ -33,6 +33,14 @@ const FAILURE_BACKOFF_MAX: Duration = Duration::from_secs(300);
 /// Backoff before retrying a configuration read that failed.
 const CONFIG_RETRY_DELAY: Duration = Duration::from_secs(5);
 
+/// How long random mode waits before trying again when no theme could be selected.
+///
+/// An empty pool, a theme directory that has not been created yet, or a persisted
+/// draw that no longer exists all leave the mode without a theme. The daemon used to
+/// only log a warning once and then never look again, so installing the first theme
+/// after start-up did not recover random mode until the next restart.
+const RANDOM_SELECTION_RETRY: Duration = Duration::from_secs(60);
+
 /// How long the daemon sleeps before re-checking the configuration file.
 ///
 /// The file used to be checked once per cycle, at the top of the loop, so a setting
@@ -77,6 +85,25 @@ fn wait_for_config_change(config_watcher: &ConfigWatcher, duration: Duration) ->
     }
 
     false
+}
+
+/// Time until the next local midnight, clamped to at least one second.
+fn seconds_until_local_midnight() -> Duration {
+    let Ok(now) = OffsetDateTime::now_local() else {
+        // The clock is unusable; retry the date check on the same cadence as an
+        // empty pool rather than letting the engine sleep past a day boundary.
+        return RANDOM_SELECTION_RETRY;
+    };
+
+    seconds_until_midnight_at(now.hour(), now.minute(), now.second())
+}
+
+/// The pure part of [`seconds_until_local_midnight`], for tests.
+fn seconds_until_midnight_at(hour: u8, minute: u8, second: u8) -> Duration {
+    let elapsed = hour as u64 * 3_600 + minute as u64 * 60 + second as u64;
+    let day_seconds: u64 = 86_400;
+
+    Duration::from_secs(day_seconds.saturating_sub(elapsed).max(1))
 }
 
 /// Follows a run of failed update cycles and decides when to try again.
@@ -203,6 +230,8 @@ fn random_pool(config: &Config) -> Option<&Vec<String>> {
 pub struct DaemonApplication {
     config_watcher: ConfigWatcher,
     random_state: Option<RandomModeState>,
+    /// When random mode has no theme and should try to select one again.
+    random_retry_at: Option<Instant>,
 }
 
 impl DaemonApplication {
@@ -222,6 +251,7 @@ impl DaemonApplication {
         Self {
             config_watcher,
             random_state: None,
+            random_retry_at: None,
         }
     }
 
@@ -305,6 +335,7 @@ impl DaemonApplication {
             WallpaperMode::Fixed { .. } => {
                 // Fixed mode: clear random state if switching from random
                 self.random_state = None;
+                self.random_retry_at = None;
                 Ok(())
             }
         }
@@ -340,20 +371,33 @@ impl DaemonApplication {
             // when it is still valid and fall back to a fresh draw otherwise.
             && !self.restore_persisted_selection(config, &today)?
         {
+            // Yesterday's theme is no longer today's answer. Clear it before the
+            // draw: if the pool is empty or every candidate has been deleted, the
+            // engine must stop applying yesterday's theme and retry later instead of
+            // carrying a theme that is no longer in the pool.
+            if let Some(state) = self.random_state.as_mut() {
+                state.current_theme = None;
+            }
             self.select_random_theme(config, &today)?;
         }
 
         // Always re-apply today's selection. A same-day config reload (e.g. saving
         // any setting) re-reads `Random` from disk; without this, the engine would
         // see no `monitor_specific_wallpapers` and stop applying anything.
-        if let Some(theme_id) = self
+        let current_theme = self
             .random_state
             .as_ref()
-            .and_then(|state| state.current_theme.clone())
-        {
+            .and_then(|state| state.current_theme.clone());
+
+        if let Some(theme_id) = current_theme {
             config.set_wallpaper_mode(WallpaperMode::Fixed {
                 monitor_specific_wallpapers: MonitorSpecificWallpapers::All(theme_id),
             });
+            self.random_retry_at = None;
+        } else {
+            // No theme is available yet. Retry on a timer so installing the first
+            // theme (or fixing the pool) recovers without a daemon restart.
+            self.random_retry_at = Some(Instant::now() + RANDOM_SELECTION_RETRY);
         }
 
         Ok(())
@@ -473,6 +517,42 @@ impl DaemonApplication {
         Ok(themes)
     }
 
+    /// Whether the engine loop should return to `run` for a fresh random draw.
+    ///
+    /// Two things make a draw due: the local date changed (the daily theme), or the
+    /// mode has no theme at all and the retry timer elapsed (an empty pool that was
+    /// filled, or a theme that appeared after start-up).
+    fn random_selection_due(&self) -> DwallResult<bool> {
+        let Some(state) = &self.random_state else {
+            return Ok(false);
+        };
+
+        if state.current_theme.is_some() {
+            let today = OffsetDateTime::now_local()?.date();
+            return Ok(state.selector.needs_switch(&today));
+        }
+
+        Ok(self
+            .random_retry_at
+            .is_some_and(|retry_at| Instant::now() >= retry_at))
+    }
+
+    /// Caps a wait so random mode wakes for its next draw instead of sleeping through it.
+    fn cap_wait_for_random_selection(&self, wait: Duration) -> Duration {
+        let cap = match &self.random_state {
+            None => return wait,
+            // A theme is selected: the only event is the next local midnight.
+            Some(state) if state.current_theme.is_some() => seconds_until_local_midnight(),
+            // No theme: retry at the recorded deadline.
+            Some(_) => self
+                .random_retry_at
+                .map(|retry_at| retry_at.saturating_duration_since(Instant::now()))
+                .unwrap_or(RANDOM_SELECTION_RETRY),
+        };
+
+        wait.min(cap).max(Duration::from_secs(1))
+    }
+
     /// Runs the engine loop until the configuration changes.
     fn run_engine_loop(&mut self, theme_engine: &PlatformEngine<'_>) -> DwallResult<()> {
         // A configuration change rebuilds the engine, which resets this: the user
@@ -498,6 +578,12 @@ impl DaemonApplication {
                 if let Err(e) = self.config_watcher.update_stamp() {
                     warn!(error = %e, "Failed to record the configuration file stamp");
                 }
+                return Ok(());
+            }
+
+            // A daily random draw or an empty pool that is now ready needs the outer
+            // loop to reload the mode and rebuild the engine with the new theme.
+            if self.random_selection_due()? {
                 return Ok(());
             }
 
@@ -533,6 +619,10 @@ impl DaemonApplication {
             };
 
             theme_engine.reload_if_monitors_changed();
+
+            // A solar wait can be hours long; random mode still has to wake at its
+            // next draw (or retry) rather than sleep through it.
+            let next_interval = self.cap_wait_for_random_selection(next_interval);
 
             // `continue` rather than sleeping and then re-checking: the top of the
             // loop records the new file stamp and rebuilds the engine.
@@ -628,6 +718,78 @@ mod tests {
             "a busy service is not the user's decision"
         );
         assert!(!DwallError::AsyncTimeout(Duration::from_secs(30)).location_unavailable());
+    }
+
+    // ── random-mode scheduling ──────────────────────────────────────────────
+
+    #[test]
+    fn the_midnight_wait_covers_the_rest_of_the_day() {
+        assert_eq!(
+            seconds_until_midnight_at(0, 0, 0),
+            Duration::from_secs(86_400)
+        );
+        assert_eq!(
+            seconds_until_midnight_at(12, 0, 0),
+            Duration::from_secs(43_200)
+        );
+        assert_eq!(
+            seconds_until_midnight_at(23, 59, 59),
+            Duration::from_secs(1)
+        );
+    }
+
+    #[test]
+    fn a_random_draw_becomes_due_when_the_local_date_changes() {
+        let mut daemon = DaemonApplication::with_config_path(
+            std::env::temp_dir().join("dwall_daemon_random_due.toml"),
+        );
+        let mut selector = DailyRandomThemeSelector::new();
+        selector.mark_applied(&Date::new(2000, time::Month::January, 1));
+        daemon.random_state = Some(RandomModeState {
+            selector,
+            current_theme: Some("Alpha".to_string()),
+        });
+
+        assert!(
+            daemon.random_selection_due().unwrap(),
+            "a draw from another day has to be redrawn"
+        );
+    }
+
+    #[test]
+    fn an_empty_random_pool_schedules_a_retry() {
+        let (mut config, config_path, dir) = random_config(
+            "empty_pool_retry",
+            WallpaperMode::Random {
+                pool: Some(Vec::new()),
+            },
+        );
+        let mut daemon = DaemonApplication::with_config_path(config_path);
+
+        daemon.handle_random_mode(&mut config).unwrap();
+
+        assert!(
+            daemon.random_retry_at.is_some(),
+            "an empty pool must be retried, not warned about once"
+        );
+
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn a_selected_random_theme_caps_the_wait_at_midnight() {
+        let mut daemon = DaemonApplication::with_config_path(
+            std::env::temp_dir().join("dwall_daemon_random_cap.toml"),
+        );
+        daemon.random_state = Some(RandomModeState {
+            selector: DailyRandomThemeSelector::new(),
+            current_theme: Some("Alpha".to_string()),
+        });
+
+        let wait = daemon.cap_wait_for_random_selection(Duration::from_secs(2 * 86_400));
+
+        assert!(wait <= Duration::from_secs(86_400));
+        assert!(wait >= Duration::from_secs(1));
     }
 
     // ── failure_backoff ─────────────────────────────────────────────────────
