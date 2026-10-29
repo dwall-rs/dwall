@@ -1,5 +1,7 @@
 //! Engine (daemon process) lifecycle commands.
 
+use std::path::Path;
+
 use dwall::config::{Config, ConfigReader, ConfigWriter, WallpaperMode};
 
 use crate::daemon::{DaemonLauncher, daemon_path, is_daemon_running};
@@ -50,12 +52,15 @@ fn clear_theme_mode(config: &mut Config) {
 }
 
 fn clear_theme_config() -> DwallSettingsResult<()> {
-    let path = dwall::config::config_path();
+    clear_theme_config_at(&dwall::config::config_path())
+}
+
+fn clear_theme_config_at(path: &Path) -> DwallSettingsResult<()> {
     if !path.exists() {
         return Ok(());
     }
 
-    let mut config = match ConfigReader::read_from_path(&path) {
+    let mut config = match ConfigReader::read_from_path(path) {
         Ok(config) => config,
         Err(e) => {
             // A corrupt file already makes `setup_app` fall back to defaults, which
@@ -75,7 +80,7 @@ fn clear_theme_config() -> DwallSettingsResult<()> {
     }
 
     clear_theme_mode(&mut config);
-    ConfigWriter.write_to_path(&path, &config)?;
+    ConfigWriter.write_to_path(path, &config)?;
     info!("Cleared the configured theme before stopping the engine");
     Ok(())
 }
@@ -100,6 +105,26 @@ pub async fn stop_engine() -> DwallSettingsResult<bool> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn clearing_the_theme_mode_rewrites_the_config_file() {
+        let dir =
+            std::env::temp_dir().join(format!("dwall_stop_clear_{}_{}", std::process::id(), 0));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("config.toml");
+
+        let mut config = Config::default();
+        config.set_wallpaper_mode(WallpaperMode::Random { pool: None });
+        ConfigWriter.write_to_path(&path, &config).unwrap();
+
+        clear_theme_config_at(&path).unwrap();
+
+        let read_back = ConfigReader::read_from_path(&path).unwrap();
+        assert!(!crate::daemon::should_run(&read_back));
+
+        let _ = std::fs::remove_dir_all(&dir);
+    }
 
     #[test]
     fn clearing_the_theme_mode_makes_the_engine_unneeded() {
