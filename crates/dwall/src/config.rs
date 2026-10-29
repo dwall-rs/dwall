@@ -1281,9 +1281,10 @@ mod tests {
     // ── network validation ──────────────────────────────────────────────────
 
     fn config_with_network(network: Network) -> Config {
-        let mut config = Config::default();
-        config.network = Some(network);
-        config
+        Config {
+            network: Some(network),
+            ..Config::default()
+        }
     }
 
     /// An invalid SOCKS5 host used to be written to disk and only fail when the
