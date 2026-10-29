@@ -14,7 +14,7 @@ export const dict = {
       running: "Running · {{ mode }} · now",
       start: "Start engine",
       stop: "Stop engine",
-      confirmStop: "Confirm stop?",
+      confirmStop: "Confirm stop? The selected theme will be cleared.",
       lastError: "Last error:",
       altitude: "alt",
       azimuth: "az",

@@ -16,7 +16,7 @@ export const dict: RawDictionary = {
       running: "執行中 · {{ mode }} · 目前",
       start: "啟動引擎",
       stop: "終止引擎",
-      confirmStop: "確認終止？",
+      confirmStop: "確認終止？目前主題設定將被清空。",
       lastError: "最近錯誤：",
       altitude: "高度",
       azimuth: "方位",

@@ -16,7 +16,7 @@ export const dict: RawDictionary = {
       running: "실행 중 · {{ mode }} · 현재",
       start: "엔진 시작",
       stop: "엔진 종료",
-      confirmStop: "종료할까요?",
+      confirmStop: "종료할까요? 선택한 테마가 해제됩니다.",
       lastError: "최근 오류:",
       altitude: "고도",
       azimuth: "방위",
