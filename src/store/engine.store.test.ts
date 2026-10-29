@@ -5,6 +5,7 @@ const mocks = vi.hoisted(() => ({
   getDaemonLastError: vi.fn(),
   startEngine: vi.fn(),
   stopEngine: vi.fn(),
+  reloadSettings: vi.fn(),
   toastError: vi.fn(),
 }));
 
@@ -20,6 +21,10 @@ vi.mock("@/components/ui/toast", () => ({
 }));
 
 vi.mock("@/i18n", () => ({ t: (key: string) => key }));
+
+vi.mock("./settings-refresh", () => ({
+  reloadSettings: mocks.reloadSettings,
+}));
 
 /** A fresh store, as a fresh window would see it. */
 async function freshStore() {
@@ -121,6 +126,7 @@ describe("engine store: start and stop", () => {
     // Second click terminates.
     await store.toggle();
     expect(mocks.stopEngine).toHaveBeenCalledTimes(1);
+    expect(mocks.reloadSettings).toHaveBeenCalledTimes(1);
     expect(store.engineStore.running).toBe(false);
     expect(store.engineStore.lastError).toBeNull();
     expect(store.engineStore.pending).toBe(false);
