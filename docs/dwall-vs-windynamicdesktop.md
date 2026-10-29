@@ -9,7 +9,7 @@ chosen, what else the app changes, and what it costs to keep running.
 |            | DWALL                                                       | WinDynamicDesktop                                                                     |
 | ---------- | ----------------------------------------------------------- | ------------------------------------------------------------------------------------- |
 | Image choice | The frame whose solar altitude/azimuth is closest to the current position (5–24 frames per theme, 15 themes offered) | Day/night images, plus optional sunrise/sunset lists, rotated by sunrise/sunset times or a fixed 24-hour schedule |
-| System light/dark theme | Switched, driven by the sun                   | Not switched — removed in v4 and now a community script                                |
+| System light/dark theme | Switched, driven by the sun, and switchable off | Not switched — removed in v4 and now a community script                                |
 | Location    | Windows Geolocator, or coordinates you enter; works offline with manual coordinates | A place name geocoded through the LocationIQ API, so entering one needs internet      |
 | Theme sources | Curated solar-aligned sets (`dwall-rs/dwall-assets`), plus your own directories | ~19 bundled macOS themes, a community site (427 free community themes, some paid), `.ddw` import and a theme creator |
 | Theme format | `theme.toml` + images per frame ([Dwall Maker](https://github.com/dwall-rs/maker) spec) | `theme.json` + numbered images in a ZIP/`.ddw`                                        |
