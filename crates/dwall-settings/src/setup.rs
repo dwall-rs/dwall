@@ -2,6 +2,7 @@
 
 use std::{env, path::PathBuf};
 
+use logging::Logger;
 use tauri::Manager;
 
 use crate::{
@@ -15,6 +16,11 @@ use crate::{
 };
 
 pub fn setup_app(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
+    // Initialise after Tauri has run the single-instance plugin's setup hook. A
+    // second launch is focused and exits there, before this function, so it no
+    // longer rotates the log of the instance that is already running.
+    init_logging()?;
+
     info!(
         version = app.package_info().version.to_string(),
         build_mode = if cfg!(debug_assertions) {
@@ -174,6 +180,29 @@ pub fn allow_asset_directories(app: &tauri::AppHandle, config: &dwall::Config) {
 }
 
 /// Locate `dwall.exe` next to the settings executable.
+/// Installs the process-wide logger.
+///
+/// Called from `setup_app`, which Tauri runs after the single-instance plugin has
+/// had its chance to focus the existing window and exit. Initialising here keeps a
+/// second launch from rotating the log file of the instance that is still running.
+fn init_logging() -> Result<(), Box<dyn std::error::Error>> {
+    #[cfg(debug_assertions)]
+    Logger::default().with_target("dwall").init()?;
+
+    #[cfg(not(debug_assertions))]
+    {
+        use dwall::lazy::DWALL_LOG_DIR;
+
+        let package_name = env!("CARGO_PKG_NAME");
+        Logger::default()
+            .with_target("dwall")
+            .with_file_path(DWALL_LOG_DIR.join(format!("{}.log", package_name)))?
+            .init()?;
+    }
+
+    Ok(())
+}
+
 fn resolve_daemon_path(args: &[String]) -> Result<PathBuf, Box<dyn std::error::Error>> {
     let settings_exe_path = args.first().ok_or("Missing executable path in arguments")?;
     let daemon_exe_path = PathBuf::from(settings_exe_path)
