@@ -12,13 +12,13 @@
 | --- | --- | --- | --- |
 | 用途 | 依据太阳位置选择壁纸帧 | macOS Mojave 动态桌面的 Windows 移植 | 按计划切换 Windows 深色/浅色主题 |
 | 触发变化的依据 | 本地计算的太阳高度角与方位角 | 按位置计算的日出/日落时间，或固定的 24 小时计划 | 固定时间、日出日落时间、夜间模式、环境光、热键、脚本 |
-| 系统浅色/深色主题 | 依据太阳位置切换 | 不切换（v4 中已移除；由社区脚本实现） | 切换 —— 其核心功能 |
+| 系统浅色/深色主题 | 应用与系统（任务栏）两个值都依据太阳位置切换 | 不切换（v4 中已移除；由社区脚本实现） | 切换 —— 其核心功能 |
 | 锁屏 | 是 | 是（`lockScreenTheme`） | 未有锁屏功能的文档 |
-| 每显示器壁纸 | 是 | 是（按显示器配置 `activeThemes`） | 是（每个主题可给每台显示器不同图片） |
+| 每显示器壁纸 | 是 —— 每台显示器可指定主题，未指定时回落到全局主题 | 是（按显示器配置 `activeThemes`） | 是（每个主题可给每台显示器不同图片） |
 | 随机 / 每日变化 | 每天从主题池中随机选一个主题 | 主题内打乱 | 壁纸幻灯片推进 |
-| 虚拟桌面 | 不支持 | 已有文档说明的限制：所有桌面共用一套图片 | 已有文档说明的限制：单显示器配置下 |
-| 可扩展性 | 无 | PowerShell 脚本、CLI 参数 | 自定义脚本、热键、条件 |
-| CLI | `dwall.exe --check-config`、`--once`、`--install-autostart`、`--config` | `WinDynamicDesktop.exe /theme:<N>=<id>`、`/theme:<auto\|dark\|light>` | `AutoDarkModeShell.exe`，通过引擎的命名管道 |
+| 虚拟桌面 | 所有虚拟桌面共用一套壁纸：Windows 会把桌面的壁纸套用到每个虚拟桌面 | 已有文档说明的限制：所有桌面共用一套图片 | 已有文档说明的限制：单显示器配置下 |
+| 可扩展性 | 有文档的主题格式（`theme.toml`、[Dwall Maker](https://github.com/dwall-rs/maker)）与自定义主题目录；配置文件变更后守护进程会重新读取，因此无需重启即可被外部驱动；不含脚本引擎 | PowerShell 脚本、CLI 参数 | 自定义脚本、热键、条件 |
+| CLI | `dwall.exe --check-config`、`--once`、`--install-autostart`、`--uninstall-autostart`、`--config`、`--help`、`--version` | `WinDynamicDesktop.exe /theme:<N>=<id>`、`/theme:<auto\|dark\|light>` | `AutoDarkModeShell.exe`，通过引擎的命名管道 |
 
 ## 架构与技术栈
 
@@ -27,7 +27,7 @@
 | 进程 | Rust 守护进程（常驻）+ Tauri/SolidJS 设置窗口（按需） | 单个 WinForms 进程：托盘、对话框与调度器合一 | 带托盘与命名管道服务器的 .NET 引擎（每会话）+ WinUI 3 窗口 + 控制台 CLI |
 | 引擎 / GUI 分离 | 是；无 IPC，配置文件即接口 | 否 | 是，通过命名管道 |
 | 语言 / 框架 | Rust；SolidJS + Tauri 2 | C# / .NET 10，WinForms | C# / .NET 9，WinUI 3 + WinForms |
-| 后台运行时开销 | 单线程，无异步运行时，未链接 GUI 工具包 | .NET 运行时 + WinForms | .NET 运行时 + WinForms |
+| 后台运行时开销 | 单线程，无异步运行时，未链接 GUI 工具包，无网络代码 | .NET 运行时 + WinForms | .NET 运行时 + WinForms |
 | 自启动 | `HKCU\...\Run` 值，或你自行创建的计划任务 | 由安装程序提供 | 任务计划程序的登录任务 |
 | 配置 | `config.toml` | `settings.json` | 注册表 + 自己的设置存储 |
 | 许可证 | AGPL-3.0-only | MPL-2.0 | GPL-3.0 |

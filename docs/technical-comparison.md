@@ -48,7 +48,7 @@ call cannot hang the process forever.
 | Configuration | `config.toml` (`%APPDATA%\dwall\config.toml`), commented default written on first run | `settings.json` | Registry and its own store |
 | Theme | directory with `theme.toml` (`schema = 1`), `images/<n>.<ext>`, optional `thumbnails/`; authoritative spec in the [Dwall Maker](https://github.com/dwall-rs/maker) repository | ZIP/`.ddw` with `theme.json` and numbered images | image files per theme; `.theme` files parsed for other personalisation |
 | Random state | `random_selection.json`, next to the chosen config file | shuffle setting inside `settings.json` | — |
-| Logs | `%LOCALAPPDATA%\com.thep0y.dwall\log\dwall.log`, rotated to `backup\` on each start | debug logging toggle | own log file |
+| Logs | `%LOCALAPPDATA%\com.thep0y.dwall\log\dwall.log`, rotated to `backup\` when it passes 5 MB or on start, five files kept | debug logging toggle | own log file |
 
 Because the config file is the interface, it is also the public contract: `--config`
 lets several independent configurations coexist, and `--check-config` validates one

@@ -15,13 +15,13 @@ a project's language or architecture.
 | --- | --- | --- | --- |
 | Purpose | Wallpaper frames chosen by the sun's position | macOS Mojave Dynamic Desktop port for Windows | Windows dark/light theme on a schedule |
 | What drives a change | Solar altitude and azimuth computed locally | Sunrise/sunset times from the location, or a fixed 24-hour schedule | Fixed times, sun times, Night Light, ambient light, hotkeys, scripts |
-| System light/dark theme | Switched, by solar position | Not switched (removed in v4; a community script does it) | Switched — its core feature |
+| System light/dark theme | Both values switched — apps and the system/taskbar — by solar position | Not switched (removed in v4; a community script does it) | Switched — its core feature |
 | Lock screen | Yes | Yes (`lockScreenTheme`) | No lock-screen feature documented |
-| Per-monitor wallpapers | Yes | Yes (`activeThemes` per display) | Yes (per-monitor images per theme) |
+| Per-monitor wallpapers | Yes — a theme per monitor, falling back to the global theme where a monitor has none | Yes (`activeThemes` per display) | Yes (per-monitor images per theme) |
 | Random/daily variation | Daily random theme from a pool | Shuffle within a theme | Wallpaper slideshow advance |
-| Virtual desktops | Not supported | Documented limitation: one image set for all | Documented limitation on single-monitor setups |
-| Extensibility | None | PowerShell scripts, CLI arguments | Custom scripts, hotkeys, conditions |
-| CLI | `dwall.exe --check-config`, `--once`, `--install-autostart`, `--config` | `WinDynamicDesktop.exe /theme:<N>=<id>`, `/theme:<auto\|dark\|light>` | `AutoDarkModeShell.exe` over the engine's named pipe |
+| Virtual desktops | One wallpaper set across them: Windows applies a desktop's wallpaper to every virtual desktop | Documented limitation: one image set for all | Documented limitation on single-monitor setups |
+| Extensibility | Documented theme format (`theme.toml`, [Dwall Maker](https://github.com/dwall-rs/maker)) and a custom-theme directory; a config file the daemon re-reads when it changes, so it can be driven without a restart; no scripting engine | PowerShell scripts, CLI arguments | Custom scripts, hotkeys, conditions |
+| CLI | `dwall.exe --check-config`, `--once`, `--install-autostart`, `--uninstall-autostart`, `--config`, `--help`, `--version` | `WinDynamicDesktop.exe /theme:<N>=<id>`, `/theme:<auto\|dark\|light>` | `AutoDarkModeShell.exe` over the engine's named pipe |
 
 ## Architecture and stack
 
@@ -30,7 +30,7 @@ a project's language or architecture.
 | Processes | Rust daemon (always on) + Tauri/SolidJS settings window (on demand) | One WinForms process: tray, dialogs and scheduler together | .NET engine with tray and named-pipe server (per session) + WinUI 3 window + console CLI |
 | Engine/GUI separation | Yes; no IPC, the config file is the interface | No | Yes, via the named pipe |
 | Language / framework | Rust; SolidJS + Tauri 2 | C# / .NET 10, WinForms | C# / .NET 9, WinUI 3 + WinForms |
-| Background runtime cost | Single-threaded, no async runtime, no GUI toolkit linked | .NET runtime + WinForms | .NET runtime + WinForms |
+| Background runtime cost | Single-threaded, no async runtime, no GUI toolkit linked, no network code | .NET runtime + WinForms | .NET runtime + WinForms |
 | Autostart | `HKCU\...\Run` value, or a scheduled task you create | Installer-provided | Task Scheduler logon task |
 | Configuration | `config.toml` | `settings.json` | Registry + its own settings store |
 | Licence | AGPL-3.0-only | MPL-2.0 | GPL-3.0 |
