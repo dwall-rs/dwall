@@ -19,7 +19,8 @@ Chinese translations of the comparison set sit next to each file as `*.zh-CN.md`
   project's own repository, documentation, release metadata or store listing, and be
   linked. Do not characterise its internals, performance or code quality.
 - **Measure DWALL.** Numbers for DWALL come from this repository's release build
-  (`cargo build -p dwall --release`, Task Manager private bytes, file sizes) — never
+  (`cargo build -p dwall --release`, the private working set Task Manager reports, file
+sizes) — never
   from intuition. Say how a number was obtained.
 - **No verdicts, no marketing.** State what each tool does and where each is the
   better fit, including where DWALL is behind.

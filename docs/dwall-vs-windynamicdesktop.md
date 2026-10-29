@@ -17,7 +17,7 @@ chosen, what else the app changes, and what it costs to keep running.
 | Per-monitor themes | Yes                                                  | Yes                                                                                   |
 | Automation  | A config file the daemon re-reads when it changes, so a script can rewrite it and the change applies without a restart; a CLI (`--once`, `--check-config`, `--install-autostart`) for scripts and Task Scheduler; no scripting engine inside the app | PowerShell scripts, CLI arguments (`/theme:<N>=<id>`) |
 | Architecture | Tiny daemon (always on) + settings window (on demand), config file as the only interface | One WinForms process holding tray, dialogs and scheduler                              |
-| Resident cost | Daemon 3–8 MB private; 0.35 MB archive (0.63 MB binary); no tray icon | Not documented by the project; self-contained ~70 MB executable; tray icon             |
+| Resident cost | Daemon ≈2 MB private working set (3–8 MB private bytes); 0.35 MB archive (0.63 MB binary); no tray icon | Not documented by the project; self-contained ~70 MB executable; tray icon             |
 | CPU architectures | x64                                                   | x86, x64, ARM64                                                                       |
 | Minimum OS  | Windows 10/11                                               | Windows 7+ (developed for Windows 11)                                                 |
 | Languages   | 6                                                           | ~55 offered for translation                                                           |
