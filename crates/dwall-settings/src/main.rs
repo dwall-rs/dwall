@@ -3,7 +3,6 @@
 
 use std::path::PathBuf;
 
-use logging::Logger;
 use tauri::{Manager, RunEvent};
 use tokio::sync::OnceCell;
 
@@ -44,19 +43,6 @@ pub static DAEMON_EXE_PATH: OnceCell<PathBuf> = OnceCell::const_new();
 /// or anything else that needs a runtime to be current — without the attribute there is
 /// none, and such a call panics instead of failing. Use `tauri::async_runtime` there.
 fn main() -> DwallSettingsResult<()> {
-    #[cfg(debug_assertions)]
-    Logger::default().with_target("dwall").init()?;
-    #[cfg(not(debug_assertions))]
-    {
-        use dwall::lazy::DWALL_LOG_DIR;
-
-        let package_name = env!("CARGO_PKG_NAME");
-        Logger::default()
-            .with_target("dwall")
-            .with_file_path(DWALL_LOG_DIR.join(format!("{}.log", package_name)))?
-            .init()?;
-    }
-
     let builder = tauri::Builder::default()
         .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_dialog::init())
