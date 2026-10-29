@@ -24,10 +24,34 @@ chosen, what else the app changes, and what it costs to keep running.
 | Distribution | GitHub releases (installer + daemon archive)               | GitHub releases, Microsoft Store (free), winget, Scoop, Chocolatey                    |
 | Licence     | AGPL-3.0-only                                               | MPL-2.0                                                                               |
 
+## Why the frame is chosen by the sun's angle
+
+A theme's frames are drawn for particular daylight: low warm light, mid-morning, noon,
+dusk. What makes the sequence look right is where the Sun is when each frame is shown,
+and the clock is a poor proxy for that in two ways that both change how a theme reads:
+
+- **The season.** At one place, 09:00 in March and 09:00 in September are different sun
+  heights, and the day is a different length; a frame pinned to a clock time shows the
+  wrong light for most of the year.
+- **The latitude.** Sunrise, noon and sunset fall on the same clock times only near the
+  equator; a schedule tuned for one city puts a noon frame under a low sun somewhere else.
+
+DWALL does not consult a clock for this decision at all. `theme.toml` binds every frame to
+an altitude and an azimuth, and each cycle applies the frame whose angle is the smallest
+distance from the current position — measured on the sky, so a degree of azimuth counts for
+`cos(altitude)` degrees of altitude ([custom-themes.md](./custom-themes.md)). The frame and
+the light agree in any season at any latitude, with nothing to re-tune.
+
+WinDynamicDesktop works in clock time: its images are distributed between sunrise and
+sunset, or over a fixed 24-hour schedule. That is simpler to configure, and it means the sun
+behind a given frame drifts with the date and the latitude — reproducing a solar-aligned
+look with it means adjusting the schedule as the seasons change.
+
 ## Choose DWALL if
 
 - You want the frame chosen by the sun's actual position rather than by a day/night
-  schedule.
+  schedule, so the light in the picture matches the light outside in any season at any
+  latitude, without re-tuning the schedule.
 - The always-on process should stay a few megabytes with no notification-area icon.
 - You are offline or behind a restrictive network: location can be entered manually and
   theme downloads support mirror templates and SOCKS5.
