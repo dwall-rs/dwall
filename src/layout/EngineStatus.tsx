@@ -65,6 +65,7 @@ export function EngineStatus() {
         <Show when={engineStore.lastError}>
           {(error) => (
             <p
+              data-selectable
               class="max-w-150 truncate text-[11.5px] text-warning"
               title={error()}
             >

@@ -63,7 +63,10 @@ export function LibraryColumn() {
                 {t("library.loadFailed")}
               </p>
             </div>
-            <p class="mt-1.5 text-[11px] leading-relaxed break-all text-muted-foreground">
+            <p
+              data-selectable
+              class="mt-1.5 text-[11px] leading-relaxed break-all text-muted-foreground"
+            >
               {catalogStore.error}
             </p>
             <Button

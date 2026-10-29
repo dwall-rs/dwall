@@ -58,7 +58,10 @@ export function ThemeDownload(props: Props) {
 
       <Show when={downloadError(props.themeId)}>
         {(error) => (
-          <p class="max-w-90 text-center font-mono text-[11px] leading-relaxed text-destructive">
+          <p
+            data-selectable
+            class="max-w-90 text-center font-mono text-[11px] leading-relaxed text-destructive"
+          >
             {t("stage.downloadFailed")} {error()}
           </p>
         )}
