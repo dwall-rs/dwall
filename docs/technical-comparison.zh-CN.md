@@ -45,7 +45,7 @@ DWALL 守护进程有意不链接异步运行时：WinRT 操作通过一个有�
 | 配置 | `config.toml`（`%APPDATA%\dwall\config.toml`），首次运行时写入带注释的默认配置 | `settings.json` | 注册表与自己的存储 |
 | 主题 | 包含 `theme.toml`（`schema = 1`）、`images/<n>.<ext>`、可选 `thumbnails/` 的目录；权威规格见 [Dwall Maker](https://github.com/dwall-rs/maker) 仓库 | 含 `theme.json` 与编号图片的 ZIP/`.ddw` | 每个主题的图片文件；`.theme` 文件用于解析其他个性化设置 |
 | 随机状态 | `random_selection.json`，与所选配置文件同目录 | `settings.json` 中的 shuffle 设置 | —— |
-| 日志 | `%LOCALAPPDATA%\com.thep0y.dwall\log\dwall.log`，每次启动轮转到 `backup\` | 调试日志开关 | 自己的日志文件 |
+| 日志 | `%LOCALAPPDATA%\com.thep0y.dwall\log\dwall.log`，超过 5 MB 或每次启动时轮转到 `backup\`，保留五份 | 调试日志开关 | 自己的日志文件 |
 
 由于配置文件就是接口，它也是公开约定：`--config` 让多份互不相干的配置并存，
 `--check-config` 则在不应用任何更改的情况下校验其中一份。

@@ -10,15 +10,15 @@
 | 主要职责 | 依据太阳位置选择壁纸帧 | 按计划切换 Windows 深色/浅色主题 |
 | 切换信号 | 本地计算的太阳高度角/方位角（折射、海拔、极地纬度），或手动坐标 | 固定时间、来自 Windows 位置的日出日落时间、夜间模式状态、环境光传感器、热键、脚本 |
 | 壁纸 | 主题 = 绑定到太阳位置的帧，持续匹配；每显示器；可选锁屏 | 每个主题每台显示器一张图片，纯色或幻灯片；未有锁屏功能的文档 |
-| 还会更改 | 系统浅色/深色主题 | 应用/系统主题、主题色、鼠标光标、`.theme` 文件、任务栏/标题栏、灰度 |
-| 可扩展性 | 无 | 自定义脚本、条件（游戏、电池、夜间模式）、热键 |
+| 还会更改 | 应用与系统（任务栏）两个浅色/深色主题值，以及锁屏壁纸 | 应用/系统主题、主题色、鼠标光标、`.theme` 文件、任务栏/标题栏、灰度 |
+| 可扩展性 | 有文档的主题格式（`theme.toml`、Dwall Maker）与自定义主题目录；配置文件变更后守护进程会重新读取；不含脚本或条件模块 | 自定义脚本、条件（游戏、电池、夜间模式）、热键 |
 | 技术栈 | Rust 守护进程（无异步运行时）+ Tauri/SolidJS GUI | .NET 9：WinUI 3 GUI、基于 WinForms 的引擎、控制台 CLI 外壳 |
 | 占用 | 守护进程 3–8 MB 私有内存，0.63 MB 可执行文件；无托盘图标 | 项目未有文档说明；托盘图标与命名管道命令服务器 |
 | CPU 架构 | x64 | x64、ARM64 |
 | 语言 | 6 | 31 |
 | 分发 | 安装程序 + 便携式守护进程压缩包；无商店页面 | GitHub、Microsoft Store（免费）、winget `ArminOsaj.AutoDarkMode`；Chocolatey/Scoop 条目为非官方 |
 | 系统要求 | Windows 10/11 x64；GUI 需要 WebView2 | Windows 10 22H2 或更高版本、Windows 11 |
-| CLI | `dwall.exe --check-config`、`--once`、`--install-autostart`、`--config` | `AutoDarkModeShell.exe`，通过引擎的命名管道发送命令 |
+| CLI | `dwall.exe --check-config`、`--once`、`--install-autostart`、`--uninstall-autostart`、`--config`、`--help`、`--version` | `AutoDarkModeShell.exe`，通过引擎的命名管道发送命令 |
 | 许可证 | AGPL-3.0-only | GPL-3.0 |
 
 ## 选择 DWALL，如果

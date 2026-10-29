@@ -13,14 +13,15 @@ plain cost/benefit view of DWALL: what it gives you and what it asks in return.
 - **A resident cost you can forget.** One single-threaded daemon, 3–8 MB private memory,
   no notification-area icon, no webview and no HTTP stack while the settings window is
   closed.
-- **The system light/dark theme switched with the same calculation**, so taskbar and app
-  theme move with the wallpaper instead of at a fixed hour.
+- **Both light/dark theme values switched with the same calculation** — apps and the
+  system/taskbar — so they move with the wallpaper instead of at a fixed hour.
 - **Per-monitor themes**, a lock screen that mirrors the wallpaper's theme and frame, and
   an optional daily random theme from a pool you choose.
 - **Predictable deployment.** One `config.toml`, an NSIS installer that needs no
   administrator rights, a 0.35 MB daemon archive (0.63 MB binary) for headless machines,
-  and a CLI (`--check-config`, `--once`, `--install-autostart`) for scripts and
-  scheduled tasks.
+  and a CLI (`--check-config`, `--once`, `--install-autostart`, `--uninstall-autostart`)
+  for scripts and scheduled tasks. The daemon re-reads `config.toml` when it changes, so
+  rewriting the file is enough to change its behaviour — no restart.
 - **No telemetry and no account.** The daemon makes no network requests at all; theme and
   thumbnail downloads happen in the settings window, and honour a mirror template or a
   SOCKS5 proxy for networks that cannot reach GitHub.
@@ -30,8 +31,9 @@ plain cost/benefit view of DWALL: what it gives you and what it asks in return.
 - **x64 Windows 10/11 only.** No ARM64, no 32-bit Windows, no Windows 7.
 - **Six interface languages** (English, Simplified and Traditional Chinese, Hong Kong
   Chinese, Japanese, Korean), against ~55 and 31 for the alternatives.
-- **No scripting and no automation hooks.** If you need "switch when a game starts",
-  "obey the ambient-light sensor" or "run this script afterwards", that is Auto Dark
+- **No scripting engine and no condition triggers.** There is no "switch when a game
+  starts", no ambient-light input and no post-change hook, so the config file plus the CLI
+  is the whole automation surface. If you need event-driven switching, that is Auto Dark
   Mode's territory.
 - **It changes the system theme, not the rest of personalisation.** Accent colour,
   mouse cursors and `.theme` files are not touched.

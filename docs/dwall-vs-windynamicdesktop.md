@@ -15,7 +15,7 @@ chosen, what else the app changes, and what it costs to keep running.
 | Theme format | `theme.toml` + images per frame ([Dwall Maker](https://github.com/dwall-rs/maker) spec) | `theme.json` + numbered images in a ZIP/`.ddw`                                        |
 | Lock screen | Yes                                                         | Yes                                                                                   |
 | Per-monitor themes | Yes                                                  | Yes                                                                                   |
-| Automation  | None                                                        | PowerShell scripts, CLI arguments (`/theme:<N>=<id>`)                                 |
+| Automation  | A config file the daemon re-reads when it changes, so a script can rewrite it and the change applies without a restart; a CLI (`--once`, `--check-config`, `--install-autostart`) for scripts and Task Scheduler; no scripting engine inside the app | PowerShell scripts, CLI arguments (`/theme:<N>=<id>`) |
 | Architecture | Tiny daemon (always on) + settings window (on demand), config file as the only interface | One WinForms process holding tray, dialogs and scheduler                              |
 | Resident cost | Daemon 3–8 MB private; 0.35 MB archive (0.63 MB binary); no tray icon | Not documented by the project; self-contained ~70 MB executable; tray icon             |
 | CPU architectures | x64                                                   | x86, x64, ARM64                                                                       |
@@ -42,9 +42,11 @@ chosen, what else the app changes, and what it costs to keep running.
 
 ## Both, in one line each
 
-WinDynamicDesktop has the bigger ecosystem, wider platform support and scripting;
-DWALL matches images to the sun's position frame by frame, also switches the system
-light/dark theme, and keeps its resident process an order of magnitude smaller.
+WinDynamicDesktop has the bigger ecosystem, wider platform support and a scripting
+language; DWALL matches images to the sun's position frame by frame, switches both
+light/dark theme values with the same calculation, and its daemon is 0.63 MB where the
+WinDynamicDesktop executable is 62–72 MB — its memory use is not published, so no
+memory comparison is claimed here.
 
 ## Sources
 
