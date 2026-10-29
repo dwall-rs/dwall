@@ -247,10 +247,28 @@ mod constants {
     pub(super) const ATMOSPHERIC_REFRACTION_MAX: f64 = 0.575;
 }
 
+/// Barometric pressure at `altitude_m`, relative to sea level.
+///
+/// Refraction depends on air pressure, and pressure falls with elevation. The
+/// standard-atmosphere approximation is enough for a wallpaper match; a missing or
+/// implausible reading falls back to sea level instead of poisoning the altitude.
+fn pressure_ratio(altitude_m: f64) -> f64 {
+    if !altitude_m.is_finite() {
+        return 1.0;
+    }
+
+    let altitude_m = altitude_m.clamp(-500.0, 9_000.0);
+    (1.0 - 2.255_77e-5 * altitude_m)
+        .powf(5.255_88)
+        .clamp(0.30, 1.10)
+}
+
 struct SolarContext {
     latitude_rad: f64,
     declination_rad: f64,
     hour_angle_rad: f64,
+    /// Refraction scale from the observer's elevation (1.0 at sea level).
+    pressure_ratio: f64,
 }
 
 impl SolarContext {
@@ -266,6 +284,7 @@ impl SolarContext {
             latitude_rad: position.latitude().to_radians(),
             declination_rad: declination_deg.to_radians(),
             hour_angle_rad: hour_angle_deg.to_radians(),
+            pressure_ratio: pressure_ratio(position.altitude()),
         }
     }
 }
@@ -365,7 +384,7 @@ impl SolarCalc {
         if ha > 180.0 { ha - 360.0 } else { ha }
     }
 
-    fn atmospheric_refraction(apparent_altitude: f64) -> f64 {
+    fn atmospheric_refraction(apparent_altitude: f64, pressure_ratio: f64) -> f64 {
         if apparent_altitude < -0.5 {
             return 0.0;
         }
@@ -374,7 +393,7 @@ impl SolarCalc {
             .to_radians()
             .tan();
 
-        let correction_deg = (1.0 / tan_h) / 60.0;
+        let correction_deg = (1.0 / tan_h) / 60.0 * pressure_ratio;
         debug_assert!(
             correction_deg >= 0.0,
             "Atmospheric refraction correction must not be negative (elevation = {}°)",
@@ -419,7 +438,7 @@ impl SolarPosition {
 
         let true_altitude = SolarPosition::altitude_from_sin(sin_alt);
 
-        true_altitude + SolarCalc::atmospheric_refraction(true_altitude)
+        true_altitude + SolarCalc::atmospheric_refraction(true_altitude, ctx.pressure_ratio)
     }
 
     fn azimuth_from_context(ctx: &SolarContext) -> f64 {
@@ -491,6 +510,30 @@ mod tests {
         assert_eq!(pos.latitude(), 45.0);
         assert_eq!(pos.longitude(), 90.0);
         assert_eq!(pos.altitude(), 43.5);
+    }
+
+    #[test]
+    fn pressure_falls_with_observer_elevation() {
+        assert_eq!(pressure_ratio(0.0), 1.0);
+        assert!(pressure_ratio(3_000.0) < 0.75);
+        assert_eq!(pressure_ratio(f64::NAN), 1.0);
+        assert_eq!(pressure_ratio(f64::INFINITY), 1.0);
+    }
+
+    /// The observer's elevation has to reach the result: a higher station sees less
+    /// refraction, so the apparent sun is lower there at the same instant.
+    #[test]
+    fn a_higher_observer_sees_less_refraction() {
+        let date = UtcDateTime::new(2026, Month::March, 20, 6, 10, 0).unwrap();
+        let sea_level = SolarPosition::new(&Position::new(0.0, 0.0, 0.0).unwrap(), &date);
+        let mountain = SolarPosition::new(&Position::new(0.0, 0.0, 3_000.0).unwrap(), &date);
+
+        assert!(
+            mountain.altitude() < sea_level.altitude(),
+            "sea level = {}, 3000 m = {}",
+            sea_level.altitude(),
+            mountain.altitude()
+        );
     }
 
     #[test]
