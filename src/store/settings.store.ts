@@ -196,11 +196,15 @@ const save = async () => {
     }),
   );
 
+  // Snapshot before awaiting: an edit made while the write is in flight is not in
+  // the file that was sent, so it must stay dirty after the save completes.
+  const toSave = snapshot(settingsStore.config);
+
   try {
-    await writeConfigFile(settingsStore.config);
+    await writeConfigFile(toSave);
     setSettingsStore(
       produce((settings) => {
-        settings.saved = snapshot(settings.config as Config);
+        settings.saved = toSave;
         settings.saving = false;
       }),
     );
