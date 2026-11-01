@@ -9,7 +9,7 @@ use windows::{
     Storage::{IStorageFile, StorageFile},
     System::UserProfile::LockScreen,
     Win32::{
-        System::Com::{CLSCTX_ALL, CoCreateInstance, CoInitialize, CoTaskMemFree, CoUninitialize},
+        System::Com::{CLSCTX_ALL, CoCreateInstance, CoInitialize, CoTaskMemFree},
         UI::Shell::{DesktopWallpaper, IDesktopWallpaper},
     },
     core::{HSTRING, Interface, PWSTR},
@@ -35,11 +35,23 @@ pub enum WallpaperError {
     MonitorNotFound(String),
     #[error("Failed to wait for a WinRT operation: {0}")]
     AsyncWait(#[from] AsyncWaitError),
-    #[error("Desktop wallpaper COM object is not initialized")]
-    NotInitialized,
 }
 
 type WallpaperResult<T> = Result<T, WallpaperError>;
+
+/// Initializes COM once for the daemon's lifetime.
+///
+/// The daemon is single-threaded and runs until exit. Balancing every engine rebuild
+/// with `CoUninitialize` tore down WinRT/shell state that the next lock-screen
+/// update still needed, which crashed the process at the first midnight rebuild.
+/// The OS releases the apartment at process exit.
+fn ensure_com_initialized() {
+    static COM_INIT: std::sync::Once = std::sync::Once::new();
+
+    COM_INIT.call_once(|| unsafe {
+        let _ = CoInitialize(None);
+    });
+}
 
 /// How long a lock-screen WinRT operation may block the daemon.
 const LOCK_SCREEN_TIMEOUT: Duration = Duration::from_secs(30);
@@ -65,47 +77,34 @@ impl Drop for OwnedCoTaskMemString {
 
 /// Windows wallpaper setter with COM management
 pub(crate) struct WallpaperSetter {
-    /// `Option` so `Drop` can release the COM interface before calling
-    /// `CoUninitialize`; fields are otherwise dropped after the `Drop` body.
-    desktop_wallpaper: Option<IDesktopWallpaper>,
+    desktop_wallpaper: IDesktopWallpaper,
     /// The engine's monitor provider, not a second one.
     ///
     /// A private snapshot meant a monitor attached after the engine refreshed its
     /// own cache was missing here for up to the cache's five minutes, and the
     /// lookup returned `MonitorNotFound` before any refresh could happen.
     monitor_provider: Rc<DisplayMonitorProvider>,
-    should_cleanup_com: bool,
 }
 
 impl WallpaperSetter {
     /// Creates a new WallpaperSetter instance
     pub(crate) fn new(monitor_provider: Rc<DisplayMonitorProvider>) -> WallpaperResult<Self> {
-        // `CoInitialize` returns S_OK on the first call and S_FALSE when COM is
-        // already initialized on this thread. Both successful calls must be balanced
-        // by `CoUninitialize`.
-        let should_cleanup_com = unsafe { CoInitialize(None).is_ok() };
+        ensure_com_initialized();
 
         let desktop_wallpaper: IDesktopWallpaper =
-            match unsafe { CoCreateInstance(&DesktopWallpaper as *const _, None, CLSCTX_ALL) } {
-                Ok(wallpaper) => wallpaper,
-                Err(e) => {
+            unsafe { CoCreateInstance(&DesktopWallpaper as *const _, None, CLSCTX_ALL) }.map_err(
+                |e| {
                     error!(
                         error = %e,
                         "Failed to create desktop wallpaper COM instance"
                     );
-                    if should_cleanup_com {
-                        unsafe {
-                            CoUninitialize();
-                        }
-                    }
-                    return Err(WallpaperError::Instance(e));
-                }
-            };
+                    WallpaperError::Instance(e)
+                },
+            )?;
 
         Ok(Self {
-            desktop_wallpaper: Some(desktop_wallpaper),
+            desktop_wallpaper,
             monitor_provider,
-            should_cleanup_com,
         })
     }
 
@@ -284,23 +283,20 @@ impl WallpaperSetter {
             "Checking existing wallpaper for monitor"
         );
 
-        let Some(desktop_wallpaper) = self.desktop_wallpaper.as_ref() else {
-            return Ok(false);
-        };
-
-        let current_wallpaper_ptr = match unsafe { desktop_wallpaper.GetWallpaper(monitor_path) } {
-            Ok(path) => path,
-            Err(e) => {
-                // Treat "unknown" as "not the requested wallpaper" so a transient
-                // COM failure does not stop the cycle from applying it.
-                warn!(
-                    error = %e,
-                    monitor_path = %monitor_path,
-                    "Failed to read the current wallpaper; applying anyway"
-                );
-                return Ok(false);
-            }
-        };
+        let current_wallpaper_ptr =
+            match unsafe { self.desktop_wallpaper.GetWallpaper(monitor_path) } {
+                Ok(path) => path,
+                Err(e) => {
+                    // Treat "unknown" as "not the requested wallpaper" so a transient
+                    // COM failure does not stop the cycle from applying it.
+                    warn!(
+                        error = %e,
+                        monitor_path = %monitor_path,
+                        "Failed to read the current wallpaper; applying anyway"
+                    );
+                    return Ok(false);
+                }
+            };
 
         let current_wallpaper_path = unsafe {
             // SAFETY: `GetWallpaper` returned an owned `LPWSTR`; the guard frees it
@@ -337,11 +333,10 @@ impl WallpaperSetter {
             return Ok(());
         };
 
-        let Some(desktop_wallpaper) = self.desktop_wallpaper.as_ref() else {
-            return Err(WallpaperError::NotInitialized);
+        let applied = unsafe {
+            self.desktop_wallpaper
+                .SetWallpaper(&device_path, &wallpaper_path)
         };
-
-        let applied = unsafe { desktop_wallpaper.SetWallpaper(&device_path, &wallpaper_path) };
 
         match applied {
             Ok(()) => {
@@ -382,20 +377,5 @@ impl WallpaperProvider for WallpaperSetter {
 
     fn set_lock_screen_image(&self, image_path: &Path) -> DwallResult<()> {
         Self::set_lock_screen_image_internal(image_path)
-    }
-}
-
-impl Drop for WallpaperSetter {
-    fn drop(&mut self) {
-        // Release the interface while COM is still initialized; fields would
-        // otherwise be dropped after this body, i.e. after CoUninitialize.
-        drop(self.desktop_wallpaper.take());
-
-        if self.should_cleanup_com {
-            unsafe {
-                CoUninitialize();
-            }
-            debug!("COM resources released");
-        }
     }
 }
