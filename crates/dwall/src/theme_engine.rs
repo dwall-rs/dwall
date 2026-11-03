@@ -397,6 +397,17 @@ where
         self.color_scheme_applier.current_scheme().ok()
     }
 
+    /// A battery/AC transition does not move the sun, so poll at least once a minute
+    /// while dark-on-battery is active. The cap only applies when the scheme switch
+    /// is on; with it off the option is inert and must not shorten the interval.
+    pub(crate) fn cap_for_power_polling(&self, wait: Duration) -> Duration {
+        if self.config.auto_detect_color_scheme() && self.config.dark_on_battery() {
+            wait.min(Duration::from_secs(60))
+        } else {
+            wait
+        }
+    }
+
     /// The wait the loop should use now that a cycle has finished.
     ///
     /// The interval stays the ceiling: it is the period after which the daemon
@@ -404,16 +415,8 @@ where
     /// a suspended machine, a theme edited on disk or a position that moved. The
     /// schedule only trims the wait when a change is due sooner.
     pub(crate) fn next_wait(&self) -> Duration {
-        let interval = Duration::from_secs(self.update_interval().into());
-
-        // A battery/AC transition does not move the sun. Poll at least once a minute
-        // while the option is on so reconnecting the charger restores the solar
-        // scheme promptly instead of waiting out a multi-hour solar schedule.
-        let interval = if self.config.dark_on_battery() {
-            interval.min(Duration::from_secs(60))
-        } else {
-            interval
-        };
+        let interval =
+            self.cap_for_power_polling(Duration::from_secs(self.update_interval().into()));
 
         let Ok(now_local) = OffsetDateTime::now_local() else {
             return interval;
@@ -1344,6 +1347,39 @@ azimuth = 0.0
             .unwrap();
 
         assert_eq!(fixture.scheme.applied(), vec![ColorScheme::Dark]);
+        fixture.cleanup();
+    }
+
+    #[test]
+    fn battery_polling_caps_only_while_auto_detection_is_on() {
+        let mut fixture = Fixture::new(
+            "battery_poll",
+            &["MON-A"],
+            individual(&[("MON-A", "Big Sur")]),
+            &[("Big Sur", &[1, 2])],
+        );
+
+        fixture.config =
+            fixture.config_with_extra(r#""dark_on_battery":true,"auto_detect_color_scheme":true"#);
+        {
+            let engine = fixture.engine();
+            assert!(
+                engine.next_wait() <= Duration::from_secs(60),
+                "the charger reconnect must be noticed within a minute"
+            );
+        }
+
+        fixture.config =
+            fixture.config_with_extra(r#""dark_on_battery":true,"auto_detect_color_scheme":false"#);
+        {
+            let engine = fixture.engine();
+            assert_eq!(
+                engine.next_wait(),
+                Duration::from_secs(fixture.config.interval().into()),
+                "the option is inert while automatic switching is off"
+            );
+        }
+
         fixture.cleanup();
     }
 
