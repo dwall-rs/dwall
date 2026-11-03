@@ -159,6 +159,9 @@ export const dict = {
       colorScheme: "Switch the system light/dark scheme",
       colorSchemeDesc:
         "Follows the sun instead of the clock: light after sunrise, dark after sunset (civil twilight, -6°), with a dead zone around the change.",
+      darkOnBattery: "Use dark on battery",
+      darkOnBatteryDesc:
+        "While running on battery, use the dark scheme regardless of the sun; reconnecting AC restores solar switching.",
     },
 
     paths: {

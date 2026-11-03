@@ -160,6 +160,9 @@ export const dict: RawDictionary = {
       colorScheme: "시스템 밝기 모드 자동 전환",
       colorSchemeDesc:
         "시각이 아니라 태양 위치를 따릅니다. 일출 후에는 라이트, 일몰 후에는 다크(시민 박명 -6°)이며, 전환 지점에는 여유를 두어 자주 뒤집히지 않습니다.",
+      darkOnBattery: "배터리 사용 시 다크 모드",
+      darkOnBatteryDesc:
+        "배터리로 실행 중에는 태양 위치와 관계없이 다크 모드를 사용합니다. AC 전원을 연결하면 태양 위치에 따른 전환으로 돌아갑니다.",
     },
 
     paths: {

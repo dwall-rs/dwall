@@ -156,6 +156,9 @@ export const dict: RawDictionary = {
       colorScheme: "自動切換系統明暗色",
       colorSchemeDesc:
         "依太陽位置而非固定時刻切換：日出後為淺色、日落後為深色（民用曙暮光 -6°），切換點帶死區避免反覆跳動。",
+      darkOnBattery: "未連接電源時使用暗色",
+      darkOnBatteryDesc:
+        "使用電池供電時，無論太陽位置都切換為暗色；接上電源後恢復依太陽位置切換。",
     },
 
     paths: {

@@ -11,6 +11,7 @@ expression: config
     "cache_minutes": 30
   },
   "auto_detect_color_scheme": true,
+  "dark_on_battery": false,
   "lock_screen_wallpaper_enabled": true,
   "themes_directory": "[themes_directory]",
   "customized_themes_directory": "[customized_themes_directory]",

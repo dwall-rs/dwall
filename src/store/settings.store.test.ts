@@ -37,6 +37,7 @@ const config = (overrides: Partial<Config> = {}): Config => ({
     cache_minutes: 30,
   },
   auto_detect_color_scheme: true,
+  dark_on_battery: false,
   lock_screen_wallpaper_enabled: true,
   themes_directory: "C:\\Users\\test\\AppData\\Roaming\\dwall\\themes",
   customized_themes_directory:

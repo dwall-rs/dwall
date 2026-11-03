@@ -213,6 +213,22 @@ export function EngineSection() {
             />
           }
         />
+        <Show when={settingsStore.config?.auto_detect_color_scheme}>
+          <SettingsRow
+            label={t("settings.engine.darkOnBattery")}
+            okShow={flash() === "batteryDark"}
+            desc={t("settings.engine.darkOnBatteryDesc")}
+            control={
+              <Switch
+                checked={settingsStore.config?.dark_on_battery}
+                onCheckedChange={(checked) => {
+                  patch({ dark_on_battery: checked });
+                  void ok("batteryDark");
+                }}
+              />
+            }
+          />
+        </Show>
       </div>
     </SettingsGroup>
   );

@@ -209,6 +209,7 @@ fn build_engine(config: &Config) -> DwallResult<PlatformEngine<'_>> {
         monitor_provider,
         color_scheme_backend,
         position_provider,
+        crate::platform::is_on_battery,
     ))
 }
 

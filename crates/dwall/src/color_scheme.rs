@@ -481,36 +481,46 @@ impl<T: ColorSchemeProvider> ColorSchemeApplier<T> {
         self.color_scheme_provider.get_current_scheme()
     }
 
-    /// Updates the system color scheme based on the current solar position.
-    pub(crate) fn update_color_scheme(
+    /// Like update_color_scheme, with battery state.
+    ///
+    /// When the user asked for dark on battery, that decision wins over the sun; the
+    /// next cycle after reconnecting AC restores the solar choice.
+    pub(crate) fn update_color_scheme_with_power(
         &self,
         config: &Config,
         now: &OffsetDateTime,
         geographic_position: &Position,
         solar_position: &SolarPosition,
+        on_battery: bool,
     ) -> DwallResult<()> {
         if !config.auto_detect_color_scheme() {
             return Ok(());
         }
 
-        let current_color_scheme = self.color_scheme_provider.get_current_scheme()?;
-        let solar_based_color_scheme = self.scheme_at(
-            now,
-            geographic_position,
-            solar_position,
-            current_color_scheme,
-        );
+        let color_scheme = if config.dark_on_battery() && on_battery {
+            debug!(
+                sun_altitude = solar_position.altitude(),
+                "Running on battery; forcing the dark color scheme"
+            );
+            ColorScheme::Dark
+        } else {
+            let current_color_scheme = self.color_scheme_provider.get_current_scheme()?;
+            let solar_based_color_scheme = self.scheme_at(
+                now,
+                geographic_position,
+                solar_position,
+                current_color_scheme,
+            );
 
-        debug!(
-            color_scheme = ?solar_based_color_scheme,
-            sun_altitude = solar_position.altitude(),
-            "Automatically updating system color scheme based on solar position"
-        );
+            debug!(
+                color_scheme = ?solar_based_color_scheme,
+                sun_altitude = solar_position.altitude(),
+                "Automatically updating system color scheme based on solar position"
+            );
+            solar_based_color_scheme
+        };
 
-        if let Err(color_scheme_error) = self
-            .color_scheme_provider
-            .set_color_scheme(solar_based_color_scheme)
-        {
+        if let Err(color_scheme_error) = self.color_scheme_provider.set_color_scheme(color_scheme) {
             warn!(
                 error = %color_scheme_error,
                 "Failed to update system color scheme, continuing with other operations"

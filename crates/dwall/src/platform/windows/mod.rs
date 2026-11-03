@@ -3,6 +3,7 @@ pub mod autostart;
 pub mod color_scheme;
 pub mod geolocation;
 pub mod monitor;
+pub mod power;
 pub mod registry;
 pub mod single_instance;
 pub mod subsystem;

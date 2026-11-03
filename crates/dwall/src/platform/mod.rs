@@ -19,4 +19,7 @@ pub use windows::{
 };
 
 #[cfg(windows)]
+pub(crate) use windows::power::is_on_battery;
+
+#[cfg(windows)]
 pub(crate) use windows::wallpaper::WallpaperSetter;

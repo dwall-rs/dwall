@@ -18,7 +18,14 @@ network: Network | null,
  *
  * Only used in dwall-settings.
  */
-title_bar_color_follows_windows_theme: boolean, image_format: ImageFormat, position_source: PositionSource, auto_detect_color_scheme: boolean, lock_screen_wallpaper_enabled: boolean, themes_directory: string, customized_themes_directory: string, 
+title_bar_color_follows_windows_theme: boolean, image_format: ImageFormat, position_source: PositionSource, auto_detect_color_scheme: boolean, 
+/**
+ * Force the dark scheme while the machine is running on battery.
+ *
+ * Only meaningful when `auto_detect_color_scheme` is on; the daemon ignores it
+ * otherwise.
+ */
+dark_on_battery: boolean, lock_screen_wallpaper_enabled: boolean, themes_directory: string, customized_themes_directory: string, 
 /**
  * Wallpaper mode (Fixed or Random)
  */
