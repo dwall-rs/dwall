@@ -621,6 +621,10 @@ impl DaemonApplication {
 
             theme_engine.reload_if_monitors_changed();
 
+            // A failed cycle backs off for up to five minutes; dark-on-battery still
+            // has to notice the charger being reconnected within a minute.
+            let next_interval = theme_engine.cap_for_power_polling(next_interval);
+
             // A solar wait can be hours long; random mode still has to wake at its
             // next draw (or retry) rather than sleep through it.
             let next_interval = self.cap_wait_for_random_selection(next_interval);
