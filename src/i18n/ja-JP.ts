@@ -161,9 +161,15 @@ export const dict: RawDictionary = {
       colorScheme: "システムのライト/ダークを自動で切り替える",
       colorSchemeDesc:
         "時刻ではなく太陽の位置に従います。日の出後はライト、日の入り後はダーク（市民薄明 -6°）で、切り替え付近には遊びがあり頻繁には反転しません。",
-      darkOnBattery: "バッテリー駆動時はダーク",
+      onBattery: "バッテリー駆動時",
+      onBatteryDesc: "バッテリー駆動中に適用する設定です。",
+      darkOnBattery: "ダークモードを使用",
       darkOnBatteryDesc:
-        "バッテリー駆動中は太陽の位置にかかわらずダークにします。AC に接続すると太陽位置による切り替えに戻ります。",
+        "システムをダークに固定します。自動切り替えが必要です。",
+      batteryWallpaper: "指定した壁紙を使用",
+      batteryWallpaperDesc:
+        "すべてのモニターにこの画像を適用し、AC 接続まで太陽位置の計算を停止します。",
+      batteryWallpaperChoose: "画像を選択",
     },
 
     paths: {
