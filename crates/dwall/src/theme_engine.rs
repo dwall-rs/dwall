@@ -46,6 +46,8 @@ where
     /// The schedule needs the same position the cycle used; asking the provider again
     /// would re-read the location sensor just to decide when to wake up.
     last_position: Cell<Option<Position>>,
+    /// AC/battery state, injected so the cycle is testable.
+    power_status: fn() -> bool,
 }
 
 impl<'a, M, W, C, P> ThemeEngine<'a, M, W, C, P>
@@ -61,6 +63,7 @@ where
         monitor_provider: Rc<M>,
         color_scheme_provider: C,
         position_provider: P,
+        power_status: fn() -> bool,
     ) -> Self {
         info!(
             auto_detect_color_mode = config.auto_detect_color_scheme(),
@@ -76,6 +79,7 @@ where
             monitor_provider,
             color_scheme_applier: ColorSchemeApplier::new(color_scheme_provider),
             last_position: Cell::new(None),
+            power_status,
         }
     }
 
@@ -171,11 +175,12 @@ where
 
         // Runs even when no wallpaper could be applied: the light/dark switch is
         // driven by the sun and has nothing to do with a broken theme.
-        self.color_scheme_applier.update_color_scheme(
+        self.color_scheme_applier.update_color_scheme_with_power(
             self.config,
             now_local,
             position,
             &solar_position,
+            (self.power_status)(),
         )?;
 
         if outcome.applied == 0 && outcome.failed == 0 && !available_monitors.is_empty() {
@@ -400,6 +405,15 @@ where
     /// schedule only trims the wait when a change is due sooner.
     pub(crate) fn next_wait(&self) -> Duration {
         let interval = Duration::from_secs(self.update_interval().into());
+
+        // A battery/AC transition does not move the sun. Poll at least once a minute
+        // while the option is on so reconnecting the charger restores the solar
+        // scheme promptly instead of waiting out a multi-hour solar schedule.
+        let interval = if self.config.dark_on_battery() {
+            interval.min(Duration::from_secs(60))
+        } else {
+            interval
+        };
 
         let Ok(now_local) = OffsetDateTime::now_local() else {
             return interval;
@@ -871,6 +885,7 @@ mod tests {
                 Rc::clone(&self.monitors),
                 self.scheme.clone(),
                 FixedPosition(self.position),
+                || false,
             )
         }
 
@@ -1193,6 +1208,7 @@ azimuth = 0.0
             }),
             RecordingScheme::default(),
             FixedPosition(beijing()),
+            || false,
         );
 
         engine
@@ -1305,6 +1321,33 @@ azimuth = 0.0
     }
 
     #[test]
+    fn battery_forces_dark_when_the_option_is_on() {
+        let mut fixture = Fixture::new(
+            "battery_dark",
+            &["MON-A"],
+            individual(&[("MON-A", "Big Sur")]),
+            &[("Big Sur", &[1, 2])],
+        );
+        fixture.config = fixture.config_with_extra(r#""dark_on_battery":true"#);
+
+        let engine = ThemeEngine::new(
+            &fixture.config,
+            fixture.wallpapers.clone(),
+            Rc::clone(&fixture.monitors),
+            fixture.scheme.clone(),
+            FixedPosition(fixture.position),
+            || true,
+        );
+
+        engine
+            .process_theme_cycle_at(&fixture.position, &summer_noon())
+            .unwrap();
+
+        assert_eq!(fixture.scheme.applied(), vec![ColorScheme::Dark]);
+        fixture.cleanup();
+    }
+
+    #[test]
     fn the_image_format_comes_from_the_configuration_for_a_legacy_theme() {
         let fixture = Fixture::new(
             "legacy_format",
@@ -1395,6 +1438,7 @@ azimuth = 0.0
             Rc::clone(&fixture.monitors),
             fixture.scheme.clone(),
             crate::solar::GeographicPositionProvider::new(&source, DeniedPosition),
+            || false,
         );
 
         let error = engine.run_once().unwrap_err();

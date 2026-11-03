@@ -337,6 +337,7 @@ fn print_summary(config: &Config, out: &mut impl Write) -> std::io::Result<()> {
         "  auto-detect colour scheme: {}",
         config.auto_detect_color_scheme()
     )?;
+    writeln!(out, "  dark on battery: {}", config.dark_on_battery())?;
 
     for (label, directory) in [
         ("themes", config.themes_directory()),
@@ -533,6 +534,7 @@ mod tests {
             "interval",
             "image format",
             "auto-detect colour scheme",
+            "dark on battery",
             "themes directory",
             "customized themes directory",
         ] {
