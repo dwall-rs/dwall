@@ -272,6 +272,13 @@ pub struct Config {
     )]
     auto_detect_color_scheme: bool,
 
+    /// Force the dark scheme while the machine is running on battery.
+    ///
+    /// Only meaningful when `auto_detect_color_scheme` is on; the daemon ignores it
+    /// otherwise.
+    #[serde(default)]
+    dark_on_battery: bool,
+
     #[serde(default = "default_lock_screen_wallpaper_enabled")]
     lock_screen_wallpaper_enabled: bool,
 
@@ -438,6 +445,11 @@ impl Config {
         self.auto_detect_color_scheme
     }
 
+    /// Whether battery power should force the dark scheme.
+    pub fn dark_on_battery(&self) -> bool {
+        self.dark_on_battery
+    }
+
     /// Returns whether lock screen wallpaper is enabled
     pub fn lock_screen_wallpaper_enabled(&self) -> bool {
         self.lock_screen_wallpaper_enabled
@@ -477,6 +489,7 @@ impl Default for Config {
             image_format: Default::default(),
             position_source: Default::default(),
             auto_detect_color_scheme: default_auto_detect_color_scheme(),
+            dark_on_battery: false,
             themes_directory: default_themes_directory(),
             customized_themes_directory: default_customized_themes_directory(),
             lock_screen_wallpaper_enabled: default_lock_screen_wallpaper_enabled(),
@@ -519,6 +532,13 @@ pub struct RawConfig {
         default = "default_auto_detect_color_scheme"
     )]
     auto_detect_color_scheme: bool,
+
+    /// Force the dark scheme while the machine is running on battery.
+    ///
+    /// Only meaningful when `auto_detect_color_scheme` is on; the daemon ignores it
+    /// otherwise.
+    #[serde(default)]
+    dark_on_battery: bool,
 
     #[serde(default = "default_lock_screen_wallpaper_enabled")]
     lock_screen_wallpaper_enabled: bool,
@@ -565,6 +585,7 @@ impl From<RawConfig> for Config {
             image_format: raw.image_format,
             position_source: raw.position_source,
             auto_detect_color_scheme: raw.auto_detect_color_scheme,
+            dark_on_battery: raw.dark_on_battery,
             lock_screen_wallpaper_enabled: raw.lock_screen_wallpaper_enabled,
             themes_directory: raw.themes_directory,
             customized_themes_directory: raw.customized_themes_directory,
@@ -904,6 +925,7 @@ mod tests {
                 altitude: 100.0,
             },
             auto_detect_color_scheme: false,
+            dark_on_battery: true,
             lock_screen_wallpaper_enabled: false,
             themes_directory: PathBuf::from("/tmp/themes"),
             customized_themes_directory: PathBuf::from("/tmp/customize"),
@@ -932,6 +954,7 @@ mod tests {
             image_format: ImageFormat::Jpeg,
             position_source: PositionSource::default(),
             auto_detect_color_scheme: true,
+            dark_on_battery: false,
             lock_screen_wallpaper_enabled: true,
             themes_directory: PathBuf::from("/tmp/themes"),
             customized_themes_directory: PathBuf::from("/tmp/customize"),
@@ -964,6 +987,7 @@ mod tests {
             image_format: ImageFormat::Jpeg,
             position_source: PositionSource::default(),
             auto_detect_color_scheme: true,
+            dark_on_battery: false,
             lock_screen_wallpaper_enabled: true,
             themes_directory: PathBuf::from("/tmp/themes"),
             customized_themes_directory: PathBuf::from("/tmp/customize"),
@@ -998,6 +1022,7 @@ mod tests {
             image_format: ImageFormat::Jpeg,
             position_source: PositionSource::default(),
             auto_detect_color_scheme: true,
+            dark_on_battery: false,
             lock_screen_wallpaper_enabled: true,
             themes_directory: PathBuf::from("/tmp/themes"),
             customized_themes_directory: PathBuf::from("/tmp/customize"),
