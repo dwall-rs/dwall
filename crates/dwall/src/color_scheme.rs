@@ -529,6 +529,30 @@ impl<T: ColorSchemeProvider> ColorSchemeApplier<T> {
 
         Ok(())
     }
+
+    /// Applies the battery scheme without asking for a solar position.
+    ///
+    /// Used by the dedicated battery-wallpaper cycle, which deliberately skips all
+    /// solar math; the normal update path would need a SolarPosition it does not
+    /// have.
+    pub(crate) fn apply_battery_scheme(&self, config: &Config) -> DwallResult<()> {
+        if !config.auto_detect_color_scheme() || !config.dark_on_battery() {
+            return Ok(());
+        }
+
+        debug!("Running on battery; forcing the dark color scheme");
+        if let Err(e) = self
+            .color_scheme_provider
+            .set_color_scheme(ColorScheme::Dark)
+        {
+            warn!(
+                error = %e,
+                "Failed to update system color scheme, continuing with other operations"
+            );
+        }
+
+        Ok(())
+    }
 }
 
 #[cfg(test)]

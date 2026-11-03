@@ -155,9 +155,14 @@ export const dict: RawDictionary = {
       colorScheme: "自动切换系统明暗色",
       colorSchemeDesc:
         "按太阳位置而非固定时刻切换：日出后为浅色、日落后为深色（民用曙暮光 -6°），切换点带死区避免来回抖动。",
-      darkOnBattery: "未连接电源时使用暗色",
-      darkOnBatteryDesc:
-        "使用电池供电时，无论太阳位置都切换为暗色；接通电源后恢复按太阳位置切换。",
+      onBattery: "未连接电源时",
+      onBatteryDesc: "使用电池供电时应用的设置。",
+      darkOnBattery: "使用暗色模式",
+      darkOnBatteryDesc: "强制系统使用暗色；需开启自动切换。",
+      batteryWallpaper: "使用指定壁纸",
+      batteryWallpaperDesc:
+        "应用到所有显示器，并暂停太阳位置计算，直到接回电源。",
+      batteryWallpaperChoose: "选择图片",
     },
 
     paths: {

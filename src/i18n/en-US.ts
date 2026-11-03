@@ -159,9 +159,16 @@ export const dict = {
       colorScheme: "Switch the system light/dark scheme",
       colorSchemeDesc:
         "Follows the sun instead of the clock: light after sunrise, dark after sunset (civil twilight, -6°), with a dead zone around the change.",
-      darkOnBattery: "Use dark on battery",
+      onBattery: "On battery",
+      onBatteryDesc:
+        "Settings applied while the device is running on battery power.",
+      darkOnBattery: "Use dark mode",
       darkOnBatteryDesc:
-        "While running on battery, use the dark scheme regardless of the sun; reconnecting AC restores solar switching.",
+        "Force the dark system scheme; requires automatic switching.",
+      batteryWallpaper: "Use a specific wallpaper",
+      batteryWallpaperDesc:
+        "Apply this image to every monitor and pause solar calculations until AC power returns.",
+      batteryWallpaperChoose: "Choose image",
     },
 
     paths: {

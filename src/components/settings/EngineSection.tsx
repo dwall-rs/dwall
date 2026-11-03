@@ -23,7 +23,12 @@ import {
 } from "../ui/input-group";
 import { Field, FieldGroup, FieldLabel } from "../ui/field";
 import { Input } from "../ui/input";
-import { checkAutoStart, disableAutoStart, enableAutoStart } from "@/ipc";
+import {
+  checkAutoStart,
+  disableAutoStart,
+  enableAutoStart,
+  pickImage,
+} from "@/ipc";
 import { resourceValue } from "@/lib/resource";
 import { toast } from "@/components/ui/toast";
 
@@ -33,6 +38,14 @@ export function EngineSection() {
     setFlash(k);
     await save();
     setFlash(null);
+  };
+
+  const chooseBatteryWallpaper = async () => {
+    const path = await pickImage();
+    if (!path) return;
+
+    patch({ battery_wallpaper: path });
+    void ok("batteryWallpaper");
   };
 
   const [autoStart, { refetch: refetchAutoStart }] =
@@ -213,23 +226,73 @@ export function EngineSection() {
             />
           }
         />
-        <Show when={settingsStore.config?.auto_detect_color_scheme}>
-          <SettingsRow
-            label={t("settings.engine.darkOnBattery")}
-            okShow={flash() === "batteryDark"}
-            desc={t("settings.engine.darkOnBatteryDesc")}
-            control={
+        <div class="border-b border-border px-[18px] py-4">
+          <div class="text-[14.5px] font-bold!">
+            {t("settings.engine.onBattery")}
+          </div>
+          <div class="mt-1 max-w-110 text-[12px] leading-relaxed text-muted-foreground">
+            {t("settings.engine.onBatteryDesc")}
+          </div>
+        </div>
+        <SettingsRow
+          label={t("settings.engine.darkOnBattery")}
+          okShow={flash() === "batteryDark"}
+          desc={t("settings.engine.darkOnBatteryDesc")}
+          control={
+            <Switch
+              checked={settingsStore.config?.dark_on_battery}
+              disabled={
+                !settingsStore.config?.auto_detect_color_scheme ||
+                settingsStore.saving
+              }
+              onCheckedChange={(checked) => {
+                patch({ dark_on_battery: checked });
+                void ok("batteryDark");
+              }}
+            />
+          }
+        />
+        <SettingsRow
+          label={t("settings.engine.batteryWallpaper")}
+          okShow={flash() === "batteryWallpaper"}
+          desc={
+            <>
+              {t("settings.engine.batteryWallpaperDesc")}
+              <Show when={settingsStore.config?.battery_wallpaper}>
+                <span
+                  data-selectable
+                  class="mt-1 block truncate font-mono text-[11px] text-foreground/70"
+                >
+                  {settingsStore.config?.battery_wallpaper}
+                </span>
+              </Show>
+            </>
+          }
+          control={
+            <div class="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={settingsStore.saving}
+                onClick={() => void chooseBatteryWallpaper()}
+              >
+                {t("settings.engine.batteryWallpaperChoose")}
+              </Button>
               <Switch
-                checked={settingsStore.config?.dark_on_battery}
+                checked={!!settingsStore.config?.battery_wallpaper}
                 disabled={settingsStore.saving}
                 onCheckedChange={(checked) => {
-                  patch({ dark_on_battery: checked });
-                  void ok("batteryDark");
+                  if (checked) {
+                    void chooseBatteryWallpaper();
+                  } else {
+                    patch({ battery_wallpaper: null });
+                    void ok("batteryWallpaper");
+                  }
                 }}
               />
-            }
-          />
-        </Show>
+            </div>
+          }
+        />
       </div>
     </SettingsGroup>
   );

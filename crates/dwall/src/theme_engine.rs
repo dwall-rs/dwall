@@ -88,10 +88,76 @@ where
         self.config.interval()
     }
 
-    /// Runs a single theme update cycle
+    /// Runs a single theme update cycle.
+    ///
+    /// A configured battery wallpaper short-circuits the solar path entirely: on
+    /// battery there is nothing to compute, only an image to keep in place.
     pub(crate) fn run_once(&self) -> DwallResult<()> {
+        if let Some(path) = self.active_battery_wallpaper() {
+            return self.run_battery_cycle(path);
+        }
+
         let position = self.position_provider.get_current_position()?;
         self.process_theme_cycle(&position)
+    }
+
+    /// The configured battery wallpaper, when the machine is on battery and the
+    /// file is still readable.
+    fn active_battery_wallpaper(&self) -> Option<&Path> {
+        let path = self.config.battery_wallpaper()?;
+        if !(self.power_status)() {
+            return None;
+        }
+
+        if !path.is_file() {
+            warn!(
+                path = %path.display(),
+                "Battery wallpaper does not exist; falling back to solar wallpapers"
+            );
+            return None;
+        }
+
+        Some(path)
+    }
+
+    /// Applies the battery wallpaper without touching the solar/theme path.
+    fn run_battery_cycle(&self, path: &Path) -> DwallResult<()> {
+        self.color_scheme_applier
+            .apply_battery_scheme(self.config)?;
+
+        let monitors = self.monitor_provider.get_monitors()?;
+        let mut failed = 0;
+
+        for monitor_id in monitors.keys() {
+            if let Err(e) = self
+                .wallpaper_setter
+                .set_monitor_wallpaper(monitor_id, path)
+            {
+                failed += 1;
+                warn!(
+                    error = %e,
+                    monitor_id = monitor_id,
+                    path = %path.display(),
+                    "Failed to apply the battery wallpaper to a monitor"
+                );
+            }
+        }
+
+        if self.config.lock_screen_wallpaper_enabled()
+            && let Err(e) = self.wallpaper_setter.set_lock_screen_image(path)
+        {
+            warn!(
+                error = %e,
+                path = %path.display(),
+                "Failed to apply the battery wallpaper to the lock screen"
+            );
+        }
+
+        if failed > 0 && failed == monitors.len() {
+            return Err(ThemeError::AllConfiguredMonitorsFailed { failed }.into());
+        }
+
+        Ok(())
     }
 
     /// Checks if monitor configuration has changed and reloads if necessary
@@ -111,7 +177,11 @@ where
 
         if changed {
             info!("Monitor configuration changed, reapplying wallpapers");
-            if let Ok(position) = self.position_provider.get_current_position()
+            if let Some(path) = self.active_battery_wallpaper() {
+                if let Err(e) = self.run_battery_cycle(path) {
+                    error!(error = %e, "Failed to reapply the battery wallpaper after monitor change");
+                }
+            } else if let Ok(position) = self.position_provider.get_current_position()
                 && let Err(e) = self.process_theme_cycle(&position)
             {
                 error!(error = %e, "Failed to reapply after monitor change");
@@ -401,7 +471,10 @@ where
     /// while dark-on-battery is active. The cap only applies when the scheme switch
     /// is on; with it off the option is inert and must not shorten the interval.
     pub(crate) fn cap_for_power_polling(&self, wait: Duration) -> Duration {
-        if self.config.auto_detect_color_scheme() && self.config.dark_on_battery() {
+        let battery_mode = self.config.battery_wallpaper().is_some()
+            || (self.config.auto_detect_color_scheme() && self.config.dark_on_battery());
+
+        if battery_mode {
             wait.min(Duration::from_secs(60))
         } else {
             wait
@@ -1347,6 +1420,42 @@ azimuth = 0.0
             .unwrap();
 
         assert_eq!(fixture.scheme.applied(), vec![ColorScheme::Dark]);
+        fixture.cleanup();
+    }
+
+    #[test]
+    fn battery_wallpaper_skips_solar_and_applies_the_image() {
+        let mut fixture = Fixture::new(
+            "battery_wallpaper",
+            &["MON-A"],
+            individual(&[("MON-A", "Big Sur")]),
+            &[("Big Sur", &[1, 2])],
+        );
+        let image = fixture.directory.join("battery.jpg");
+        fs::write(&image, "image").unwrap();
+        let extra = format!(
+            r#""battery_wallpaper":{}"#,
+            serde_json::to_string(&image.to_string_lossy()).unwrap()
+        );
+        fixture.config = fixture.config_with_extra(&extra);
+
+        // A denied location would fail the normal solar path; the battery cycle
+        // must not ask for a position at all.
+        let engine = ThemeEngine::new(
+            &fixture.config,
+            fixture.wallpapers.clone(),
+            Rc::clone(&fixture.monitors),
+            fixture.scheme.clone(),
+            DeniedPosition,
+            || true,
+        );
+
+        engine.run_once().unwrap();
+
+        assert_eq!(
+            fixture.wallpapers.images_for("MON-A"),
+            vec!["battery.jpg".to_string()]
+        );
         fixture.cleanup();
     }
 
