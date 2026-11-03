@@ -122,6 +122,10 @@ where
 
     /// Applies the battery wallpaper without touching the solar/theme path.
     fn run_battery_cycle(&self, path: &Path) -> DwallResult<()> {
+        // The solar schedule must not be computed from the position of the last
+        // pre-battery cycle; the next AC cycle records a fresh one.
+        self.last_position.set(None);
+
         self.color_scheme_applier
             .apply_battery_scheme(self.config)?;
 
