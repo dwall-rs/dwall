@@ -924,7 +924,7 @@ checksum = "92773504d58c093f6de2459af4af33faa518c13451eb8f2b5698ed3d36e7c813"
 
 [[package]]
 name = "dwall"
-version = "0.3.0-alpha.12"
+version = "0.3.0-alpha.13"
 dependencies = [
  "dirs",
  "insta",
@@ -936,7 +936,7 @@ dependencies = [
  "serde_json",
  "tauri-winres",
  "thiserror 2.0.21",
- "time 0.3.0-alpha.12",
+ "time 0.3.0-alpha.13",
  "toml 1.1.8+spec-1.1.0",
  "ts-rs",
  "windows",
@@ -945,7 +945,7 @@ dependencies = [
 
 [[package]]
 name = "dwall-settings"
-version = "0.3.0-alpha.12"
+version = "0.3.0-alpha.13"
 dependencies = [
  "dirs",
  "dwall",
@@ -964,7 +964,7 @@ dependencies = [
  "tauri-plugin-single-instance",
  "tauri-plugin-updater",
  "thiserror 2.0.21",
- "time 0.3.0-alpha.12",
+ "time 0.3.0-alpha.13",
  "tokio",
  "toml 1.1.8+spec-1.1.0",
  "ts-rs",
@@ -2122,10 +2122,10 @@ checksum = "f9f8bd3e56ce4dfc153cf470fffbfa98c7620958b312ca5c3a4b8d5181fd13c6"
 
 [[package]]
 name = "logging"
-version = "0.3.0-alpha.12"
+version = "0.3.0-alpha.13"
 dependencies = [
  "log",
- "time 0.3.0-alpha.12",
+ "time 0.3.0-alpha.13",
 ]
 
 [[package]]
@@ -4288,7 +4288,7 @@ dependencies = [
 
 [[package]]
 name = "time"
-version = "0.3.0-alpha.12"
+version = "0.3.0-alpha.13"
 dependencies = [
  "libc",
  "proptest",
