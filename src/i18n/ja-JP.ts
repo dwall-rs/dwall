@@ -161,6 +161,9 @@ export const dict: RawDictionary = {
       colorScheme: "システムのライト/ダークを自動で切り替える",
       colorSchemeDesc:
         "時刻ではなく太陽の位置に従います。日の出後はライト、日の入り後はダーク（市民薄明 -6°）で、切り替え付近には遊びがあり頻繁には反転しません。",
+      darkOnBattery: "バッテリー駆動時はダーク",
+      darkOnBatteryDesc:
+        "バッテリー駆動中は太陽の位置にかかわらずダークにします。AC に接続すると太陽位置による切り替えに戻ります。",
     },
 
     paths: {
