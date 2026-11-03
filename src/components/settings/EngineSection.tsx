@@ -221,6 +221,7 @@ export function EngineSection() {
             control={
               <Switch
                 checked={settingsStore.config?.dark_on_battery}
+                disabled={settingsStore.saving}
                 onCheckedChange={(checked) => {
                   patch({ dark_on_battery: checked });
                   void ok("batteryDark");
