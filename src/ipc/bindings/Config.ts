@@ -25,7 +25,14 @@ title_bar_color_follows_windows_theme: boolean, image_format: ImageFormat, posit
  * Only meaningful when `auto_detect_color_scheme` is on; the daemon ignores it
  * otherwise.
  */
-dark_on_battery: boolean, lock_screen_wallpaper_enabled: boolean, themes_directory: string, customized_themes_directory: string, 
+dark_on_battery: boolean, 
+/**
+ * Optional image applied to every monitor while on battery.
+ *
+ * When set, the daemon skips the solar position and theme-frame selection and
+ * keeps this image until AC power returns.
+ */
+battery_wallpaper?: string | null, lock_screen_wallpaper_enabled: boolean, themes_directory: string, customized_themes_directory: string, 
 /**
  * Wallpaper mode (Fixed or Random)
  */
