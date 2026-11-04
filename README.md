@@ -42,6 +42,7 @@ the cases where they are the better choice are in [docs/](./docs/README.md).
 - **Per-monitor themes** — a different theme per display, reapplied when monitors change.
 - **Daily random theme** — optionally draw one theme per day from a pool you choose.
 - **Adjustable cadence** — evaluate every 1 s to 1 h (default 15 s).
+- **On battery** — optionally force dark mode and keep one fixed wallpaper while unplugged; the solar path resumes on AC.
 - **Your own themes** — a directory with `theme.toml` and images; see [docs/custom-themes.md](./docs/custom-themes.md).
 - **Headless mode** — the same binary runs from a config file, with a CLI; see [docs/headless.md](./docs/headless.md).
 - **Restricted networks** — mirror templates and SOCKS5 for theme downloads.
