@@ -96,6 +96,26 @@ pub(crate) fn response(status: &str, body: &[u8]) -> Vec<u8> {
     response
 }
 
+/// A response with extra headers, for the range and resume tests.
+pub(crate) fn response_with_headers(
+    status: &str,
+    headers: &[(&str, &str)],
+    body: &[u8],
+) -> Vec<u8> {
+    let mut response = format!("HTTP/1.1 {status}\r\nContent-Length: {}\r\n", body.len());
+
+    for (name, value) in headers {
+        response.push_str(&format!("{name}: {value}\r\n"));
+    }
+
+    response.push_str("Connection: close\r\n\r\n");
+
+    let mut response = response.into_bytes();
+    response.extend_from_slice(body);
+
+    response
+}
+
 /// A response framed only by closing the connection, so the length is unknown.
 pub(crate) fn response_without_length(body: &[u8]) -> Vec<u8> {
     let mut response = b"HTTP/1.0 200 OK\r\nConnection: close\r\n\r\n".to_vec();
