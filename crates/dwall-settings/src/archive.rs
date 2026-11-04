@@ -16,7 +16,13 @@ use crate::filesystem::is_unwritable_name;
 /// The downloader bounds the archive it fetches by the same number: a compressed
 /// archive is never larger than what it expands to, so this is the largest file that
 /// could still be extracted.
-pub(crate) const MAX_EXTRACTED_BYTES: u64 = 8 * 1024 * 1024 * 1024; // 8 GiB
+///
+/// Two gigabytes is far past any real theme (the curated set is 100–300 MB, and the
+/// largest published ones are under 500 MB), and it is what a failed download can
+/// cost in disk: the archive and the staging directory exist at the same time while
+/// it is extracted, so the worst case is twice this. The old 8 GiB bound allowed 16
+/// GiB of writes for a payload no theme could reach.
+pub(crate) const MAX_EXTRACTED_BYTES: u64 = 2 * 1024 * 1024 * 1024; // 2 GiB
 
 /// Upper bound on the number of entries, so a zip bomb cannot create millions of
 /// files either.
