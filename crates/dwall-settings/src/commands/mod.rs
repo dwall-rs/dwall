@@ -2,6 +2,7 @@
 
 pub mod app;
 pub mod catalog;
+pub mod color_scheme;
 pub mod config;
 pub mod download;
 pub mod engine;

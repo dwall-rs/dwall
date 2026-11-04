@@ -159,6 +159,13 @@ export const dict: RawDictionary = {
       colorScheme: "自动切换系统明暗色",
       colorSchemeDesc:
         "按太阳位置而非固定时刻切换：日出后为浅色、日落后为深色（民用曙暮光 -6°），切换点带死区避免来回抖动。",
+      colorSchemePause: "暂停自动切换",
+      colorSchemePauseDesc:
+        "接下来一小时内 Dwall 不再改动系统的浅色/深色主题。你直接在 Windows 里切换主题也会触发暂停：Dwall 会注意到，并让出这一小时。",
+      pauseRemaining: "已暂停，{{ minutes }} 分钟后恢复。",
+      pauseDetected: "检测到你在 Windows 中切换了主题。",
+      pauseHour: "暂停 1 小时",
+      resume: "立即恢复",
       onBattery: "未连接电源时",
       onBatteryDesc: "使用电池供电时应用的设置。",
       darkOnBattery: "使用暗色模式",

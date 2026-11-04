@@ -192,7 +192,7 @@ fn cycle_failure(error: &DwallError, backoff: Duration) -> CycleFailure {
 }
 
 /// Builds the engine for one configuration generation.
-fn build_engine(config: &Config) -> DwallResult<PlatformEngine<'_>> {
+fn build_engine<'a>(config: &'a Config, state_dir: &Path) -> DwallResult<PlatformEngine<'a>> {
     // One monitor provider, shared with the wallpaper setter: two independent caches
     // meant the setter could still hold a pre-hot-plug snapshot after the engine had
     // refreshed its own, and then fail to find the monitor it was asked for.
@@ -207,6 +207,7 @@ fn build_engine(config: &Config) -> DwallResult<PlatformEngine<'_>> {
 
     Ok(ThemeEngine::new(
         config,
+        state_dir,
         wallpaper_setter,
         monitor_provider,
         color_scheme_backend,
@@ -304,7 +305,7 @@ impl DaemonApplication {
 
             self.apply_wallpaper_mode(&mut config)?;
 
-            let theme_engine = build_engine(&config)?;
+            let theme_engine = build_engine(&config, &self.state_dir())?;
 
             info!(
                 update_interval_seconds = config.interval(),
@@ -323,7 +324,7 @@ impl DaemonApplication {
         let mut config = self.load_config()?;
         self.apply_wallpaper_mode(&mut config)?;
 
-        build_engine(&config)?.run_once()?;
+        build_engine(&config, &self.state_dir())?.run_once()?;
 
         Ok(())
     }

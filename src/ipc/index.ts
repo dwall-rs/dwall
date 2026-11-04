@@ -3,6 +3,7 @@ export * from "./app";
 export * from "./asset";
 export * from "./autostart";
 export * from "./catalog";
+export * from "./color-scheme";
 export * from "./config";
 export * from "./dialog";
 export * from "./engine";
