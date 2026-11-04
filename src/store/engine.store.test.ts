@@ -63,28 +63,51 @@ describe("engine store: status refresh", () => {
     expect(store.engineStore.lastError).toBeNull();
   });
 
-  /// The daemon keeps running after a failed cycle, so "running" alone would read
-  /// as "all is well"; the reason has to survive a poll that only reads the status.
-  test("a stopped daemon clears an error it reported before", async () => {
+  /// The daemon stops for good when the user's own location setting leaves it without
+  /// a position, and the line it wrote is the only explanation the window can show.
+  /// Dropping it on the first stopped poll left the status area saying only "engine not
+  /// running" — with the two commands that could fix it unreachable from the UI.
+  test("a stopped daemon keeps the reason it stopped", async () => {
     mocks.getEngineStatus.mockResolvedValue(true);
     mocks.getDaemonLastError.mockResolvedValue(
-      "ERROR [dwall] something failed",
+      "ERROR [dwall] Location access was denied for this app",
     );
 
     const store = await freshStore();
     await store.refresh();
-    expect(store.engineStore.lastError).not.toBeNull();
+    expect(store.engineStore.lastError).toContain("Location access");
 
-    // Stopped: there is no running daemon whose log could explain anything.
     mocks.getEngineStatus.mockResolvedValue(false);
     await store.refresh();
 
     expect(store.engineStore.running).toBe(false);
-    expect(store.engineStore.lastError).toBeNull();
+    expect(
+      store.engineStore.lastError,
+      "the reason has to survive the daemon exiting",
+    ).toContain("Location access");
     expect(
       mocks.getDaemonLastError,
-      "the log is only read while the daemon runs",
-    ).toHaveBeenCalledTimes(1);
+      "the log is read once when it stops, not on every poll",
+    ).toHaveBeenCalledTimes(2);
+
+    // A daemon that has stopped writes nothing, so further polls must not re-read it.
+    await store.refresh();
+    expect(mocks.getDaemonLastError).toHaveBeenCalledTimes(2);
+  });
+
+  /// A window opened after the daemon already exited has never seen it running, so the
+  /// transition alone would never trigger the read.
+  test("a first poll onto a stopped daemon still reads its reason", async () => {
+    mocks.getEngineStatus.mockResolvedValue(false);
+    mocks.getDaemonLastError.mockResolvedValue(
+      "ERROR [dwall] Location access was denied for this app",
+    );
+
+    const store = await freshStore();
+    await store.refresh();
+
+    expect(store.engineStore.running).toBe(false);
+    expect(store.engineStore.lastError).toContain("Location access");
   });
 
   test("a failed status query is surfaced instead of silently reporting stopped", async () => {

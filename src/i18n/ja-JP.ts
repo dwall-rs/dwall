@@ -18,6 +18,7 @@ export const dict: RawDictionary = {
       stop: "エンジンを停止",
       confirmStop: "停止しますか？選択中のテーマは解除されます。",
       lastError: "最新のエラー：",
+      openLocationSettings: "位置情報の設定を開く",
       altitude: "高度",
       azimuth: "方位",
     },

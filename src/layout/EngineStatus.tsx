@@ -1,4 +1,6 @@
 // Responsibility: Engine run-state text + pulse dot; colors use semantic tokens (success=running, warning=random, muted=stopped).
+//       The daemon's last error is rendered in both states: a daemon that stopped for
+//       good (no location) leaves that line as the only explanation there is.
 import { createMemo, Show } from "solid-js";
 import { t } from "@/i18n";
 import { engineStore } from "@/store/engine.store";
@@ -6,6 +8,8 @@ import { settingsStore } from "@/store/settings.store";
 import { useSolarPosition } from "@/hooks/useSolarPosition";
 import { resourceValue } from "@/lib/resource";
 import { clsx, formatAngle } from "@/utils";
+import { openPrivacyLocationSettings } from "@/ipc";
+import { toast } from "@/components/ui/toast";
 
 export function EngineStatus() {
   const { position: sp } = useSolarPosition({
@@ -17,6 +21,16 @@ export function EngineStatus() {
   const random = createMemo(
     () => settingsStore.config?.wallpaper_mode?.mode === "random",
   );
+
+  // Opened from the status area: the daemon stops instead of retrying when Windows
+  // has location switched off for this app, and this is the page that turns it on.
+  const openLocationSettings = async () => {
+    try {
+      await openPrivacyLocationSettings();
+    } catch (e) {
+      toast.error(t("common.operationFailed"), { description: String(e) });
+    }
+  };
 
   return (
     <div class="flex min-w-0 flex-col gap-1">
@@ -56,14 +70,19 @@ export function EngineStatus() {
             </Show>
           </span>
         </div>
+      </Show>
 
-        {/*
-          The daemon keeps running after a failed cycle (a denied location
-          permission, a theme it cannot read), so the status alone would read as
-          "all is well"; the log line it wrote is the only explanation there is.
-        */}
-        <Show when={engineStore.lastError}>
-          {(error) => (
+      {/*
+        Deliberately outside the running branch. The daemon keeps running after a
+        failed cycle (a theme it cannot read), so the status alone would read as "all
+        is well"; and it stops for good when the user's own location setting leaves it
+        without a position, where the log line it wrote is the only explanation — a
+        stopped engine that says only "Engine not running" hides the one fact that
+        fixes it.
+      */}
+      <Show when={engineStore.lastError}>
+        {(error) => (
+          <div class="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5">
             <p
               data-selectable
               class="max-w-150 truncate text-[11.5px] text-warning"
@@ -71,8 +90,17 @@ export function EngineStatus() {
             >
               {t("app.engine.lastError")} {error()}
             </p>
-          )}
-        </Show>
+            <Show when={!engineStore.running}>
+              <button
+                type="button"
+                class="cursor-pointer text-[11.5px] text-primary hover:underline"
+                onClick={() => void openLocationSettings()}
+              >
+                {t("app.engine.openLocationSettings")}
+              </button>
+            </Show>
+          </div>
+        )}
       </Show>
     </div>
   );
