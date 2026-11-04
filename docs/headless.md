@@ -47,10 +47,12 @@ Two of those keys are worth knowing the reasoning behind:
   boundary of each configured theme plus the light/dark threshold — and sleeps exactly
   until then, so the switch happens at the instant it should rather than up to an
   interval late. A large `interval` therefore costs nothing in accuracy (with
-  `interval = 600` the frame used to change up to ten minutes late), and a small one
-  costs nothing in wakeups. What the interval still buys is the worst case: a clock
-  jump, a machine resumed from sleep, a theme edited on disk or a position that moved
-  are all picked up within one interval, so it should stay comfortably below a day.
+  `interval = 600` the frame used to change up to ten minutes late). It is still a
+  wakeup: the wait is capped at the interval, so a small one wakes the daemon that
+  often (`interval = 1` means one cycle per second). What a large one buys is the worst
+  case: a clock jump, a machine resumed from sleep, a theme edited on disk or a
+  position that moved are all picked up within one interval, so it should stay
+  comfortably below a day.
 - **`position_source.cache_minutes`** (default 30, only for automatic coordinates) is
   how long a location reading is reused. The daemon cannot tell whether the machine
   moved, so this trades accuracy for how often Windows reads the location sensor — a
