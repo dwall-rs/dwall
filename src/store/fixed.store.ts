@@ -107,7 +107,11 @@ const isApplied = (key: string): boolean =>
 const toggleApply = async (key: string) => {
   const config = settingsStore.config;
   if (!config) return;
-  const theme = fixedStore.monitorThemes[key] ?? configuredThemes()[key];
+  // The same resolution the stage displays. It falls back to the catalog's first
+  // entry when this scope has neither a draft nor a configured theme, so the stage
+  // was showing (and offering to apply) a theme that this function could not find:
+  // the click did nothing at all. Applying acts on what the stage shows.
+  const theme = themeForMon(key);
   if (!theme) return;
 
   let next: MonitorThemes;
