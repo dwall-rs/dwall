@@ -8,8 +8,12 @@ import { resourceValue } from "@/lib/resource";
 import { clsx, formatAngle } from "@/utils";
 
 export function EngineStatus() {
+  // The readout is labelled "now", so it has to keep up: without polling it froze at
+  // whatever the sun was when the window opened (the stage already refreshes its own
+  // copy every minute).
   const { position: sp } = useSolarPosition({
     enabled: () => engineStore.running,
+    pollMs: 60_000,
   });
 
   // The mode the engine is actually running comes from the applied config, not the
