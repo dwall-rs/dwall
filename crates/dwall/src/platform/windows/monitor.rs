@@ -30,7 +30,7 @@ use windows::core::{Error as WindowsError, Free, GUID, PCWSTR};
 use windows::{Win32::Foundation::ERROR_INSUFFICIENT_BUFFER, core::HRESULT};
 
 use crate::DwallResult;
-use crate::monitor::MonitorProvider;
+use crate::monitor::{MonitorProvider, MonitorSnapshot};
 use crate::utils::WideStringRead;
 
 /// Attempts allowed when the display configuration changes mid-query.
@@ -496,7 +496,11 @@ impl DisplayMonitor {
 
 /// Cache structure for monitor information with optimized expiration
 struct MonitorInfoCache {
-    data: HashMap<String, DisplayMonitor>,
+    /// The snapshot handed out by [`MonitorProvider::get_monitors`].
+    ///
+    /// Stored as the shared handle, so serving the cache is a refcount bump instead of
+    /// a copy of every monitor and its device path.
+    data: MonitorSnapshot,
     updated_at: Instant,
     expiry_duration: Duration,
     /// Shape of the display configuration `data` was read from, when known.
@@ -508,7 +512,7 @@ struct MonitorInfoCache {
 impl MonitorInfoCache {
     fn new() -> Self {
         Self {
-            data: HashMap::new(),
+            data: MonitorSnapshot::default(),
             updated_at: Instant::now(),
             expiry_duration: Duration::from_secs(CACHE_EXPIRY_SECONDS),
             shape: None,
@@ -520,7 +524,7 @@ impl MonitorInfoCache {
         !self.data.is_empty() && self.updated_at.elapsed() <= self.expiry_duration
     }
 
-    fn update(&mut self, monitors: HashMap<String, DisplayMonitor>) {
+    fn update(&mut self, monitors: MonitorSnapshot) {
         self.data = monitors;
         self.updated_at = Instant::now();
     }
@@ -566,23 +570,25 @@ impl DisplayMonitorProvider {
 }
 
 impl MonitorProvider for DisplayMonitorProvider {
-    fn get_monitors(&self) -> DwallResult<HashMap<String, DisplayMonitor>> {
+    fn get_monitors(&self) -> DwallResult<MonitorSnapshot> {
         {
             let cache = self.cache.borrow();
             if cache.is_valid() {
                 debug!("Using cached monitor information");
-                return Ok(cache.data.clone());
+                return Ok(MonitorSnapshot::clone(&cache.data));
             }
         }
 
         self.refresh_monitors()
     }
 
-    fn refresh_monitors(&self) -> DwallResult<HashMap<String, DisplayMonitor>> {
+    fn refresh_monitors(&self) -> DwallResult<MonitorSnapshot> {
         debug!("Refreshing monitor information");
-        let monitors = fetch_system_monitors(self.friendly_names)?;
+        let monitors = MonitorSnapshot::new(fetch_system_monitors(self.friendly_names)?);
 
-        self.cache.borrow_mut().update(monitors.clone());
+        self.cache
+            .borrow_mut()
+            .update(MonitorSnapshot::clone(&monitors));
 
         Ok(monitors)
     }
@@ -626,7 +632,7 @@ impl MonitorProvider for DisplayMonitorProvider {
         if changed {
             // Refresh the cache too: callers re-apply wallpapers right after this
             // check and would otherwise read the pre-hot-plug monitor list.
-            cache.update(current_monitors);
+            cache.update(MonitorSnapshot::new(current_monitors));
         }
 
         Ok(changed)
@@ -818,6 +824,7 @@ fn fetch_system_monitors(
 #[cfg(test)]
 mod tests {
     use std::cell::Cell;
+    use std::rc::Rc;
 
     use super::*;
 
@@ -883,7 +890,27 @@ mod tests {
         let mut cache = MonitorInfoCache::new();
         assert!(!cache.is_valid(), "an empty cache must never be served");
 
-        cache.update(HashMap::from([(
+        cache.update(MonitorSnapshot::new(HashMap::from([(
+            "\\\\?\\DISPLAY#1".to_string(),
+            DisplayMonitor::new_test(
+                "\\\\?\\DISPLAY#1".to_string(),
+                "Display 1".to_string(),
+                Some(0),
+            ),
+        )])));
+        assert!(cache.is_valid());
+
+        cache.expiry_duration = Duration::ZERO;
+        assert!(!cache.is_valid(), "an expired cache must be refilled");
+    }
+
+    /// The point of the shared snapshot: what the cache holds is what callers get, so
+    /// serving it is a refcount bump rather than a copy of every monitor and its
+    /// device path (the map's key *and* the monitor's own field).
+    #[test]
+    fn the_cache_keeps_the_shared_handle_it_was_given() {
+        let mut cache = MonitorInfoCache::new();
+        let snapshot = MonitorSnapshot::new(HashMap::from([(
             "\\\\?\\DISPLAY#1".to_string(),
             DisplayMonitor::new_test(
                 "\\\\?\\DISPLAY#1".to_string(),
@@ -891,10 +918,13 @@ mod tests {
                 Some(0),
             ),
         )]));
-        assert!(cache.is_valid());
 
-        cache.expiry_duration = Duration::ZERO;
-        assert!(!cache.is_valid(), "an expired cache must be refilled");
+        cache.update(MonitorSnapshot::clone(&snapshot));
+
+        assert!(
+            Rc::ptr_eq(&cache.data, &snapshot),
+            "the cache must hold the handle, not a copy of the map"
+        );
     }
 
     #[test]
@@ -903,7 +933,7 @@ mod tests {
         cache.shape = Some(shape(3, 8));
         let checked_at = cache.last_full_check;
 
-        cache.update(HashMap::new());
+        cache.update(MonitorSnapshot::new(HashMap::new()));
 
         // `update` only swaps the data; the shape bookkeeping belongs to the change
         // check, and losing it here would make every cycle enumerate again.

@@ -34,8 +34,8 @@ mockall::mock! {
     pub MonitorProvider {}
 
     impl dwall::monitor::MonitorProvider for MonitorProvider {
-        fn get_monitors(&self) -> dwall::error::DwallResult<HashMap<String, DisplayMonitor>>;
-        fn refresh_monitors(&self) -> dwall::error::DwallResult<HashMap<String, DisplayMonitor>>;
+        fn get_monitors(&self) -> dwall::error::DwallResult<dwall::monitor::MonitorSnapshot>;
+        fn refresh_monitors(&self) -> dwall::error::DwallResult<dwall::monitor::MonitorSnapshot>;
         fn has_configuration_changed(&self) -> dwall::error::DwallResult<bool>;
     }
 }
@@ -219,7 +219,7 @@ fn the_monitor_and_wallpaper_traits_can_be_driven_through_their_mocks() {
             DisplayMonitor::new_test("MON-A".to_string(), "Display 1".to_string(), Some(0)),
         );
 
-        Ok(map)
+        Ok(dwall::monitor::MonitorSnapshot::new(map))
     });
 
     let mut wallpapers = MockWallpaperSetter::new();
