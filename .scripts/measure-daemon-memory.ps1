@@ -8,6 +8,10 @@
     documentation in docs/technical-comparison.md quotes numbers produced by this
     script, so it is the "say how the number was obtained" half of those claims.
 
+    It starts a daemon of its own, so stop any running one first: the daemon holds a
+    per-session mutex and a second instance exits immediately (the script checks and
+    says so rather than reporting numbers for the wrong process).
+
     Two modes, because the footprint depends on which of the heavy WinRT paths the
     process has used — not on how long it has run:
 
@@ -92,6 +96,15 @@ foreach ($binary in $Binaries) {
     if (-not (Test-Path -LiteralPath $binary -PathType Leaf)) {
         throw "Daemon binary not found: $binary. Build it first (bun run build:daemon)."
     }
+}
+
+# The daemon holds a per-session mutex for its lifetime, so the instance this script
+# starts would exit at once and the numbers would describe whatever was already
+# running — a different configuration, a different binary, or nothing at all.
+$alreadyRunning = @(Get-Process -Name dwall -ErrorAction SilentlyContinue)
+if ($alreadyRunning.Count -gt 0) {
+    $ids = ($alreadyRunning | ForEach-Object { $_.Id }) -join ', '
+    throw "A daemon is already running (pid $ids). Stop it first: the measurement starts its own, and a second instance exits because of the per-session mutex."
 }
 
 # The theme directories come from the real configuration: a measurement that pointed
