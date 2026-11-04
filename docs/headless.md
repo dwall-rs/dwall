@@ -17,8 +17,10 @@ unpack it anywhere. The archive contains `dwall.exe`, the licence, this document
 the theme format and `SHA256SUM.txt`; verify a download against the `.sha256` asset
 published next to it.
 
-Alternatives: copy `dwall.exe` from an existing installation (`%ProgramFiles%\Dwall
-Settings\dwall.exe`), or build it:
+Alternatives: copy `dwall.exe` from an existing installation — the installer is
+per-user, so the default location is `%LOCALAPPDATA%\Dwall Settings\dwall.exe`; a
+per-machine install puts it under `%ProgramFiles%\Dwall Settings` instead — or build
+it:
 
 ```sh
 bun run build:daemon   # cargo build -p dwall --release --features build-script,log-max-level-info
@@ -135,7 +137,7 @@ There is only one, so installing from a second copy replaces the first and says 
 
 ```console
 > dwall.exe --install-autostart
-replacing the existing auto-start entry: "C:\Program Files\Dwall Settings\dwall.exe"
+replacing the existing auto-start entry: "C:\Users\you\AppData\Local\Dwall Settings\dwall.exe"
 auto-start registered: "C:\tools\dwall\dwall.exe"
 ```
 
