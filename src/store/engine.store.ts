@@ -10,7 +10,7 @@ import {
 } from "@/ipc";
 import { toast } from "@/components/ui/toast";
 import { t } from "@/i18n";
-import { reloadSettings } from "./settings-refresh";
+import { syncStoppedSettings } from "./settings-refresh";
 import { logger } from "@/utils";
 
 const log = logger.child("engine");
@@ -99,8 +99,9 @@ const toggle = async () => {
       if (engineStore.pendingTimer) clearTimeout(engineStore.pendingTimer);
       try {
         await stopEngine();
-        // The command cleared the theme in config.toml; drop the stale draft too.
-        await reloadSettings();
+        // The command cleared the theme in config.toml. Mirror only that: reloading
+        // the file here also discarded every unsaved edit in the settings page.
+        syncStoppedSettings();
         // A deliberate stop is not a failure: there is no reason to show, and the log
         // still holds whatever the last cycle wrote before it.
         stoppedErrorRead = true;

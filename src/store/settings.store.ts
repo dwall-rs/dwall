@@ -21,7 +21,10 @@ import { toast } from "@/components/ui/toast";
 import { t } from "@/i18n";
 import { logger } from "@/utils";
 import { refresh as refreshEngine } from "./engine.store";
-import { registerSettingsReload } from "./settings-refresh";
+import {
+  registerSettingsReload,
+  registerStoppedSync,
+} from "./settings-refresh";
 
 const log = logger.child("settings");
 
@@ -301,7 +304,30 @@ const isConfigDirty = (s: SettingsState): boolean =>
   !!s.saved &&
   JSON.stringify(s.config) !== JSON.stringify(s.saved);
 
+/**
+ * Mirrors "stop engine" in the draft.
+ *
+ * The command writes a cleared `wallpaper_mode` to config.toml — that is what keeps
+ * the window from starting the daemon again on the next open. Reloading the whole
+ * file to see it also dropped every unsaved edit on the page without a word, so only
+ * the mode is updated.
+ */
+const syncStoppedEngine = () => {
+  const cleared = (): Config["wallpaper_mode"] => ({
+    mode: "fixed",
+    monitor_specific_wallpapers: {},
+  });
+
+  setSettingsStore(
+    produce((settings) => {
+      if (settings.config) settings.config.wallpaper_mode = cleared();
+      if (settings.saved) settings.saved.wallpaper_mode = cleared();
+    }),
+  );
+};
+
 registerSettingsReload(load);
+registerStoppedSync(syncStoppedEngine);
 
 export {
   settingsStore,

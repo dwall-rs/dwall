@@ -16,3 +16,21 @@ export const registerSettingsReload = (fn: Reload) => {
 export const reloadSettings = async () => {
   await reload?.();
 };
+
+/**
+ * The same event applied to the draft only.
+ *
+ * Reloading the file to see a stop also discards every unsaved edit on the page, so
+ * the form is told what changed instead: the command cleared `wallpaper_mode`.
+ */
+type StoppedSync = () => void;
+
+let syncStopped: StoppedSync | undefined;
+
+export const registerStoppedSync = (fn: StoppedSync) => {
+  syncStopped = fn;
+};
+
+export const syncStoppedSettings = () => {
+  syncStopped?.();
+};
