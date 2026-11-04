@@ -137,8 +137,12 @@ export function EngineSection() {
                 settingsStore.config?.position_source.type === "AUTOMATIC"
               }
               onCheckedChange={(checked) => {
+                // Switching to manual only reveals the coordinate fields. Saving here
+                // wrote 0,0 — the placeholder seed — into config.toml, and a running
+                // daemon applied it until the user finished typing; the row's own save
+                // button is what commits coordinates.
                 setPositionType(checked ? "AUTOMATIC" : "MANUAL");
-                void ok("coord");
+                if (checked) void ok("coord");
               }}
             />
           }
