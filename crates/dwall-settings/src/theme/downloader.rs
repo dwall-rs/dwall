@@ -326,6 +326,66 @@ fn is_rejected_status(status: reqwest::StatusCode) -> bool {
         && status != reqwest::StatusCode::TOO_MANY_REQUESTS
 }
 
+/// Age past which a partial download is not worth resuming.
+///
+/// A cancelled or failed download deliberately keeps `<id>.zip.tmp` so the next
+/// attempt resumes from what is on disk. Nothing collected the ones whose theme was
+/// never tried again, and each can be as large as the download budget; a week is long
+/// enough that a resume would still find the same release, and short enough that an
+/// abandoned file does not live forever.
+const STALE_PARTIAL_MAX_AGE: Duration = Duration::from_secs(7 * 24 * 3600);
+
+/// Removes partial downloads older than [`STALE_PARTIAL_MAX_AGE`], returning how many
+/// were removed.
+///
+/// Synchronous on purpose: it walks one directory and is called from a blocking task,
+/// not from the async runtime.
+pub fn cleanup_stale_partials(themes_directory: &Path) -> usize {
+    cleanup_partials_older_than(themes_directory, STALE_PARTIAL_MAX_AGE)
+}
+
+fn cleanup_partials_older_than(themes_directory: &Path, max_age: Duration) -> usize {
+    let Ok(entries) = std::fs::read_dir(themes_directory) else {
+        return 0;
+    };
+
+    let mut removed = 0;
+
+    for entry in entries.flatten() {
+        let path = entry.path();
+        let is_partial = path
+            .file_name()
+            .is_some_and(|name| name.to_string_lossy().ends_with(".zip.tmp"));
+        if !is_partial {
+            continue;
+        }
+
+        let Ok(modified) = entry.metadata().and_then(|metadata| metadata.modified()) else {
+            continue;
+        };
+        let older_than_limit = std::time::SystemTime::now()
+            .duration_since(modified)
+            .is_ok_and(|age| age >= max_age);
+        if !older_than_limit {
+            continue;
+        }
+
+        match std::fs::remove_file(&path) {
+            Ok(()) => {
+                removed += 1;
+                debug!(path = %path.display(), "Removed a stale partial theme download");
+            }
+            Err(e) => warn!(
+                path = %path.display(),
+                error = %e,
+                "Failed to remove a stale partial theme download"
+            ),
+        }
+    }
+
+    removed
+}
+
 /// Moves the finished download into place, extracts it, and clears the archive.
 ///
 /// The archive is removed on both paths: it used to be the last statement of the
@@ -679,6 +739,40 @@ azimuth = 20.0
         assert!(staging.exists(), "a disarmed guard removes nothing");
 
         let _ = fs::remove_dir_all(&root);
+    }
+
+    // ── stale partials ──────────────────────────────────────────────────────
+
+    /// A partial is kept so the next attempt can resume it; an abandoned one has to
+    /// be collected, and only the partials — never a real archive.
+    #[test]
+    fn a_stale_partial_is_removed_and_a_fresh_one_is_kept() {
+        let root = scratch_themes_directory("partials");
+        let dir = &*root;
+        std::fs::write(dir.join("Old.zip.tmp"), b"partial").unwrap();
+        std::fs::write(dir.join("New.zip.tmp"), b"partial").unwrap();
+        std::fs::write(dir.join("Theme.zip"), b"archive").unwrap();
+
+        // Fresh files: nothing is old enough to be abandoned.
+        assert_eq!(
+            cleanup_partials_older_than(dir, Duration::from_secs(3_600)),
+            0
+        );
+        assert!(dir.join("Old.zip.tmp").exists());
+
+        // Without a grace period both partials go, and the archive stays.
+        assert_eq!(cleanup_partials_older_than(dir, Duration::ZERO), 2);
+        assert!(!dir.join("Old.zip.tmp").exists());
+        assert!(!dir.join("New.zip.tmp").exists());
+        assert!(dir.join("Theme.zip").exists());
+    }
+
+    #[test]
+    fn a_missing_themes_directory_has_nothing_to_clean() {
+        assert_eq!(
+            cleanup_partials_older_than(Path::new("no/such/themes"), Duration::ZERO),
+            0
+        );
     }
 
     // ── is_retryable ────────────────────────────────────────────────────────

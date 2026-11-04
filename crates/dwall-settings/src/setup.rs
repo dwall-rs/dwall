@@ -62,6 +62,19 @@ pub fn setup_app(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>>
     // Before anything can ask the webview to show an image.
     allow_asset_directories(app.handle(), &config);
 
+    // A partial download is kept on disk so the next attempt can resume it, but nothing
+    // collected the ones whose theme was never tried again — each can be as large as
+    // the download budget. Off the setup path, because it walks the themes directory.
+    {
+        let themes_directory = config.themes_directory().to_path_buf();
+        tauri::async_runtime::spawn_blocking(move || {
+            let removed = crate::theme::downloader::cleanup_stale_partials(&themes_directory);
+            if removed > 0 {
+                info!(removed = removed, "Removed abandoned theme downloads");
+            }
+        });
+    }
+
     let should_run_daemon = crate::daemon::should_run(&config);
     // A hand-edited or stale configuration can still name a proxy this machine
     // cannot build a client for. The window has to open anyway: it is the only place
