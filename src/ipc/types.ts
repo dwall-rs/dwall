@@ -18,4 +18,6 @@ export type { Metadata as UpdateMetadata } from "./bindings/Metadata";
 export type { AppInfo } from "./bindings/AppInfo";
 export type { CatalogTheme } from "./bindings/CatalogTheme";
 export type { RandomSelection } from "./bindings/RandomSelection";
+export type { ColorSchemePause } from "./bindings/ColorSchemePause";
+export type { PauseCause } from "./bindings/PauseCause";
 export type { SolarAngle } from "./bindings/SolarAngle";

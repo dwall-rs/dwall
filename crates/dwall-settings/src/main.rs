@@ -94,6 +94,8 @@ fn main() -> DwallSettingsResult<()> {
             commands::engine::stop_engine,
             commands::mirror::mirror_url,
             commands::random::get_random_selection,
+            commands::color_scheme::get_color_scheme_pause,
+            commands::color_scheme::set_color_scheme_pause,
             commands::catalog::get_theme_catalog,
             commands::catalog::get_theme_wallpapers,
             commands::catalog::match_wallpaper,
