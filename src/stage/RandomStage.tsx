@@ -1,20 +1,29 @@
 // Responsibility: Random-mode stage orchestration — today's sun track, pool status, summary + select all /
 //       clear all, then the collage or the empty state. No sampling.
 import { randomStore, selectAll, clearAll } from "@/store/random.store";
-import { availableThemeIds } from "@/store/catalog.selectors";
+import { catalogStore } from "@/store/catalog.store";
+import { availableThemeIds, availableThemes } from "@/store/catalog.selectors";
 import { t } from "@/i18n";
 import { createMemo, Show } from "solid-js";
 import { WriteNote } from "./WriteNote";
 import { RandomStats } from "./RandomStats";
 import { RandomSunPath } from "./RandomSunPath";
 import { PoolCollage } from "./PoolCollage";
-import { PoolEmpty } from "./PoolEmpty";
+import { PoolEmpty, type PoolEmptyReason } from "./PoolEmpty";
 import { RandomCommitRow } from "./RandomCommitRow";
 
 export function RandomStage() {
   // Only themes on disk get a turn, so "select all" and the counts work from those.
   const poolIds = createMemo(() => availableThemeIds());
   const poolSize = createMemo(() => randomStore.selected.length);
+  // Why the pool is empty: a failed catalog read, no themes installed at all, or the
+  // user excluded every candidate. They need different words, and only the first has
+  // an action of its own.
+  const emptyReason = createMemo<PoolEmptyReason>(() => {
+    if (catalogStore.status === "error") return "error";
+    if (availableThemes().length === 0) return "none";
+    return "excluded";
+  });
 
   return (
     <>
@@ -50,7 +59,11 @@ export function RandomStage() {
           </button>
         </div>
       </div>
-      {poolSize() === 0 ? <PoolEmpty /> : <PoolCollage />}
+      {poolSize() === 0 ? (
+        <PoolEmpty reason={emptyReason()} />
+      ) : (
+        <PoolCollage />
+      )}
       <RandomCommitRow />
     </>
   );

@@ -101,6 +101,11 @@ export const dict: RawDictionary = {
     emptyTitle: "候補プールが空です",
     emptyDesc:
       "すべてのテーマを除外しました。毎日のシャッフル用に少なくとも1つ残してください。",
+    noThemesTitle: "テーマがまだありません",
+    noThemesDesc:
+      "ライブラリからテーマをダウンロードして、候補に追加してください。",
+    catalogErrorDesc:
+      "テーマ一覧を読み込めないため、候補プールを利用できません。",
   },
 
   commit: {

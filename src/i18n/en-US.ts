@@ -99,6 +99,10 @@ export const dict = {
     emptyTitle: "Pool is empty",
     emptyDesc:
       "All themes are excluded. Keep at least one theme so the daily shuffle has wallpapers.",
+    noThemesTitle: "No themes installed yet",
+    noThemesDesc: "Download a theme from the library, then add it to the pool.",
+    catalogErrorDesc:
+      "The theme catalog could not be read, so the pool is unavailable.",
   },
 
   commit: {

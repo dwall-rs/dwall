@@ -100,6 +100,9 @@ export const dict: RawDictionary = {
     emptyTitle: "후보 풀이 비어 있음",
     emptyDesc:
       "모든 테마를 제외했습니다. 매일 셔플에 쓸 배경을 최소 하나 남겨 두세요.",
+    noThemesTitle: "설치된 테마가 없습니다",
+    noThemesDesc: "라이브러리에서 테마를 내려받은 뒤 후보에 추가하세요.",
+    catalogErrorDesc: "테마 목록을 읽을 수 없어 후보 풀을 사용할 수 없습니다.",
   },
 
   commit: {

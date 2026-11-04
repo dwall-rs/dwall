@@ -96,6 +96,9 @@ export const dict: RawDictionary = {
     collageNote: "{{ n }} 套参与每日洗牌 · 仅预览池内容，非抽中结果",
     emptyTitle: "候选池为空",
     emptyDesc: "你已排除全部主题。请至少保留一套，让每日洗牌有壁纸可抽。",
+    noThemesTitle: "还没有已安装的主题",
+    noThemesDesc: "先从主题库下载一套主题，再加入候选池。",
+    catalogErrorDesc: "无法读取主题目录，候选池暂不可用。",
   },
 
   commit: {
