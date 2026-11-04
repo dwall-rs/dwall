@@ -64,6 +64,17 @@ pub fn read_from(directory: &Path) -> DwallResult<Option<RandomSelection>> {
 pub fn write(selection: &RandomSelection) -> DwallResult<()> {
     write_to(&DWALL_CONFIG_DIR, selection)
 }
+/// Removes the persisted selection, if there is one.
+///
+/// The daemon drops a draw whose theme cannot be applied; leaving the file behind
+/// would let the restore path pick the same theme again on the next start.
+pub fn remove_from(directory: &Path) -> DwallResult<()> {
+    match fs::remove_file(path_in(directory)) {
+        Ok(()) => Ok(()),
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(()),
+        Err(e) => Err(e.into()),
+    }
+}
 
 /// Persists the selection in `directory`, creating it when needed.
 ///
