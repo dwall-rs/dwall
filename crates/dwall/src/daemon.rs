@@ -214,10 +214,28 @@ fn build_engine(config: &Config) -> DwallResult<PlatformEngine<'_>> {
 }
 
 /// Runtime state for Random wallpaper mode
+#[derive(Default)]
 struct RandomModeState {
     selector: DailyRandomThemeSelector,
     current_theme: Option<String>,
+    /// Today's themes that could not be applied and were dropped.
+    ///
+    /// The daily draw is a single theme, so "try another one" only works if the
+    /// abandoned set survives the redraw: otherwise the next draw could pick the same
+    /// unusable theme again and the daemon would cycle through it all day.
+    abandoned: Vec<String>,
+    /// The day the abandoned set belongs to; a new day clears it.
+    abandoned_on: Option<Date>,
 }
+
+/// Consecutive failed cycles after which today's random theme is presumed unusable.
+///
+/// A theme whose frames were deleted, or whose image format changed under it, fails
+/// every configured monitor on every cycle — and the draw is persisted for the whole
+/// day, so retrying it was what kept random mode dead until midnight. Three failures
+/// means the backoff has already doubled twice, which gives a transient failure its
+/// chance.
+const RANDOM_REDRAW_AFTER_FAILURES: u32 = 3;
 
 /// The candidate pool configured for random mode (`None` = every installed theme).
 fn random_pool(config: &Config) -> Option<&Vec<String>> {
@@ -291,7 +309,7 @@ impl DaemonApplication {
                 "Starting daemon with config change detection"
             );
 
-            self.run_engine_loop(&theme_engine)?;
+            self.run_engine_loop(&theme_engine, &config)?;
         }
     }
 
@@ -356,10 +374,16 @@ impl DaemonApplication {
         let today = OffsetDateTime::now_local()?.date();
 
         if self.random_state.is_none() {
-            self.random_state = Some(RandomModeState {
-                selector: DailyRandomThemeSelector::new(),
-                current_theme: None,
-            });
+            self.random_state = Some(RandomModeState::default());
+        }
+
+        // A new day resets the themes abandoned yesterday: they may have been repaired
+        // since, and nothing has tried them today.
+        if let Some(state) = self.random_state.as_mut()
+            && state.abandoned_on != Some(today)
+        {
+            state.abandoned.clear();
+            state.abandoned_on = Some(today);
         }
 
         let needs_switch = self
@@ -422,7 +446,13 @@ impl DaemonApplication {
         }
 
         let available = self.list_available_themes(config)?;
-        let candidates = filter_themes_by_pool(&available, random_pool(config));
+        let mut candidates = filter_themes_by_pool(&available, random_pool(config));
+
+        // A theme abandoned today is not a candidate, even if the persisted draw still
+        // names it: restoring it would undo the redraw that abandoned it.
+        if let Some(state) = self.random_state.as_ref() {
+            candidates.retain(|theme| !state.abandoned.contains(theme));
+        }
 
         let Some(state) = self.random_state.as_mut() else {
             return Ok(false);
@@ -455,17 +485,22 @@ impl DaemonApplication {
             return Ok(());
         }
 
-        let themes_to_select = filter_themes_by_pool(&available, random_pool(config));
+        let mut themes_to_select = filter_themes_by_pool(&available, random_pool(config));
+
+        // Themes abandoned today because they could not be applied stay out of the draw.
+        if let Some(state) = self.random_state.as_ref() {
+            themes_to_select.retain(|theme| !state.abandoned.contains(theme));
+        }
+
         if themes_to_select.is_empty() {
             warn!("Random mode: candidate pool is empty; nothing to apply");
             return Ok(());
         }
 
         let state_dir = self.state_dir();
-        let state = self.random_state.get_or_insert_with(|| RandomModeState {
-            selector: DailyRandomThemeSelector::new(),
-            current_theme: None,
-        });
+        let state = self
+            .random_state
+            .get_or_insert_with(RandomModeState::default);
 
         if let Some(theme_id) = state.selector.select_next(&themes_to_select) {
             state.selector.mark_applied(today);
@@ -482,6 +517,57 @@ impl DaemonApplication {
         }
 
         Ok(())
+    }
+
+    /// Drops today's random draw when its theme cannot be applied.
+    ///
+    /// Returns true when the outer loop should draw again. That is only possible when
+    /// another candidate is left: a one-theme pool keeps the failing theme and its
+    /// backoff instead of being left with no candidate at all.
+    fn abandon_current_random_theme(&mut self, config: &Config) -> DwallResult<bool> {
+        let Some(theme_id) = self
+            .random_state
+            .as_ref()
+            .and_then(|state| state.current_theme.clone())
+        else {
+            return Ok(false);
+        };
+
+        let today = OffsetDateTime::now_local()?.date();
+        let available = self.list_available_themes(config)?;
+        let mut remaining = filter_themes_by_pool(&available, random_pool(config));
+
+        if let Some(state) = self.random_state.as_ref() {
+            remaining.retain(|theme| !state.abandoned.contains(theme));
+        }
+        remaining.retain(|theme| *theme != theme_id);
+
+        if remaining.is_empty() {
+            return Ok(false);
+        }
+
+        if let Some(state) = self.random_state.as_mut() {
+            state.abandoned_on = Some(today);
+            state.abandoned.push(theme_id.clone());
+            state.current_theme = None;
+            // A fresh selector makes the next draw happen instead of restoring today's
+            // selection, which is exactly the one being dropped.
+            state.selector = DailyRandomThemeSelector::new();
+        }
+
+        // The persisted draw names the abandoned theme and the restore path reads it
+        // before looking at the pool, so it has to go with the selection.
+        if let Err(e) = crate::random_state::remove_from(&self.state_dir()) {
+            warn!(error = %e, "Failed to clear the persisted random selection");
+        }
+
+        warn!(
+            theme_id = %theme_id,
+            remaining_candidates = remaining.len(),
+            "Random mode: the drawn theme cannot be applied, drawing another one"
+        );
+
+        Ok(true)
     }
 
     /// List installed themes (bundled + custom) that look like valid themes.
@@ -555,7 +641,14 @@ impl DaemonApplication {
     }
 
     /// Runs the engine loop until the configuration changes.
-    fn run_engine_loop(&mut self, theme_engine: &PlatformEngine<'_>) -> DwallResult<()> {
+    ///
+    /// The configuration is passed as well: the loop needs it to look at the theme
+    /// pool when a random draw has to be replaced.
+    fn run_engine_loop(
+        &mut self,
+        theme_engine: &PlatformEngine<'_>,
+        config: &Config,
+    ) -> DwallResult<()> {
         // A configuration change rebuilds the engine, which resets this: the user
         // editing the configuration is the most likely fix, so retry promptly.
         let mut failures = CycleFailureTracker::default();
@@ -612,6 +705,15 @@ impl DaemonApplication {
                                 retry_in_seconds = delay.as_secs(),
                                 "Theme update cycle failed, retrying"
                             );
+
+                            // Random mode applies one persistent draw a day, so a theme
+                            // that cannot be applied fails every cycle until midnight.
+                            // Drop it and let the outer loop draw another one.
+                            if failures.consecutive_failures() >= RANDOM_REDRAW_AFTER_FAILURES
+                                && self.abandon_current_random_theme(config)?
+                            {
+                                return Ok(());
+                            }
 
                             delay
                         }
@@ -753,6 +855,7 @@ mod tests {
         daemon.random_state = Some(RandomModeState {
             selector,
             current_theme: Some("Alpha".to_string()),
+            ..Default::default()
         });
 
         assert!(
@@ -789,6 +892,7 @@ mod tests {
         daemon.random_state = Some(RandomModeState {
             selector: DailyRandomThemeSelector::new(),
             current_theme: Some("Alpha".to_string()),
+            ..Default::default()
         });
 
         let wait = daemon.cap_wait_for_random_selection(Duration::from_secs(2 * 86_400));
@@ -949,6 +1053,7 @@ mod tests {
         daemon.random_state = Some(RandomModeState {
             selector: DailyRandomThemeSelector::new(),
             current_theme: Some("Alpha".to_string()),
+            ..Default::default()
         });
 
         let mut config = Config::default();
@@ -1030,6 +1135,81 @@ mod tests {
         let persisted = crate::random_state::read_from(&dir).unwrap().unwrap();
         assert_eq!(persisted.date, crate::random_state::date_key(&today));
         assert_eq!(persisted.theme_id, "Alpha");
+
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    /// A drawn theme that cannot be applied fails every cycle, and the draw is fixed
+    /// for the day: without abandoning it random mode stayed dead until midnight.
+    #[test]
+    fn an_unusable_random_theme_is_abandoned_and_another_drawn() {
+        let (mut config, config_path, dir) =
+            random_config("abandon", WallpaperMode::Random { pool: None });
+
+        // A second theme, so abandoning the first leaves something to draw.
+        let beta = dir.join("themes").join("Beta");
+        std::fs::create_dir_all(&beta).unwrap();
+        std::fs::write(beta.join("solar.json"), "[]").unwrap();
+
+        let mut daemon = DaemonApplication::with_config_path(config_path);
+        daemon.handle_random_mode(&mut config).unwrap();
+        let drawn = daemon
+            .random_state
+            .as_ref()
+            .and_then(|state| state.current_theme.clone())
+            .expect("a theme was drawn");
+
+        assert!(
+            daemon.abandon_current_random_theme(&config).unwrap(),
+            "another candidate exists"
+        );
+
+        let state = daemon.random_state.as_ref().unwrap();
+        assert!(state.current_theme.is_none());
+        assert!(state.abandoned.contains(&drawn));
+        assert!(
+            !dir.join("random_selection.json").exists(),
+            "the persisted draw has to go with the selection"
+        );
+
+        // The next draw cannot pick the abandoned theme again.
+        config.set_wallpaper_mode(WallpaperMode::Random { pool: None });
+        daemon.handle_random_mode(&mut config).unwrap();
+        let redrawn = daemon
+            .random_state
+            .as_ref()
+            .and_then(|state| state.current_theme.clone())
+            .expect("another theme was drawn");
+
+        assert_ne!(redrawn, drawn);
+
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    /// A lone candidate is kept: dropping it would leave random mode with nothing to
+    /// apply and rebuild the engine on every retry, which is worse than the backoff.
+    #[test]
+    fn a_lone_random_theme_is_kept_when_it_cannot_be_applied() {
+        let (mut config, config_path, dir) =
+            random_config("abandon_lone", WallpaperMode::Random { pool: None });
+
+        let mut daemon = DaemonApplication::with_config_path(config_path);
+        daemon.handle_random_mode(&mut config).unwrap();
+
+        assert!(
+            !daemon.abandon_current_random_theme(&config).unwrap(),
+            "there is nothing else to draw"
+        );
+        assert!(
+            daemon
+                .random_state
+                .as_ref()
+                .unwrap()
+                .current_theme
+                .is_some(),
+            "the failing theme stays selected"
+        );
+        assert!(dir.join("random_selection.json").exists());
 
         let _ = std::fs::remove_dir_all(&dir);
     }
