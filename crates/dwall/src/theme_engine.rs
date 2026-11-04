@@ -603,6 +603,7 @@ mod tests {
     use super::*;
     use crate::color_scheme::ColorScheme;
     use crate::config::{MonitorSpecificWallpapers, WallpaperMode};
+    use crate::monitor::MonitorSnapshot;
 
     // ── Doubles ─────────────────────────────────────────────────────────────
     //
@@ -671,12 +672,12 @@ mod tests {
     }
 
     impl MonitorProvider for StaticMonitors {
-        fn get_monitors(&self) -> DwallResult<HashMap<String, DisplayMonitor>> {
-            Ok(self.monitors.clone())
+        fn get_monitors(&self) -> DwallResult<MonitorSnapshot> {
+            Ok(MonitorSnapshot::new(self.monitors.clone()))
         }
 
-        fn refresh_monitors(&self) -> DwallResult<HashMap<String, DisplayMonitor>> {
-            Ok(self.monitors.clone())
+        fn refresh_monitors(&self) -> DwallResult<MonitorSnapshot> {
+            Ok(MonitorSnapshot::new(self.monitors.clone()))
         }
 
         fn has_configuration_changed(&self) -> DwallResult<bool> {

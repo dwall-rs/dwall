@@ -2,7 +2,7 @@
 
 use std::path::Path;
 use std::rc::Rc;
-use std::{collections::HashMap, time::Duration};
+use std::time::Duration;
 
 use windows::{
     Foundation::Uri,
@@ -15,7 +15,7 @@ use windows::{
     core::{HSTRING, Interface, PWSTR},
 };
 
-use crate::monitor::MonitorProvider;
+use crate::monitor::{MonitorProvider, MonitorSnapshot};
 use crate::wallpaper::WallpaperProvider;
 use crate::{DwallResult, platform::DisplayMonitor};
 
@@ -168,12 +168,12 @@ impl WallpaperSetter {
     }
 
     /// Gets all available monitors with caching
-    fn list_available_monitors(&self) -> DwallResult<HashMap<String, DisplayMonitor>> {
+    fn list_available_monitors(&self) -> DwallResult<MonitorSnapshot> {
         self.monitor_provider.get_monitors()
     }
 
     /// Forces a refresh of monitor information
-    fn reload_monitor_configuration(&self) -> DwallResult<HashMap<String, DisplayMonitor>> {
+    fn reload_monitor_configuration(&self) -> DwallResult<MonitorSnapshot> {
         self.monitor_provider.refresh_monitors()
     }
 

@@ -15,6 +15,9 @@ pub async fn get_monitors_cmd() -> DwallSettingsResult<HashMap<String, DisplayMo
         || -> DwallSettingsResult<HashMap<String, DisplayMonitor>> {
             DisplayMonitorProvider::new()
                 .refresh_monitors()
+                // The provider hands out a shared snapshot; the command answers the
+                // window with an owned map, and this is the one place that copies it.
+                .map(|monitors| (*monitors).clone())
                 .map_err(Into::into)
         },
     )
