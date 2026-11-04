@@ -1,4 +1,5 @@
 pub mod color_scheme;
+pub mod color_scheme_pause;
 pub mod config;
 pub mod daemon;
 pub mod error;

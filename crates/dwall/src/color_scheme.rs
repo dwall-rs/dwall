@@ -1,11 +1,14 @@
 //! Automatic light/dark color scheme switching based on solar position.
 
+use std::cell::Cell;
 use std::fmt;
+use std::path::{Path, PathBuf};
 use std::time::Duration;
 
 use serde::Deserialize;
 use time::{Date, Offset, OffsetDateTime};
 
+use crate::color_scheme_pause::{self, ColorSchemePause, PauseCause};
 use crate::config::Config;
 use crate::error::DwallResult;
 use crate::solar::{Position, SolarPosition};
@@ -332,12 +335,22 @@ pub(crate) fn determine_color_scheme_with_hysteresis(
 /// Applies the system color scheme based on solar position.
 pub(crate) struct ColorSchemeApplier<T: ColorSchemeProvider> {
     color_scheme_provider: T,
+    /// Where the pause file lives, so a test can point it at a scratch directory.
+    state_dir: PathBuf,
+    /// The scheme this applier last put in place, if any.
+    ///
+    /// A scheme that differs from it was changed by someone else. Without this the
+    /// daemon cannot tell its own write from the user's, and the two look the same: a
+    /// value it did not choose.
+    last_applied: Cell<Option<ColorScheme>>,
 }
 
 impl<T: ColorSchemeProvider> ColorSchemeApplier<T> {
-    pub(crate) fn new(color_scheme_provider: T) -> Self {
+    pub(crate) fn new(color_scheme_provider: T, state_dir: &Path) -> Self {
         Self {
             color_scheme_provider,
+            state_dir: state_dir.to_path_buf(),
+            last_applied: Cell::new(None),
         }
     }
 }
@@ -485,6 +498,9 @@ impl<T: ColorSchemeProvider> ColorSchemeApplier<T> {
     ///
     /// When the user asked for dark on battery, that decision wins over the sun; the
     /// next cycle after reconnecting AC restores the solar choice.
+    ///
+    /// A pause, however it started, wins over both: the user's choice is the one thing
+    /// the daemon must not overrule, and it is the reason the pause exists.
     pub(crate) fn update_color_scheme_with_power(
         &self,
         config: &Config,
@@ -497,6 +513,11 @@ impl<T: ColorSchemeProvider> ColorSchemeApplier<T> {
             return Ok(());
         }
 
+        let now_seconds = now.timestamp();
+        if self.pause_in_force(now_seconds) {
+            return Ok(());
+        }
+
         let color_scheme = if config.dark_on_battery() && on_battery {
             debug!(
                 sun_altitude = solar_position.altitude(),
@@ -505,6 +526,10 @@ impl<T: ColorSchemeProvider> ColorSchemeApplier<T> {
             ColorScheme::Dark
         } else {
             let current_color_scheme = self.color_scheme_provider.get_current_scheme()?;
+            if self.someone_else_changed(current_color_scheme, now_seconds) {
+                return Ok(());
+            }
+
             let solar_based_color_scheme = self.scheme_at(
                 now,
                 geographic_position,
@@ -520,14 +545,90 @@ impl<T: ColorSchemeProvider> ColorSchemeApplier<T> {
             solar_based_color_scheme
         };
 
-        if let Err(color_scheme_error) = self.color_scheme_provider.set_color_scheme(color_scheme) {
-            warn!(
-                error = %color_scheme_error,
-                "Failed to update system color scheme, continuing with other operations"
-            );
-        }
+        self.apply(color_scheme);
 
         Ok(())
+    }
+
+    /// Whether a pause is in force at `now`, clearing one that has run out.
+    fn pause_in_force(&self, now_seconds: u64) -> bool {
+        let pause = match color_scheme_pause::read_from(&self.state_dir) {
+            Ok(pause) => pause,
+            Err(e) => {
+                warn!(
+                    error = %e,
+                    "Failed to read the colour-scheme pause; automatic switching goes on"
+                );
+                return false;
+            }
+        };
+
+        let Some(pause) = pause else {
+            return false;
+        };
+
+        if pause.is_active(now_seconds) {
+            debug!(
+                remaining_seconds = pause.remaining(now_seconds),
+                cause = ?pause.cause,
+                "Automatic colour switching is paused"
+            );
+            return true;
+        }
+
+        // The truce is over, and forgetting it matters twice over: an uncleared pause
+        // would be read as a fresh manual change and start another hour, and the theme
+        // the user picked *during* the pause differs from the last scheme this applier
+        // set, so the baseline has to be dropped or that choice would be mistaken for
+        // yet another change and extend the pause indefinitely.
+        if let Err(e) = color_scheme_pause::clear_from(&self.state_dir) {
+            warn!(error = %e, "Failed to clear the expired colour-scheme pause");
+        }
+        self.last_applied.set(None);
+        info!("Colour-scheme pause expired; automatic switching resumes");
+
+        false
+    }
+
+    /// Records a pause when the scheme changed without this applier changing it.
+    ///
+    /// This is what makes "the user just toggled dark mode" a handled case: instead of
+    /// switching back on the next cycle, the daemon leaves the choice alone for an hour.
+    fn someone_else_changed(&self, current: ColorScheme, now_seconds: u64) -> bool {
+        let Some(last_applied) = self.last_applied.get() else {
+            // Nothing applied yet, so there is no baseline to compare against.
+            return false;
+        };
+        if current == last_applied {
+            return false;
+        }
+
+        let pause = ColorSchemePause::for_seconds(
+            now_seconds,
+            color_scheme_pause::PAUSE_SECONDS,
+            PauseCause::External,
+        );
+
+        match color_scheme_pause::write_to(&self.state_dir, &pause) {
+            Ok(()) => info!(
+                pause_seconds = color_scheme_pause::PAUSE_SECONDS,
+                "The colour scheme was changed outside the daemon; leaving it alone for now"
+            ),
+            Err(e) => warn!(error = %e, "Failed to record the colour-scheme pause"),
+        }
+
+        true
+    }
+
+    /// Writes the scheme, remembering it as the baseline for the next comparison.
+    fn apply(&self, color_scheme: ColorScheme) {
+        match self.color_scheme_provider.set_color_scheme(color_scheme) {
+            Ok(()) => self.last_applied.set(Some(color_scheme)),
+            Err(e) => warn!(
+                error = %e,
+                "Failed to update system color scheme, continuing with other operations"
+            ),
+        }
     }
 
     /// Applies the battery scheme without asking for a solar position.
@@ -535,21 +636,21 @@ impl<T: ColorSchemeProvider> ColorSchemeApplier<T> {
     /// Used by the dedicated battery-wallpaper cycle, which deliberately skips all
     /// solar math; the normal update path would need a SolarPosition it does not
     /// have.
-    pub(crate) fn apply_battery_scheme(&self, config: &Config) -> DwallResult<()> {
+    pub(crate) fn apply_battery_scheme(
+        &self,
+        config: &Config,
+        now: &OffsetDateTime,
+    ) -> DwallResult<()> {
         if !config.auto_detect_color_scheme() || !config.dark_on_battery() {
             return Ok(());
         }
 
-        debug!("Running on battery; forcing the dark color scheme");
-        if let Err(e) = self
-            .color_scheme_provider
-            .set_color_scheme(ColorScheme::Dark)
-        {
-            warn!(
-                error = %e,
-                "Failed to update system color scheme, continuing with other operations"
-            );
+        if self.pause_in_force(now.timestamp()) {
+            return Ok(());
         }
+
+        debug!("Running on battery; forcing the dark color scheme");
+        self.apply(ColorScheme::Dark);
 
         Ok(())
     }
@@ -1302,5 +1403,264 @@ mod tests {
             ),
             ColorScheme::Dark
         );
+    }
+}
+
+#[cfg(test)]
+mod pause_tests {
+    use std::cell::{Cell, RefCell};
+    use std::fs;
+    use std::path::PathBuf;
+
+    use time::Month;
+
+    use super::*;
+
+    /// A provider the test can change behind the applier's back, which is what a
+    /// manual switch looks like from the daemon's side.
+    struct ControlledScheme {
+        current: Cell<ColorScheme>,
+        applied: RefCell<Vec<ColorScheme>>,
+    }
+
+    impl ControlledScheme {
+        fn showing(scheme: ColorScheme) -> Self {
+            Self {
+                current: Cell::new(scheme),
+                applied: RefCell::new(Vec::new()),
+            }
+        }
+
+        /// The schemes written to Windows, in order.
+        fn applied(&self) -> Vec<ColorScheme> {
+            self.applied.borrow().clone()
+        }
+
+        /// Someone else changing the theme, without going through the applier.
+        fn switched_by_hand_to(&self, scheme: ColorScheme) {
+            self.current.set(scheme);
+        }
+    }
+
+    impl ColorSchemeProvider for ControlledScheme {
+        fn get_current_scheme(&self) -> DwallResult<ColorScheme> {
+            Ok(self.current.get())
+        }
+
+        fn set_color_scheme(&self, scheme: ColorScheme) -> DwallResult<()> {
+            // Like the Windows backend: an unchanged value is not written again.
+            if self.current.get() != scheme {
+                self.applied.borrow_mut().push(scheme);
+                self.current.set(scheme);
+            }
+
+            Ok(())
+        }
+    }
+
+    fn scratch(name: &str) -> PathBuf {
+        let dir = std::env::temp_dir().join(format!("dwall_scheme_pause_{name}"));
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(&dir).unwrap();
+
+        dir
+    }
+
+    fn config() -> Config {
+        serde_json::from_str(
+            r#"{"themes_directory":".","customized_themes_directory":"./custom","image_format":"jpeg","auto_detect_color_scheme":true,"dark_on_battery":true}"#,
+        )
+        .unwrap()
+    }
+
+    /// Late evening at the equator: the sun is down, so the solar answer is Dark.
+    fn night() -> OffsetDateTime {
+        OffsetDateTime::new(
+            2026,
+            Month::December,
+            21,
+            23,
+            0,
+            0,
+            "+00:00".parse().unwrap(),
+        )
+        .unwrap()
+    }
+
+    fn position() -> Position {
+        Position::from_raw_position(0.0, 0.0, 0.0)
+    }
+
+    fn run(applier: &ColorSchemeApplier<ControlledScheme>, now: &OffsetDateTime) {
+        let sun = SolarPosition::new(&position(), &now.assume_utc());
+        applier
+            .update_color_scheme_with_power(&config(), now, &position(), &sun, false)
+            .unwrap();
+    }
+
+    fn pause_for(dir: &std::path::Path, cause: PauseCause, seconds: u64) {
+        color_scheme_pause::write_to(
+            dir,
+            &ColorSchemePause::for_seconds(night().timestamp(), seconds, cause),
+        )
+        .unwrap();
+    }
+
+    /// Without the pause the daemon would switch to Dark here; that is the behaviour
+    /// the user is overriding, so the test is only meaningful if the switch happens.
+    #[test]
+    fn without_a_pause_the_night_switches_to_dark() {
+        let dir = scratch("baseline");
+        let applier = ColorSchemeApplier::new(ControlledScheme::showing(ColorScheme::Light), &dir);
+
+        run(&applier, &night());
+
+        assert_eq!(
+            applier.color_scheme_provider.applied(),
+            vec![ColorScheme::Dark]
+        );
+
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn a_pause_leaves_the_scheme_alone() {
+        let dir = scratch("holds");
+        let applier = ColorSchemeApplier::new(ControlledScheme::showing(ColorScheme::Light), &dir);
+        pause_for(&dir, PauseCause::Manual, 3_600);
+
+        run(&applier, &night());
+
+        assert!(
+            applier.color_scheme_provider.applied().is_empty(),
+            "a paused cycle must not touch the theme"
+        );
+        // Still paused, so the file stays put.
+        assert!(color_scheme_pause::read_from(&dir).unwrap().is_some());
+
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    /// Leaving the file behind would make the first resumed cycle read the user's
+    /// choice as a fresh manual change and pause for another hour.
+    #[test]
+    fn an_expired_pause_is_cleared_and_switching_resumes() {
+        let dir = scratch("expires");
+        let applier = ColorSchemeApplier::new(ControlledScheme::showing(ColorScheme::Light), &dir);
+        color_scheme_pause::write_to(
+            &dir,
+            &ColorSchemePause::for_seconds(night().timestamp() - 60, 60, PauseCause::Manual),
+        )
+        .unwrap();
+
+        run(&applier, &night());
+
+        assert_eq!(
+            applier.color_scheme_provider.applied(),
+            vec![ColorScheme::Dark]
+        );
+        assert!(color_scheme_pause::read_from(&dir).unwrap().is_none());
+
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    /// The manual toggle the review was about: the user switches to Light at night and
+    /// the daemon has to stop switching back, not fight them every interval.
+    #[test]
+    fn a_change_the_daemon_did_not_make_pauses_switching() {
+        let dir = scratch("external");
+        let applier = ColorSchemeApplier::new(ControlledScheme::showing(ColorScheme::Light), &dir);
+
+        run(&applier, &night());
+        assert_eq!(
+            applier.color_scheme_provider.applied(),
+            vec![ColorScheme::Dark]
+        );
+
+        applier
+            .color_scheme_provider
+            .switched_by_hand_to(ColorScheme::Light);
+        run(&applier, &night());
+
+        assert_eq!(
+            applier.color_scheme_provider.applied(),
+            vec![ColorScheme::Dark],
+            "the manual choice must survive the cycle"
+        );
+        let pause = color_scheme_pause::read_from(&dir)
+            .unwrap()
+            .expect("the change has to be recorded as a pause");
+        assert_eq!(pause.cause, PauseCause::External);
+        assert!(pause.is_active(night().timestamp()));
+
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    /// A theme changed *during* a pause is exactly what the pause was for: when it
+    /// expires, that choice must not be read as a fresh manual change that starts
+    /// another hour.
+    #[test]
+    fn a_change_during_the_pause_does_not_extend_it() {
+        let dir = scratch("extend");
+        let applier = ColorSchemeApplier::new(ControlledScheme::showing(ColorScheme::Light), &dir);
+
+        run(&applier, &night());
+        applier
+            .color_scheme_provider
+            .switched_by_hand_to(ColorScheme::Light);
+
+        // The pause the daemon would have written, already run out.
+        color_scheme_pause::write_to(
+            &dir,
+            &ColorSchemePause::for_seconds(night().timestamp() - 60, 60, PauseCause::External),
+        )
+        .unwrap();
+
+        run(&applier, &night());
+
+        assert!(
+            color_scheme_pause::read_from(&dir).unwrap().is_none(),
+            "the expired pause must not be replaced by a new one"
+        );
+        assert_eq!(
+            applier.color_scheme_provider.applied(),
+            vec![ColorScheme::Dark, ColorScheme::Dark],
+            "the sun takes over again"
+        );
+
+        let _ = fs::remove_dir_all(&dir);
+    }
+    /// The daemon's own write must not look like a manual change, or every cycle
+    /// would pause itself.
+    #[test]
+    fn the_daemons_own_write_does_not_pause() {
+        let dir = scratch("own");
+        let applier = ColorSchemeApplier::new(ControlledScheme::showing(ColorScheme::Light), &dir);
+
+        run(&applier, &night());
+        run(&applier, &night());
+
+        assert_eq!(
+            applier.color_scheme_provider.applied(),
+            vec![ColorScheme::Dark]
+        );
+        assert!(color_scheme_pause::read_from(&dir).unwrap().is_none());
+
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    /// The battery wallpaper cycle takes the other colour path; it has to honour the
+    /// same pause, or "do not switch" would only hold while on AC.
+    #[test]
+    fn a_pause_also_holds_the_battery_override() {
+        let dir = scratch("battery");
+        let applier = ColorSchemeApplier::new(ControlledScheme::showing(ColorScheme::Light), &dir);
+        pause_for(&dir, PauseCause::External, 3_600);
+
+        applier.apply_battery_scheme(&config(), &night()).unwrap();
+
+        assert!(applier.color_scheme_provider.applied().is_empty());
+
+        let _ = fs::remove_dir_all(&dir);
     }
 }

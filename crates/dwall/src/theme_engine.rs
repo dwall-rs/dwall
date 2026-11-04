@@ -59,6 +59,7 @@ where
 {
     pub(crate) fn new(
         config: &'a Config,
+        state_dir: &Path,
         wallpaper_setter: W,
         monitor_provider: Rc<M>,
         color_scheme_provider: C,
@@ -77,7 +78,7 @@ where
             position_provider,
             wallpaper_setter,
             monitor_provider,
-            color_scheme_applier: ColorSchemeApplier::new(color_scheme_provider),
+            color_scheme_applier: ColorSchemeApplier::new(color_scheme_provider, state_dir),
             last_position: Cell::new(None),
             power_status,
         }
@@ -126,8 +127,9 @@ where
         // pre-battery cycle; the next AC cycle records a fresh one.
         self.last_position.set(None);
 
+        let now_local = OffsetDateTime::now_local()?;
         self.color_scheme_applier
-            .apply_battery_scheme(self.config)?;
+            .apply_battery_scheme(self.config, &now_local)?;
 
         let monitors = self.monitor_provider.get_monitors()?;
         let mut failed = 0;
@@ -962,6 +964,7 @@ mod tests {
         {
             ThemeEngine::new(
                 &self.config,
+                &self.directory,
                 self.wallpapers.clone(),
                 Rc::clone(&self.monitors),
                 self.scheme.clone(),
@@ -1283,6 +1286,7 @@ azimuth = 0.0
         let wallpapers = RecordingWallpapers::default();
         let engine = ThemeEngine::new(
             &config,
+            &themes_directory,
             wallpapers.clone(),
             Rc::new(StaticMonitors {
                 monitors: tests::monitors(&["MON-A"]),
@@ -1413,6 +1417,7 @@ azimuth = 0.0
 
         let engine = ThemeEngine::new(
             &fixture.config,
+            &fixture.directory,
             fixture.wallpapers.clone(),
             Rc::clone(&fixture.monitors),
             fixture.scheme.clone(),
@@ -1448,6 +1453,7 @@ azimuth = 0.0
         // must not ask for a position at all.
         let engine = ThemeEngine::new(
             &fixture.config,
+            &fixture.directory,
             fixture.wallpapers.clone(),
             Rc::clone(&fixture.monitors),
             fixture.scheme.clone(),
@@ -1584,6 +1590,7 @@ azimuth = 0.0
         };
         let engine = ThemeEngine::new(
             &fixture.config,
+            &fixture.directory,
             fixture.wallpapers.clone(),
             Rc::clone(&fixture.monitors),
             fixture.scheme.clone(),
