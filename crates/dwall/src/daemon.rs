@@ -629,10 +629,16 @@ impl DaemonApplication {
             // next draw (or retry) rather than sleep through it.
             let next_interval = self.cap_wait_for_random_selection(next_interval);
 
-            // `continue` rather than sleeping and then re-checking: the top of the
-            // loop records the new file stamp and rebuilds the engine.
+            // The wait already logged the change and stopped early; record the stamp
+            // and rebuild from the outer loop. Continuing to the top instead re-detected
+            // the same change (the stamp had not been recorded yet) and wrote a second
+            // "change detected" line for a single save.
             if wait_for_config_change(&self.config_watcher, next_interval) {
-                continue;
+                if let Err(e) = self.config_watcher.update_stamp() {
+                    warn!(error = %e, "Failed to record the configuration file stamp");
+                }
+
+                return Ok(());
             }
         }
     }
