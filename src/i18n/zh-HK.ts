@@ -64,7 +64,7 @@ export const dict: RawDictionary = {
     downloading: "下載中…",
     cancelDownload: "取消",
     downloadFailed: "下載失敗：",
-    applyTo: "將這套主題寫入設定到{{ name }}",
+    applyTo: "將此主題套用到{{ name }}",
     stop: "停止",
     apply: "套用此套",
     altitude: "高度",
@@ -121,16 +121,16 @@ export const dict: RawDictionary = {
 
     appearance: {
       title: "外觀與語言",
-      appearanceLabel: "外觀 / Appearance",
+      appearanceLabel: "外觀",
       appearanceDesc:
         "選擇亮色、暗色，或跟隨系統。跟隨系統會即時監聽系統外觀變化自動切換。",
       titleBar: "標題列跟隨 Windows 主題色",
       titleBarDesc:
         "關閉時以 Dwall 的背景色繪製標題列，與視窗融為一體。精確配色僅 Windows 11 生效；Windows 10 只能跟隨明暗，顏色仍由系統決定。",
-      contentBorder: "分隔標題欄與內容區",
+      contentBorder: "分隔標題列與內容區",
       contentBorderDesc:
-        "在內容區頂部畫一條邊框，標題欄與視窗同色時也能一眼找到、方便拖動。",
-      languageLabel: "語言 / Language",
+        "在內容區頂部畫一條邊框，標題列與視窗同色時也能一眼找到、方便拖動。",
+      languageLabel: "語言",
       languageDesc: "介面語言，切換後立即生效。",
     },
 

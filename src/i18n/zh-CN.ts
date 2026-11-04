@@ -64,7 +64,7 @@ export const dict: RawDictionary = {
     downloading: "下载中…",
     cancelDownload: "取消",
     downloadFailed: "下载失败：",
-    applyTo: "将这套主题写配置到{{ name }}",
+    applyTo: "将此主题应用到{{ name }}",
     stop: "停止",
     apply: "应用此套",
     altitude: "高度",
@@ -121,7 +121,7 @@ export const dict: RawDictionary = {
 
     appearance: {
       title: "外观与语言",
-      appearanceLabel: "外观 / Appearance",
+      appearanceLabel: "外观",
       appearanceDesc:
         "选择亮色、暗色，或跟随系统。跟随系统会实时监听系统外观变化自动切换。",
       titleBar: "标题栏跟随 Windows 主题色",
@@ -130,7 +130,7 @@ export const dict: RawDictionary = {
       contentBorder: "分隔标题栏与内容区",
       contentBorderDesc:
         "在内容区顶部画一条边框，标题栏与窗口同色时也能一眼找到、方便拖动。",
-      languageLabel: "语言 / Language",
+      languageLabel: "语言",
       languageDesc: "界面语言，切换后立即生效。",
     },
 
