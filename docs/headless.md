@@ -167,9 +167,10 @@ The daemon picks new directories up on its next cycle.
 | Rotation | Each start moves the previous file to `log\backup\dwall_<unix-seconds>.log`. |
 | Verbosity | `DWALL_LOG=debug` or `DWALL_LOG=dwall=debug` in the daemon's environment. |
 
-Release builds compile `debug!`/`trace!` out, so there `DWALL_LOG` can only raise the
-level up to `info`; use a debug build for verbose statements, or the nightly daemon,
-which keeps them.
+Builds made with the `log-max-level-info` feature — what `bun run build:daemon` and the
+published installer produce — compile `debug!`/`trace!` out, so there `DWALL_LOG` can
+only raise the level up to `info`. A plain `cargo build --release`, `bun run stage` and
+the nightly daemon keep the verbose statements, where `DWALL_LOG=debug` applies.
 
 ## Living next to the settings app
 
