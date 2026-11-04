@@ -32,6 +32,9 @@ export const Dialog = (props: DialogProps) => {
     local.open === undefined ? internalOpen() : local.open,
   );
   const lockScroll = createMemo(() => props.lockScroll ?? true);
+  // 打开浮层的控件。放在这里而不是 DialogSurface，是因为它和 open 一样属于 Dialog
+  // 的生命周期：浮层卸载后仍要记得焦点该还给谁。
+  const [trigger, setTrigger] = createSignal<HTMLElement | undefined>();
 
   // 打开期间默认锁定页面滚动：锁住文档滚动并拦截浮层之外的滚轮/触摸，
   // 内容区自身仍可滚动。传 lockScroll={false} 可关闭该行为。
@@ -73,6 +76,8 @@ export const Dialog = (props: DialogProps) => {
         setShow,
         open,
         setOpen,
+        trigger,
+        setTrigger,
       }}
     >
       <div data-slot="dialog" {...others}>
