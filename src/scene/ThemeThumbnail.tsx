@@ -1,5 +1,8 @@
 // Responsibility: Theme thumbnail (through mirror + local cache), fetched by wallpaper index. Every thumbnail display goes through it.
-//       Note: loads thumbnails only (small), never the full-resolution wallpaper originals.
+//       Note: a custom theme that ships no `thumbnails/` resolves to its full-size
+//       frames — deliberate, because showing the right frame beats showing a
+//       placeholder until thumbnail generation exists (docs/custom-themes.md).
+//       They are decoded lazily, so only the visible ones cost anything.
 import {
   createEffect,
   createResource,

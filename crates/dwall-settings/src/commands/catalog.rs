@@ -186,6 +186,12 @@ fn custom_catalog_themes(config: Option<&Config>) -> Vec<CatalogTheme> {
 /// Local thumbnail paths for a custom theme, ordered by image index.
 ///
 /// Prefers `thumbnails/`, falling back to `images/`; files are `<index + 1>.<ext>`.
+///
+/// The fallback is the intended behaviour, not a stopgap to be "fixed" by returning
+/// nothing: the library then shows the frame the theme declares instead of an empty
+/// tile, and the asset protocol serves it. A theme without `thumbnails/` is the
+/// common case for hand-made themes, so the cost is paid on purpose — the frontend
+/// decodes those images lazily.
 fn local_thumbnails(theme_dir: &Path, image_format: &ImageFormat) -> Vec<String> {
     for subdir in ["thumbnails", "images"] {
         let dir = theme_dir.join(subdir);
