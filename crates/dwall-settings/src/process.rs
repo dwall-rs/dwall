@@ -3,7 +3,9 @@
 use std::path::Path;
 use std::time::Duration;
 
-use windows::Win32::Foundation::{HANDLE, MAX_PATH, WAIT_OBJECT_0, WAIT_TIMEOUT};
+use windows::Win32::Foundation::{
+    ERROR_INSUFFICIENT_BUFFER, HANDLE, MAX_PATH, WAIT_OBJECT_0, WAIT_TIMEOUT,
+};
 use windows::Win32::System::Diagnostics::ToolHelp::{
     CreateToolhelp32Snapshot, PROCESSENTRY32, Process32First, Process32Next, TH32CS_SNAPPROCESS,
 };
@@ -12,7 +14,7 @@ use windows::Win32::System::Threading::{
     OpenProcess, PROCESS_QUERY_LIMITED_INFORMATION, PROCESS_SYNCHRONIZE, PROCESS_TERMINATE,
     QueryFullProcessImageNameW, TerminateProcess, WaitForSingleObject,
 };
-use windows::core::{Free, PWSTR};
+use windows::core::{Free, HRESULT, PWSTR};
 
 use crate::error::{DwallSettingsError, DwallSettingsResult};
 
@@ -228,6 +230,15 @@ pub fn stop_daemon() -> DwallSettingsResult<Option<u32>> {
         );
     }
 
+    // The mutex is the daemon's identity as far as the next start is concerned: a
+    // process that is still shutting down leaves it held, and a caller that launches a
+    // replacement then watches it exit on the mutex while reporting success.
+    if dwall::daemon_is_running() {
+        return Err(DwallSettingsError::Daemon(
+            "the daemon still holds its session mutex after being stopped".to_string(),
+        ));
+    }
+
     Ok(Some(pid))
 }
 
@@ -272,43 +283,48 @@ fn image_name_matches(handle: &HandleWrapper, expected: &str) -> bool {
         .is_some_and(|name| name.to_string_lossy().eq_ignore_ascii_case(expected))
 }
 
-/// The full image path of the process behind `handle`.
-fn process_image_path(handle: &HandleWrapper) -> Option<String> {
-    let mut buffer = [0u16; MAX_PATH as usize];
-    let mut length = buffer.len() as u32;
+/// Longest path Windows can return through this API, in UTF-16 code units.
+///
+/// A plain path is capped at `MAX_PATH`, but an installation can be deeper — a portable
+/// copy in a nested folder, or any path once long paths are enabled.
+const MAX_IMAGE_PATH: usize = 32_768;
 
-    unsafe {
-        QueryFullProcessImageNameW(
-            handle.as_raw(),
-            Default::default(),
-            PWSTR(buffer.as_mut_ptr()),
-            &mut length,
-        )
+/// The buffer size to retry an image-path query with, or `None` when it cannot grow.
+fn grown_image_path_buffer(current: usize) -> Option<usize> {
+    if current >= MAX_IMAGE_PATH {
+        return None;
     }
-    .ok()?;
 
-    Some(String::from_utf16_lossy(&buffer[..length as usize]))
+    Some((current * 2).min(MAX_IMAGE_PATH))
 }
 
-/// Polls `check` until it is true or `timeout` elapses, returning whether it became
-/// true.
+/// The full image path of the process behind `handle`.
 ///
-/// A fixed sleep used to stand in for this: the daemon claims its mutex before doing
-/// any work, so waiting for that is a handshake, while `sleep(100ms)` was a guess
-/// that failed whenever the machine was slow.
-pub fn wait_until(timeout: Duration, poll_interval: Duration, check: impl Fn() -> bool) -> bool {
-    let deadline = std::time::Instant::now() + timeout;
+/// The first call uses a `MAX_PATH` buffer, which is what the API documents, and grows
+/// it when the path does not fit: a too-small buffer fails with
+/// `ERROR_INSUFFICIENT_BUFFER`, and the caller used to read that as "this is not the
+/// daemon" and leave the process running without an error.
+fn process_image_path(handle: &HandleWrapper) -> Option<String> {
+    let mut buffer = vec![0u16; MAX_PATH as usize];
 
     loop {
-        if check() {
-            return true;
-        }
+        let mut length = buffer.len() as u32;
 
-        match deadline.checked_duration_since(std::time::Instant::now()) {
-            Some(remaining) if !remaining.is_zero() => {
-                std::thread::sleep(poll_interval.min(remaining));
+        match unsafe {
+            QueryFullProcessImageNameW(
+                handle.as_raw(),
+                Default::default(),
+                PWSTR(buffer.as_mut_ptr()),
+                &mut length,
+            )
+        } {
+            Ok(()) => return Some(String::from_utf16_lossy(&buffer[..length as usize])),
+            // Too small: grow and ask again. Any other failure is what it is.
+            Err(e) if e.code() == HRESULT::from_win32(ERROR_INSUFFICIENT_BUFFER.0) => {
+                let next = grown_image_path_buffer(buffer.len())?;
+                buffer.resize(next, 0);
             }
-            _ => return false,
+            Err(_) => return None,
         }
     }
 }
@@ -372,53 +388,26 @@ mod tests {
         assert_eq!(session_id_of(std::process::id()), Some(session));
     }
 
+    /// A path longer than `MAX_PATH` has to grow the buffer: the old fixed-size
+    /// buffer made `QueryFullProcessImageNameW` fail, and the caller read that as
+    /// "this is not the daemon" and left the process running with no error.
+    #[test]
+    fn a_long_image_path_grows_the_buffer_up_to_the_api_limit() {
+        assert_eq!(
+            grown_image_path_buffer(MAX_PATH as usize),
+            Some(MAX_PATH as usize * 2)
+        );
+        assert_eq!(
+            grown_image_path_buffer(MAX_IMAGE_PATH - 1),
+            Some(MAX_IMAGE_PATH)
+        );
+        assert_eq!(grown_image_path_buffer(MAX_IMAGE_PATH), None);
+    }
+
     #[test]
     fn a_pid_that_does_not_exist_has_no_session() {
         // PID 0 is the idle process, which `ProcessIdToSessionId` refuses.
         assert_eq!(session_id_of(0), None);
-    }
-
-    #[test]
-    fn waiting_returns_immediately_when_the_check_passes() {
-        let started = std::time::Instant::now();
-
-        assert!(wait_until(
-            Duration::from_secs(5),
-            Duration::from_millis(10),
-            || true
-        ));
-        assert!(started.elapsed() < Duration::from_secs(1));
-    }
-
-    #[test]
-    fn waiting_polls_until_the_check_passes() {
-        use std::cell::Cell;
-
-        let attempts = Cell::new(0);
-        let started = std::time::Instant::now();
-
-        let ready = wait_until(Duration::from_secs(5), Duration::from_millis(10), || {
-            attempts.set(attempts.get() + 1);
-
-            attempts.get() >= 3
-        });
-
-        assert!(ready);
-        assert_eq!(attempts.get(), 3);
-        assert!(started.elapsed() < Duration::from_secs(5));
-    }
-
-    /// A daemon that never comes up has to be reported, not waited on forever.
-    #[test]
-    fn waiting_gives_up_after_the_timeout() {
-        let started = std::time::Instant::now();
-
-        assert!(!wait_until(
-            Duration::from_millis(150),
-            Duration::from_millis(20),
-            || { false }
-        ));
-        assert!(started.elapsed() >= Duration::from_millis(150));
     }
 
     /// Our own process outlives any timeout, which makes it the deterministic
