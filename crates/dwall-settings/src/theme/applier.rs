@@ -1,14 +1,11 @@
 //! Theme application: restarts the daemon with the new configuration.
 
-use std::time::Duration;
-
 use dwall::Config;
-use tokio::time::sleep;
 
-use crate::daemon::{DaemonLauncher, get_last_daemon_error, is_daemon_running, should_run};
+use crate::daemon::{should_run, start_and_wait};
 use crate::error::{DwallSettingsError, DwallSettingsResult};
 use crate::filesystem::validate_theme_roots;
-use crate::process::{START_POLL_INTERVAL, START_TIMEOUT, stop_daemon, wait_until};
+use crate::process::stop_daemon;
 
 /// Orchestrates the theme application use case
 pub struct ThemeApplier;
@@ -48,37 +45,10 @@ impl ThemeApplier {
             return Ok(());
         }
 
-        if let Err(e) = DaemonLauncher::launch() {
-            sleep(Duration::from_millis(100)).await;
-
-            if let Some(log_error) = get_last_daemon_error(&dwall::DWALL_LOG_DIR) {
-                return Err(DwallSettingsError::Daemon(log_error));
-            }
-
-            return Err(e);
-        }
-
-        // The daemon claims its mutex before doing any work, so this is the startup
-        // handshake rather than the fixed sleep it used to be — which failed on a
-        // slow start and reported it as "the daemon did not start".
-        let started = tauri::async_runtime::spawn_blocking(|| {
-            wait_until(START_TIMEOUT, START_POLL_INTERVAL, || {
-                is_daemon_running().unwrap_or(false)
-            })
-        })
-        .await
-        .map_err(|e| DwallSettingsError::Other(e.to_string()))?;
-
-        if !started {
-            if let Some(log_error) = get_last_daemon_error(&dwall::DWALL_LOG_DIR) {
-                return Err(DwallSettingsError::Daemon(log_error));
-            }
-
-            return Err(DwallSettingsError::Daemon(
-                "Daemon process failed to start".to_string(),
-            ));
-        }
-
-        Ok(())
+        // Launch and handshake in one blocking call: the daemon counts as started only
+        // once it owns its mutex, and waiting for that must not block the window.
+        tauri::async_runtime::spawn_blocking(start_and_wait)
+            .await
+            .map_err(|e| DwallSettingsError::Other(e.to_string()))?
     }
 }

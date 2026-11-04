@@ -7,7 +7,7 @@ use tauri::Manager;
 
 use crate::{
     DAEMON_EXE_PATH,
-    daemon::{DaemonLauncher, DaemonStartup, daemon_path, plan_daemon_startup},
+    daemon::{DaemonStartup, daemon_path, plan_daemon_startup, start_and_wait},
     network::HttpClient,
     process::stop_daemon,
     theme::downloader::ThemeDownloader,
@@ -108,8 +108,11 @@ pub fn setup_app(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>>
 
         match plan_daemon_startup(cfg!(debug_assertions), already_running) {
             DaemonStartup::Start => {
-                if let Err(e) = DaemonLauncher::launch() {
-                    error!(error = %e, "Failed to start the daemon");
+                // Blocking: the daemon counts as started once it owns its mutex.
+                match tauri::async_runtime::spawn_blocking(start_and_wait).await {
+                    Ok(Ok(())) => info!("Started the daemon"),
+                    Ok(Err(e)) => error!(error = %e, "Failed to start the daemon"),
+                    Err(e) => error!(error = %e, "Starting the daemon failed"),
                 }
             }
             DaemonStartup::Adopt => {
@@ -136,8 +139,10 @@ pub fn setup_app(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>>
                     Err(e) => error!(error = %e, "Daemon executable path not configured"),
                 }
 
-                if let Err(e) = DaemonLauncher::launch() {
-                    error!(error = %e, "Failed to start the debug daemon");
+                match tauri::async_runtime::spawn_blocking(start_and_wait).await {
+                    Ok(Ok(())) => {}
+                    Ok(Err(e)) => error!(error = %e, "Failed to start the debug daemon"),
+                    Err(e) => error!(error = %e, "Starting the debug daemon failed"),
                 }
             }
         }

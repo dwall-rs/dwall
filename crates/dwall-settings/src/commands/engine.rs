@@ -4,7 +4,7 @@ use std::path::Path;
 
 use dwall::config::{Config, ConfigReader, ConfigWriter, WallpaperMode};
 
-use crate::daemon::{DaemonLauncher, daemon_path, is_daemon_running};
+use crate::daemon::{daemon_path, is_daemon_running};
 use crate::error::DwallSettingsResult;
 use crate::process::stop_daemon;
 
@@ -37,7 +37,11 @@ pub async fn get_daemon_last_error() -> DwallSettingsResult<Option<String>> {
 #[tauri::command]
 pub async fn start_engine() -> DwallSettingsResult<()> {
     daemon_path()?;
-    tauri::async_runtime::spawn_blocking(DaemonLauncher::launch)
+    // Spawning the process used to be the whole command, so a daemon that exited at
+    // once — an invalid configuration, no location — reported success and left the
+    // window saying "not running" with no reason. Wait for the mutex it claims before
+    // doing any work, and report what its log says when it never comes.
+    tauri::async_runtime::spawn_blocking(crate::daemon::start_and_wait)
         .await
         .map_err(|e| crate::error::DwallSettingsError::Other(e.to_string()))?
 }

@@ -8,6 +8,7 @@ use windows::Win32::System::Threading::CREATE_NO_WINDOW;
 
 use crate::DAEMON_EXE_PATH;
 use crate::error::{DwallSettingsError, DwallSettingsResult};
+use crate::process::{START_POLL_INTERVAL, START_TIMEOUT};
 
 /// The configured daemon executable path.
 ///
@@ -77,8 +78,11 @@ pub(crate) fn plan_daemon_startup(debug_build: bool, already_running: bool) -> D
 pub struct DaemonLauncher;
 
 impl DaemonLauncher {
-    /// Launch the daemon executable
-    pub fn launch() -> DwallSettingsResult<()> {
+    /// Launch the daemon executable, returning the spawned process.
+    ///
+    /// The handle is what lets a caller tell "still starting" from "already exited";
+    /// dropping it does not stop the process.
+    pub fn launch() -> DwallSettingsResult<std::process::Child> {
         let daemon_path = match DAEMON_EXE_PATH.get() {
             Some(path) => path.as_os_str(),
             None => {
@@ -99,8 +103,63 @@ impl DaemonLauncher {
             cmd.creation_flags(CREATE_NO_WINDOW.0);
         }
 
-        cmd.spawn()?;
-        Ok(())
+        Ok(cmd.spawn()?)
+    }
+}
+
+/// Starts the daemon and waits until it owns its session mutex.
+///
+/// [`DaemonLauncher::launch`] only spawns a process: a daemon that exits immediately —
+/// an invalid configuration, no location, an instance that already owns the mutex —
+/// looks exactly like one that started. The mutex it claims before doing any work is
+/// the handshake, and the line it wrote is the only explanation when it never appears.
+pub fn start_and_wait() -> DwallSettingsResult<()> {
+    // Another instance already owns the session (a portable copy, a headless one, or
+    // the one this window started earlier): spawning a second process would only exit
+    // on the mutex.
+    if is_daemon_running().unwrap_or(false) {
+        return Ok(());
+    }
+
+    let mut child = DaemonLauncher::launch()?;
+
+    if wait_for_mutex(&mut child) {
+        return Ok(());
+    }
+
+    Err(start_failure())
+}
+
+/// Whether the launched daemon claims its mutex within [`START_TIMEOUT`].
+fn wait_for_mutex(child: &mut std::process::Child) -> bool {
+    let deadline = std::time::Instant::now() + START_TIMEOUT;
+
+    loop {
+        if is_daemon_running().unwrap_or(false) {
+            return true;
+        }
+
+        // A daemon that has already exited will never claim it; waiting out the budget
+        // would only delay the error the log is about to provide.
+        if matches!(child.try_wait(), Ok(Some(_))) {
+            return false;
+        }
+
+        match deadline.checked_duration_since(std::time::Instant::now()) {
+            Some(remaining) if !remaining.is_zero() => {
+                std::thread::sleep(START_POLL_INTERVAL.min(remaining));
+            }
+            _ => return false,
+        }
+    }
+}
+
+/// The error for a daemon that did not start, naming what its log says when it says
+/// anything.
+fn start_failure() -> DwallSettingsError {
+    match get_last_daemon_error(&dwall::DWALL_LOG_DIR) {
+        Some(error) => DwallSettingsError::Daemon(error),
+        None => DwallSettingsError::Daemon("Daemon process failed to start".to_string()),
     }
 }
 
@@ -376,5 +435,32 @@ mod tests {
             DaemonStartup::Start,
             "a debug build starts its daemon when none is running"
         );
+    }
+
+    // ── start handshake ─────────────────────────────────────────────────────
+
+    /// A process that exits before claiming the mutex must be reported at once, not
+    /// after the whole start budget: the caller has a log line to show and waiting
+    /// only delays it.
+    #[test]
+    fn a_child_that_exits_does_not_consume_the_start_budget() {
+        if dwall::daemon_is_running() {
+            // This session's daemon already owns the mutex the handshake waits for.
+            return;
+        }
+
+        let mut child = std::process::Command::new("cmd")
+            .args(["/c", "exit", "1"])
+            .spawn()
+            .expect("cmd starts");
+
+        let started = std::time::Instant::now();
+        assert!(!wait_for_mutex(&mut child));
+        assert!(
+            started.elapsed() < START_TIMEOUT,
+            "an exited child must not be waited on for the full budget"
+        );
+
+        let _ = child.wait();
     }
 }
