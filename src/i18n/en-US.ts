@@ -164,6 +164,13 @@ export const dict = {
       colorScheme: "Switch the system light/dark scheme",
       colorSchemeDesc:
         "Follows the sun instead of the clock: light after sunrise, dark after sunset (civil twilight, -6°), with a dead zone around the change.",
+      colorSchemePause: "Pause automatic switching",
+      colorSchemePauseDesc:
+        "Stops Dwall from changing the light/dark theme for an hour. Switching the theme yourself in Windows also pauses it: Dwall notices and steps aside for an hour.",
+      pauseRemaining: "Paused for another {{ minutes }} min.",
+      pauseDetected: "You changed the theme in Windows, so Dwall paused.",
+      pauseHour: "Pause for 1 hour",
+      resume: "Resume now",
       onBattery: "On battery",
       onBatteryDesc:
         "Settings applied while the device is running on battery power.",

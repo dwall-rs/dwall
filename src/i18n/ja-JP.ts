@@ -167,6 +167,13 @@ export const dict: RawDictionary = {
       colorScheme: "システムのライト/ダークを自動で切り替える",
       colorSchemeDesc:
         "時刻ではなく太陽の位置に従います。日の出後はライト、日の入り後はダーク（市民薄明 -6°）で、切り替え付近には遊びがあり頻繁には反転しません。",
+      colorSchemePause: "自動切り替えを一時停止",
+      colorSchemePauseDesc:
+        "1 時間、Dwall はシステムのライト/ダークテーマを変更しません。Windows 側でテーマを切り替えた場合も、Dwall はそれを検知して 1 時間譲ります。",
+      pauseRemaining: "あと {{ minutes }} 分で再開します。",
+      pauseDetected: "Windows でテーマを切り替えたため、一時停止しています。",
+      pauseHour: "1 時間停止",
+      resume: "今すぐ再開",
       onBattery: "バッテリー駆動時",
       onBatteryDesc: "バッテリー駆動中に適用する設定です。",
       darkOnBattery: "ダークモードを使用",

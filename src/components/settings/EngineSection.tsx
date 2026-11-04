@@ -12,7 +12,14 @@ import {
 import { SettingsGroup } from "./SettingsGroup";
 import { SettingsRow } from "./SettingsRow";
 import { t } from "@/i18n";
-import { createMemo, createResource, createSignal, Show } from "solid-js";
+import {
+  createMemo,
+  createResource,
+  createSignal,
+  onCleanup,
+  onMount,
+  Show,
+} from "solid-js";
 import { LoaderCircle, Save, Sun } from "lucide-solid";
 import {
   InputGroup,
@@ -30,10 +37,27 @@ import {
   pickImage,
 } from "@/ipc";
 import { resourceValue } from "@/lib/resource";
+import { colorSchemePauseStore } from "@/store/color-scheme-pause.store";
 import { toast } from "@/components/ui/toast";
 
 export function EngineSection() {
   const [flash, setFlash] = createSignal<string | null>(null);
+  // The countdown has to move without a backend round trip, and the pause can also
+  // start while the window is open (the daemon notices a manual theme change), so the
+  // state is polled rather than assumed.
+  const [tick, setTick] = createSignal(0);
+  onMount(() => {
+    void colorSchemePauseStore.refreshColorSchemePause();
+    const timer = setInterval(() => {
+      void colorSchemePauseStore.refreshColorSchemePause();
+      setTick((value) => value + 1);
+    }, 30_000);
+    onCleanup(() => clearInterval(timer));
+  });
+  const pauseRemaining = createMemo(() => {
+    tick();
+    return colorSchemePauseStore.remainingMinutes();
+  });
   const ok = async (k: string) => {
     setFlash(k);
     await save();
@@ -230,6 +254,52 @@ export function EngineSection() {
             />
           }
         />
+        <Show when={settingsStore.config?.auto_detect_color_scheme}>
+          <SettingsRow
+            label={t("settings.engine.colorSchemePause")}
+            desc={
+              <Show
+                when={colorSchemePauseStore.pause()}
+                fallback={t("settings.engine.colorSchemePauseDesc")}
+              >
+                {t("settings.engine.pauseRemaining", {
+                  minutes: pauseRemaining(),
+                })}{" "}
+                <Show
+                  when={colorSchemePauseStore.pause()?.cause === "external"}
+                >
+                  {t("settings.engine.pauseDetected")}
+                </Show>
+              </Show>
+            }
+            control={
+              <Show
+                when={colorSchemePauseStore.pause()}
+                fallback={
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() =>
+                      void colorSchemePauseStore.setColorSchemePauseFor(60)
+                    }
+                  >
+                    {t("settings.engine.pauseHour")}
+                  </Button>
+                }
+              >
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() =>
+                    void colorSchemePauseStore.setColorSchemePauseFor(0)
+                  }
+                >
+                  {t("settings.engine.resume")}
+                </Button>
+              </Show>
+            }
+          />
+        </Show>
         <div class="border-b border-border px-[18px] py-4">
           <div class="text-[14.5px] font-bold!">
             {t("settings.engine.onBattery")}

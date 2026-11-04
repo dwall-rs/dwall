@@ -164,6 +164,13 @@ export const dict: RawDictionary = {
       colorScheme: "시스템 밝기 모드 자동 전환",
       colorSchemeDesc:
         "시각이 아니라 태양 위치를 따릅니다. 일출 후에는 라이트, 일몰 후에는 다크(시민 박명 -6°)이며, 전환 지점에는 여유를 두어 자주 뒤집히지 않습니다.",
+      colorSchemePause: "자동 전환 일시 중지",
+      colorSchemePauseDesc:
+        "1시간 동안 Dwall이 시스템 밝게/어둡게 테마를 바꾸지 않습니다. Windows에서 직접 테마를 바꿔도 Dwall이 감지해 1시간 물러납니다.",
+      pauseRemaining: "{{ minutes }}분 후에 다시 시작합니다.",
+      pauseDetected: "Windows에서 테마를 바꾼 것을 감지했습니다.",
+      pauseHour: "1시간 동안 일시 중지",
+      resume: "지금 다시 시작",
       onBattery: "배터리 사용 시",
       onBatteryDesc: "배터리로 실행 중에 적용할 설정입니다.",
       darkOnBattery: "다크 모드 사용",
