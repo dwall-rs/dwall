@@ -291,6 +291,9 @@ fn read_solar_json(theme_dir: &Path) -> DwallResult<Vec<SolarAngle>> {
 ///
 /// Returns a shared handle so callers never clone the angle list on a hit.
 pub(crate) fn load_cached_theme_data(theme_directory: &Path) -> DwallResult<Rc<ThemeData>> {
+    #[cfg(test)]
+    loads::bump();
+
     let theme_directory = theme_directory.canonicalize()?;
     debug!(path = %theme_directory.display(), "Loading theme data from canonical and absolute path");
 
@@ -316,6 +319,27 @@ pub(crate) fn load_cached_theme_data(theme_directory: &Path) -> DwallResult<Rc<T
     Ok(data)
 }
 
+/// How many times theme data was loaded on this thread.
+///
+/// The schedule probe visits thousands of instants, and resolving a theme inside it
+/// canonicalizes a path and stats a manifest. The test that pins "resolved once per
+/// probe" counts these calls instead of timing the search.
+#[cfg(test)]
+pub(crate) mod loads {
+    use std::cell::Cell;
+
+    thread_local! {
+        static LOADS: Cell<u32> = const { Cell::new(0) };
+    }
+
+    pub(crate) fn bump() {
+        LOADS.with(|value| value.set(value.get() + 1));
+    }
+
+    pub(crate) fn read() -> u32 {
+        LOADS.with(Cell::get)
+    }
+}
 // ── Validation ──────────────────────────────────────────────────────────────
 
 /// Solar configuration filename
