@@ -51,7 +51,7 @@
 
 | | DWALL | WinDynamicDesktop | Auto Dark Mode |
 | --- | --- | --- | --- |
-| GitHub releases | 安装程序 + 带 `.sha256` 的守护进程压缩包 | 每种架构的安装包与便携版，附校验和 | 每种架构的安装程序与便携版，附 `.sha256` |
+| GitHub releases | 安装程序（更新器签名）+ 带 `.sha256` 的守护进程压缩包 | 每种架构的安装包与便携版，附校验和 | 每种架构的安装程序与便携版，附 `.sha256` |
 | 微软商店 | 无 | 有，免费 | 有，免费 |
 | winget | 清单已备好，未提交 | `t1m0thyj.WinDynamicDesktop` | `ArminOsaj.AutoDarkMode` |
 | Scoop / Chocolatey | 清单已备好，未提交 | Scoop Extras、Chocolatey | 非官方条目，项目已如此标注 |
