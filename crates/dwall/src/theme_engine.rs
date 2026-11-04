@@ -15,7 +15,7 @@ use crate::monitor::MonitorProvider;
 use crate::platform::DisplayMonitor;
 use crate::solar::{Position, PositionProvider, SolarPosition};
 use crate::theme::{
-    ThemeError, get_theme_directory_path, load_cached_theme_data, wallpaper_image_path,
+    ThemeData, ThemeError, get_theme_directory_path, load_cached_theme_data, wallpaper_image_path,
 };
 use crate::wallpaper::WallpaperProvider;
 
@@ -397,28 +397,39 @@ where
         Ok(image_path)
     }
 
+    /// The themes the schedule probe will read, resolved once per probe.
+    ///
+    /// Resolving a theme canonicalizes its directory and stats the manifest, and the
+    /// search evaluates the output a few thousand times — once per 30 seconds of the
+    /// horizon. Doing that inside the probe made one schedule several thousand trips to
+    /// the filesystem for an answer that cannot change between two probe instants.
+    fn resolve_probe_targets(&self) -> Option<Vec<Rc<ThemeData>>> {
+        let monitors = self.monitor_provider.get_monitors().ok()?;
+
+        monitor_targets(self.config.monitor_specific_wallpapers(), &monitors)
+            .map(|(_, theme_id)| {
+                let (theme_dir, _) = get_theme_directory_path(self.config, theme_id);
+                load_cached_theme_data(&theme_dir).ok()
+            })
+            .collect()
+    }
+
     /// The image index every configured monitor would show at `solar_position`.
     ///
     /// Read-only: nothing is applied, and the selection goes through the same
-    /// [`FrameIndex`](crate::wallpaper::FrameIndex) the cycle uses. `None` means the question cannot be
-    /// answered right now (a theme directory that moved, a monitor list that could not
-    /// be read) — the caller then falls back to its plain interval instead of guessing.
-    fn selected_images(&self, solar_position: &SolarPosition) -> Option<Vec<u8>> {
-        let monitors = self.monitor_provider.get_monitors().ok()?;
-        let mut images = Vec::new();
-
-        for (_, theme_id) in monitor_targets(self.config.monitor_specific_wallpapers(), &monitors) {
-            let (theme_dir, _) = get_theme_directory_path(self.config, theme_id);
-            let theme_data = load_cached_theme_data(&theme_dir).ok()?;
-
-            images.push(
+    /// [`FrameIndex`](crate::wallpaper::FrameIndex) the cycle uses. `None` means the
+    /// question cannot be answered right now (a theme directory that moved, a monitor
+    /// list that could not be read) — the caller then falls back to its plain interval
+    /// instead of guessing.
+    fn images_at(targets: &[Rc<ThemeData>], solar_position: &SolarPosition) -> Option<Vec<u8>> {
+        targets
+            .iter()
+            .map(|theme_data| {
                 theme_data
                     .frames
-                    .find_closest_image(solar_position.altitude(), solar_position.azimuth())?,
-            );
-        }
-
-        Some(images)
+                    .find_closest_image(solar_position.altitude(), solar_position.azimuth())
+            })
+            .collect()
     }
 
     /// How long until the daemon's output would change, within `horizon`.
@@ -434,9 +445,12 @@ where
     ) -> Option<Duration> {
         let position = self.last_position.get()?;
         let current_scheme = self.current_scheme_for_schedule();
+        // Resolved before the search: the probe visits thousands of instants, and the
+        // set of themes cannot change between them.
+        let targets = self.resolve_probe_targets()?;
 
         crate::schedule::next_change(now_local, horizon, |at| {
-            self.output_at(&position, at, current_scheme)
+            self.output_at(&position, at, current_scheme, &targets)
         })
     }
 
@@ -450,9 +464,10 @@ where
         position: &Position,
         at: &OffsetDateTime,
         current_scheme: Option<ColorScheme>,
+        targets: &[Rc<ThemeData>],
     ) -> Option<(Vec<u8>, Option<ColorScheme>)> {
         let solar_position = SolarPosition::new(position, &at.assume_utc());
-        let images = self.selected_images(&solar_position)?;
+        let images = Self::images_at(targets, &solar_position)?;
         let scheme = current_scheme.map(|current_scheme| {
             self.color_scheme_applier
                 .scheme_at(at, position, &solar_position, current_scheme)
@@ -1630,12 +1645,13 @@ azimuth = 0.0
         horizon: Duration,
     ) -> Option<u64> {
         let current_scheme = engine.current_scheme_for_schedule();
-        let initial = engine.output_at(position, now, current_scheme);
+        let targets = engine.resolve_probe_targets()?;
+        let initial = engine.output_at(position, now, current_scheme, &targets);
 
         for second in 1..=horizon.as_secs() {
             let at = now.add_seconds(second).unwrap();
 
-            if engine.output_at(position, &at, current_scheme) != initial {
+            if engine.output_at(position, &at, current_scheme, &targets) != initial {
                 return Some(second);
             }
         }
@@ -1675,6 +1691,36 @@ azimuth = 0.0
         fixture.cleanup();
     }
 
+    /// The probe visits an instant every 30 seconds of the horizon, and resolving a
+    /// theme means canonicalizing a directory and stat-ing the manifest: inside the
+    /// search that was a few thousand filesystem round trips for an answer that cannot
+    /// change between two instants. One resolution per monitor is the contract.
+    #[test]
+    fn the_schedule_resolves_each_theme_once_per_probe() {
+        let fixture = Fixture::new(
+            "schedule_resolves_once",
+            &["MON-A", "MON-B"],
+            individual(&[("MON-A", "Big Sur"), ("MON-B", "Big Sur")]),
+            &[("Big Sur", &[1, 2])],
+        );
+        let engine = fixture.engine();
+        let now = summer_noon();
+
+        engine
+            .process_theme_cycle_at(&fixture.position, &now)
+            .unwrap();
+
+        let before = crate::theme::loads::read();
+        let _ = engine.next_event_within(&now, Duration::from_secs(24 * 3600));
+        let loads = crate::theme::loads::read() - before;
+
+        assert_eq!(
+            loads, 2,
+            "one load per configured monitor, not one per probe instant"
+        );
+
+        fixture.cleanup();
+    }
     #[test]
     fn the_schedule_agrees_with_the_scan_from_midnight_too() {
         let fixture = Fixture::new(
