@@ -118,6 +118,18 @@ impl HttpClient {
         // worse than letting the extractor decide whether the bytes are a complete
         // archive. A genuinely corrupt partial is removed by the extraction path.
         if downloaded_bytes > 0 && response.status() == StatusCode::RANGE_NOT_SATISFIABLE {
+            // Unless the resource is no longer the size the partial was cut from: a
+            // longer file cannot be a prefix of it, and a shorter one is not completed
+            // by it. Starting over is the only answer that converges.
+            if let Some(total) = content_range(&response).and_then(|range| range.total)
+                && total != downloaded_bytes
+            {
+                let _ = tokio::fs::remove_file(target_path).await;
+                return Err(DwallSettingsError::Other(format!(
+                    "the partial file is {downloaded_bytes} bytes but the resource is {total}; starting over"
+                )));
+            }
+
             debug!(
                 url = url,
                 downloaded_bytes = downloaded_bytes,
@@ -129,6 +141,19 @@ impl HttpClient {
         response.error_for_status_ref()?;
 
         let resume = downloaded_bytes > 0 && response.status() == StatusCode::PARTIAL_CONTENT;
+
+        // A resume is only a resume if the server answers the range that was asked
+        // for. A mirror serving another version of the file can answer a 206 that
+        // starts elsewhere, which would splice two resources into one file.
+        if resume
+            && let Some(answered) = content_range(&response).and_then(|range| range.start)
+            && answered != downloaded_bytes
+        {
+            let _ = tokio::fs::remove_file(target_path).await;
+            return Err(DwallSettingsError::Other(format!(
+                "the server answered a range starting at {answered}, not at {downloaded_bytes}; starting over"
+            )));
+        }
 
         if downloaded_bytes > 0 && !resume {
             // The server (or a mirror) ignored the range request; appending the
@@ -232,6 +257,48 @@ impl HttpClient {
     }
 }
 
+/// The numbers in a `Content-Range` header.
+///
+/// A 206 answer carries `bytes <start>-<end>/<total>`, which says where the body
+/// begins; a 416 answer carries `bytes */<total>`, which says how long the resource
+/// is. Either may state `*` for the total.
+#[derive(Debug, PartialEq, Eq)]
+struct ContentRange {
+    start: Option<u64>,
+    total: Option<u64>,
+}
+
+/// Reads the `Content-Range` of a response, when it has a usable one.
+fn content_range(response: &reqwest::Response) -> Option<ContentRange> {
+    let value = response.headers().get(reqwest::header::CONTENT_RANGE)?;
+
+    parse_content_range(value.to_str().ok()?)
+}
+
+/// Parses `bytes <start>-<end>/<total>` or `bytes */<total>`.
+fn parse_content_range(value: &str) -> Option<ContentRange> {
+    let (unit, rest) = value.trim().split_once(' ')?;
+    if !unit.eq_ignore_ascii_case("bytes") {
+        return None;
+    }
+
+    let (range, total) = rest.split_once('/')?;
+    let total = if total == "*" {
+        None
+    } else {
+        Some(total.parse().ok()?)
+    };
+
+    let start = if range == "*" {
+        None
+    } else {
+        let (start, _end) = range.split_once('-')?;
+        Some(start.parse().ok()?)
+    };
+
+    Some(ContentRange { start, total })
+}
+
 impl Clone for HttpClient {
     /// Clones the shared handle, not the client: clones stay in sync when the
     /// configuration is applied.
@@ -250,7 +317,9 @@ mod tests {
 
     use super::*;
 
-    use crate::network::testing::{TestServer, response, response_without_length};
+    use crate::network::testing::{
+        TestServer, response, response_with_headers, response_without_length,
+    };
 
     /// A limit none of these tests reaches; the bound has tests of its own below.
     const NO_LIMIT: u64 = u64::MAX;
@@ -269,6 +338,108 @@ mod tests {
 
     fn read(path: &std::path::Path) -> String {
         fs::read_to_string(path).unwrap()
+    }
+
+    // ── Content-Range ───────────────────────────────────────────────────────
+
+    #[test]
+    fn a_partial_range_names_its_start_and_total() {
+        assert_eq!(
+            parse_content_range("bytes 100-199/200"),
+            Some(ContentRange {
+                start: Some(100),
+                total: Some(200)
+            })
+        );
+    }
+
+    #[test]
+    fn an_unsatisfied_range_names_only_the_total() {
+        assert_eq!(
+            parse_content_range("bytes */200"),
+            Some(ContentRange {
+                start: None,
+                total: Some(200)
+            })
+        );
+    }
+
+    #[test]
+    fn an_unknown_total_is_no_total() {
+        assert_eq!(
+            parse_content_range("bytes 0-99/*").map(|r| r.total),
+            Some(None)
+        );
+    }
+
+    #[test]
+    fn a_malformed_or_foreign_header_is_ignored() {
+        for value in [
+            "items 0-1/2",
+            "bytes",
+            "bytes 0-1",
+            "bytes x-1/2",
+            "bytes 0-1/x",
+            "",
+        ] {
+            assert_eq!(parse_content_range(value), None, "{value}");
+        }
+    }
+
+    /// A mirror answering a 206 for another range would splice two versions of the
+    /// file together; the offset is checked before a byte is written.
+    #[test]
+    fn a_206_starting_elsewhere_restarts_the_download() {
+        let server = TestServer::new(response_with_headers(
+            "206 Partial Content",
+            &[("Content-Range", "bytes 2-5/6")],
+            b"bbbb",
+        ));
+        let target = scratch("resume_offset").join("theme.zip");
+        write(&target, "aaaa");
+
+        let error = tokio::runtime::Runtime::new()
+            .unwrap()
+            .block_on(HttpClient::new(None).unwrap().download_file(
+                &server.url,
+                &target,
+                4,
+                NO_LIMIT,
+                None,
+                None,
+            ))
+            .unwrap_err();
+
+        assert!(error.to_string().contains("starting over"), "{error}");
+        assert!(!target.exists(), "the spliced partial must not survive");
+    }
+
+    /// 416 whose complete length disagrees with the partial: the file on disk is not a
+    /// prefix of what the server has, so continuing is impossible.
+    #[test]
+    fn a_416_for_a_different_total_restarts_the_download() {
+        let server = TestServer::new(response_with_headers(
+            "416 Range Not Satisfiable",
+            &[("Content-Range", "bytes */9")],
+            b"",
+        ));
+        let target = scratch("range_other_total").join("theme.zip");
+        write(&target, "aaaa");
+
+        let error = tokio::runtime::Runtime::new()
+            .unwrap()
+            .block_on(HttpClient::new(None).unwrap().download_file(
+                &server.url,
+                &target,
+                4,
+                NO_LIMIT,
+                None,
+                None,
+            ))
+            .unwrap_err();
+
+        assert!(error.to_string().contains("starting over"), "{error}");
+        assert!(!target.exists(), "the stale partial must be removed");
     }
 
     // ── Resuming ────────────────────────────────────────────────────────────
