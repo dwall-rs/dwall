@@ -4,7 +4,7 @@ import { randomStore } from "@/store/random.store";
 import { themeList } from "@/store/catalog.selectors";
 import { t } from "@/i18n";
 import { getRandomSelection } from "@/ipc";
-import { createMemo, createResource, Show } from "solid-js";
+import { createMemo, createResource, Index, Show } from "solid-js";
 import { ThemeThumbnail } from "~/scene/ThemeThumbnail";
 import { ThemeDownloadButton } from "~/scene/ThemeDownloadButton";
 import { collageLayout } from "./poolLayout";
@@ -27,32 +27,37 @@ export function PoolCollage() {
         "grid-template-rows": `repeat(${layout().rows}, minmax(0,1fr))`,
       }}
     >
-      {layout().widths.map((colSpan, i) => (
-        <div
-          class="relative overflow-hidden"
-          style={{ "grid-column": `span ${colSpan}` }}
-        >
-          <ThemeThumbnail
-            themeId={layout().themes[i].id}
-            class="saturate-[.92] transition-transform duration-500 hover:scale-105"
-          />
-          <Show when={layout().themes[i].id === todayId()}>
-            <div class="pointer-events-none absolute left-2 top-2 z-10 flex items-center gap-1.5 rounded-full border border-primary/40 bg-background/80 px-2 py-1 shadow-[0_2px_8px_rgba(0,0,0,.12)] backdrop-blur-md dark:shadow-[0_8px_24px_rgba(0,0,0,.5)]">
-              <span class="size-1.5 rounded-full bg-success animate-bdot" />
-              <span class="text-[10px] font-semibold text-foreground">
-                {t("stage.stats.today")}
-              </span>
-            </div>
-          </Show>
-          {/* A pool member that is not on disk never gets a turn, so the collage says so
-              and installs it from here. */}
-          <Show when={layout().themes[i].needsDownload}>
-            <div class="absolute bottom-2 right-2 z-10">
-              <ThemeDownloadButton themeId={layout().themes[i].id} />
-            </div>
-          </Show>
-        </div>
-      ))}
+      {/* Positional: a tile is its slot in the grid, and `Index` keeps the existing
+          one when the pool changes, so an unchanged thumbnail is not torn down and
+          loaded again. */}
+      <Index each={layout().widths}>
+        {(colSpan, i) => (
+          <div
+            class="relative overflow-hidden"
+            style={{ "grid-column": `span ${colSpan()}` }}
+          >
+            <ThemeThumbnail
+              themeId={layout().themes[i].id}
+              class="saturate-[.92] transition-transform duration-500 hover:scale-105"
+            />
+            <Show when={layout().themes[i].id === todayId()}>
+              <div class="pointer-events-none absolute left-2 top-2 z-10 flex items-center gap-1.5 rounded-full border border-primary/40 bg-background/80 px-2 py-1 shadow-[0_2px_8px_rgba(0,0,0,.12)] backdrop-blur-md dark:shadow-[0_8px_24px_rgba(0,0,0,.5)]">
+                <span class="size-1.5 rounded-full bg-success animate-bdot" />
+                <span class="text-[10px] font-semibold text-foreground">
+                  {t("stage.stats.today")}
+                </span>
+              </div>
+            </Show>
+            {/* A pool member that is not on disk never gets a turn, so the collage says so
+                and installs it from here. */}
+            <Show when={layout().themes[i].needsDownload}>
+              <div class="absolute bottom-2 right-2 z-10">
+                <ThemeDownloadButton themeId={layout().themes[i].id} />
+              </div>
+            </Show>
+          </div>
+        )}
+      </Index>
       <div class="pointer-events-none absolute inset-0 bg-linear-to-t from-background/85 via-background/15 to-transparent" />
 
       <div class="pointer-events-none absolute bottom-4 left-4.5 right-4.5 text-foreground">
