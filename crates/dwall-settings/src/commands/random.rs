@@ -1,21 +1,14 @@
 //! Random-mode status commands.
 
-use serde::Serialize;
+use dwall::random_state::RandomSelection;
 
 use crate::error::DwallSettingsResult;
 
-/// The theme drawn for a given local date in random mode.
-#[cfg_attr(feature = "typegen", derive(ts_rs::TS))]
-#[cfg_attr(feature = "typegen", ts(export))]
-#[derive(Debug, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct RandomSelection {
-    /// Local date (`YYYY-MM-DD`) the theme was drawn for.
-    pub date: String,
-    pub theme_id: String,
-}
-
 /// Today's random-mode selection, or `None` when the daemon isn't running.
+///
+/// Answers with the state file's own type: the daemon writes it, this window reads it
+/// and the frontend displays it, so a mirror struct here would only be a second copy
+/// of the same two fields — and an export that silently overwrote the shared one.
 #[tauri::command]
 pub fn get_random_selection() -> DwallSettingsResult<Option<RandomSelection>> {
     // The state file is written by the daemon; without one running it is stale.
@@ -23,18 +16,13 @@ pub fn get_random_selection() -> DwallSettingsResult<Option<RandomSelection>> {
         return Ok(None);
     }
 
-    let selection = match dwall::random_state::read() {
-        Ok(selection) => selection,
+    match dwall::random_state::read() {
+        Ok(selection) => Ok(selection),
         Err(e) => {
             // A corrupt state file means "no selection" to the UI; say why rather than
             // reporting the same None as random mode being off.
             warn!(error = %e, "Could not read the random-mode state");
-            None
+            Ok(None)
         }
-    };
-
-    Ok(selection.map(|selection| RandomSelection {
-        date: selection.date,
-        theme_id: selection.theme_id,
-    }))
+    }
 }

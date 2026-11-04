@@ -14,6 +14,11 @@ use crate::lazy::DWALL_CONFIG_DIR;
 const FILE_NAME: &str = "random_selection.json";
 
 /// The theme drawn for a given local date.
+///
+/// The daemon writes this to `random_selection.json`, and the settings window answers
+/// the frontend with it, so it is exported once instead of mirrored by a second type.
+#[cfg_attr(feature = "ts", derive(ts_rs::TS))]
+#[cfg_attr(feature = "ts", ts(export))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RandomSelection {
     /// Local date the theme was drawn for, formatted `YYYY-MM-DD`.
