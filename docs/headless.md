@@ -13,9 +13,9 @@ thumbnails live in the settings app, so a headless install deploys themes itself
 
 Download `Dwall_<version>_x64-daemon.zip` (or `Dwall_nightly_x64-daemon.zip` for
 nightly) from the [releases page](https://github.com/dwall-rs/dwall/releases) and
-unpack it anywhere. The archive contains `dwall.exe`, the licence, this document,
-the theme format and `SHA256SUM.txt`; verify a download against the `.sha256` asset
-published next to it.
+unpack it anywhere. The archive contains `dwall.exe`, the licence, a short
+`README.txt`, this document, the theme format and `SHA256SUM.txt`; verify a download
+against the `.sha256` asset published next to it.
 
 Alternatives: copy `dwall.exe` from an existing installation — the installer is
 per-user, so the default location is `%LOCALAPPDATA%\Dwall Settings\dwall.exe`; a
