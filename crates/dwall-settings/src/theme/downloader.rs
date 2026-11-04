@@ -302,11 +302,28 @@ const MAX_THEME_ARCHIVE_BYTES: u64 = archive::MAX_EXTRACTED_BYTES;
 /// pinned by a test rather than left to whoever edits the variant next. An oversized
 /// download is refused the same way: the server will answer with the same bytes
 /// again, so a retry only writes them again.
+///
+/// The same holds for a request the server rejected (`404` for a release asset that
+/// was replaced, `403` for a private repository): the retry used to spend two more
+/// attempts and a second of sleep on it.
 fn is_retryable(error: &DwallSettingsError) -> bool {
-    !matches!(
-        error,
-        DwallSettingsError::Cancelled | DwallSettingsError::DownloadTooLarge { .. }
-    )
+    match error {
+        DwallSettingsError::Cancelled | DwallSettingsError::DownloadTooLarge { .. } => false,
+        DwallSettingsError::Request(request) => request
+            .status()
+            .is_none_or(|status| !is_rejected_status(status)),
+        _ => true,
+    }
+}
+
+/// Whether a status is the server's final answer rather than a transient failure.
+///
+/// A timeout and a rate limit are the two client-error statuses that do clear up on
+/// their own; everything else in the 4xx range is the same answer next time.
+fn is_rejected_status(status: reqwest::StatusCode) -> bool {
+    status.is_client_error()
+        && status != reqwest::StatusCode::REQUEST_TIMEOUT
+        && status != reqwest::StatusCode::TOO_MANY_REQUESTS
 }
 
 /// Moves the finished download into place, extracts it, and clears the archive.
@@ -679,6 +696,28 @@ azimuth = 20.0
         assert!(is_retryable(&DwallSettingsError::Io(
             std::io::Error::other("disk full")
         )));
+    }
+    /// A status the server will repeat: a release asset that was replaced (404), a
+    /// private repository (403). Only the two client errors that clear up on their own
+    /// stay retryable.
+    #[test]
+    fn a_rejected_request_is_not_retryable() {
+        for rejected in [
+            reqwest::StatusCode::NOT_FOUND,
+            reqwest::StatusCode::FORBIDDEN,
+            reqwest::StatusCode::BAD_REQUEST,
+        ] {
+            assert!(is_rejected_status(rejected), "{rejected}");
+        }
+
+        for transient in [
+            reqwest::StatusCode::REQUEST_TIMEOUT,
+            reqwest::StatusCode::TOO_MANY_REQUESTS,
+            reqwest::StatusCode::INTERNAL_SERVER_ERROR,
+            reqwest::StatusCode::OK,
+        ] {
+            assert!(!is_rejected_status(transient), "{transient}");
+        }
     }
 
     /// The renderer decides "the user cancelled" by matching this text
