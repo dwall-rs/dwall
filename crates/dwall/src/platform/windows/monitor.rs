@@ -529,19 +529,39 @@ impl MonitorInfoCache {
 /// Provider for display monitor information with optimized caching
 pub struct DisplayMonitorProvider {
     cache: RefCell<MonitorInfoCache>,
+    /// Whether to resolve each monitor's friendly name.
+    ///
+    /// Only the settings window displays one; the daemon addresses a monitor by device
+    /// path, and asking SetupAPI for a name walks every device interface for a string
+    /// nothing reads.
+    friendly_names: bool,
 }
 
 impl Default for DisplayMonitorProvider {
     fn default() -> Self {
         Self {
             cache: RefCell::new(MonitorInfoCache::new()),
+            friendly_names: true,
         }
     }
 }
 
 impl DisplayMonitorProvider {
+    /// A provider that reports friendly names, for the settings window.
     pub fn new() -> Self {
         Default::default()
+    }
+
+    /// A provider for the daemon, which never reads a monitor's friendly name.
+    ///
+    /// The name costs a SetupAPI enumeration per display — a device-info set, one
+    /// interface query per device and a registry property read — and brings
+    /// `setupapi.dll` into a process that otherwise has no use for it.
+    pub fn without_friendly_names() -> Self {
+        Self {
+            cache: RefCell::new(MonitorInfoCache::new()),
+            friendly_names: false,
+        }
     }
 }
 
@@ -560,7 +580,7 @@ impl MonitorProvider for DisplayMonitorProvider {
 
     fn refresh_monitors(&self) -> DwallResult<HashMap<String, DisplayMonitor>> {
         debug!("Refreshing monitor information");
-        let monitors = fetch_system_monitors()?;
+        let monitors = fetch_system_monitors(self.friendly_names)?;
 
         self.cache.borrow_mut().update(monitors.clone());
 
@@ -592,7 +612,7 @@ impl MonitorProvider for DisplayMonitorProvider {
             return Ok(false);
         }
 
-        let current_monitors = fetch_system_monitors()?;
+        let current_monitors = fetch_system_monitors(self.friendly_names)?;
         let mut cache = self.cache.borrow_mut();
 
         let changed = monitor_set_changed(&cache.data, &current_monitors);
@@ -740,8 +760,14 @@ fn monitor_set_changed(
             .any(|device_path| !cached.contains_key(device_path))
 }
 
-/// Queries monitor information from the system
-fn fetch_system_monitors() -> DwallResult<HashMap<String, DisplayMonitor>> {
+/// Queries monitor information from the system.
+///
+/// `with_friendly_names` is false for the daemon: it addresses a monitor by device
+/// path, so the SetupAPI walk behind the name — and the `setupapi.dll` it loads — is
+/// work whose only output is a string nothing reads.
+fn fetch_system_monitors(
+    with_friendly_names: bool,
+) -> DwallResult<HashMap<String, DisplayMonitor>> {
     debug!("Fetching monitor information from system");
     let mut monitors = HashMap::new();
 
@@ -763,9 +789,13 @@ fn fetch_system_monitors() -> DwallResult<HashMap<String, DisplayMonitor>> {
         };
         let device_path = target_info.monitorDevicePath.to_string();
 
-        let friendly_name = friendly_name_for(&device_path, index, || {
-            query_device_friendly_name(&device_path, &GUID_DEVINTERFACE_MONITOR)
-        });
+        let friendly_name = if with_friendly_names {
+            friendly_name_for(&device_path, index, || {
+                query_device_friendly_name(&device_path, &GUID_DEVINTERFACE_MONITOR)
+            })
+        } else {
+            String::new()
+        };
 
         monitors.insert(
             device_path.clone(),
@@ -773,9 +803,11 @@ fn fetch_system_monitors() -> DwallResult<HashMap<String, DisplayMonitor>> {
         );
     }
 
-    // Drop the names of monitors that went away, so the table cannot grow with every
-    // display the machine has ever reported.
-    retain_attached_friendly_names(&monitors);
+    if with_friendly_names {
+        // Drop the names of monitors that went away, so the table cannot grow with
+        // every display the machine has ever reported.
+        retain_attached_friendly_names(&monitors);
+    }
 
     let monitor_count = monitors.len();
     debug!("Found {} active monitor(s)", monitor_count);

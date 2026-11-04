@@ -196,7 +196,9 @@ fn build_engine(config: &Config) -> DwallResult<PlatformEngine<'_>> {
     // One monitor provider, shared with the wallpaper setter: two independent caches
     // meant the setter could still hold a pre-hot-plug snapshot after the engine had
     // refreshed its own, and then fail to find the monitor it was asked for.
-    let monitor_provider = Rc::new(DisplayMonitorProvider::new());
+    // The daemon addresses a monitor by device path and never reads its friendly name;
+    // only the settings window does, so the SetupAPI walk behind it is skipped here.
+    let monitor_provider = Rc::new(DisplayMonitorProvider::without_friendly_names());
     let wallpaper_setter =
         WallpaperSetter::new(Rc::clone(&monitor_provider)).map_err(DwallError::WallpaperManager)?;
     let color_scheme_backend = ColorSchemeScheduler::new();
