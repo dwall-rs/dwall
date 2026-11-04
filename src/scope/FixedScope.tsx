@@ -1,4 +1,6 @@
 // Responsibility: Fixed-mode scope panel — unified card + divider + individual monitor list.
+import { For } from "solid-js";
+
 import { fixedStore } from "@/store/fixed.store";
 import { monitorList } from "@/store/catalog.selectors";
 import { t } from "@/i18n";
@@ -19,11 +21,9 @@ export function FixedScope() {
         {t("scope.individual")}
         <span class="h-px flex-1 bg-border" />
       </div>
-      {monitorList()
-        .filter((m) => m.id !== "all")
-        .map((m) => (
-          <MonitorCard id={m.id} />
-        ))}
+      <For each={monitorList().filter((monitor) => monitor.id !== "all")}>
+        {(monitor) => <MonitorCard id={monitor.id} />}
+      </For>
     </>
   );
 }
