@@ -194,7 +194,10 @@ impl WallpaperSetter {
         let current_lock_screen_image_uri = Self::get_current_lock_screen_image()?;
 
         if uri.Equals(&current_lock_screen_image_uri)? {
-            info!(path = %image_path.display(), "Lock screen image already set");
+            // Runs once per cycle, and it is the normal state: the theme's frame changes
+            // a few times a day while the cycle runs every 15 seconds by default. At
+            // info level this single line rotated the 5 MB log every few days.
+            debug!(path = %image_path.display(), "Lock screen image already set");
             return Ok(());
         }
 
