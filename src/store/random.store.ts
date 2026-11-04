@@ -51,14 +51,22 @@ const clearAll = () => setRandomStore("selected", []);
 const save = async () => {
   if (randomStore.selected.length === 0 || randomStore.saving) return;
   setRandomStore("saving", true);
+
+  // Snapshot before awaiting. The save button is disabled while the request is in
+  // flight, but the tiles in the library are not: a theme toggled during the round
+  // trip is not in the pool that was written, and recording the store's contents on
+  // return marked it saved anyway — the row lost its dirty state and the change was
+  // never written.
+  const payload = [...randomStore.selected];
+
   try {
     await applyWallpaperMode({
       mode: "random",
-      pool: [...randomStore.selected],
+      pool: payload,
     });
     setRandomStore((s) => ({
       ...s,
-      saved: [...s.selected],
+      saved: payload,
       applied: true,
       saving: false,
       savedAt: Date.now(),
