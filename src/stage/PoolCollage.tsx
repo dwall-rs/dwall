@@ -15,7 +15,7 @@ export function PoolCollage() {
   );
   const [selection] = createResource(getRandomSelection);
   const todayId = createMemo(() =>
-    selection.error ? undefined : selection()?.themeId,
+    selection.error ? undefined : selection()?.theme_id,
   );
 
   const layout = createMemo(() => collageLayout(pool()));

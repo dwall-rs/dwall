@@ -14,7 +14,7 @@ export function RandomSunPath() {
   // than threading the selection through the stage as state.
   const [selection] = createResource(getRandomSelection);
   const todayId = createMemo(() =>
-    selection.error ? undefined : (selection()?.themeId ?? undefined),
+    selection.error ? undefined : (selection()?.theme_id ?? undefined),
   );
   const theme = createMemo(() => {
     const id = todayId();
