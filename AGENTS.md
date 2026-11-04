@@ -331,8 +331,9 @@ automation ignores is not a rule.
 - The standalone daemon archive is produced by `.scripts/package-daemon.ps1`
   (`Dwall_<version>_x64-daemon.zip` plus a `.sha256`), attached to releases by
   `publish.yml` and to the nightly release by `nightly.yml`. It ships `dwall.exe`
-  together with `docs/headless.md` and `docs/custom-themes.md`, so keep those
-  documents accurate: they are the only documentation a headless install gets.
+  together with `LICENSE`, a generated `README.txt`, `docs/headless.md`,
+  `docs/custom-themes.md` and a `SHA256SUM.txt`, so keep those documents accurate:
+  they are the only documentation a headless install gets.
 - The winget and Scoop manifests are templates in `.packaging/`, filled from a
   release's checksum by `.scripts/render-package-manifests.ps1` (rendered in
   `publish.yml` too, so a stale template fails the release). They are submitted to
