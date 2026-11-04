@@ -74,6 +74,25 @@ Some of those keys are worth knowing the reasoning behind:
   missing it logs a warning and falls back to the solar wallpapers rather than showing
   nothing. Both are ignored when the machine reports no battery, as a desktop does.
 
+### Pausing the theme switch
+
+The window has a button for this, and it is the same mechanism a headless install can
+use by hand: while `%APPDATA%\dwall\color_scheme_pause.json` exists and its `until`
+has not passed, the daemon leaves the system light/dark theme alone and keeps applying
+wallpapers.
+
+```json
+{ "until": 1762016400, "cause": "manual" }
+```
+
+- `until` is Unix seconds. `cause` is `manual` when the user asked for the pause and
+  `external` when the daemon noticed the theme change itself; the window only uses it
+  to explain why it is paused.
+- Delete the file to resume immediately. A pause that has run out is cleared on the
+  next cycle; the theme then follows the sun again.
+- Pauses last an hour and cover the on-battery dark switch too: "do not change my
+  theme" means all of it. `auto_detect_color_scheme = false` still turns the feature
+  off entirely, and needs no file.
 `--config` also moves `random_selection.json` next to the chosen file, so
 independent configurations coexist. The settings window always uses the default
 path, so it does not see a daemon started with `--config` elsewhere.
