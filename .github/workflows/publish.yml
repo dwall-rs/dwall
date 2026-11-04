@@ -220,7 +220,7 @@ jobs:
             echo "- \`Dwall.Settings_${VERSION}_x64-setup.exe\` — settings window, with the daemon bundled in"
             echo "- \`Dwall_${VERSION}_x64-daemon.zip\` — the daemon alone: portable, headless, no WebView2 (see \`docs/headless.md\`)"
             echo ""
-            echo "Both are listed with their \`.sha256\`; the updater metadata is \`latest.json\`."
+            echo "The daemon archive is listed with its \`.sha256\`; the installer is covered by the updater signature, and the updater metadata is \`latest.json\`."
             echo "EOF"
           } >> $GITHUB_OUTPUT
 

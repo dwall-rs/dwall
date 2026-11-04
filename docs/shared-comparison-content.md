@@ -54,7 +54,7 @@ Neither competitor publishes CPU figures; this document does not invent any.
 
 | | DWALL | WinDynamicDesktop | Auto Dark Mode |
 | --- | --- | --- | --- |
-| GitHub releases | Installer + daemon archive with `.sha256` | Setup and portable per architecture, with checksums | Installer and portable per architecture, with `.sha256` |
+| GitHub releases | Installer (updater-signed) + daemon archive with `.sha256` | Setup and portable per architecture, with checksums | Installer and portable per architecture, with `.sha256` |
 | Microsoft Store | No | Yes, free | Yes, free |
 | winget | Manifest prepared, not submitted | `t1m0thyj.WinDynamicDesktop` | `ArminOsaj.AutoDarkMode` |
 | Scoop / Chocolatey | Manifest prepared, not submitted | Scoop Extras, Chocolatey | Unofficial entries, labelled as such by the project |
