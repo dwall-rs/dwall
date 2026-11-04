@@ -32,14 +32,15 @@ bun run build:daemon   # cargo build -p dwall --release --features build-script,
 | Override | `--config <PATH>` (also `--config=<PATH>`) |
 | Validate | `--check-config` |
 
-The first run writes a **commented default file** there, so there is always
+The first run writes a default file with a comment header there, so there is always
 something to edit; every key is optional and falls back to its default. It covers
 wallpaper mode (`fixed` per monitor, or `random` with an optional pool drawn daily),
 the theme directories, the update interval in seconds (default 15, range 1–3600),
-image format, system light/dark switching (on by default), lock-screen wallpaper and
-the position source (automatic via Windows Geolocator, or manual coordinates).
+image format, system light/dark switching (on by default), lock-screen wallpaper,
+the on-battery options and the position source (automatic via Windows Geolocator, or
+manual coordinates).
 
-Two of those keys are worth knowing the reasoning behind:
+Some of those keys are worth knowing the reasoning behind:
 
 - **`interval`** (default 15) is how long the daemon waits before it recomputes
   everything anyway. The wallpaper itself no longer follows it: after every cycle the
@@ -61,6 +62,13 @@ Two of those keys are worth knowing the reasoning behind:
   laptop that travels; the refresh itself is cheap (245 forced readings added 0.2 MB and
   ten handles, and each took about 0.2 s). Manual coordinates avoid location access
   altogether.
+- **`dark_on_battery`** (default `false`) and **`battery_wallpaper`** (a path, unset by
+  default) are the on-battery pair. With `dark_on_battery` the system switches to the
+  dark theme while the machine is unplugged and back to the solar choice on AC. With
+  `battery_wallpaper` the daemon stops computing the sun altogether and keeps that one
+  image on every monitor (and the lock screen) until power returns; if the file is
+  missing it logs a warning and falls back to the solar wallpapers rather than showing
+  nothing. Both are ignored when the machine reports no battery, as a desktop does.
 
 `--config` also moves `random_selection.json` next to the chosen file, so
 independent configurations coexist. The settings window always uses the default
