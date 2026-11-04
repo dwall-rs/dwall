@@ -5,6 +5,7 @@
 | [../README.md](../README.md) | What DWALL is, how to install and use it. |
 | [headless.md](./headless.md) | Running `dwall.exe` without the settings window: configuration, commands, auto-start, logs. |
 | [custom-themes.md](./custom-themes.md) | Theme layout, the manifest, and what Dwall implements. |
+| [mirror-templates.md](./mirror-templates.md) | Placeholders and fallbacks for GitHub mirror templates, and what a mirror does not rewrite. |
 | [shared-comparison-content.md](./shared-comparison-content.md) | Verified specifications and the feature matrix for DWALL, WinDynamicDesktop and Auto Dark Mode. |
 | [dwall-vs-auto-dark-mode.md](./dwall-vs-auto-dark-mode.md) | DWALL against Auto Dark Mode. |
 | [dwall-vs-windynamicdesktop.md](./dwall-vs-windynamicdesktop.md) | DWALL against WinDynamicDesktop. |
