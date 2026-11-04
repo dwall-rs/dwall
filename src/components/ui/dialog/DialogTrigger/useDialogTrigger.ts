@@ -16,7 +16,7 @@ export interface UseDialogTriggerResult {
 export function useDialogTrigger<T extends ValidComponent>(
   props: () => DialogTriggerProps<T>,
 ): UseDialogTriggerResult {
-  const { open, setOpen } = useDialogContext();
+  const { open, setOpen, setTrigger } = useDialogContext();
 
   const isDisabled = () => !!props().disabled;
 
@@ -24,6 +24,10 @@ export function useDialogTrigger<T extends ValidComponent>(
     const onClick = () => {
       if (isDisabled()) return;
       if (open()) return;
+      // 记下打开浮层的控件，关闭时焦点要回到它身上。鼠标点击与 Enter/空格
+      // 都会让它成为 activeElement；取不到时退回触发元素本身。
+      const active = document.activeElement;
+      setTrigger(active instanceof HTMLElement ? active : (el as HTMLElement));
       setOpen(true);
     };
 
