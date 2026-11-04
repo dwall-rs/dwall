@@ -64,6 +64,12 @@ export function WallpaperImage(props: Props) {
             <img
               src={assetUrl(path())}
               alt=""
+              // The wallpaper strip shows a theme's frames in a horizontal scroller,
+              // and a custom theme without a `thumbnails/` directory resolves them to
+              // full-size images: decoding every one of them up front is dozens of
+              // 4K bitmaps for tiles the user has not scrolled to yet.
+              loading="lazy"
+              decoding="async"
               onLoad={() => setLoaded(true)}
               onError={() => setErrored(true)}
               class={clsx(
