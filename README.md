@@ -84,8 +84,10 @@ winget and Scoop manifests are prepared but not submitted to those repositories 
 ## Logs
 
 Level is `info`; set `DWALL_LOG` (a plain level such as `debug`, or `dwall=debug`) to
-change it. Release builds are compiled without the `debug`/`trace` statements, so only
-`info`, `warn` and `error` can appear there. The daemon writes to
+change it. Builds made with the `log-max-level-info` feature — what
+`bun run build:daemon` and the published installer produce — are compiled without the
+`debug`/`trace` statements, so only `info`, `warn` and `error` can appear there; a plain
+`cargo build --release` and the nightly daemon keep them. The daemon writes to
 `%LOCALAPPDATA%\com.thep0y.dwall\log\dwall.log` and rotates the previous file into
 `backup\` on each start; the settings window opens the folder for you.
 

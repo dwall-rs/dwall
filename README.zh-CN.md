@@ -69,7 +69,7 @@ winget 与 Scoop 清单已备好，但尚未提交到这些仓库。
 
 ## 运行日志
 
-等级为 `info`；设置 `DWALL_LOG`（可直接写等级，如 `debug`，或写 `dwall=debug`）可更改。release 构建会把 `debug`/`trace` 语句编译掉，因此其中只可能出现 `info`、`warn` 和 `error`。守护进程写入 `%LOCALAPPDATA%\com.thep0y.dwall\log\dwall.log`，每次启动时把上一份文件轮转到 `backup\`；设置窗口可为你打开该目录。
+等级为 `info`；设置 `DWALL_LOG`（可直接写等级，如 `debug`，或写 `dwall=debug`）可更改。带 `log-max-level-info` feature 的构建（`bun run build:daemon` 与发布的安装包即是如此）会把 `debug`/`trace` 语句编译掉，因此其中只可能出现 `info`、`warn` 和 `error`；普通 `cargo build --release` 与 nightly 守护进程保留这些语句。守护进程写入 `%LOCALAPPDATA%\com.thep0y.dwall\log\dwall.log`，每次启动时把上一份文件轮转到 `backup\`；设置窗口可为你打开该目录。
 
 ## 常见问题
 
