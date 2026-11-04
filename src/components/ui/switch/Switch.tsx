@@ -49,7 +49,10 @@ export const Switch = (props: SwitchProps) => {
       data-checked={checked()}
       data-disabled={local.disabled}
       role="switch"
-      tabIndex={0}
+      // A disabled switch cannot be operated, so it must not be a tab stop either:
+      // focus landed on it, Enter and Space did nothing, and the ring painted around
+      // a control that looks greyed out.
+      tabIndex={local.disabled ? -1 : 0}
       aria-checked={checked()}
       aria-disabled={local.disabled}
       class={clsx(classes.switch, local.class)}
