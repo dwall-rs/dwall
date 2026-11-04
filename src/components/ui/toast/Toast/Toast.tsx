@@ -16,6 +16,7 @@ import {
   TriangleAlert,
   X,
 } from "lucide-solid";
+import { createHoldableTimer } from "~/lib/holdable-timer";
 import { clsx } from "~/utils";
 import { toastIconVariants, toastVariants } from "./Toast.styles";
 import {
@@ -98,7 +99,31 @@ export function Toast(props: ToastProps) {
     }
   });
 
-  // Auto-close timer
+  // Auto-close timer.
+  //
+  // It stops while the pointer is over the toast or focus is inside it. The lifetime
+  // exists to keep the toast out of the way, not to race someone reading it or tabbing
+  // to its close button — and a toast that vanishes under the cursor is the one thing
+  // a short lifetime must not do.
+  const autoClose = createHoldableTimer(() => {
+    const current = toast();
+    current.onAutoClose?.(current);
+    close();
+  });
+
+  // A pointer over the toast and focus inside it are independent reasons to wait:
+  // leaving with the mouse must not resume the countdown while a button still has
+  // focus.
+  let heldByPointer = false;
+  let heldByFocus = false;
+  const updateHold = () => {
+    if (heldByPointer || heldByFocus) {
+      autoClose.hold();
+    } else {
+      autoClose.release();
+    }
+  };
+
   createEffect(() => {
     const current = toast();
     if (
@@ -107,16 +132,13 @@ export function Toast(props: ToastProps) {
       current.duration === Infinity ||
       current.duration === 0
     ) {
+      autoClose.stop();
       return;
     }
 
-    const delay = current.duration ?? local.duration ?? TOAST_LIFETIME;
-    const timer = setTimeout(() => {
-      current.onAutoClose?.(current);
-      close();
-    }, delay);
+    autoClose.start(current.duration ?? local.duration ?? TOAST_LIFETIME);
 
-    onCleanup(() => clearTimeout(timer));
+    onCleanup(autoClose.stop);
   });
 
   const icon = () => {
@@ -169,6 +191,26 @@ export function Toast(props: ToastProps) {
   return (
     <li
       data-slot="toast"
+      onPointerEnter={() => {
+        heldByPointer = true;
+        updateHold();
+      }}
+      onPointerLeave={() => {
+        heldByPointer = false;
+        updateHold();
+      }}
+      onFocusIn={() => {
+        heldByFocus = true;
+        updateHold();
+      }}
+      onFocusOut={(event) => {
+        const next = event.relatedTarget;
+        const element = event.currentTarget;
+        if (next instanceof Node && element.contains(next)) return;
+
+        heldByFocus = false;
+        updateHold();
+      }}
       data-type={toastType()}
       data-state={animationState()}
       data-rich-colors={richColors()}
