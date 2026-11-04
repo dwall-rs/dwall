@@ -18,6 +18,7 @@ export const dict: RawDictionary = {
       stop: "엔진 종료",
       confirmStop: "종료할까요? 선택한 테마가 해제됩니다.",
       lastError: "최근 오류:",
+      openLocationSettings: "위치 설정 열기",
       altitude: "고도",
       azimuth: "방위",
     },

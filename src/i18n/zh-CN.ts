@@ -18,6 +18,7 @@ export const dict: RawDictionary = {
       stop: "终止引擎",
       confirmStop: "确认终止？当前主题配置将被清空。",
       lastError: "最近错误：",
+      openLocationSettings: "打开定位设置",
       altitude: "高度",
       azimuth: "方位",
     },

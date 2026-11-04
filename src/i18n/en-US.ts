@@ -16,6 +16,7 @@ export const dict = {
       stop: "Stop engine",
       confirmStop: "Confirm stop? The selected theme will be cleared.",
       lastError: "Last error:",
+      openLocationSettings: "Open location settings",
       altitude: "alt",
       azimuth: "az",
     },

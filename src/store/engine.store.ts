@@ -46,6 +46,22 @@ const [engineStore, setEngineStore] = createStore<EngineState>({
 let refreshFailed = false;
 /** Latest refresh issued; an older, slower one must not write its result over a newer one. */
 let refreshSeq = 0;
+/**
+ * Whether the stopped daemon's log has already been read since it stopped.
+ *
+ * While running, the error line is re-read on every poll: a failed cycle is retried,
+ * so the line can appear and then clear. While stopped it cannot change — the daemon
+ * writes nothing — so it is read once, including on the first poll after a window
+ * opens onto a daemon that has already exited.
+ */
+let stoppedErrorRead = false;
+
+/** Reads the daemon's newest error line, unless a newer refresh has overtaken this one. */
+const readLastError = async (seq: number) => {
+  const lastError = await getDaemonLastError();
+  if (seq !== refreshSeq) return;
+  setEngineStore("lastError", lastError);
+};
 
 /** In sync with the real daemon state */
 const refresh = async () => {
@@ -57,14 +73,15 @@ const refresh = async () => {
     refreshFailed = false;
     setEngineStore("running", running);
 
-    // Only a running daemon has a log worth reading, and the check runs every few
-    // seconds.
+    // A stopped daemon used to drop its last error, which is exactly when the reason
+    // matters: the daemon stops for good when the user's own setting leaves it without
+    // a location, and the log line it wrote is the only explanation there is.
     if (running) {
-      const lastError = await getDaemonLastError();
-      if (seq !== refreshSeq) return;
-      setEngineStore("lastError", lastError);
-    } else {
-      setEngineStore("lastError", null);
+      stoppedErrorRead = false;
+      await readLastError(seq);
+    } else if (!stoppedErrorRead) {
+      stoppedErrorRead = true;
+      await readLastError(seq);
     }
   } catch (e) {
     if (seq !== refreshSeq) return;
@@ -84,6 +101,9 @@ const toggle = async () => {
         await stopEngine();
         // The command cleared the theme in config.toml; drop the stale draft too.
         await reloadSettings();
+        // A deliberate stop is not a failure: there is no reason to show, and the log
+        // still holds whatever the last cycle wrote before it.
+        stoppedErrorRead = true;
         setEngineStore({
           running: false,
           lastError: null,
@@ -92,6 +112,8 @@ const toggle = async () => {
         });
       } catch (e) {
         notifyFailure("stop engine", e);
+        // The daemon may still be running: let the next poll read why.
+        stoppedErrorRead = false;
         setEngineStore((prev) => ({
           ...prev,
           pending: false,
@@ -112,6 +134,10 @@ const toggle = async () => {
       setEngineStore((prev) => ({ ...prev, pending: true, pendingTimer: t }));
     }
   } else {
+    // The launch command only spawns the process, so a daemon that exits immediately
+    // reports nothing; its own log is the only place the reason appears. Read it on
+    // the next poll.
+    stoppedErrorRead = false;
     try {
       await startEngine();
       setEngineStore("running", true);
