@@ -66,4 +66,6 @@ reads them.
 - `.dwz` import (theme-format §7) — needs the build-time shared `SALT`.
 - `[appearance]` light/dark image selection (§5.4).
 - Thumbnail generation when `thumbnails/` is missing: the library falls back to the
-  full-size images, which the asset protocol serves.
+  full-size images, which the asset protocol serves. That fallback is deliberate —
+  showing the frame the theme declares beats showing an empty tile — and the images
+  are loaded and decoded lazily, so only the visible ones cost anything.
