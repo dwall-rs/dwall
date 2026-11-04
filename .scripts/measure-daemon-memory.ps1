@@ -78,9 +78,13 @@ $daemonLog = Join-Path $env:LOCALAPPDATA 'com.thep0y.dwall\log\dwall.log'
 
 if ($Binaries.Count -eq 0) {
     $Binaries = @(Join-Path $repositoryRoot 'target/release/dwall.exe')
-    $installed = Join-Path ${env:ProgramFiles} 'Dwall Settings\dwall.exe'
-    if (Test-Path -LiteralPath $installed -PathType Leaf) {
-        $Binaries += $installed
+    # The installer is per-user by default, so the installed copy lives under
+    # LOCALAPPDATA; a per-machine install puts it under Program Files.
+    foreach ($root in @($env:LOCALAPPDATA, $env:ProgramFiles)) {
+        $installed = Join-Path $root 'Dwall Settings\dwall.exe'
+        if (Test-Path -LiteralPath $installed -PathType Leaf) {
+            $Binaries += $installed
+        }
     }
 }
 
