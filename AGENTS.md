@@ -261,7 +261,7 @@ gh pr create --base main --fill
   clear (`rust`, `typescript`, `javascript`); a type with no label of its own gets none
   rather than an approximate one.
 - **The branch is deleted for you.** `delete-merged-branch.yml` removes the ref of a
-  merged pull request, keeping the long-lived branches (`main`, `dev`, `old`) and any
+  merged pull request, keeping the long-lived branches (`main`, `old`) and any
   branch another open pull request still uses. It hears about the merge because
   `auto-merge` merges with `AUTOMERGE_TOKEN`: a merge made with `GITHUB_TOKEN` starts no
   workflow at all.
