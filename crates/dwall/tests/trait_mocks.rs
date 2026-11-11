@@ -45,7 +45,7 @@ mockall::mock! {
 
     impl dwall::wallpaper::WallpaperProvider for WallpaperSetter {
         fn set_monitor_wallpaper(&self, monitor_id: &str, image_path: &Path) -> dwall::error::DwallResult<()>;
-        fn set_lock_screen_image(&self, image_path: &Path) -> dwall::error::DwallResult<()>;
+        fn set_lock_screen_image(&self, image_path: &Path, force: bool) -> dwall::error::DwallResult<()>;
     }
 }
 

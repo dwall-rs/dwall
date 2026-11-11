@@ -11,8 +11,13 @@ pub trait WallpaperProvider {
     /// Sets the wallpaper for a specific monitor
     fn set_monitor_wallpaper(&self, monitor_id: &str, image_path: &Path) -> DwallResult<()>;
 
-    /// Sets the lock screen image
-    fn set_lock_screen_image(&self, image_path: &Path) -> DwallResult<()>;
+    /// Sets the lock screen image.
+    ///
+    /// `force` skips the "already set" comparison. The configured image can be right
+    /// while the lock screen shows something else — Windows does not reliably repaint
+    /// it after a resume — and the comparison is what would leave it that way until the
+    /// theme's frame changes hours later.
+    fn set_lock_screen_image(&self, image_path: &Path, force: bool) -> DwallResult<()>;
 }
 
 /// Selects the theme image whose solar angle is closest to the current one.

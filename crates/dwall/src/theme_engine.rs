@@ -48,6 +48,14 @@ where
     last_position: Cell<Option<Position>>,
     /// AC/battery state, injected so the cycle is testable.
     power_status: fn() -> bool,
+    /// Set when the machine has just resumed, so the next cycle re-applies the lock
+    /// screen even though the comparison says it is already right.
+    ///
+    /// Windows does not reliably repaint the lock screen after a resume; the setting
+    /// still names the image while the screen draws black. Only writing it again
+    /// clears that, and the comparison would otherwise skip it until the theme's frame
+    /// changes — hours later.
+    reapply_lock_screen: Cell<bool>,
 }
 
 impl<'a, M, W, C, P> ThemeEngine<'a, M, W, C, P>
@@ -81,6 +89,7 @@ where
             color_scheme_applier: ColorSchemeApplier::new(color_scheme_provider, state_dir),
             last_position: Cell::new(None),
             power_status,
+            reapply_lock_screen: Cell::new(false),
         }
     }
 
@@ -150,7 +159,9 @@ where
         }
 
         if self.config.lock_screen_wallpaper_enabled()
-            && let Err(e) = self.wallpaper_setter.set_lock_screen_image(path)
+            && let Err(e) = self
+                .wallpaper_setter
+                .set_lock_screen_image(path, self.reapply_lock_screen.replace(false))
         {
             warn!(
                 error = %e,
@@ -319,6 +330,13 @@ where
         Ok(())
     }
 
+    /// Re-applies the lock screen on the next cycle, comparison or not.
+    ///
+    /// Called once after the machine resumes; the flag is consumed by that cycle.
+    pub(crate) fn reapply_lock_screen_on_next_cycle(&self) {
+        self.reapply_lock_screen.set(true);
+    }
+
     /// Applies the lock screen wallpaper if enabled
     fn process_lock_screen(
         &self,
@@ -339,7 +357,10 @@ where
             lock_screen_theme_id,
         )?;
 
-        self.wallpaper_setter.set_lock_screen_image(&image_path)?;
+        // Consumed here so one resume produces one forced set, not one per cycle.
+        let force = self.reapply_lock_screen.replace(false);
+        self.wallpaper_setter
+            .set_lock_screen_image(&image_path, force)?;
 
         Ok(())
     }
@@ -710,6 +731,7 @@ mod tests {
     struct WallpaperCalls {
         applied: RefCell<Vec<(String, String)>>,
         lock_screen: RefCell<Vec<String>>,
+        lock_screen_forced: RefCell<Vec<bool>>,
         failing_monitors: HashSet<String>,
         lock_screen_fails: bool,
     }
@@ -766,6 +788,11 @@ mod tests {
         fn lock_screen_images(&self) -> Vec<String> {
             self.calls.lock_screen.borrow().clone()
         }
+
+        /// Whether each lock-screen set asked to skip the comparison.
+        fn lock_screen_forces(&self) -> Vec<bool> {
+            self.calls.lock_screen_forced.borrow().clone()
+        }
     }
 
     impl WallpaperProvider for RecordingWallpapers {
@@ -789,7 +816,7 @@ mod tests {
             Ok(())
         }
 
-        fn set_lock_screen_image(&self, image_path: &Path) -> DwallResult<()> {
+        fn set_lock_screen_image(&self, image_path: &Path, force: bool) -> DwallResult<()> {
             if self.calls.lock_screen_fails {
                 return Err(ThemeError::WallpaperImageMissing {
                     path: image_path.display().to_string(),
@@ -804,6 +831,7 @@ mod tests {
                     .to_string_lossy()
                     .into_owned(),
             );
+            self.calls.lock_screen_forced.borrow_mut().push(force);
 
             Ok(())
         }
@@ -1340,6 +1368,47 @@ azimuth = 0.0
         fixture.cleanup();
     }
 
+    /// The bug this exists for: after a resume the lock screen can be black while the
+    /// setting still names the right image, so the setter's comparison would skip it
+    /// until the theme's frame changed hours later.
+    #[test]
+    fn a_resumed_machine_reapplies_the_lock_screen_once() {
+        let fixture = Fixture::new(
+            "resume_lock_screen",
+            &["MON-A"],
+            individual(&[("MON-A", "Big Sur")]),
+            &[("Big Sur", &[1, 2])],
+        )
+        .with_lock_screen();
+        let engine = fixture.engine();
+        let now = summer_noon();
+
+        engine
+            .process_theme_cycle_at(&fixture.position, &now)
+            .unwrap();
+        assert_eq!(fixture.wallpapers.lock_screen_forces(), vec![false]);
+
+        engine.reapply_lock_screen_on_next_cycle();
+        engine
+            .process_theme_cycle_at(&fixture.position, &now)
+            .unwrap();
+        assert_eq!(
+            fixture.wallpapers.lock_screen_forces(),
+            vec![false, true],
+            "the resume forces one set"
+        );
+
+        engine
+            .process_theme_cycle_at(&fixture.position, &now)
+            .unwrap();
+        assert_eq!(
+            fixture.wallpapers.lock_screen_forces(),
+            vec![false, true, false],
+            "and only one: the flag is consumed by that cycle"
+        );
+
+        fixture.cleanup();
+    }
     #[test]
     fn lock_screen_theme_is_deterministic_for_a_multi_monitor_map() {
         // Two monitors with different themes and the lock screen enabled: the lock

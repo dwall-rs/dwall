@@ -178,7 +178,7 @@ impl WallpaperSetter {
     }
 
     /// Sets lock screen wallpaper
-    fn set_lock_screen_image_internal(image_path: &Path) -> DwallResult<()> {
+    fn set_lock_screen_image_internal(image_path: &Path, force: bool) -> DwallResult<()> {
         let image_path_hstring = HSTRING::from(image_path);
         let uri = Uri::CreateUri(&image_path_hstring).map_err(|e| {
             error!(
@@ -191,14 +191,21 @@ impl WallpaperSetter {
 
         debug!(path = ?uri.DisplayUri(), "Target lock screen image");
 
-        let current_lock_screen_image_uri = Self::get_current_lock_screen_image()?;
+        // A forced set skips the comparison — and the read behind it: the setting can
+        // name this very file while the lock screen is drawing black, and only writing
+        // it again clears that. A resume is also the moment the read is most likely to
+        // fail, which must not stop the set it was asking for.
+        if !force {
+            let current_lock_screen_image_uri = Self::get_current_lock_screen_image()?;
 
-        if uri.Equals(&current_lock_screen_image_uri)? {
-            // Runs once per cycle, and it is the normal state: the theme's frame changes
-            // a few times a day while the cycle runs every 15 seconds by default. At
-            // info level this single line rotated the 5 MB log every few days.
-            debug!(path = %image_path.display(), "Lock screen image already set");
-            return Ok(());
+            if uri.Equals(&current_lock_screen_image_uri)? {
+                // Runs once per cycle, and it is the normal state: the theme's frame
+                // changes a few times a day while the cycle runs every 15 seconds by
+                // default. At info level this single line rotated the 5 MB log every few
+                // days.
+                debug!(path = %image_path.display(), "Lock screen image already set");
+                return Ok(());
+            }
         }
 
         let file = StorageFile::GetFileFromPathAsync(&image_path_hstring).map_err(|e| {
@@ -378,7 +385,7 @@ impl WallpaperProvider for WallpaperSetter {
         self.set_monitor_wallpaper_internal(monitor_id, image_path)
     }
 
-    fn set_lock_screen_image(&self, image_path: &Path) -> DwallResult<()> {
-        Self::set_lock_screen_image_internal(image_path)
+    fn set_lock_screen_image(&self, image_path: &Path, force: bool) -> DwallResult<()> {
+        Self::set_lock_screen_image_internal(image_path, force)
     }
 }
