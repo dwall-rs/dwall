@@ -4,6 +4,7 @@
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
 use std::thread::sleep;
+use std::time::SystemTime;
 use std::time::{Duration, Instant};
 
 use time::{Date, OffsetDateTime};
@@ -56,21 +57,52 @@ const RANDOM_SELECTION_RETRY: Duration = Duration::from_secs(60);
 /// at the window.
 const CONFIG_POLL_INTERVAL: Duration = Duration::from_secs(5);
 
-/// Waits up to `duration`, returning early when the configuration file changed.
+/// Why the wait between two cycles ended.
+#[derive(Debug, PartialEq, Eq)]
+enum WakeReason {
+    /// The whole wait elapsed.
+    Timeout,
+    /// The configuration file changed.
+    ConfigChanged,
+    /// The machine was suspended during the wait.
+    Resumed,
+}
+
+/// How much longer than asked a slice may take before it means a suspend.
+///
+/// The wait is sliced into five-second sleeps, so half a minute is not scheduling
+/// jitter: Windows suspends the timer across sleep and hibernate while the wall clock
+/// keeps going, and a suspended timer is exactly how a resume shows up here.
+const RESUME_SLACK: Duration = Duration::from_secs(30);
+
+/// Waits up to `duration`, returning early when the configuration file changed or the
+/// machine woke up.
 ///
 /// The wait is sliced so the file is re-checked every [`CONFIG_POLL_INTERVAL`]
 /// instead of once per cycle; a metadata call per second is free next to the
 /// wallpaper updates the cycle performs.
-fn wait_for_config_change(config_watcher: &ConfigWatcher, duration: Duration) -> bool {
+fn wait_for_config_change(config_watcher: &ConfigWatcher, duration: Duration) -> WakeReason {
     let deadline = Instant::now() + duration;
 
     while let Some(remaining) = deadline.checked_duration_since(Instant::now()) {
-        sleep(CONFIG_POLL_INTERVAL.min(remaining));
+        let slice = CONFIG_POLL_INTERVAL.min(remaining);
+        let started = SystemTime::now();
+
+        sleep(slice);
+
+        let elapsed = started.elapsed().unwrap_or_default();
+        if slice_was_a_resume(slice, elapsed) {
+            info!(
+                slept_seconds = elapsed.as_secs(),
+                "The machine was asleep during the wait; re-applying the lock screen"
+            );
+            return WakeReason::Resumed;
+        }
 
         match config_watcher.has_changed() {
             Ok(true) => {
                 info!("Configuration file change detected while waiting, reloading configuration");
-                return true;
+                return WakeReason::ConfigChanged;
             }
             Ok(false) => {}
             Err(e) => {
@@ -84,7 +116,12 @@ fn wait_for_config_change(config_watcher: &ConfigWatcher, duration: Duration) ->
         }
     }
 
-    false
+    WakeReason::Timeout
+}
+
+/// Whether a wait slice took long enough to mean the machine was suspended.
+fn slice_was_a_resume(requested: Duration, observed: Duration) -> bool {
+    observed > requested + RESUME_SLACK
 }
 
 /// Time until the next local midnight, clamped to at least one second.
@@ -738,12 +775,19 @@ impl DaemonApplication {
             // and rebuild from the outer loop. Continuing to the top instead re-detected
             // the same change (the stamp had not been recorded yet) and wrote a second
             // "change detected" line for a single save.
-            if wait_for_config_change(&self.config_watcher, next_interval) {
-                if let Err(e) = self.config_watcher.update_stamp() {
-                    warn!(error = %e, "Failed to record the configuration file stamp");
-                }
+            match wait_for_config_change(&self.config_watcher, next_interval) {
+                WakeReason::ConfigChanged => {
+                    if let Err(e) = self.config_watcher.update_stamp() {
+                        warn!(error = %e, "Failed to record the configuration file stamp");
+                    }
 
-                return Ok(());
+                    return Ok(());
+                }
+                // Windows does not reliably repaint the lock screen after a resume, and
+                // the comparison in the setter would skip it until the theme's frame
+                // changes. One forced set on the next cycle clears it.
+                WakeReason::Resumed => theme_engine.reapply_lock_screen_on_next_cycle(),
+                WakeReason::Timeout => {}
             }
         }
     }
@@ -1246,10 +1290,10 @@ mod tests {
         let dir = path.parent().unwrap().to_path_buf();
         let started = Instant::now();
 
-        assert!(!wait_for_config_change(
-            &watcher,
-            Duration::from_millis(250)
-        ));
+        assert_eq!(
+            wait_for_config_change(&watcher, Duration::from_millis(250)),
+            WakeReason::Timeout
+        );
         assert!(started.elapsed() >= Duration::from_millis(250));
 
         let _ = std::fs::remove_dir_all(&dir);
@@ -1276,13 +1320,34 @@ mod tests {
 
         writer.join().unwrap();
 
-        assert!(changed, "the wait has to notice the change");
+        assert_eq!(
+            changed,
+            WakeReason::ConfigChanged,
+            "the wait has to notice the change"
+        );
         assert!(
             elapsed < Duration::from_secs(10),
             "the wait must not run out the interval: {elapsed:?}"
         );
 
         let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    // ── Resume detection ────────────────────────────────────────────────────
+
+    /// A five-second slice is the shape the wait uses; the slack exists so a busy
+    /// machine is not mistaken for a suspended one, and the gap has to be a real
+    /// sleep to count.
+    #[test]
+    fn a_slice_that_took_far_too_long_is_a_resume() {
+        let slice = Duration::from_secs(5);
+
+        assert!(!slice_was_a_resume(slice, Duration::from_secs(5)));
+        assert!(!slice_was_a_resume(slice, Duration::from_secs(20)));
+        assert!(!slice_was_a_resume(slice, slice + Duration::from_secs(30)));
+        assert!(slice_was_a_resume(slice, slice + Duration::from_secs(31)));
+        // An overnight sleep is the case this exists for.
+        assert!(slice_was_a_resume(slice, Duration::from_secs(8 * 3600)));
     }
 
     /// A configuration file that disappears is a change too, and the same wait
@@ -1303,7 +1368,7 @@ mod tests {
 
         remover.join().unwrap();
 
-        assert!(changed);
+        assert_eq!(changed, WakeReason::ConfigChanged);
         assert!(elapsed < Duration::from_secs(10), "{elapsed:?}");
 
         let _ = std::fs::remove_dir_all(&dir);
