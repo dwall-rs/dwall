@@ -226,8 +226,14 @@ export function EngineSection() {
                       max={1440}
                       value={automatic().cache_minutes}
                       onChange={(v) =>
+                        // The field is a number input, so "1.5" arrives as a float and
+                        // the daemon reads the key as an integer: rounding here is what
+                        // keeps a fractional value out of the configuration file.
                         patchAutomatic({
-                          cache_minutes: Math.min(1440, Math.max(1, v ?? 1)),
+                          cache_minutes: Math.min(
+                            1440,
+                            Math.max(1, Math.round(Number(v))),
+                          ),
                         })
                       }
                     />
