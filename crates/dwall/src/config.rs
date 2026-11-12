@@ -39,10 +39,13 @@ const MAX_INTERVAL_SECONDS: u16 = 3600;
 /// `geolocation::MAX_GEOPOSITION_AGE`). Measured over a day, a 30-minute-old reading
 /// after 50 km of travel — 100 km/h — picks a neighbouring frame 0.5–2.9% of the time,
 /// which is the dominant case; an aircraft covering 450 km in the same window reaches
-/// 4–30%, and there the frames are visibly wrong until the next refresh. Refresh cost
-/// is not the constraint: 245 forced readings in five minutes added 0.2 MB and ten
-/// handles, and each took ~0.2 s.
-const DEFAULT_POSITION_CACHE_MINUTES: u64 = 30;
+/// 4–30%, and there the frames are visibly wrong until the next refresh.
+///
+/// Two hours is the compromise: a stationary machine reads the sensor 12 times a day
+/// instead of 48, and a laptop that changed city is still corrected a few times a day.
+/// A machine that never moves — a desktop — sets the value negative, which reads the
+/// position once per process and then never again.
+const DEFAULT_POSITION_CACHE_MINUTES: i64 = 120;
 
 const DEFAULT_AUTO_DETECT_COLOR_SCHEME: bool = true;
 const DEFAULT_LOCK_SCREEN_WALLPAPER_ENABLED: bool = true;
@@ -78,14 +81,17 @@ impl ImageFormat {
 
 #[cfg_attr(feature = "ts", derive(ts_rs::TS))]
 #[cfg_attr(feature = "ts", ts(export))]
-#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
+#[derive(Debug, Serialize, PartialEq, Clone)]
 #[serde(rename_all = "UPPERCASE", tag = "type")]
 pub enum PositionSource {
     Automatic {
-        #[serde(default = "default_update_on_each_calculation")]
-        update_on_each_calculation: bool,
+        /// Minutes an obtained position is reused.
+        ///
+        /// `0` reads the position on every calculation, a positive value caches it for
+        /// that many minutes, and a negative value keeps the first reading for the life
+        /// of the process.
         #[serde(default = "default_position_cache_minutes")]
-        cache_minutes: u64,
+        cache_minutes: i64,
     },
 
     Manual {
@@ -109,14 +115,58 @@ fn default_altitude() -> f64 {
 impl Default for PositionSource {
     fn default() -> Self {
         Self::Automatic {
-            update_on_each_calculation: false,
             cache_minutes: default_position_cache_minutes(),
         }
     }
 }
 
-fn default_update_on_each_calculation() -> bool {
-    false
+/// The on-disk shape of a position source.
+///
+/// It exists for one reason: `update_on_each_calculation` used to be a second switch for
+/// the same policy, and a configuration that still carries it has to keep meaning what it
+/// said — `true` becomes a zero-minute cache, which is a reading per calculation. Nothing
+/// writes the field back.
+#[derive(Deserialize)]
+#[serde(rename_all = "UPPERCASE", tag = "type")]
+enum RawPositionSource {
+    Automatic {
+        #[serde(default)]
+        update_on_each_calculation: bool,
+        #[serde(default = "default_position_cache_minutes")]
+        cache_minutes: i64,
+    },
+    Manual {
+        latitude: f64,
+        longitude: f64,
+        #[serde(default = "default_altitude")]
+        altitude: f64,
+    },
+}
+
+impl<'de> Deserialize<'de> for PositionSource {
+    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        Ok(match RawPositionSource::deserialize(deserializer)? {
+            RawPositionSource::Automatic {
+                update_on_each_calculation,
+                cache_minutes,
+            } => PositionSource::Automatic {
+                cache_minutes: if update_on_each_calculation {
+                    0
+                } else {
+                    cache_minutes
+                },
+            },
+            RawPositionSource::Manual {
+                latitude,
+                longitude,
+                altitude,
+            } => PositionSource::Manual {
+                latitude,
+                longitude,
+                altitude,
+            },
+        })
+    }
 }
 
 impl PositionSource {
@@ -140,10 +190,13 @@ impl PositionSource {
 /// bounded the value, so a hand-edited `config.toml` with a huge number overflowed
 /// that addition and aborted the daemon — in a release build with `panic = "abort"`
 /// and a GUI subsystem, leaving no trace at all.
-const MAX_POSITION_CACHE_MINUTES: u64 = 24 * 60;
+const MAX_POSITION_CACHE_MINUTES: i64 = 24 * 60;
 
 /// Whether a `cache_minutes` value is usable.
-fn position_cache_minutes_are_valid(minutes: u64) -> bool {
+///
+/// Only the upper bound is checked: zero and negative values are the two "no window"
+/// answers, and any negative number means the same thing as `-1`.
+fn position_cache_minutes_are_valid(minutes: i64) -> bool {
     minutes <= MAX_POSITION_CACHE_MINUTES
 }
 
@@ -320,7 +373,7 @@ fn default_position_source() -> PositionSource {
     Default::default()
 }
 
-fn default_position_cache_minutes() -> u64 {
+fn default_position_cache_minutes() -> i64 {
     DEFAULT_POSITION_CACHE_MINUTES
 }
 
@@ -1092,10 +1145,7 @@ mod tests {
     /// Test PositionSource serialization
     #[test]
     fn position_source_automatic_variant() {
-        let source = PositionSource::Automatic {
-            update_on_each_calculation: true,
-            cache_minutes: 60,
-        };
+        let source = PositionSource::Automatic { cache_minutes: 60 };
         let json = serde_json::to_string(&source).unwrap();
         assert!(json.contains("\"type\":\"AUTOMATIC\""));
 
@@ -1325,9 +1375,9 @@ mod tests {
 
     // ── cache_minutes validation ──────────────────────────────────────────────
 
-    fn config_with_cache_minutes(cache_minutes: u64) -> Config {
+    fn config_with_cache_minutes(cache_minutes: i64) -> Config {
         let json = format!(
-            r#"{{"position_source":{{"type":"AUTOMATIC","update_on_each_calculation":false,"cache_minutes":{cache_minutes}}}}}"#
+            r#"{{"position_source":{{"type":"AUTOMATIC","cache_minutes":{cache_minutes}}}}}"#
         );
 
         serde_json::from_str(&json).unwrap()
@@ -1336,9 +1386,41 @@ mod tests {
     /// The regression test for a value that used to abort the daemon: an
     /// out-of-range `cache_minutes` overflowed the TTL arithmetic, and a panic in
     /// this process is invisible.
+    /// The flag this setting replaced: a configuration that still says `true` has to
+    /// keep meaning "a reading per calculation", and the field must not come back when
+    /// the file is written.
+    #[test]
+    fn a_legacy_update_on_each_calculation_becomes_a_zero_minute_cache() {
+        let json = r#"{"position_source": {"type": "AUTOMATIC", "update_on_each_calculation": true, "cache_minutes": 120}}"#;
+        let config: Config = serde_json::from_str(json).unwrap();
+
+        assert_eq!(
+            config.position_source,
+            PositionSource::Automatic { cache_minutes: 0 }
+        );
+
+        let written = serde_json::to_string(&config).unwrap();
+        assert!(
+            !written.contains("update_on_each_calculation"),
+            "the legacy field is read, never written: {written}"
+        );
+    }
+
+    /// The other half of the migration: a configuration that says `false` keeps the
+    /// minutes it names.
+    #[test]
+    fn a_legacy_flag_of_false_keeps_the_configured_cache() {
+        let json = r#"{"position_source": {"type": "AUTOMATIC", "update_on_each_calculation": false, "cache_minutes": 15}}"#;
+        let config: Config = serde_json::from_str(json).unwrap();
+
+        assert_eq!(
+            config.position_source,
+            PositionSource::Automatic { cache_minutes: 15 }
+        );
+    }
     #[test]
     fn validate_rejects_an_out_of_range_cache_minutes() {
-        for cache_minutes in [MAX_POSITION_CACHE_MINUTES + 1, u64::MAX] {
+        for cache_minutes in [MAX_POSITION_CACHE_MINUTES + 1, i64::MAX] {
             let error = config_with_cache_minutes(cache_minutes)
                 .validate()
                 .expect_err("a cache that never expires is not a cache");
@@ -1352,7 +1434,7 @@ mod tests {
 
     #[test]
     fn validate_accepts_the_documented_cache_minutes() {
-        for cache_minutes in [0, 1, 30, MAX_POSITION_CACHE_MINUTES] {
+        for cache_minutes in [-1, 0, 1, 30, MAX_POSITION_CACHE_MINUTES] {
             assert!(
                 config_with_cache_minutes(cache_minutes).validate().is_ok(),
                 "cache_minutes = {cache_minutes} should be usable"
@@ -1531,7 +1613,6 @@ mod tests {
         assert_eq!(
             config.position_source,
             PositionSource::Automatic {
-                update_on_each_calculation: false,
                 cache_minutes: DEFAULT_POSITION_CACHE_MINUTES,
             }
         );

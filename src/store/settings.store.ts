@@ -108,6 +108,12 @@ const patch = (p: Partial<Config>) => {
   setSettingsStore("config", (prev) => (prev ? { ...prev, ...p } : prev));
 };
 
+/// The refresh window a machine gets when it switches to automatic coordinates.
+///
+/// Two hours: a stationary machine wakes the location sensor 12 times a day instead of
+/// 48, and a laptop that changed city is still corrected a few times a day.
+const AUTOMATIC_CACHE_MINUTES = 120;
+
 const setPositionType = (t: PositionSource["type"]) => {
   if (!settingsStore.config) return;
 
@@ -119,8 +125,7 @@ const setPositionType = (t: PositionSource["type"]) => {
             t === "AUTOMATIC"
               ? {
                   type: "AUTOMATIC",
-                  update_on_each_calculation: false,
-                  cache_minutes: 30,
+                  cache_minutes: AUTOMATIC_CACHE_MINUTES,
                 }
               : { type: "MANUAL", latitude: 0, longitude: 0, altitude: 875 },
         }
@@ -142,6 +147,49 @@ const patchPosition = (p: Partial<PositionSourceManual>) => {
 
   setSettingsStore("config", {
     position_source: { ...current, ...p },
+  });
+};
+
+/** Updates the automatic variant's fields; same variant guard as `patchPosition`. */
+const patchAutomatic = (
+  p: Partial<Omit<Extract<PositionSource, { type: "AUTOMATIC" }>, "type">>,
+) => {
+  const current = settingsStore.config?.position_source;
+  if (current?.type !== "AUTOMATIC") return;
+
+  setSettingsStore("config", {
+    position_source: { ...current, ...p },
+  });
+};
+
+/** The three shapes the single `cache_minutes` number can take. */
+export type PositionCacheMode =
+  | "every-calculation"
+  | "interval"
+  | "startup-only";
+
+/// Which of the three modes the configuration currently describes.
+const positionCacheMode = (): PositionCacheMode => {
+  const source = settingsStore.config?.position_source;
+  if (source?.type !== "AUTOMATIC") return "interval";
+
+  if (source.cache_minutes < 0) return "startup-only";
+  if (source.cache_minutes === 0) return "every-calculation";
+
+  return "interval";
+};
+
+/// Switches mode, keeping the minutes the user last chose for the timed one.
+const setPositionCacheMode = (mode: PositionCacheMode) => {
+  const source = settingsStore.config?.position_source;
+  const minutes =
+    source?.type === "AUTOMATIC" && source.cache_minutes > 0
+      ? source.cache_minutes
+      : AUTOMATIC_CACHE_MINUTES;
+
+  patchAutomatic({
+    cache_minutes:
+      mode === "every-calculation" ? 0 : mode === "startup-only" ? -1 : minutes,
   });
 };
 
@@ -335,6 +383,9 @@ export {
   patch,
   setPositionType,
   patchPosition,
+  patchAutomatic,
+  positionCacheMode,
+  setPositionCacheMode,
   setAutoDetectColorScheme,
   networkType,
   setNetworkType,

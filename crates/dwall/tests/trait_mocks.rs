@@ -88,17 +88,14 @@ fn counting_source(calls: &Arc<AtomicU32>) -> MockPositionProvider {
     mock
 }
 
-fn automatic(update_on_each_calculation: bool, cache_minutes: u64) -> PositionSource {
-    PositionSource::Automatic {
-        update_on_each_calculation,
-        cache_minutes,
-    }
+fn automatic(cache_minutes: i64) -> PositionSource {
+    PositionSource::Automatic { cache_minutes }
 }
 
 #[test]
 fn automatic_mode_takes_its_coordinates_from_the_backend() {
     let calls = Arc::new(AtomicU32::new(0));
-    let source = automatic(false, 60);
+    let source = automatic(60);
     let provider = GeographicPositionProvider::new(&source, counting_source(&calls));
 
     let position = provider.get_current_position().unwrap();
@@ -115,7 +112,7 @@ fn automatic_mode_takes_its_coordinates_from_the_backend() {
 #[test]
 fn a_second_call_within_the_cache_minutes_reuses_the_position() {
     let calls = Arc::new(AtomicU32::new(0));
-    let source = automatic(false, 60);
+    let source = automatic(60);
     let provider = GeographicPositionProvider::new(&source, counting_source(&calls));
 
     let first = provider.get_current_position().unwrap();
@@ -131,11 +128,11 @@ fn a_second_call_within_the_cache_minutes_reuses_the_position() {
     );
 }
 
-/// `update_on_each_calculation` is the documented opt-out of that cache.
+/// A zero-minute cache is the documented opt-out: every calculation asks again.
 #[test]
-fn update_on_each_calculation_asks_the_backend_every_time() {
+fn a_zero_minute_cache_asks_the_backend_every_time() {
     let calls = Arc::new(AtomicU32::new(0));
-    let source = automatic(true, 60);
+    let source = automatic(0);
     let provider = GeographicPositionProvider::new(&source, counting_source(&calls));
 
     provider.get_current_position().unwrap();
@@ -184,7 +181,7 @@ fn a_denied_permission_surfaces_through_the_provider() {
         ))
     });
 
-    let source = automatic(false, 60);
+    let source = automatic(60);
     let provider = GeographicPositionProvider::new(&source, backend);
 
     // Called through the trait, not the inherent method, so the forwarding itself
@@ -201,7 +198,7 @@ fn a_failing_backend_is_reported_in_automatic_mode() {
         ))
     });
 
-    let source = automatic(true, 60);
+    let source = automatic(0);
     let provider = GeographicPositionProvider::new(&source, backend);
 
     assert!(provider.get_current_position().is_err());

@@ -33,7 +33,6 @@ const config = (overrides: Partial<Config> = {}): Config => ({
   image_format: "jpeg",
   position_source: {
     type: "AUTOMATIC",
-    update_on_each_calculation: false,
     cache_minutes: 30,
   },
   auto_detect_color_scheme: true,
@@ -193,8 +192,7 @@ describe("settings store: the draft", () => {
     store.setPositionType("AUTOMATIC");
     expect(store.settingsStore.config?.position_source).toEqual({
       type: "AUTOMATIC",
-      update_on_each_calculation: false,
-      cache_minutes: 30,
+      cache_minutes: 120,
     });
   });
 

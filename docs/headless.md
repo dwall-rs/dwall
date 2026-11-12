@@ -56,16 +56,21 @@ Some of those keys are worth knowing the reasoning behind:
   case: a clock jump, a machine resumed from sleep, a theme edited on disk or a
   position that moved are all picked up within one interval, so it should stay
   comfortably below a day.
-- **`position_source.cache_minutes`** (default 30, only for automatic coordinates) is
+- **`position_source.cache_minutes`** (default 120, only for automatic coordinates) is
   how long a location reading is reused. The daemon cannot tell whether the machine
   moved, so this trades accuracy for how often Windows reads the location sensor — a
   refresh forces a real reading, because the platform's own cache only covers a minute.
+  Two hours is the compromise: a stationary machine wakes the sensor 12 times a day
+  instead of 48, and a laptop that changed city is still corrected a few times a day.
   A 30-minute-old reading after 50 km of travel (100 km/h) picks a neighbouring frame
   0.5–2.9% of the day; the same reading after 450 km (900 km/h) reaches 4–30%, so on a
-  flight the wallpaper is visibly wrong until the next refresh. Set it to 10 or 15 on a
-  laptop that travels; the refresh itself is cheap (245 forced readings added 0.2 MB and
-  ten handles, and each took about 0.2 s). Manual coordinates avoid location access
-  altogether.
+  flight the wallpaper is visibly wrong until the next refresh — set it to 10 or 15 on a
+  laptop that travels. The two ends of the range are: **`0` reads the position on every
+  calculation** (no cache at all), and **a negative value reads it once at start and
+  never again**, which is what a desktop that does not move wants — there is nothing to
+  refresh and the sensor is never woken. The refresh itself is cheap (245 forced readings
+  added 0.2 MB and ten handles, and each took about 0.2 s). Manual coordinates avoid
+  location access altogether.
 - **`dark_on_battery`** (default `false`) and **`battery_wallpaper`** (a path, unset by
   default) are the on-battery pair. With `dark_on_battery` the system switches to the
   dark theme while the machine is unplugged and back to the solar choice on AC. With

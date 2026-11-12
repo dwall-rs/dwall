@@ -7,8 +7,7 @@ expression: config
   "image_format": "jpeg",
   "position_source": {
     "type": "AUTOMATIC",
-    "update_on_each_calculation": false,
-    "cache_minutes": 30
+    "cache_minutes": 120
   },
   "auto_detect_color_scheme": true,
   "dark_on_battery": false,

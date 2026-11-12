@@ -153,6 +153,13 @@ export const dict: RawDictionary = {
       autoCoords: "좌표 자동 가져오기",
       autoCoordsDesc:
         "위도/경도는 태양 고도 계산에 사용됩니다. 끄면 직접 입력할 수 있습니다.",
+      positionCache: "위치 갱신",
+      positionCacheDesc:
+        "자동 위치는 태양 위치 계산에 사용됩니다. 매번 계산은 가장 정확하고, 타이머는 위치 센서 읽기를 줄이며, 시작 시 한 번은 움직이지 않는 PC에 적합합니다.",
+      cacheEveryCalculation: "매번 계산",
+      cacheInterval: "타이머",
+      cacheStartupOnly: "시작 시 한 번",
+      minutesUnit: "분",
       manualCoords: "수동 좌표",
       manualCoordsDesc: "위도 -90~90, 경도 -180~180, 고도(m).",
       latitude: "위도",

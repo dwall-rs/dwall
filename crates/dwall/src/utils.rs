@@ -133,7 +133,14 @@ pub(crate) trait Cacheable: Clone + 'static {
 
 struct Entry {
     value: CacheValue,
-    expires_at: Instant,
+    /// When the value was stored.
+    ///
+    /// The slot is keyed by type alone, so an entry written under one policy outlives a
+    /// configuration reload; callers that ask for a maximum age get their own answer
+    /// instead of whatever policy happened to fill the slot.
+    stored_at: Instant,
+    /// `None` means the entry lives as long as the process does.
+    expires_at: Option<Instant>,
 }
 
 impl Entry {
@@ -145,10 +152,30 @@ impl Entry {
             .checked_add(ttl)
             .unwrap_or_else(|| Instant::now() + Duration::from_secs(24 * 365 * 3600));
 
-        Entry { value, expires_at }
+        Entry {
+            value,
+            stored_at: Instant::now(),
+            expires_at: Some(expires_at),
+        }
     }
+
+    /// An entry that never expires.
+    fn permanent(value: CacheValue) -> Self {
+        Entry {
+            value,
+            stored_at: Instant::now(),
+            expires_at: None,
+        }
+    }
+
+    /// Whether the value is older than a caller's window.
+    fn is_older_than(&self, max_age: Duration) -> bool {
+        self.stored_at.elapsed() > max_age
+    }
+
     fn is_expired(&self) -> bool {
-        Instant::now() >= self.expires_at
+        self.expires_at
+            .is_some_and(|expires_at| Instant::now() >= expires_at)
     }
 }
 
@@ -157,14 +184,35 @@ impl Inner {
         *self.slot_mut(TypeId::of::<T>()) = Some(Entry::new(value.into_value(), ttl));
     }
 
+    /// Stores a value that is served until the process exits.
+    fn set_permanent<T: Cacheable>(&mut self, value: T) {
+        *self.slot_mut(TypeId::of::<T>()) = Some(Entry::permanent(value.into_value()));
+    }
+
+    #[cfg(test)]
+    fn backdate<T: Cacheable>(&mut self, by: Duration) {
+        if let Some(entry) = self.slot_mut(TypeId::of::<T>()) {
+            entry.stored_at = entry.stored_at.checked_sub(by).unwrap_or(entry.stored_at);
+        }
+    }
+
     /// Returns the cached value, lazily evicting it if its TTL has elapsed.
     fn get<T: Cacheable>(&mut self) -> Option<T> {
+        self.get_within::<T>(None)
+    }
+
+    /// Returns the value only while it is younger than `max_age`.
+    ///
+    /// An entry that is too old for this caller is kept rather than evicted: another
+    /// caller may have a wider window and still want it.
+    fn get_within<T: Cacheable>(&mut self, max_age: Option<Duration>) -> Option<T> {
         let slot = self.slot_mut(TypeId::of::<T>());
         match slot {
             Some(entry) if entry.is_expired() => {
                 *slot = None;
                 None
             }
+            Some(entry) if max_age.is_some_and(|age| entry.is_older_than(age)) => None,
             Some(entry) => T::from_value(&entry.value).cloned(),
             None => None,
         }
@@ -192,9 +240,26 @@ impl Cache {
         CACHE.with(|cache| cache.borrow_mut().set(value, ttl));
     }
 
+    /// Store a value that is served until the process exits.
+    pub(crate) fn set_permanent<T: Cacheable>(&self, value: T) {
+        CACHE.with(|cache| cache.borrow_mut().set_permanent(value));
+    }
+
     /// Retrieve a value (returns None if missing or expired, with lazy deletion)
     pub(crate) fn get<T: Cacheable>(&self) -> Option<T> {
         CACHE.with(|cache| cache.borrow_mut().get::<T>())
+    }
+
+    /// Retrieve a value only while it is younger than `max_age`.
+    pub(crate) fn get_within<T: Cacheable>(&self, max_age: Option<Duration>) -> Option<T> {
+        CACHE.with(|cache| cache.borrow_mut().get_within::<T>(max_age))
+    }
+
+    /// Ages the entry for `T` by `by`, so a test can exercise an age check without
+    /// sleeping.
+    #[cfg(test)]
+    pub(crate) fn backdate<T: Cacheable>(&self, by: Duration) {
+        CACHE.with(|cache| cache.borrow_mut().backdate::<T>(by));
     }
 }
 

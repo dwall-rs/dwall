@@ -13,7 +13,7 @@ use std::io::Write;
 use std::path::PathBuf;
 use std::process::ExitCode;
 
-use dwall::config::{Config, ConfigReader, config_path};
+use dwall::config::{Config, ConfigReader, PositionSource, config_path};
 use dwall::{DaemonApplication, DaemonInstance};
 use logging::Logger;
 
@@ -339,6 +339,26 @@ fn print_summary(config: &Config, out: &mut impl Write) -> std::io::Result<()> {
     )?;
     writeln!(out, "  dark on battery: {}", config.dark_on_battery())?;
 
+    // The refresh cadence is the one setting a user cannot infer from the file: an
+    // automatic position that is read every two hours looks the same as a stale one
+    // until the summary says which it is.
+    let position = match config.position_source() {
+        PositionSource::Automatic { cache_minutes } => {
+            let cadence = if *cache_minutes < 0 {
+                "read once at start".to_string()
+            } else if *cache_minutes == 0 {
+                "read every cycle".to_string()
+            } else {
+                format!("refresh every {cache_minutes} min")
+            };
+
+            format!("automatic ({cadence})")
+        }
+        // Deliberately no coordinates: the summary is pasted into reports.
+        PositionSource::Manual { .. } => "manual".to_string(),
+    };
+    writeln!(out, "  position: {position}")?;
+
     for (label, directory) in [
         ("themes", config.themes_directory()),
         ("customized themes", config.customized_themes_directory()),
@@ -535,6 +555,7 @@ mod tests {
             "image format",
             "auto-detect colour scheme",
             "dark on battery",
+            "position",
             "themes directory",
             "customized themes directory",
         ] {

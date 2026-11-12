@@ -174,29 +174,41 @@ impl<'a, P: PositionProvider> GeographicPositionProvider<'a, P> {
         Position::new(latitude, longitude, altitude)
     }
 
-    fn get_cached_position(&self, ttl: Duration) -> DwallResult<Position> {
+    /// The cached position, read from the sensor only when there is none.
+    ///
+    /// `ttl` is `None` for the negative lifetime: the entry then never expires, which
+    /// is what a machine that does not move wants.
+    fn get_cached_position(&self, ttl: Option<Duration>) -> DwallResult<Position> {
         let cache = get_cache();
-        match cache.get::<Position>() {
-            Some(pos) => Ok(pos),
-            None => {
-                let pos = self.get_fresh_position()?;
-                cache.set(pos, ttl);
-                Ok(pos)
-            }
+        // The entry outlives a configuration reload, because the slot is keyed by type
+        // alone: asking for the window as well is what makes a changed setting take
+        // effect without restarting the daemon.
+        if let Some(pos) = cache.get_within::<Position>(ttl) {
+            return Ok(pos);
         }
+
+        let pos = self.get_fresh_position()?;
+        match ttl {
+            Some(ttl) => cache.set(pos, ttl),
+            None => cache.set_permanent(pos),
+        }
+
+        Ok(pos)
     }
 
     /// Retrieves the current position based on the configured coordinate source
     pub fn get_current_position(&self) -> DwallResult<Position> {
         match &self.coordinate_source {
-            PositionSource::Automatic {
-                update_on_each_calculation,
-                cache_minutes: position_cache_minutes,
-            } => {
-                if *update_on_each_calculation {
+            PositionSource::Automatic { cache_minutes } => {
+                if *cache_minutes < 0 {
+                    // Negative: the machine does not move, so the one reading taken at
+                    // start is the one the daemon keeps for the rest of its life.
+                    self.get_cached_position(None)
+                } else if *cache_minutes == 0 {
+                    // Zero: no window at all, a reading per calculation.
                     self.get_fresh_position()
                 } else {
-                    self.get_cached_position(position_cache_ttl(*position_cache_minutes))
+                    self.get_cached_position(Some(position_cache_ttl(*cache_minutes)))
                 }
             }
             PositionSource::Manual {
@@ -214,12 +226,14 @@ impl<'a, P: PositionProvider> GeographicPositionProvider<'a, P> {
 /// configuration that reached the cache without being validated (the settings app
 /// writes the file the daemon reads): `60 * minutes` used to overflow, and the
 /// resulting duration panicked the addition inside the cache.
-fn position_cache_ttl(cache_minutes: u64) -> Duration {
+fn position_cache_ttl(cache_minutes: i64) -> Duration {
     /// A year, which no configuration has a reason to exceed and which `Instant`
     /// arithmetic can still represent.
     const MAX_POSITION_CACHE_TTL: Duration = Duration::from_secs(24 * 365 * 3600);
 
-    Duration::from_secs(60u64.saturating_mul(cache_minutes)).min(MAX_POSITION_CACHE_TTL)
+    // Only the positive branch reaches this, so the signed value converts exactly.
+    let minutes = u64::try_from(cache_minutes).unwrap_or(0);
+    Duration::from_secs(60u64.saturating_mul(minutes)).min(MAX_POSITION_CACHE_TTL)
 }
 
 impl<P: PositionProvider> PositionProvider for GeographicPositionProvider<'_, P> {
@@ -619,7 +633,7 @@ mod tests {
     /// resulting duration panicked the addition inside the cache.
     #[test]
     fn the_position_cache_ttl_is_bounded() {
-        let bounded = position_cache_ttl(u64::MAX);
+        let bounded = position_cache_ttl(i64::MAX);
 
         assert!(bounded <= Duration::from_secs(24 * 365 * 3600));
         assert!(
@@ -632,10 +646,7 @@ mod tests {
     #[test]
     fn a_zero_minute_cache_reads_the_backend_every_time() {
         let calls = std::rc::Rc::new(std::cell::Cell::new(0));
-        let source = PositionSource::Automatic {
-            update_on_each_calculation: false,
-            cache_minutes: 0,
-        };
+        let source = PositionSource::Automatic { cache_minutes: 0 };
         let provider = GeographicPositionProvider::new(
             &source,
             CountingPositionProvider {
@@ -650,13 +661,66 @@ mod tests {
         assert_eq!(calls.get(), 2, "a zero-minute cache must not serve a value");
     }
 
+    /// The cache slot is keyed by type, so an entry written under "once at startup"
+    /// outlives a configuration reload. A window chosen afterwards has to win: the
+    /// daemon would otherwise serve an hours-old position until it restarts.
+    #[test]
+    fn a_window_chosen_after_a_reload_reads_an_older_entry_again() {
+        let calls = std::rc::Rc::new(std::cell::Cell::new(0));
+        let source = PositionSource::Automatic { cache_minutes: -1 };
+        let provider = GeographicPositionProvider::new(
+            &source,
+            CountingPositionProvider {
+                position: Position::from_raw_position(1.0, 2.0, 3.0),
+                calls: std::rc::Rc::clone(&calls),
+            },
+        );
+
+        provider.get_current_position().unwrap();
+        let after_first = calls.get();
+
+        // The daemon has been running for three hours when the user edits the setting.
+        get_cache().backdate::<Position>(Duration::from_secs(3 * 3600));
+
+        let windowed = PositionSource::Automatic { cache_minutes: 120 };
+        let reloaded = GeographicPositionProvider::new(
+            &windowed,
+            CountingPositionProvider {
+                position: Position::from_raw_position(1.0, 2.0, 3.0),
+                calls: std::rc::Rc::clone(&calls),
+            },
+        );
+        reloaded.get_current_position().unwrap();
+
+        assert_eq!(
+            calls.get(),
+            after_first + 1,
+            "an entry older than the new window must be read again"
+        );
+    }
+    /// A negative lifetime is the third mode: the first reading is kept for the life of
+    /// the process, so even a repeated call never asks the backend again.
+    #[test]
+    fn a_negative_cache_keeps_the_first_reading() {
+        let calls = std::rc::Rc::new(std::cell::Cell::new(0));
+        let source = PositionSource::Automatic { cache_minutes: -1 };
+        let provider = GeographicPositionProvider::new(
+            &source,
+            CountingPositionProvider {
+                position: Position::from_raw_position(7.0, 8.0, 9.0),
+                calls: std::rc::Rc::clone(&calls),
+            },
+        );
+
+        provider.get_current_position().unwrap();
+        provider.get_current_position().unwrap();
+
+        assert_eq!(calls.get(), 1, "the permanent entry must be served again");
+    }
     #[test]
     fn a_cache_window_serves_the_value_it_already_read() {
         let calls = std::rc::Rc::new(std::cell::Cell::new(0));
-        let source = PositionSource::Automatic {
-            update_on_each_calculation: false,
-            cache_minutes: 30,
-        };
+        let source = PositionSource::Automatic { cache_minutes: 30 };
         let provider = GeographicPositionProvider::new(
             &source,
             CountingPositionProvider {
@@ -695,10 +759,7 @@ mod tests {
 
     #[test]
     fn test_provider_with_mock_position_provider() {
-        let coord_source = PositionSource::Automatic {
-            update_on_each_calculation: true,
-            cache_minutes: 5,
-        };
+        let coord_source = PositionSource::Automatic { cache_minutes: 5 };
         let expected_position = Position::from_raw_position(40.0, 116.0, 50.0);
         let mock_provider = MockPositionProvider {
             position: expected_position,
