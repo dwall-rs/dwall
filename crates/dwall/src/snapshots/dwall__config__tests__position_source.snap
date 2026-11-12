@@ -5,8 +5,7 @@ expression: "[PositionSource::default(), PositionSource::Manual\n{ latitude: 39.
 [
   {
     "type": "AUTOMATIC",
-    "update_on_each_calculation": false,
-    "cache_minutes": 30
+    "cache_minutes": 120
   },
   {
     "type": "MANUAL",

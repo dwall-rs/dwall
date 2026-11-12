@@ -133,7 +133,8 @@ pub(crate) trait Cacheable: Clone + 'static {
 
 struct Entry {
     value: CacheValue,
-    expires_at: Instant,
+    /// `None` means the entry lives as long as the process does.
+    expires_at: Option<Instant>,
 }
 
 impl Entry {
@@ -145,16 +146,34 @@ impl Entry {
             .checked_add(ttl)
             .unwrap_or_else(|| Instant::now() + Duration::from_secs(24 * 365 * 3600));
 
-        Entry { value, expires_at }
+        Entry {
+            value,
+            expires_at: Some(expires_at),
+        }
     }
+
+    /// An entry that never expires.
+    fn permanent(value: CacheValue) -> Self {
+        Entry {
+            value,
+            expires_at: None,
+        }
+    }
+
     fn is_expired(&self) -> bool {
-        Instant::now() >= self.expires_at
+        self.expires_at
+            .is_some_and(|expires_at| Instant::now() >= expires_at)
     }
 }
 
 impl Inner {
     fn set<T: Cacheable>(&mut self, value: T, ttl: Duration) {
         *self.slot_mut(TypeId::of::<T>()) = Some(Entry::new(value.into_value(), ttl));
+    }
+
+    /// Stores a value that is served until the process exits.
+    fn set_permanent<T: Cacheable>(&mut self, value: T) {
+        *self.slot_mut(TypeId::of::<T>()) = Some(Entry::permanent(value.into_value()));
     }
 
     /// Returns the cached value, lazily evicting it if its TTL has elapsed.
@@ -190,6 +209,11 @@ impl Cache {
     /// Store a value, specifying TTL
     pub(crate) fn set<T: Cacheable>(&self, value: T, ttl: Duration) {
         CACHE.with(|cache| cache.borrow_mut().set(value, ttl));
+    }
+
+    /// Store a value that is served until the process exits.
+    pub(crate) fn set_permanent<T: Cacheable>(&self, value: T) {
+        CACHE.with(|cache| cache.borrow_mut().set_permanent(value));
     }
 
     /// Retrieve a value (returns None if missing or expired, with lazy deletion)

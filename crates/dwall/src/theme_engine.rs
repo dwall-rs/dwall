@@ -1668,10 +1668,7 @@ azimuth = 0.0
         );
 
         // Always fresh, so the thread-local position cache cannot answer instead.
-        let source = crate::config::PositionSource::Automatic {
-            update_on_each_calculation: true,
-            cache_minutes: 30,
-        };
+        let source = crate::config::PositionSource::Automatic { cache_minutes: 0 };
         let engine = ThemeEngine::new(
             &fixture.config,
             &fixture.directory,
