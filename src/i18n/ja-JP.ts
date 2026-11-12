@@ -156,6 +156,13 @@ export const dict: RawDictionary = {
       autoCoords: "座標を自動取得",
       autoCoordsDesc:
         "緯度経度は太陽高度の計算に使われます。オフにすると手動で入力できます。",
+      positionCache: "位置の更新",
+      positionCacheDesc:
+        "自動取得した位置は太陽位置の計算に使われます。毎回計算は最も正確、タイマーは位置センサーの読み取りを減らし、起動時のみは動かないマシン向けです。",
+      cacheEveryCalculation: "毎回計算",
+      cacheInterval: "タイマー",
+      cacheStartupOnly: "起動時のみ",
+      minutesUnit: "分",
       manualCoords: "手動座標",
       manualCoordsDesc: "緯度 -90~90、経度 -180~180、高度（m）。",
       latitude: "緯度",

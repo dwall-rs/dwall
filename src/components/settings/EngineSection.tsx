@@ -3,13 +3,24 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import {
   patch,
+  patchAutomatic,
   patchPosition,
+  positionCacheMode,
+  type PositionCacheMode,
   save,
   setAutoDetectColorScheme,
+  setPositionCacheMode,
   setPositionType,
   settingsStore,
 } from "@/store/settings.store";
 import { SettingsGroup } from "./SettingsGroup";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { SettingsRow } from "./SettingsRow";
 import { t } from "@/i18n";
 import {
@@ -80,6 +91,13 @@ export function EngineSection() {
     return ps?.type === "MANUAL"
       ? ps
       : { type: "MANUAL" as const, latitude: 0, longitude: 0, altitude: 875 };
+  });
+
+  const automatic = createMemo(() => {
+    const ps = settingsStore.config?.position_source;
+    return ps?.type === "AUTOMATIC"
+      ? ps
+      : { type: "AUTOMATIC" as const, cache_minutes: 120 };
   });
 
   return (
@@ -171,6 +189,73 @@ export function EngineSection() {
             />
           }
         />
+        <Show when={settingsStore.config?.position_source.type === "AUTOMATIC"}>
+          <SettingsRow
+            label={t("settings.engine.positionCache")}
+            okShow={flash() === "positionCache"}
+            desc={t("settings.engine.positionCacheDesc")}
+            control={
+              <div class="flex items-center gap-2">
+                <Select
+                  value={positionCacheMode()}
+                  onValueChange={(value) => {
+                    setPositionCacheMode(value as PositionCacheMode);
+                    void ok("positionCache");
+                  }}
+                >
+                  <SelectTrigger class="min-w-38" variant="outline">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="every-calculation">
+                      {t("settings.engine.cacheEveryCalculation")}
+                    </SelectItem>
+                    <SelectItem value="interval">
+                      {t("settings.engine.cacheInterval")}
+                    </SelectItem>
+                    <SelectItem value="startup-only">
+                      {t("settings.engine.cacheStartupOnly")}
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+                <Show when={positionCacheMode() === "interval"}>
+                  <InputGroup class="w-28">
+                    <InputGroupInput
+                      type="number"
+                      min={1}
+                      max={1440}
+                      value={automatic().cache_minutes}
+                      onChange={(v) =>
+                        patchAutomatic({
+                          cache_minutes: Math.min(1440, Math.max(1, v ?? 1)),
+                        })
+                      }
+                    />
+                    <InputGroupAddon align="inline-end">
+                      <InputGroupText>
+                        {t("settings.engine.minutesUnit")}
+                      </InputGroupText>
+                    </InputGroupAddon>
+                    <InputGroupAddon align="inline-end">
+                      <InputGroupButton
+                        icon={
+                          settingsStore.saving ? (
+                            <LoaderCircle class="size-3.75 animate-spin" />
+                          ) : (
+                            <Save class="size-3.75" />
+                          )
+                        }
+                        onClick={() => {
+                          void ok("positionCache");
+                        }}
+                      />
+                    </InputGroupAddon>
+                  </InputGroup>
+                </Show>
+              </div>
+            }
+          />
+        </Show>
         <Show when={settingsStore.config?.position_source.type === "MANUAL"}>
           <SettingsRow
             stacked

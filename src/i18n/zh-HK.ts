@@ -149,6 +149,13 @@ export const dict: RawDictionary = {
       autoCoords: "自動取得座標",
       autoCoordsDesc:
         "經緯度用於計算太陽高度角以匹配壁紙。關閉後可手動填寫座標。",
+      positionCache: "位置重新整理",
+      positionCacheDesc:
+        "自動定位用於計算太陽位置。每次計算最準確；定時重新整理可以減少讀取定位感測器的次數；僅啟動時適合不會移動的電腦。",
+      cacheEveryCalculation: "每次計算",
+      cacheInterval: "定時重新整理",
+      cacheStartupOnly: "僅啟動時",
+      minutesUnit: "分鐘",
       manualCoords: "手動座標",
       manualCoordsDesc: "緯度 -90~90、經度 -180~180、海拔（米）。",
       latitude: "緯度",

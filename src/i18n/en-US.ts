@@ -153,6 +153,13 @@ export const dict = {
       autoCoords: "Automatically retrieve coordinates",
       autoCoordsDesc:
         "Coordinates are used to compute the sun altitude. Turn off to enter them manually.",
+      positionCache: "Position refresh",
+      positionCacheDesc:
+        "Automatic coordinates are read for the sun's position. Every calculation keeps the wallpaper exact; a timer spares the location sensor; once at startup suits a machine that never moves.",
+      cacheEveryCalculation: "Every calculation",
+      cacheInterval: "On a timer",
+      cacheStartupOnly: "Once at startup",
+      minutesUnit: "min",
       manualCoords: "Manual coordinates",
       manualCoordsDesc: "Latitude -90~90, longitude -180~180, altitude (m).",
       latitude: "Latitude",
