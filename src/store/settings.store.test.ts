@@ -291,6 +291,56 @@ describe("settings store: writing", () => {
     expect(mocks.toastError).toHaveBeenCalled();
   });
 
+  test("a failed apply cannot roll back a newer apply", async () => {
+    mocks.readConfigFile.mockResolvedValue(config());
+
+    let rejectFirst!: (error: Error) => void;
+    let resolveSecond!: () => void;
+    mocks.applyTheme
+      .mockImplementationOnce(
+        () =>
+          new Promise<void>((_, reject) => {
+            rejectFirst = reject;
+          }),
+      )
+      .mockImplementationOnce(
+        () =>
+          new Promise<void>((resolve) => {
+            resolveSecond = resolve;
+          }),
+      );
+
+    const store = await freshStore();
+    await store.load();
+
+    const first = store.applyWallpaperMode({
+      mode: "random",
+      pool: ["Big Sur"],
+    });
+    const second = store.applyWallpaperMode({
+      mode: "random",
+      pool: ["Catalina"],
+    });
+
+    await vi.waitFor(() => expect(mocks.applyTheme).toHaveBeenCalledTimes(1));
+
+    rejectFirst(new Error("first failed"));
+    await expect(first).rejects.toThrow("first failed");
+    await vi.waitFor(() => expect(mocks.applyTheme).toHaveBeenCalledTimes(2));
+
+    resolveSecond();
+    await second;
+
+    expect(store.settingsStore.saved?.wallpaper_mode).toEqual({
+      mode: "random",
+      pool: ["Catalina"],
+    });
+    expect(store.settingsStore.config?.wallpaper_mode).toEqual({
+      mode: "random",
+      pool: ["Catalina"],
+    });
+  });
+
   /**
    * Applying a theme from the stage is not "save the settings form": a draft edit the
    * user has not committed must stay out of the file and keep the form dirty.

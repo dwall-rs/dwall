@@ -275,7 +275,7 @@ const save = async () => {
  * Write wallpaper_mode and apply it to the engine (write the config file + restart the daemon).
  * Both fixed and random mode "apply/save" go through here.
  */
-const applyWallpaperMode = async (mode: WallpaperMode) => {
+const applyWallpaperModeNow = async (mode: WallpaperMode) => {
   const draft = settingsStore.config;
   const saved = settingsStore.saved;
   if (!draft || !saved) return;
@@ -320,6 +320,21 @@ const applyWallpaperMode = async (mode: WallpaperMode) => {
     toast.error(t("common.operationFailed"), { description: String(e) });
     throw e;
   }
+};
+
+/**
+ * Serialize mode applies across fixed and random callers.
+ *
+ * A fixed apply and a random save can otherwise overlap; the slower request's
+ * failure rollback would restore a mode that the newer request has already replaced.
+ * Each call reads the draft and saved snapshot only when its turn starts.
+ */
+let modeApplyChain: Promise<void> = Promise.resolve();
+
+const applyWallpaperMode = (mode: WallpaperMode): Promise<void> => {
+  const result = modeApplyChain.then(() => applyWallpaperModeNow(mode));
+  modeApplyChain = result.catch(() => {});
+  return result;
 };
 
 const discard = () =>
