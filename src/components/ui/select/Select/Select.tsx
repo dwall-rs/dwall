@@ -9,26 +9,6 @@ import type {
   SelectProps,
 } from "./Select.types";
 
-/**
- * Select root component: renders no DOM; it only manages state and
- * provides context. Actual rendering is delegated to
- * <SelectTrigger>/<SelectValue>/<SelectContent>/<SelectItem>.
- *
- * The generic T is constrained to string | number, bounding the types of
- * value / defaultValue / onValueChange / SelectItem.value.
- *
- * @example
- * ```tsx
- * <Select value={fruit()} onValueChange={setFruit}>
- *   <SelectTrigger>
- *     <SelectValue placeholder="Pick a fruit" />
- *   </SelectTrigger>
- *   <SelectContent>
- *     <SelectItem value="apple">Apple</SelectItem>
- *   </SelectContent>
- * </Select>
- * ```
- */
 export function Select<T extends SelectOptionValue = string>(
   props: SelectProps<T>,
 ): JSX.Element {
@@ -53,9 +33,6 @@ export function Select<T extends SelectOptionValue = string>(
   const disabled = createMemo(() => !!props.disabled);
   const lockScroll = createMemo(() => props.lockScroll ?? true);
 
-  // While open, page scrolling is locked by default: document scrolling is
-  // locked and wheel/touch events outside the overlay are intercepted, while
-  // the panel itself remains scrollable. Pass lockScroll={false} to disable.
   useScrollLock(() => open() && lockScroll(), {
     allowedSelector: '[data-slot="select-content"]',
   });

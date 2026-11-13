@@ -6,7 +6,6 @@ export type TabsListProps = PolymorphicProps<
   "div",
   BaseProps &
     VariantProps<typeof tabsListVariants> & {
-      /** Whether focusing a tab also activates it, default false (matches base-ui) */
       activateOnFocus?: boolean;
     },
   false

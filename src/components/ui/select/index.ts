@@ -8,7 +8,11 @@ export { SelectValue } from "./SelectValue";
 export type { SelectValueProps } from "./SelectValue";
 
 export { SelectContent } from "./SelectContent";
-export type { SelectContentProps } from "./SelectContent";
+export type {
+  SelectAlign,
+  SelectContentProps,
+  SelectSide,
+} from "./SelectContent";
 
 export { SelectItem } from "./SelectItem";
 export type { SelectItemProps } from "./SelectItem";

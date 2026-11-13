@@ -32,29 +32,35 @@ textarea,
 
 @layer base {
     :root {
-        --success: oklch(62.7% 0.194 149.214); /* supplement: completed/running */
-        --success-foreground: 0 0% 100%;
-        --success-dim: 145 40% 92%;
-        --warning: oklch(76.9% 0.188 70.08); /* supplement: pending/random */
-        --warning-foreground: 35 100% 12%;
-        --warning-dim: 38 60% 92%;
+        --success: oklch(0.58 0.13 155); /* completed/running */
+        --success-foreground: oklch(0.16 0.03 155);
+        --success-dim: oklch(0.58 0.13 155 / 0.12);
+        --warning: oklch(0.73 0.15 70); /* pending/random */
+        --warning-foreground: oklch(0.2 0.03 55);
+        --warning-dim: oklch(0.73 0.15 70 / 0.13);
+        --info: oklch(0.55 0.2 260); /* informational toasts */
+        --info-foreground: oklch(0.985 0 0);
+        --info-dim: oklch(0.55 0.2 260 / 0.12);
 
-        --scrollbar-thumb: theme("colors.neutral.400");
-        --scrollbar-thumb-active: theme("colors.neutral.600");
+        --scrollbar-thumb: oklch(0.74 0.01 255);
+        --scrollbar-thumb-active: oklch(0.56 0.015 255);
 
         @apply bg-background text-foreground;
     }
 
     [data-theme="dark"] {
-        --success: oklch(52.7% 0.154 150.069);
-        --success-foreground: 142 60% 8%;
-        --success-dim: 150 40% 14%;
-        --warning: oklch(66.6% 0.179 58.318);
-        --warning-foreground: 35 90% 10%;
-        --warning-dim: 35 50% 16%;
+        --success: oklch(0.74 0.12 155);
+        --success-foreground: oklch(0.14 0.02 155);
+        --success-dim: oklch(0.74 0.12 155 / 0.16);
+        --warning: oklch(0.82 0.14 74);
+        --warning-foreground: oklch(0.17 0.03 55);
+        --warning-dim: oklch(0.82 0.14 74 / 0.16);
+        --info: oklch(0.72 0.16 255);
+        --info-foreground: oklch(0.14 0.02 260);
+        --info-dim: oklch(0.72 0.16 255 / 0.16);
 
-        --scrollbar-thumb: theme("colors.neutral.600");
-        --scrollbar-thumb-active: theme("colors.neutral.400");
+        --scrollbar-thumb: oklch(0.34 0.012 260);
+        --scrollbar-thumb-active: oklch(0.5 0.015 260);
     }
 
     /* Unified scrollbar styling (WebView2 / Chromium): transparent track + rounded thumb + transparent padding,
@@ -82,10 +88,12 @@ textarea,
 
 @theme inline {
     --color-success: var(--success);
-    --color-success-foreground: hsl(var(--success-foreground));
-    --color-success-dim: hsl(var(--success-dim));
+    --color-success-foreground: var(--success-foreground);
+    --color-success-dim: var(--success-dim);
     --color-warning: var(--warning);
-    --color-warning-foreground: hsl(var(--warning-foreground));
-    --color-warning-dim: hsl(var(--warning-dim));
+    --color-warning-foreground: var(--warning-foreground);
+    --color-warning-dim: var(--warning-dim);
+    --color-info: var(--info);
+    --color-info-foreground: var(--info-foreground);
+    --color-info-dim: var(--info-dim);
 }
-

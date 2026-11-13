@@ -14,6 +14,7 @@ export const FieldLabel = (props: FieldLabelProps) => {
         "has-[>[data-slot=field]]:w-full has-[>[data-slot=field]]:flex-col",
         local.class,
       )}
+      classList={local.classList}
       {...others}
     />
   );

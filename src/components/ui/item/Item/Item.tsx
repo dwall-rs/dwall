@@ -22,10 +22,13 @@ export const Item = <T extends ValidComponent = "div">(props: ItemProps<T>) => {
     <Dynamic
       component={local.component as ValidComponent}
       data-slot="item"
+      data-variant={local.variant}
+      data-size={local.size}
       class={clsx(
         itemVariants({ variant: local.variant, size: local.size }),
         local.class,
       )}
+      classList={local.classList}
       {...others}
     />
   );

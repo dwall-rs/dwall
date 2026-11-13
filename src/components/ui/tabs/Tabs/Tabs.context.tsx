@@ -11,36 +11,30 @@ import type { TabsValue } from "./Tabs.types";
 
 interface TriggerEntry {
   value: TabsValue;
-  /** accessor, supports runtime disabled flips */
+
   disabled: () => boolean;
   element: HTMLElement;
 }
 
 export interface TabsContextValue {
-  /** Current activated value (controlled takes precedence, else internal state) */
   value: Accessor<TabsValue | undefined>;
   setValue: (value: TabsValue) => void;
   isSelected: (value: TabsValue) => boolean;
   orientation: Accessor<"horizontal" | "vertical">;
   dir: Accessor<"ltr" | "rtl" | "auto">;
   loop: Accessor<boolean>;
-  /**
-   * The currently focused/highlighted tab, separate from the activated value:
-   * by default (activateOnFocus=false) focus/keyboard navigation only moves
-   * the highlight, never activates; activation happens only on click.
-   * Matches base-ui's highlighted/active semantics.
-   */
+
   highlightedValue: Accessor<TabsValue | undefined>;
   setHighlightedValue: (value: TabsValue) => void;
-  /** Register a trigger in mount order, returning a deregistration function; used only for render-time derivation and keyboard navigation */
+
   registerTrigger: (entry: TriggerEntry) => () => void;
-  /** Registered trigger list (mount order) */
+
   getTriggers: () => TriggerEntry[];
-  /** With no highlight, whether this value is the first usable trigger (the keyboard tabindex starting point) */
+
   isFirstEnabled: (value: TabsValue) => boolean;
-  /** Whether the trigger for this value is currently usable (registered and not disabled) */
+
   isUsable: (value: TabsValue) => boolean;
-  /** Cross-registration of value -> triggerId / contentId, for aria-controls / aria-labelledby */
+
   setTriggerId: (value: TabsValue, id: string) => void;
   getTriggerId: (value: TabsValue) => string | undefined;
   setContentId: (value: TabsValue, id: string) => void;
@@ -71,11 +65,9 @@ export function TabsProvider(
     content: Record<string, string>;
   }>({ trigger: {}, content: {} });
 
-  // Controlled takes precedence: read the external value when props.value is present, otherwise internal state
   const value = (): TabsValue | undefined => props.value ?? internalValue();
 
   const setValue = (next: TabsValue) => {
-    // Controlled mode: only notify the outside, never touch local state
     if (props.value !== undefined) {
       props.onValueChange?.(next);
       return;
@@ -86,9 +78,6 @@ export function TabsProvider(
 
   const isSelected = (v: TabsValue) => value() === v;
 
-  // Align with base-ui: when the activated value changes while focus is not on
-  // a tab, sync the highlight to the active tab (not overridden during keyboard
-  // roving focus, preserving navigation relative to the current position)
   createEffect(() => {
     const current = value();
     if (current === undefined) return;
@@ -147,7 +136,6 @@ export function TabsProvider(
 
 export const useTabsContext = () => {
   const context = useContext(TabsContext);
-  if (!context)
-    throw new Error("useTabsContext must be used within a <Tabs> component");
+  if (!context) throw new Error("useTabsContext 必须用在 <Tabs> 内部");
   return context;
 };

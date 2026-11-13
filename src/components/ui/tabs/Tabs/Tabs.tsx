@@ -30,9 +30,6 @@ export const Tabs = (props: TabsProps) => {
     <div
       data-slot="tabs"
       data-orientation={local.orientation}
-      // Existing styles rely on group-data-vertical/tabs and
-      // group-data-horizontal/tabs, which need the data-vertical /
-      // data-horizontal attributes on the root element to take effect
       data-vertical={isVertical() ? "" : null}
       data-horizontal={isVertical() ? null : ""}
       dir={local.dir}

@@ -12,6 +12,7 @@ export const ItemContent = (props: ItemContentProps) => {
         "flex flex-1 flex-col gap-1 group-data-[size=xs]/item:gap-0 [&+[data-slot=item-content]]:flex-none",
         local.class,
       )}
+      classList={local.classList}
       {...others}
     />
   );

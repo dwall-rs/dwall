@@ -12,6 +12,7 @@ export const FieldContent = (props: FieldContentProps) => {
         "group/field-content flex flex-1 flex-col gap-0.5 leading-snug",
         local.class,
       )}
+      classList={local.classList}
       {...others}
     />
   );

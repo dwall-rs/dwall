@@ -4,11 +4,14 @@ import { useSelectContent } from "./useSelectContent";
 import { ScrollArrows } from "~/components/ui/scroll-arrows";
 import type { SelectContentProps } from "./SelectContent.types";
 import { clsx } from "~/utils";
+import { getAlignment, getSide } from "~/lib";
 
 export function SelectContent(props: SelectContentProps) {
   const {
     ctx,
     pos,
+    placement,
+    aligned,
     maxHeight,
     isVisible,
     animationState,
@@ -17,12 +20,25 @@ export function SelectContent(props: SelectContentProps) {
   } = useSelectContent(() => props);
 
   const [local, rest] = splitProps(props, [
+    "side",
+    "align",
+    "sideOffset",
+    "alignOffset",
+    "alignItemWithTrigger",
     "placement",
     "collisionPadding",
     "class",
     "style",
     "children",
   ]);
+
+  const dataAttrs = createMemo(() => ({
+    "data-placement": placement(),
+    "data-side": aligned() ? "none" : getSide(placement()),
+    "data-align": aligned()
+      ? undefined
+      : (getAlignment(placement()) ?? "center"),
+  }));
 
   const enabledItems = createMemo(() => ctx.items.filter((it) => !it.disabled));
 
@@ -60,11 +76,6 @@ export function SelectContent(props: SelectContentProps) {
     }
   };
 
-  // Close on outside click: a capture-phase listener + stopPropagation
-  // intercepts the event before it bubbles down to the real target element,
-  // preventing clicks from falling through to elements covered underneath the
-  // overlay (see the click-through investigation notes in production-tooltip;
-  // the same pattern is reused here).
   createEffect(() => {
     if (!ctx.open()) return;
     const onPointerDown = (e: PointerEvent) => {
@@ -85,15 +96,12 @@ export function SelectContent(props: SelectContentProps) {
     );
   });
 
-  // While open, bind keyboard events to document so arrow keys work without
-  // stealing focus
   createEffect(() => {
     if (!ctx.open()) return;
     document.addEventListener("keydown", onKeyDown);
     onCleanup(() => document.removeEventListener("keydown", onKeyDown));
   });
 
-  // Scroll the highlighted item into view when it changes
   createEffect(() => {
     const active = ctx.activeValue();
     const el = contentElement();
@@ -105,29 +113,12 @@ export function SelectContent(props: SelectContentProps) {
 
   return (
     <Portal>
-      {/*
-        Outer layer: handles positioning only (position:fixed comes from
-        floatingStyles) and takes no part in the animation. Its transform is
-        reserved for translate(x,y) positioning — putting the inner zoom-in-95
-        animation on this layer as well would make the two conflict (see the
-        comment at the top of SelectContent.utils.ts for details).
-
-        On close the whole Portal is no longer unmounted; it is hidden via
-        visibility/pointer-events instead: SelectItem registers its item
-        metadata with ctx via onMount, and unmounting the children on close
-        would clear ctx.items, leaving SelectValue unable to render the
-        selected value from item.label. Keeping the children mounted makes the
-        registration lifetime of items match SelectContent itself; hiding is
-        only a visual/interactive close and does not affect data.
-      */}
       <div
         data-slot="select-content"
+        {...dataAttrs()}
         ref={(el) => {
           ctx.setFloating(el);
-          // Clear ctx.floating() when the element unmounts so later reads
-          // don't pick up a zombie node that has already been removed from
-          // the DOM (Solid's ref callback fires only once on creation and
-          // does not pass undefined automatically on unmount).
+
           onCleanup(() => ctx.setFloating(undefined));
         }}
         style={{
@@ -138,19 +129,11 @@ export function SelectContent(props: SelectContentProps) {
           visibility: isVisible() ? "visible" : "hidden",
         }}
       >
-        {/*
-            Inner layer: the real visual styling + overflow:auto scrolling +
-            enter/exit animation. position: relative makes it the
-            offsetParent of every option inside it — the "selected-item
-            alignment" positioning strategy uses offsetTop to compute an
-            option's position in the list, and that value is only accurate
-            relative to "the element that actually scrolls"; the outer layer
-            (which does not scroll) must not steal its offsetParent role.
-          */}
         <div
           ref={setContentElement}
           role="listbox"
           data-state={animationState()}
+          {...dataAttrs()}
           style={{
             position: "relative",
             width: pos.middlewareData().matchWidth?.width
@@ -161,16 +144,10 @@ export function SelectContent(props: SelectContentProps) {
             ...(typeof local.style === "object" ? local.style : undefined),
           }}
           class={clsx(
-            "min-w-36",
+            "min-w-36 max-w-[calc(100vw-1rem)] overscroll-contain",
             "no-scrollbar [&::-webkit-scrollbar]:hidden",
             "rounded-lg bg-popover text-popover-foreground shadow-md ring-1 ring-foreground/10 duration-100",
-            // Enter animation only, no exit animation: on close the outer
-            // layer switches straight to visibility:hidden and data-state
-            // flips back to closed immediately, so there is no exit phase and
-            // no "panel jumps first, then disappears" effect when the
-            // selection changes. duration-100 (100ms) is shorter than the
-            // default 150ms — for a high-frequency component like a dropdown,
-            // animations should be faster and snappier than a tooltip's.
+
             "data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95",
             local.class,
           )}

@@ -1,25 +1,10 @@
-import {
-  For,
-  createMemo,
-  createSignal,
-  mergeProps,
-  onCleanup,
-  onMount,
-  Show,
-  type Component,
-} from "solid-js";
+import { For, Show, mergeProps, type Component } from "solid-js";
 import { Portal } from "solid-js/web";
-import { clsx } from "~/utils";
-import { Toast } from "../Toast";
-import type { Position, ToastT } from "../Toast/Toast.types";
 import { removeToast, useSonner } from "../state/toast";
 import type { ToasterProps } from "./Toaster.types";
-import { toasterContainerClass } from "./Toaster.styles";
-import {
-  getDocumentDirection,
-  getPositionClass,
-  resolveOffsetStyle,
-} from "./Toaster.utils";
+import { getDocumentDirection } from "./Toaster.utils";
+import { ToastViewport } from "./ToastViewport";
+import { useToaster } from "./useToaster";
 
 export const Toaster: Component<ToasterProps> = (props) => {
   const merged = mergeProps(
@@ -35,53 +20,16 @@ export const Toaster: Component<ToasterProps> = (props) => {
   );
 
   const { toasts } = useSonner();
-  const [expanded, setExpanded] = createSignal(false);
 
-  const filteredToasts = createMemo(() => {
-    const id = merged.id;
-    return id
-      ? toasts.filter((toast) => toast.toasterId === id)
-      : toasts.filter((toast) => !toast.toasterId);
-  });
-
-  const possiblePositions = createMemo(() =>
-    Array.from(
-      new Set(
-        [merged.position].concat(
-          filteredToasts()
-            .filter((toast) => toast.position)
-            .map((toast) => toast.position as Position),
-        ),
-      ),
-    ),
-  );
-
-  const toastsForPosition = (position: Position) =>
-    filteredToasts().filter((toast) => {
-      if (toast.position) return toast.position === position;
-      return position === merged.position;
+  const { expanded, setExpanded, possiblePositions, visibleToastsForPosition } =
+    useToaster({
+      toasts: () => toasts,
+      toasterId: () => merged.id,
+      position: () => merged.position,
+      visibleToasts: () => merged.visibleToasts,
+      expand: () => merged.expand,
+      hotkey: () => merged.hotkey,
     });
-
-  const visibleToastsForPosition = (position: Position) => {
-    const list = toastsForPosition(position);
-    if (merged.expand) return list;
-    return list.slice(0, merged.visibleToasts);
-  };
-
-  onMount(() => {
-    const onKeyDown = (e: KeyboardEvent) => {
-      const hotkeyPressed =
-        merged.hotkey.length > 0 &&
-        merged.hotkey.every((key) => (e as any)[key] || e.code === key);
-      if (hotkeyPressed) setExpanded(true);
-      if (e.code === "Escape") setExpanded(false);
-    };
-    document.addEventListener("keydown", onKeyDown);
-    onCleanup(() => document.removeEventListener("keydown", onKeyDown));
-  });
-
-  const offsetStyle = (position: Position) =>
-    resolveOffsetStyle(position, merged.offset, merged.mobileOffset);
 
   return (
     <Portal>
@@ -92,60 +40,24 @@ export const Toaster: Component<ToasterProps> = (props) => {
         <For each={possiblePositions()}>
           {(position) => (
             <Show when={visibleToastsForPosition(position).length > 0}>
-              <ol
-                data-slot="toaster-viewport"
-                data-position={position}
-                aria-live="polite"
-                aria-relevant="additions text"
-                aria-atomic="false"
-                aria-label={merged.customAriaLabel ?? merged.containerAriaLabel}
-                tabIndex={-1}
-                class={clsx(
-                  toasterContainerClass,
-                  getPositionClass(position),
-                  expanded()
-                    ? position.startsWith("top")
-                      ? "flex flex-col"
-                      : "flex flex-col-reverse"
-                    : "grid",
-                )}
-                style={{
-                  gap: `${merged.gap}px`,
-                  ...offsetStyle(position),
-                  ...(merged.style as Record<string, string | number>),
-                }}
-                onMouseEnter={() => setExpanded(true)}
-                onMouseLeave={() => setExpanded(false)}
-              >
-                <For each={visibleToastsForPosition(position)}>
-                  {(toast: ToastT, index) => (
-                    <Toast
-                      toast={toast}
-                      index={index()}
-                      total={visibleToastsForPosition(position).length}
-                      expanded={expanded()}
-                      position={position}
-                      gap={merged.gap}
-                      closeButton={
-                        toast.closeButton ??
-                        merged.toastOptions?.closeButton ??
-                        merged.closeButton ??
-                        false
-                      }
-                      duration={
-                        merged.toastOptions?.duration ?? merged.duration
-                      }
-                      class={merged.toastOptions?.class}
-                      icons={merged.icons}
-                      closeButtonAriaLabel={
-                        merged.toastOptions?.closeButtonAriaLabel
-                      }
-                      defaultRichColors={merged.richColors}
-                      onRemove={removeToast}
-                    />
-                  )}
-                </For>
-              </ol>
+              <ToastViewport
+                position={position}
+                toasts={visibleToastsForPosition(position)}
+                expanded={expanded()}
+                gap={merged.gap}
+                ariaLabel={merged.customAriaLabel ?? merged.containerAriaLabel}
+                offset={merged.offset}
+                mobileOffset={merged.mobileOffset}
+                style={merged.style}
+                closeButton={merged.closeButton}
+                duration={merged.duration}
+                icons={merged.icons}
+                variant={merged.variant}
+                richColors={merged.richColors}
+                toastOptions={merged.toastOptions}
+                onExpandChange={setExpanded}
+                onRemove={removeToast}
+              />
             </Show>
           )}
         </For>

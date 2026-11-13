@@ -74,6 +74,7 @@ export const Button = <T extends ButtonValidElement = "button">(
   return (
     <Dynamic
       data-slot="button"
+      data-size={local.size}
       component={local.component as ValidComponent}
       type={
         local.component === "button" ? (others.type ?? "button") : undefined

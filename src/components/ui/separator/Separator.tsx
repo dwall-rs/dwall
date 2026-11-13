@@ -18,6 +18,7 @@ export const Separator = (props: SeparatorProps) => {
       data-horizontal={local.orientation === "horizontal" ? "" : undefined}
       data-vertical={local.orientation === "vertical" ? "" : undefined}
       class={clsx(classes, local.class)}
+      classList={local.classList}
       {...others}
     />
   );

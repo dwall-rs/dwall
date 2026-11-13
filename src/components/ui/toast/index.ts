@@ -16,6 +16,7 @@ export type {
   ToastProps,
   ToastT,
   ToastTypes,
+  ToastVariant,
   isAction,
 } from "./Toast";
 

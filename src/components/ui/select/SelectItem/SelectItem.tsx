@@ -17,9 +17,6 @@ export function SelectItem(props: SelectItemProps) {
     "children",
   ]);
 
-  // click/mouseenter go through addEventListener (not JSX onClick), the same
-  // convention as SelectTrigger: no onXxx prop names are consumed, and an
-  // onClick passed by the caller is never overridden.
   const attachListeners = (el: HTMLDivElement) => {
     const handleClick = () => select();
     const handleMouseEnter = () => onMouseEnter();

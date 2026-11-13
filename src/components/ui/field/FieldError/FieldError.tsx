@@ -38,6 +38,7 @@ export const FieldError = (props: FieldErrorProps) => {
         role="alert"
         data-slot="field-error"
         class={clsx("text-sm font-normal text-destructive", local.class)}
+        classList={local.classList}
         {...others}
       >
         {resolved()}

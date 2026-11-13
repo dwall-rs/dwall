@@ -13,6 +13,7 @@ export const ItemMedia = (props: ItemMediaProps) => {
       data-slot="item-media"
       data-variant={local.variant}
       class={clsx(itemMediaVariants({ variant: local.variant }), local.class)}
+      classList={local.classList}
       {...others}
     />
   );

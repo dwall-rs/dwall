@@ -15,6 +15,7 @@ export const FieldLegend = (props: FieldLegendProps) => {
         "mb-1.5 font-medium data-[variant=label]:text-sm data-[variant=legend]:text-base",
         local.class,
       )}
+      classList={local.classList}
       {...others}
     />
   );
