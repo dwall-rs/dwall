@@ -27,6 +27,7 @@ export function DisplaysView() {
   const monitors = createMemo(() =>
     monitorList().filter((monitor) => monitor.id !== "all"),
   );
+  const fixedMode = () => modeStore.mode === "fixed";
   const unifiedTheme = createMemo(() => themeById(themeForMon("all")));
 
   const choose = (id: string) => {
@@ -73,6 +74,7 @@ export function DisplaysView() {
           <Switch
             aria-label={t("displays.unified")}
             checked={fixedStore.allUnified}
+            disabled={!fixedMode() || fixedStore.applying}
             onCheckedChange={() => toggleUnified()}
           />
         </div>
@@ -101,6 +103,7 @@ export function DisplaysView() {
           <Button
             variant="ghost"
             size="sm"
+            disabled={!fixedMode() || fixedStore.applying}
             onClick={() => {
               if (!fixedStore.allUnified) toggleUnified();
               setView("themes");
@@ -112,7 +115,12 @@ export function DisplaysView() {
           <Button
             size="sm"
             variant={isApplied("all") ? "destructive" : "primary"}
-            disabled={!fixedStore.allUnified}
+            disabled={
+              !fixedMode() ||
+              !fixedStore.allUnified ||
+              fixedStore.applying ||
+              (!isApplied("all") && !!unifiedTheme()?.needsDownload)
+            }
             onClick={() => void toggleApply("all")}
           >
             <Show
@@ -207,7 +215,11 @@ export function DisplaysView() {
                     <Button
                       variant="ghost"
                       size="sm"
-                      disabled={fixedStore.allUnified}
+                      disabled={
+                        !fixedMode() ||
+                        fixedStore.allUnified ||
+                        fixedStore.applying
+                      }
                       onClick={() => choose(monitor.id)}
                     >
                       {t("displays.chooseTheme")}
@@ -217,6 +229,11 @@ export function DisplaysView() {
                       <Switch
                         aria-label={monitor.name}
                         checked={applied()}
+                        disabled={
+                          !fixedMode() ||
+                          fixedStore.applying ||
+                          (!applied() && !!theme()?.needsDownload)
+                        }
                         onCheckedChange={() => void toggleApply(monitor.id)}
                       />
                     </Show>

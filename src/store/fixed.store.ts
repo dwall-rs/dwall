@@ -7,6 +7,7 @@ import type { MonitorTheme, MonitorThemes } from "@/ipc";
 import type { Config } from "@/models/config";
 import { logger } from "@/utils";
 import { catalogStore } from "./catalog.store";
+import { availableThemeIds, availableThemes } from "./catalog.selectors";
 import { engineStore } from "./engine.store";
 import { applyWallpaperMode, settingsStore } from "./settings.store";
 
@@ -21,6 +22,7 @@ interface FixedState {
   monitorThemes: StrMap; // draft: monId -> themeId ("all" means unified)
   configThemes: StrMap; // effective themes of the config, "all" expanded
   configUnified: boolean; // whether the config stores one theme for every monitor
+  applying: boolean; // a resolve/apply round trip is in flight
 }
 
 const [fixedStore, setFixedStore] = createStore<FixedState>({
@@ -30,6 +32,7 @@ const [fixedStore, setFixedStore] = createStore<FixedState>({
   monitorThemes: {},
   configThemes: {},
   configUnified: false,
+  applying: false,
 });
 
 /** The current scope key. */
@@ -81,11 +84,11 @@ const syncFromConfig = async (config: Config | null) => {
   }
 };
 
-/** Theme in effect for a monitor (draft → config → first entry in the catalog). */
+/** Theme in effect for a monitor (draft → config → first installed catalog entry). */
 const themeForMon = (monId: string): string | undefined =>
   fixedStore.monitorThemes[monId] ??
   configuredThemes()[monId] ??
-  catalogStore.themes[0]?.id;
+  availableThemes()[0]?.id;
 
 /** Whether this scope has been written into the config (regardless of whether the engine is running). */
 const isConfigured = (key: string): boolean => {
@@ -105,40 +108,51 @@ const isApplied = (key: string): boolean =>
 
 /** Apply/stop that scope (write the config and restart the engine). */
 const toggleApply = async (key: string) => {
+  if (fixedStore.applying) return;
   const config = settingsStore.config;
   if (!config) return;
-  // The same resolution the stage displays. It falls back to the catalog's first
-  // entry when this scope has neither a draft nor a configured theme, so the stage
+  // The same resolution the stage displays. It falls back to the first installed
+  // catalog entry when this scope has neither a draft nor a configured theme, so the stage
   // was showing (and offering to apply) a theme that this function could not find:
   // the click did nothing at all. Applying acts on what the stage shows.
   const theme = themeForMon(key);
   if (!theme) return;
 
+  const applied = isApplied(key);
+  // A theme whose frames are missing can still be stopped, but it must not be applied.
+  if (!applied && !availableThemeIds().includes(theme)) return;
+
+  setFixedStore("applying", true);
+
   let next: MonitorThemes;
   try {
-    next = await resolveMonitorThemes(config.wallpaper_mode, monitorIds(), {
-      monitorId: key,
-      themeId: theme,
-      unified: fixedStore.allUnified,
-      applied: isApplied(key),
+    try {
+      next = await resolveMonitorThemes(config.wallpaper_mode, monitorIds(), {
+        monitorId: key,
+        themeId: theme,
+        unified: fixedStore.allUnified,
+        applied,
+      });
+    } catch (e) {
+      log.error("Failed to resolve the monitor theme change", e);
+      return;
+    }
+
+    // Mirror applyWallpaperMode's optimistic config update, so the stage reflects the
+    // new mapping while the daemon restarts.
+    setFixedStore({
+      configThemes: toRecord(next.themes),
+      configUnified: next.unified,
     });
-  } catch (e) {
-    log.error("Failed to resolve the monitor theme change", e);
-    return;
-  }
 
-  // Mirror applyWallpaperMode's optimistic config update, so the stage reflects the
-  // new mapping while the daemon restarts.
-  setFixedStore({
-    configThemes: toRecord(next.themes),
-    configUnified: next.unified,
-  });
-
-  try {
-    await applyWallpaperMode(next.mode);
-  } catch {
-    // applyWallpaperMode has already reported the failure to the user; the callers are
-    // fire-and-forget, so the rejection must not escape as an unhandled one.
+    try {
+      await applyWallpaperMode(next.mode);
+    } catch {
+      // applyWallpaperMode has already reported the failure to the user; the callers are
+      // fire-and-forget, so the rejection must not escape as an unhandled one.
+    }
+  } finally {
+    setFixedStore("applying", false);
   }
 };
 
@@ -172,6 +186,20 @@ const isConfiguredTheme = (key: string): boolean => isConfigured(key);
 
 /** Whether the draft theme for a scope is what the configuration stores. */
 const isDraftDirty = (key: string): boolean => {
+  // Do not report a draft before the configuration and its resolved mapping exist;
+  // the shell renders before the settings load completes.
+  if (settingsStore.config?.wallpaper_mode?.mode !== "fixed") return false;
+  if (
+    Object.keys(fixedStore.configThemes).length === 0 &&
+    fixedStore.monitorThemes[key] === undefined
+  ) {
+    return false;
+  }
+
+  // Changing the shape (all ↔ individual) is itself a draft change, even when the
+  // representative theme happens to be identical.
+  if (fixedStore.allUnified !== fixedStore.configUnified) return true;
+
   const draft = fixedStore.monitorThemes[key] ?? fixedStore.configThemes[key];
   return draft !== fixedStore.configThemes[key];
 };

@@ -75,31 +75,28 @@ export function ThemesView() {
   const selectedTheme = () =>
     themeList().find((theme) => theme.id === selectedThemeId());
   const draftDirty = createMemo(() => isDraftDirty(scopeKey()));
-  const showFixedBar = createMemo(
-    () =>
-      fixed() &&
-      fixedStore.monitorThemes[scopeKey()] !== undefined &&
-      draftDirty(),
-  );
+  const showFixedBar = createMemo(() => fixed() && draftDirty());
   const randomDirty = createMemo(() => isDirty(randomStore));
 
   const applyDraft = async () => {
     await toggleApply(scopeKey());
   };
 
-  const filters: { value: Filter; label: string; count: number }[] = [
-    { value: "all", label: t("themes.filterAll"), count: all().length },
-    {
-      value: "installed",
-      label: t("themes.filterInstalled"),
-      count: installedCount(),
-    },
-    {
-      value: "download",
-      label: t("themes.filterDownload"),
-      count: downloadCount(),
-    },
-  ];
+  const filters = createMemo<{ value: Filter; label: string; count: number }[]>(
+    () => [
+      { value: "all", label: t("themes.filterAll"), count: all().length },
+      {
+        value: "installed",
+        label: t("themes.filterInstalled"),
+        count: installedCount(),
+      },
+      {
+        value: "download",
+        label: t("themes.filterDownload"),
+        count: downloadCount(),
+      },
+    ],
+  );
 
   return (
     <div class="mx-auto flex min-h-full w-full max-w-[1720px] flex-col px-7 pb-28 pt-6 animate-fade-up">
@@ -176,7 +173,7 @@ export function ThemesView() {
         </div>
 
         <div class="flex flex-wrap items-center gap-1 rounded-full border border-border bg-muted/55 p-1">
-          <For each={filters}>
+          <For each={filters()}>
             {(item) => (
               <button
                 type="button"
@@ -309,7 +306,11 @@ export function ThemesView() {
             </Button>
             <Button
               size="sm"
-              disabled={!selectedTheme() || selectedTheme()?.needsDownload}
+              disabled={
+                !selectedTheme() ||
+                selectedTheme()?.needsDownload ||
+                fixedStore.applying
+              }
               onClick={() => void applyDraft()}
             >
               <Check class="size-3.5" />

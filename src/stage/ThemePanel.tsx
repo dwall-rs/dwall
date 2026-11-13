@@ -35,9 +35,10 @@ export function ThemePanel(props: Props) {
   const configured = () => isConfiguredTheme(scope());
   const applied = () => isApplied(scope());
   const installed = () => !props.theme.needsDownload && props.frameCount > 0;
+  const disabled = () => busy() || fixedStore.applying;
 
   const commit = async () => {
-    if (busy() || (!installed() && !applied())) return;
+    if (disabled() || (!installed() && !applied())) return;
     setBusy(true);
     try {
       await toggleApply(scope());
@@ -110,7 +111,7 @@ export function ThemePanel(props: Props) {
               <Show when={applied()}>
                 <Button
                   variant="destructive"
-                  disabled={busy()}
+                  disabled={disabled()}
                   onClick={() => void commit()}
                 >
                   <Show
@@ -133,7 +134,7 @@ export function ThemePanel(props: Props) {
         >
           <Button
             variant={applied() ? "destructive" : "primary"}
-            disabled={busy()}
+            disabled={disabled()}
             onClick={() => void commit()}
           >
             <Show
