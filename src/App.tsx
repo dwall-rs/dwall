@@ -2,7 +2,7 @@
 import { AppShell } from "@/layout/AppShell";
 import { ErrorBoundary, onCleanup, onMount } from "solid-js";
 import { Button } from "@/components/ui/button";
-import { t } from "@/i18n";
+import { applySystemLocale, t } from "@/i18n";
 import { load as loadCatalog } from "./store/catalog.store";
 import { availableThemeIds } from "./store/catalog.selectors";
 import { refresh as refreshEngine } from "./store/engine.store";
@@ -11,10 +11,20 @@ import { syncFromConfig as syncRandom } from "./store/random.store";
 import { load as loadSettings, settingsStore } from "./store/settings.store";
 import { setMode } from "./store/mode.store";
 import { checkOnStartup as checkUpdatesOnStartup } from "./store/update.store";
-import { showWindow } from "./ipc";
+import { getSystemLocale, showWindow } from "./ipc";
 
 export default function App() {
   onMount(async () => {
+    // WebView2 can report an English navigator on a Chinese Windows install. Ask
+    // Windows for the user locale before showing the hidden production window, so
+    // the correct language is in the very first paint; a browser-detected locale is
+    // already in place if this fails.
+    try {
+      applySystemLocale(await getSystemLocale());
+    } catch {
+      // The synchronous browser locale is a safe fallback.
+    }
+
     if (import.meta.env.PROD) showWindow("main");
 
     refreshEngine();

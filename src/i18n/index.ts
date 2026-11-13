@@ -39,7 +39,14 @@ const dictionaries: Record<Locale, RawDictionary> = {
   "ko-KR": koKR.dict,
 };
 
-const STORAGE_KEY = "locale";
+const LOCALE_KEY = "locale";
+/**
+ * Set only when the user picked a language in the settings window.
+ *
+ * Older builds wrote `locale` on every start, including the detected default; without
+ * this flag an auto-saved `en-US` would keep overriding a Chinese system forever.
+ */
+const LOCALE_CHOICE_KEY = "locale-choice";
 
 /**
  * The supported locale a browser tag asks for, or undefined when there is none.
@@ -79,13 +86,50 @@ const matchLocale = (tag: string): Locale | undefined => {
   return "zh-CN";
 };
 
-/** The stored choice, or undefined when there is none or storage cannot be read. */
+/**
+ * The browser's preferred supported locale.
+ *
+ * `navigator.languages` is the first choice; `Intl` is the webview's own resolved
+ * locale and catches engines that leave the navigator list at `en-US`. Neither is a
+ * substitute for the Windows locale — see `applySystemLocale`.
+ */
+const detectBrowserLocale = (): Locale | undefined => {
+  if (typeof window === "undefined") return undefined;
+
+  const candidates = [
+    ...(navigator.languages ?? []),
+    navigator.language,
+    Intl.DateTimeFormat().resolvedOptions().locale,
+  ];
+
+  for (const tag of candidates) {
+    if (!tag) continue;
+    const matched = matchLocale(tag);
+    if (matched) return matched;
+  }
+
+  return undefined;
+};
+
+/**
+ * The stored choice, or undefined when there is none or storage cannot be read.
+ *
+ * Only a value written together with `locale-choice` is trusted. Older builds wrote
+ * `locale` on every start, including their detected default; that is exactly the stale
+ * `en-US` that kept a Chinese install opening in English. A one-time reset to the
+ * system language is the only safe way to recover from it — the next explicit choice
+ * records the flag.
+ */
 const readSavedLocale = (): Locale | undefined => {
   try {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    // Validate the persisted value: a stale key from an older version would make
-    // `dictionaries[locale()]` undefined and crash during module init (blank app).
-    if (saved && saved in LANGUAGES) return saved as Locale;
+    if (localStorage.getItem(LOCALE_CHOICE_KEY) !== "1") {
+      return undefined;
+    }
+
+    const saved = localStorage.getItem(LOCALE_KEY);
+    if (saved && saved in LANGUAGES) {
+      return saved as Locale;
+    }
   } catch {
     // Storage can be unavailable — private mode, a blocked origin — and the browser's
     // language is a perfectly good answer. Throwing here would take the whole module,
@@ -94,26 +138,38 @@ const readSavedLocale = (): Locale | undefined => {
   return undefined;
 };
 
-const getInitialLocale = (): Locale => {
-  if (typeof window === "undefined") return "en-US";
+const detectedAtStartup = detectBrowserLocale();
+const savedAtStartup = readSavedLocale();
+const [locale, setLocaleSignal] = createSignal<Locale>(
+  savedAtStartup ?? detectedAtStartup ?? "en-US",
+);
+let localeChosenByUser = savedAtStartup !== undefined;
 
-  const savedLocale = readSavedLocale();
-  if (savedLocale) return savedLocale;
+/**
+ * Applies the Windows user locale unless the user has already chosen a language.
+ *
+ * Called after the webview starts, because reading the locale is an IPC command; the
+ * browser detection above is the synchronous first paint, and this corrects it when
+ * WebView2 reports an English navigator on a non-English Windows installation.
+ */
+const applySystemLocale = (tag: string) => {
+  if (localeChosenByUser) return;
 
-  // Every language the user asked for, most preferred first: `navigator.language` alone
-  // is the first entry of this list.
-  const preferred = navigator.languages?.length
-    ? navigator.languages
-    : [navigator.language];
-  for (const tag of preferred) {
-    const matched = matchLocale(tag);
-    if (matched) return matched;
-  }
-
-  return "en-US";
+  const matched = matchLocale(tag);
+  if (matched) setLocaleSignal(matched);
 };
 
-const [locale, setLocale] = createSignal<Locale>(getInitialLocale());
+const setLocale = (next: Locale) => {
+  localeChosenByUser = true;
+  setLocaleSignal(next);
+
+  try {
+    localStorage.setItem(LOCALE_KEY, next);
+    localStorage.setItem(LOCALE_CHOICE_KEY, "1");
+  } catch {
+    // Not fatal: the choice simply does not survive a restart.
+  }
+};
 
 // Module-level singleton: owned by createRoot so the memo/effect aren't created outside a reactive root.
 const dict = createRoot(() =>
@@ -125,11 +181,6 @@ export const t = i18n.translator(dict, i18n.resolveTemplate);
 createRoot(() => {
   createEffect(() => {
     const current = locale();
-    try {
-      localStorage.setItem(STORAGE_KEY, current);
-    } catch {
-      // Not fatal: the choice simply does not survive a restart.
-    }
     const el = document.documentElement;
     el.lang = current;
     // Activate the [data-lang] font/line-height/direction rules in styles/i18n.css.
@@ -141,4 +192,4 @@ createRoot(() => {
   });
 });
 
-export { locale, matchLocale, setLocale };
+export { locale, matchLocale, setLocale, applySystemLocale };

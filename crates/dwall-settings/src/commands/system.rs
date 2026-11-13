@@ -9,6 +9,31 @@ use crate::filesystem::{move_directory, validate_directory};
 use crate::network::{HttpClient, MirrorUrlResolver};
 use crate::update;
 
+/// The Windows user locale as a BCP-47 tag (for example `zh-CN`).
+///
+/// The webview can report `en-US` even on a Chinese system, so the frontend's
+/// `navigator.language` is not a reliable default. This command asks Windows for the
+/// user's locale before the language has been chosen explicitly.
+#[tauri::command]
+pub fn get_system_locale() -> String {
+    #[cfg(windows)]
+    {
+        use windows::Win32::Globalization::GetUserDefaultLocaleName;
+
+        /// `LOCALE_NAME_MAX_LENGTH` from winnls.h.
+        const LOCALE_NAME_MAX_LENGTH: usize = 85;
+
+        let mut name = [0u16; LOCALE_NAME_MAX_LENGTH];
+        let length = unsafe { GetUserDefaultLocaleName(&mut name) };
+        let length = usize::try_from(length).unwrap_or(0);
+        if length > 1 {
+            return String::from_utf16_lossy(&name[..length - 1]);
+        }
+    }
+
+    "en-US".to_string()
+}
+
 #[tauri::command]
 pub fn check_auto_start() -> DwallSettingsResult<bool> {
     AutoStartProvider::is_enabled()
