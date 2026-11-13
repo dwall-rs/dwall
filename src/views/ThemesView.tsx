@@ -14,6 +14,7 @@ import {
 } from "@/store/catalog.selectors";
 import {
   fixedStore,
+  isApplied,
   isDraftDirty,
   scopeKey,
   themeForMon,
@@ -35,6 +36,7 @@ import {
   Check,
   Images,
   LoaderCircle,
+  Square,
   Monitor,
   Search,
   Save,
@@ -74,6 +76,7 @@ export function ThemesView() {
   const selectedThemeId = () => themeForMon(scopeKey());
   const selectedTheme = () =>
     themeList().find((theme) => theme.id === selectedThemeId());
+  const applied = () => isApplied(scopeKey());
   const draftDirty = createMemo(() => isDraftDirty(scopeKey()));
   const showFixedBar = createMemo(() => fixed() && draftDirty());
   const randomDirty = createMemo(() => isDirty(randomStore));
@@ -306,15 +309,22 @@ export function ThemesView() {
             </Button>
             <Button
               size="sm"
+              variant={applied() ? "destructive" : "primary"}
               disabled={
-                !selectedTheme() ||
-                selectedTheme()?.needsDownload ||
-                fixedStore.applying
+                fixedStore.applying ||
+                (!applied() &&
+                  (!selectedTheme() || selectedTheme()?.needsDownload))
               }
               onClick={() => void applyDraft()}
             >
-              <Check class="size-3.5" />
-              {t("themes.applyTo", { name: scopeName() })}
+              <Show when={applied()} fallback={<Check class="size-3.5" />}>
+                <Square class="size-3 fill-current" />
+              </Show>
+              {applied()
+                ? fixedStore.allUnified
+                  ? t("displays.stopAll")
+                  : t("displays.stopHere")
+                : t("themes.applyTo", { name: scopeName() })}
             </Button>
           </div>
         </div>
