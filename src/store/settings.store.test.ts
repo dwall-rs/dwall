@@ -279,8 +279,12 @@ describe("settings store: writing", () => {
       "daemon refused",
     );
 
-    // The optimistic draft keeps the new mode, but nothing is marked as saved.
+    // Neither the saved snapshot nor the optimistic draft keeps the rejected mode.
     expect(store.settingsStore.saved?.wallpaper_mode).toEqual({
+      mode: "fixed",
+      monitor_specific_wallpapers: {},
+    });
+    expect(store.settingsStore.config?.wallpaper_mode).toEqual({
       mode: "fixed",
       monitor_specific_wallpapers: {},
     });

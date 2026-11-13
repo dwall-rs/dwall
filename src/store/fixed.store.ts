@@ -138,19 +138,20 @@ const toggleApply = async (key: string) => {
       return;
     }
 
-    // Mirror applyWallpaperMode's optimistic config update, so the stage reflects the
-    // new mapping while the daemon restarts.
-    setFixedStore({
-      configThemes: toRecord(next.themes),
-      configUnified: next.unified,
-    });
-
     try {
       await applyWallpaperMode(next.mode);
     } catch {
       // applyWallpaperMode has already reported the failure to the user; the callers are
       // fire-and-forget, so the rejection must not escape as an unhandled one.
+      return;
     }
+
+    // Only replace the committed mapping after the daemon accepted the change. If
+    // the apply failed, the old mapping stays visible and the draft stays retryable.
+    setFixedStore({
+      configThemes: toRecord(next.themes),
+      configUnified: next.unified,
+    });
   } finally {
     setFixedStore("applying", false);
   }
@@ -186,9 +187,10 @@ const isConfiguredTheme = (key: string): boolean => isConfigured(key);
 
 /** Whether the draft theme for a scope is what the configuration stores. */
 const isDraftDirty = (key: string): boolean => {
-  // Do not report a draft before the configuration and its resolved mapping exist;
-  // the shell renders before the settings load completes.
-  if (settingsStore.config?.wallpaper_mode?.mode !== "fixed") return false;
+  // Do not report a draft before the configuration loads; the shell renders before
+  // get_config completes. A saved Random mode has no fixed baseline, but a fixed
+  // draft made after switching the UI back must still surface its apply bar.
+  if (!settingsStore.config) return false;
   if (
     Object.keys(fixedStore.configThemes).length === 0 &&
     fixedStore.monitorThemes[key] === undefined

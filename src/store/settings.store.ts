@@ -284,9 +284,17 @@ const applyWallpaperMode = async (mode: WallpaperMode) => {
   // applying a theme from the stage must not write them to disk or mark them saved —
   // the old code applied `{ ...draft, wallpaper_mode }`, which committed them silently.
   const applied: Config = { ...saved, wallpaper_mode: mode };
+  const previousMode = draft.wallpaper_mode;
 
   // The mode itself is optimistic: the toggle reflects it before the daemon answers.
-  setSettingsStore("config", { ...draft, wallpaper_mode: mode });
+  // Assign inside produce so the tagged union is replaced instead of merged; a plain
+  // store set would keep the other variant's fields (pool vs monitor map).
+  setSettingsStore(
+    "config",
+    produce((config) => {
+      if (config) config.wallpaper_mode = mode;
+    }),
+  );
 
   try {
     await applyTheme(applied);
@@ -299,6 +307,14 @@ const applyWallpaperMode = async (mode: WallpaperMode) => {
       }),
     );
   } catch (e) {
+    // The optimistic mode is only a preview of the request. If the daemon rejects it,
+    // put the draft back so the UI does not keep a mode that was never applied.
+    setSettingsStore(
+      "config",
+      produce((config) => {
+        if (config) config.wallpaper_mode = previousMode;
+      }),
+    );
     setSettingsStore("saveError", String(e));
     // Also surface it: the caller usually discards the rejection (`void apply…`).
     toast.error(t("common.operationFailed"), { description: String(e) });
