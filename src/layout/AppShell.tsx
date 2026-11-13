@@ -1,12 +1,14 @@
 // Responsibility: the window shell — one persistent sidebar, one scrollable work
 // surface, global navigation shortcuts, and the overlays that belong to the window
 // rather than to a page.
-import { Match, Switch, createEffect, onCleanup, onMount } from "solid-js";
+import { Match, Switch, createEffect, on, onCleanup, onMount } from "solid-js";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/toast";
 import { useThemeEngine } from "@/hooks/useThemeEngine";
 import { showsTitlebarBorder } from "@/store/ui.selectors";
 import { setView, uiStore } from "@/store/ui.store";
+import { settingsStore } from "@/store/settings.store";
+import { setApplied as setRandomApplied } from "@/store/random.store";
 import { clsx } from "@/utils";
 import { Sidebar } from "./Sidebar";
 import { SettingsSaveBar } from "./SettingsSaveBar";
@@ -21,11 +23,20 @@ export function AppShell() {
 
   // The shell owns one scroll container, so a surface would otherwise open at the
   // scroll offset the previous one left behind.
+  createEffect(
+    on(
+      () => uiStore.view,
+      () => {
+        requestAnimationFrame(() => {
+          if (main) main.scrollTop = 0;
+        });
+      },
+    ),
+  );
+
+  // A successful fixed-mode apply must not leave the random pool looking applied.
   createEffect(() => {
-    uiStore.view;
-    requestAnimationFrame(() => {
-      if (main) main.scrollTop = 0;
-    });
+    setRandomApplied(settingsStore.saved?.wallpaper_mode?.mode === "random");
   });
 
   onMount(() => {
@@ -73,7 +84,9 @@ export function AppShell() {
       >
         <Sidebar />
         <main
-          ref={main}
+          ref={(el) => {
+            main = el;
+          }}
           data-scroll-root
           class="relative min-w-0 flex-1 overflow-y-auto"
         >

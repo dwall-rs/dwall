@@ -13,9 +13,10 @@ use crate::update;
 ///
 /// The webview can report `en-US` even on a Chinese system, so the frontend's
 /// `navigator.language` is not a reliable default. This command asks Windows for the
-/// user's locale before the language has been chosen explicitly.
+/// user's locale before the language has been chosen explicitly. Returning `None` on
+/// failure keeps the caller from replacing a supported browser locale with English.
 #[tauri::command]
-pub fn get_system_locale() -> String {
+pub fn get_system_locale() -> Option<String> {
     #[cfg(windows)]
     {
         use windows::Win32::Globalization::GetUserDefaultLocaleName;
@@ -27,11 +28,11 @@ pub fn get_system_locale() -> String {
         let length = unsafe { GetUserDefaultLocaleName(&mut name) };
         let length = usize::try_from(length).unwrap_or(0);
         if length > 1 {
-            return String::from_utf16_lossy(&name[..length - 1]);
+            return Some(String::from_utf16_lossy(&name[..length - 1]));
         }
     }
 
-    "en-US".to_string()
+    None
 }
 
 #[tauri::command]

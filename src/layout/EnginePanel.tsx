@@ -40,7 +40,7 @@ export function EnginePanel() {
   // The applied mode is what the daemon is doing; the UI toggle may already be on the
   // other mode but has not been written yet.
   const mode = createMemo(() => {
-    const applied = settingsStore.config?.wallpaper_mode?.mode;
+    const applied = settingsStore.saved?.wallpaper_mode?.mode;
     return applied === "random"
       ? "random"
       : applied === "fixed"

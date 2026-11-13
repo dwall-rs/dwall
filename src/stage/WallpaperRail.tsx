@@ -40,7 +40,9 @@ export function WallpaperRail(props: Props) {
       </div>
 
       <div
-        ref={scroller}
+        ref={(el) => {
+          scroller = el;
+        }}
         class="flex gap-2 overflow-x-auto pb-2 [scrollbar-width:thin]"
       >
         <For each={props.wallpapers}>

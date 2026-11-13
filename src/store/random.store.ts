@@ -79,6 +79,9 @@ const save = async () => {
 
 const discard = () => setRandomStore("selected", [...randomStore.saved]);
 
+/** Align the "applied" flag with the last successfully saved configuration. */
+const setApplied = (applied: boolean) => setRandomStore("applied", applied);
+
 /** Derived: whether unsaved changes exist (random mode not applied, or the pool set changed). */
 const isDirty = (s: RandomState): boolean => {
   if (!s.applied) return true;
@@ -95,5 +98,6 @@ export {
   clearAll,
   save,
   discard,
+  setApplied,
   isDirty,
 };

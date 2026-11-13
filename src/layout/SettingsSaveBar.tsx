@@ -23,7 +23,15 @@ export function SettingsSaveBar() {
   );
 
   const saveNow = () => {
-    if (!dirty() || settingsStore.saving) return;
+    if (settingsStore.saving) return;
+
+    // Number fields commit on blur/Enter. Ctrl+S can arrive while one is focused;
+    // blur first so the shortcut saves what the user sees, not the previous value.
+    if (document.activeElement instanceof HTMLElement) {
+      document.activeElement.blur();
+    }
+
+    if (!dirty()) return;
     void save();
   };
 
@@ -63,7 +71,9 @@ export function SettingsSaveBar() {
           <Button
             variant="ghost"
             size="sm"
-            disabled={!dirty() || settingsStore.saving}
+            disabled={
+              (!dirty() && !settingsStore.saveError) || settingsStore.saving
+            }
             onClick={discard}
           >
             {t("settings.discard")}

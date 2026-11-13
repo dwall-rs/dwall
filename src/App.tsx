@@ -20,7 +20,8 @@ export default function App() {
     // the correct language is in the very first paint; a browser-detected locale is
     // already in place if this fails.
     try {
-      applySystemLocale(await getSystemLocale());
+      const systemLocale = await getSystemLocale();
+      if (systemLocale) applySystemLocale(systemLocale);
     } catch {
       // The synchronous browser locale is a safe fallback.
     }
