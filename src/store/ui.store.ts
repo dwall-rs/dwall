@@ -1,11 +1,11 @@
-// Responsibility: view routing state — current view + theme-library drawer toggle — and the window's own
-// cosmetic preferences (persisted in the webview). Switching to the settings view also collapses the drawer.
+// Responsibility: view routing state and the window's own cosmetic preferences
+// (persisted in the webview). The sidebar owns navigation; this store is the one
+// place that knows which surface is showing.
 import type { View } from "@/models/types";
 import { createStore } from "solid-js/store";
 
 interface UiState {
   view: View;
-  libOpen: boolean; // whether the theme library drawer is expanded at the smallest breakpoint (ignored at xl+)
   /** Whether the content area draws a border under the title bar. */
   titlebarBorder: boolean;
 }
@@ -34,21 +34,28 @@ const readTitlebarBorder = () => {
 };
 
 const [uiStore, setUiStore] = createStore<UiState>({
-  view: "main",
-  libOpen: false,
+  view: "wallpaper",
   titlebarBorder: readTitlebarBorder(),
 });
 
+/**
+ * The surface `toggleView` returns to.
+ *
+ * The settings page can be opened from any of the three working surfaces (and from the
+ * update notification), so closing it has to bring the user back where they were rather
+ * than dumping them on the wallpaper page.
+ */
+let lastWorkingView: Exclude<View, "settings"> = "wallpaper";
+
+const setView = (view: View) => {
+  if (uiStore.view !== "settings" && uiStore.view !== view) {
+    lastWorkingView = uiStore.view;
+  }
+  setUiStore("view", view);
+};
+
 const toggleView = () =>
-  setUiStore((prev) => ({
-    ...prev,
-    view: prev.view === "main" ? "settings" : "main",
-    libOpen: false,
-  }));
-
-const setLibOpen = (libOpen: boolean) => setUiStore("libOpen", libOpen);
-
-const toggleLib = () => setUiStore("libOpen", (prev) => !prev);
+  setView(uiStore.view === "settings" ? lastWorkingView : "settings");
 
 /**
  * Turns the border on or off and remembers the choice.
@@ -69,4 +76,4 @@ const setTitlebarBorder = (titlebarBorder: boolean) => {
   }
 };
 
-export { uiStore, toggleView, setLibOpen, toggleLib, setTitlebarBorder };
+export { uiStore, setView, toggleView, setTitlebarBorder };
