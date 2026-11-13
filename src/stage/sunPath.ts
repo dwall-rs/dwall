@@ -75,8 +75,12 @@ export interface HorizonSegment<T> {
   points: T[];
 }
 
+/** Build a sample at the horizon between two adjacent samples. */
+export type HorizonInterpolator<T> = (before: T, after: T, ratio: number) => T;
+
 export function splitAtHorizon<T extends { altitude: number }>(
   points: readonly T[],
+  interpolate?: HorizonInterpolator<T>,
 ): HorizonSegment<T>[] {
   const segments: HorizonSegment<T>[] = [];
   let current: HorizonSegment<T> | undefined;
@@ -94,11 +98,25 @@ export function splitAtHorizon<T extends { altitude: number }>(
       continue;
     }
 
-    // The crossing point belongs to both sides: the line then reaches the horizon
-    // exactly in both the solid and the dashed stroke.
-    current.points.push(point);
-    segments.push(current);
-    current = { above, points: [point] };
+    // Find the actual altitude-zero point and share it between both sides. Keeping the
+    // raw sample would draw a few degrees of the daytime stroke below the horizon (and
+    // the night stroke above it).
+    const before = current.points[current.points.length - 1];
+    const crossing = interpolate?.(
+      before,
+      point,
+      before.altitude / (before.altitude - point.altitude),
+    );
+
+    if (crossing) {
+      current.points.push(crossing);
+      segments.push(current);
+      current = { above, points: [crossing, point] };
+    } else {
+      current.points.push(point);
+      segments.push(current);
+      current = { above, points: [point] };
+    }
   }
 
   if (current) segments.push(current);

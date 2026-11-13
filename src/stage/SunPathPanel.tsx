@@ -33,6 +33,12 @@ interface Props {
   fullWidth?: boolean;
 }
 
+/** Interpolate a heading across the 360°→0° seam. */
+const azimuthAtHorizon = (before: number, after: number, ratio: number) => {
+  const delta = ((after - before + 540) % 360) - 180;
+  return (before + delta * ratio + 360) % 360;
+};
+
 export function SunPathPanel(props: Props) {
   const [hover, setHover] = createSignal<number | null>(null);
   const [hoverSun, setHoverSun] = createSignal(false);
@@ -72,7 +78,10 @@ export function SunPathPanel(props: Props) {
 
   const segments = createMemo(() =>
     splitAtAzimuthWrap(pathPoints()).flatMap((run) =>
-      splitAtHorizon(run).map((segment) => ({
+      splitAtHorizon(run, (before, after, ratio) => ({
+        altitude: 0,
+        azimuth: azimuthAtHorizon(before.azimuth, after.azimuth, ratio),
+      })).map((segment) => ({
         above: segment.above,
         d: smoothPath(
           segment.points.map(

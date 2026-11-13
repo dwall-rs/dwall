@@ -7,6 +7,7 @@ import {
   createSignal,
   For,
   onCleanup,
+  onMount,
   Show,
 } from "solid-js";
 import type { Wallpaper } from "@/models/types";
@@ -91,6 +92,20 @@ export function RandomStage() {
     if (!savedAt) return;
     const timer = setTimeout(() => void refetchSelection(), 1200);
     onCleanup(() => clearTimeout(timer));
+  });
+
+  // The daemon can draw a new theme when the local day changes while this window stays
+  // open. Poll slowly, and refresh immediately when the user returns to the window.
+  onMount(() => {
+    const refresh = () => {
+      if (document.visibilityState === "visible") void refetchSelection();
+    };
+    const timer = setInterval(refresh, 10 * 60_000);
+    document.addEventListener("visibilitychange", refresh);
+    onCleanup(() => {
+      clearInterval(timer);
+      document.removeEventListener("visibilitychange", refresh);
+    });
   });
 
   const active = createMemo(() => {

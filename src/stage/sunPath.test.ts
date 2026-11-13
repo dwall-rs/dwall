@@ -12,19 +12,38 @@ describe("splitAtHorizon", () => {
     expect(segments[0].points.map((p) => p.altitude)).toEqual([2, 15, 4]);
   });
 
-  test("splits at each horizon crossing and shares the crossing point", () => {
-    const segments = splitAtHorizon([at(10), at(0), at(-10), at(-2), at(3)]);
+  test("splits at each horizon crossing and shares the interpolated crossing", () => {
+    const segments = splitAtHorizon(
+      [at(10), at(5), at(-5), at(-2), at(3)],
+      () => at(0),
+    );
 
     expect(segments.map((segment) => segment.above)).toEqual([
       true,
       false,
       true,
     ]);
-    // The crossing sample is shared, so the strokes meet at the horizon even though
-    // the 10-minute sampling means one of them extends a few pixels past it.
-    expect(segments[0].points.map((p) => p.altitude)).toEqual([10, 0, -10]);
-    expect(segments[1].points.map((p) => p.altitude)).toEqual([-10, -2, 3]);
-    expect(segments[2].points.map((p) => p.altitude)).toEqual([3]);
+    // The crossing sample is shared, so the strokes meet exactly at the horizon.
+    expect(segments[0].points.map((p) => p.altitude)).toEqual([10, 5, 0]);
+    expect(segments[1].points.map((p) => p.altitude)).toEqual([0, -5, -2, 0]);
+    expect(segments[2].points.map((p) => p.altitude)).toEqual([0, 3]);
+  });
+
+  test("interpolates the azimuth at the horizon", () => {
+    const segments = splitAtHorizon(
+      [
+        { altitude: 10, azimuth: 90 },
+        { altitude: -10, azimuth: 270 },
+      ],
+      (before, after, ratio) => ({
+        altitude: 0,
+        azimuth: before.azimuth + (after.azimuth - before.azimuth) * ratio,
+      }),
+    );
+
+    expect(segments).toHaveLength(2);
+    expect(segments[0].points[1]).toEqual({ altitude: 0, azimuth: 180 });
+    expect(segments[1].points[0]).toEqual({ altitude: 0, azimuth: 180 });
   });
 
   test("has nothing to split for an empty path", () => {
