@@ -2,11 +2,16 @@
 
 export type Point = readonly [number, number];
 
-const DEG = Math.PI / 180;
-
-/** Azimuth → x coordinate (0..100): east = 6%, south = 50%, west = 94%. */
+/**
+ * Azimuth → x coordinate (0..100).
+ *
+ * A linear compass axis, not the old `50 - 44·sin(az)` fold. That fold put north and
+ * south on the same x, so the 24-hour cycle came back on itself and read as an ellipse.
+ * A linear axis gives the truthful shape: a daytime hump between the night tails, with
+ * east at 25%, south at 50% and west at 75%.
+ */
 export const xForAzimuth = (azimuth: number): number =>
-  50 - 44 * Math.sin(azimuth * DEG);
+  ((((azimuth % 360) + 360) % 360) / 360) * 100;
 
 /** Vertical plotting band (percent of the panel height). */
 export const Y_TOP = 10;
@@ -57,4 +62,70 @@ export function smoothPath(points: readonly Point[]): string {
     );
   }
   return parts.join(" ");
+}
+/**
+ * Split a sampled diurnal path into contiguous day and night segments.
+ *
+ * The full loop is correct for a 24-hour cycle, but drawing it as one solid line made
+ * the night half look like the same kind of path as the daytime arc. Each crossing
+ * point is kept in both neighbours, so the two strokes meet at the horizon.
+ */
+export interface HorizonSegment<T> {
+  above: boolean;
+  points: T[];
+}
+
+export function splitAtHorizon<T extends { altitude: number }>(
+  points: readonly T[],
+): HorizonSegment<T>[] {
+  const segments: HorizonSegment<T>[] = [];
+  let current: HorizonSegment<T> | undefined;
+
+  for (const point of points) {
+    const above = point.altitude >= 0;
+
+    if (!current) {
+      current = { above, points: [point] };
+      continue;
+    }
+
+    if (current.above === above) {
+      current.points.push(point);
+      continue;
+    }
+
+    // The crossing point belongs to both sides: the line then reaches the horizon
+    // exactly in both the solid and the dashed stroke.
+    current.points.push(point);
+    segments.push(current);
+    current = { above, points: [point] };
+  }
+
+  if (current) segments.push(current);
+  return segments;
+}
+/**
+ * Split a chronological path where the azimuth wraps from 360° back to 0°.
+ *
+ * On a linear compass axis the two edges are the same direction (north); joining the
+ * last sample of one edge to the first of the other would draw a chord straight across
+ * the chart. The runs are separate strokes that meet at the edges instead.
+ */
+export function splitAtAzimuthWrap<T extends { azimuth: number }>(
+  points: readonly T[],
+): T[][] {
+  const runs: T[][] = [];
+  let current: T[] = [];
+
+  for (const point of points) {
+    const previous = current[current.length - 1];
+    if (previous && Math.abs(point.azimuth - previous.azimuth) > 180) {
+      if (current.length > 0) runs.push(current);
+      current = [];
+    }
+    current.push(point);
+  }
+
+  if (current.length > 0) runs.push(current);
+  return runs;
 }

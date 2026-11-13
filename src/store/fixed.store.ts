@@ -167,11 +167,22 @@ const setMonitorTheme = (monId: string, themeId: string) => {
   selectWallpaper(null);
 };
 
+/** Whether the scope has a theme written into the applied configuration. */
+const isConfiguredTheme = (key: string): boolean => isConfigured(key);
+
+/** Whether the draft theme for a scope is what the configuration stores. */
+const isDraftDirty = (key: string): boolean => {
+  const draft = fixedStore.monitorThemes[key] ?? fixedStore.configThemes[key];
+  return draft !== fixedStore.configThemes[key];
+};
+
 export {
   fixedStore,
   scopeKey,
   themeForMon,
   isApplied,
+  isConfiguredTheme,
+  isDraftDirty,
   toggleApply,
   toggleUnified,
   selectMon,

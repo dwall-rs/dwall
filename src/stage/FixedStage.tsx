@@ -1,4 +1,5 @@
-// Responsibility: Fixed-mode stage orchestration — resolves the current theme (draft → config → first in the catalog), loads its wallpaper solar angles and the current solar position, and passes them to the pure presentation children.
+// Responsibility: fixed-mode stage — resolves the current scope's theme, the sun match
+// and the frame list, then lays them out as image, frames, and control deck.
 import { createMemo, createResource, Show } from "solid-js";
 import { themeById } from "@/store/catalog.selectors";
 import { catalogStore } from "@/store/catalog.store";
@@ -8,25 +9,24 @@ import { resourceValue } from "@/lib/resource";
 import { t } from "@/i18n";
 import {
   fixedStore,
-  isApplied,
   scopeKey,
   selectWallpaper,
   themeForMon,
 } from "@/store/fixed.store";
 import { useSolarPosition } from "@/hooks/useSolarPosition";
-import { ApplyRow } from "./ApplyRow";
-import { Preview } from "./Preview";
+import { setView } from "@/store/ui.store";
+import { monitorById } from "@/store/catalog.selectors";
+import { PreviewPlate } from "./PreviewPlate";
 import { SunPathPanel } from "./SunPathPanel";
 import { ThemeDownload } from "./ThemeDownload";
-import { WallpaperStrip } from "./WallpaperStrip";
+import { ThemePanel } from "./ThemePanel";
+import { WallpaperRail } from "./WallpaperRail";
 
 export function FixedStage() {
   const themeId = createMemo(() => themeForMon(scopeKey()) ?? "");
   const theme = createMemo(() => themeById(themeId()));
 
   const [wallpapers] = createResource(
-    // Re-reads when the theme changes and whenever a download finishes, wherever it
-    // was started: installing the selected theme from the library must fill the stage.
     () => ({ id: themeId(), revision: catalogStore.installedRevision }),
     async ({ id }): Promise<Wallpaper[]> => {
       if (!id) return [];
@@ -38,13 +38,10 @@ export function FixedStage() {
     },
   );
 
-  // Keep refreshing the solar position so the match does not go stale while the app stays open.
   const { position: current } = useSolarPosition({ pollMs: 60_000 });
 
   const [matchedEntry] = createResource(
     () => {
-      // Read through the guard: the source runs as a computation, so an accessor in
-      // its error state would throw past the stage's own fallback to the shell boundary.
       const cur = resourceValue(current);
       const id = themeId();
       return id && cur ? { id, cur } : null;
@@ -53,9 +50,9 @@ export function FixedStage() {
   );
 
   const list = createMemo(() => resourceValue(wallpapers) ?? []);
-  /** A theme is usable once its frames are on disk; the fallback below offers to install it. */
   const installed = createMemo(() => list().length > 0);
-  // One image may correspond to several solar positions; the list is deduplicated by image
+
+  // One image may correspond to several solar positions; the rail is deduplicated by image.
   const unique = createMemo(() => {
     const seen = new Set<number>();
     const result: Wallpaper[] = [];
@@ -67,74 +64,83 @@ export function FixedStage() {
     }
     return result;
   });
+
+  // While the matcher is re-running for a newly selected theme, its previous answer
+  // describes a different theme; do not mark that frame as matched.
   const matchedIndex = createMemo(() => {
-    const entry = resourceValue(matchedEntry);
+    const entry = matchedEntry.loading ? null : resourceValue(matchedEntry);
     return entry != null ? (list()[entry]?.index ?? null) : null;
   });
+
   const active = createMemo(() => {
     const items = list();
     if (fixedStore.selIndex != null) {
       return items.find((w) => w.index === fixedStore.selIndex) ?? null;
     }
-    const entry = resourceValue(matchedEntry);
+    const entry = matchedEntry.loading ? null : resourceValue(matchedEntry);
     return entry != null ? (items[entry] ?? null) : (items[0] ?? null);
   });
 
+  const scopeName = () =>
+    monitorById(scopeKey())?.name ?? t("workspace.allDisplays");
+
   return (
-    <div class="flex min-h-0 flex-1 flex-col gap-3">
-      <Show when={resourceValue(current)}>
-        {(cur) => (
-          <SunPathPanel
-            wallpapers={list()}
-            current={cur()}
-            matchedEntry={resourceValue(matchedEntry) ?? null}
+    <div class="grid items-start gap-5 min-[1400px]:grid-cols-[minmax(0,1fr)_360px]">
+      <div class="flex min-w-0 flex-col gap-4">
+        <PreviewPlate
+          themeId={themeId()}
+          themeName={theme().name}
+          scopeName={scopeName()}
+          wallpapers={unique()}
+          wallpaper={active()}
+          matchedIndex={matchedIndex()}
+          onSelect={selectWallpaper}
+        />
+
+        <Show when={theme().needsDownload && !installed()}>
+          <div class="flex items-center justify-between gap-4 rounded-[14px] border border-border bg-card px-4 py-3">
+            <div class="min-w-0">
+              <div class="text-[12.5px] font-medium">
+                {t("stage.notInstalled")}
+              </div>
+              <div class="mt-0.5 font-mono text-[10.5px] text-muted-foreground">
+                {theme().name}
+              </div>
+            </div>
+            <ThemeDownload themeId={themeId()} />
+          </div>
+        </Show>
+
+        <Show when={installed()}>
+          <WallpaperRail
+            themeId={themeId()}
+            wallpapers={unique()}
+            matchedIndex={matchedIndex()}
             selIndex={fixedStore.selIndex}
             onSelect={selectWallpaper}
           />
-        )}
-      </Show>
+        </Show>
+      </div>
 
-      <Show
-        when={installed()}
-        fallback={
-          <div class="flex min-h-0 flex-1 items-center justify-center rounded-2xl border border-border bg-card text-center">
-            <div class="flex flex-col items-center gap-3 px-6">
-              <div class="font-display text-[14px] font-bold">
-                {theme().name}
-              </div>
-              <div class="font-mono text-[11.5px] text-muted-foreground">
-                {t("stage.notInstalled")}
-              </div>
-              <Show when={themeId()}>
-                {(id) => <ThemeDownload themeId={id()} />}
-              </Show>
-            </div>
-          </div>
-        }
-      >
-        <Show when={active()}>
-          {(wp) => (
-            <Preview
-              themeId={themeId()}
-              wallpaper={wp()}
-              isMatched={wp().index === matchedIndex()}
+      <aside class="flex min-w-0 flex-col gap-4">
+        <ThemePanel
+          theme={theme()}
+          frameCount={unique().length}
+          onChangeTheme={() => setView("themes")}
+        />
+
+        <Show when={resourceValue(current)}>
+          {(cur) => (
+            <SunPathPanel
+              wallpapers={list()}
+              current={cur()}
+              matchedEntry={resourceValue(matchedEntry) ?? null}
+              selIndex={fixedStore.selIndex}
+              onSelect={selectWallpaper}
             />
           )}
         </Show>
-        <WallpaperStrip
-          themeId={themeId()}
-          wallpapers={unique()}
-          matchedIndex={matchedIndex()}
-          selIndex={fixedStore.selIndex}
-          onSelect={selectWallpaper}
-        />
-      </Show>
-
-      {/* Nothing to apply before the theme is installed — but a scope that is already
-          applied must keep its "stop" button even if the theme files are gone. */}
-      <Show when={installed() || isApplied(scopeKey())}>
-        <ApplyRow />
-      </Show>
+      </aside>
     </div>
   );
 }

@@ -1,11 +1,11 @@
-// Responsibility: Commit row for random mode — "save config / discard" is random mode's "apply": it writes the config + restarts the engine.
-//       The row keeps a fixed height but only shows the buttons while there are unsaved changes, so the collage above never resizes.
+// Responsibility: random-mode commit — pool size, unsaved state, and the save that
+// writes it to the engine. Only rendered while there is something to commit.
 import { Button } from "@/components/ui/button";
 import { t } from "@/i18n";
 import { randomStore, isDirty, save, discard } from "@/store/random.store";
-import { clsx } from "@/utils";
-import { LoaderCircle, Save } from "lucide-solid";
+import { availableThemes } from "@/store/catalog.selectors";
 import { createMemo, Show } from "solid-js";
+import { LoaderCircle, Save } from "lucide-solid";
 
 export function RandomCommitRow() {
   const dirty = createMemo(() => isDirty(randomStore));
@@ -14,33 +14,40 @@ export function RandomCommitRow() {
   );
 
   return (
-    <div class="flex min-h-12 shrink-0 items-center justify-center gap-3 pb-4 pt-1">
-      <Show when={dirty()}>
-        <Button variant="ghost" size="sm" onClick={discard}>
-          {t("commit.discard")}
-        </Button>
-        <Button
-          size="sm"
-          disabled={!canSave()}
-          onClick={save}
-          class={clsx(
-            canSave() && "animate-breathe",
-            "px-7 py-2.5 text-[13.5px]",
-          )}
-        >
-          {randomStore.saving ? (
-            <>
+    <Show when={dirty()}>
+      <section class="rounded-[16px] border border-warning/25 bg-warning-dim p-3.5">
+        <div class="flex items-start gap-2">
+          <span class="mt-1 size-1.5 shrink-0 rounded-full bg-warning animate-bdot" />
+          <p class="text-[11px] leading-relaxed text-warning">
+            {t("scope.randomDirty", {
+              n: randomStore.selected.length,
+              excluded: Math.max(
+                0,
+                availableThemes().length - randomStore.selected.length,
+              ),
+            })}
+          </p>
+        </div>
+        <div class="mt-3 flex items-center gap-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={discard}
+            disabled={randomStore.saving}
+          >
+            {t("commit.discard")}
+          </Button>
+          <Button size="sm" disabled={!canSave()} onClick={save} class="flex-1">
+            <Show
+              when={randomStore.saving}
+              fallback={<Save class="size-3.5" />}
+            >
               <LoaderCircle class="size-3.5 animate-spin" />
-              {t("commit.saving")}
-            </>
-          ) : (
-            <>
-              <Save class="size-3.5" />
-              {t("commit.save")}
-            </>
-          )}
-        </Button>
-      </Show>
-    </div>
+            </Show>
+            {randomStore.saving ? t("commit.saving") : t("themes.savePool")}
+          </Button>
+        </div>
+      </section>
+    </Show>
   );
 }
