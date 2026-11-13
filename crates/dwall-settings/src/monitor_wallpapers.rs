@@ -65,7 +65,7 @@ pub fn resolve(
     change: Option<&MonitorThemeChange>,
 ) -> MonitorThemes {
     let mode = match change {
-        Some(change) => apply_change(mode, change),
+        Some(change) => apply_change(mode, monitors, change),
         None => mode.clone(),
     };
 
@@ -165,7 +165,11 @@ fn resolve_wallpapers(
 }
 
 /// The mode a requested apply/stop writes.
-fn apply_change(mode: &WallpaperMode, change: &MonitorThemeChange) -> WallpaperMode {
+fn apply_change(
+    mode: &WallpaperMode,
+    monitors: &[String],
+    change: &MonitorThemeChange,
+) -> WallpaperMode {
     if change.unified {
         // The unified scope is not one entry among others: applying it stores the
         // single-theme variant, and stopping it clears the mapping.
@@ -184,6 +188,15 @@ fn apply_change(mode: &WallpaperMode, change: &MonitorThemeChange) -> WallpaperM
         WallpaperMode::Fixed {
             monitor_specific_wallpapers: MonitorSpecificWallpapers::Individual(entries),
         } => entries.clone(),
+        // Leaving the unified shape must not silently drop the theme every other
+        // monitor was showing. Seed the individual map with the unified theme, then
+        // apply the one requested change on top of it.
+        WallpaperMode::Fixed {
+            monitor_specific_wallpapers: MonitorSpecificWallpapers::All(theme_id),
+        } => monitors
+            .iter()
+            .map(|monitor_id| (monitor_id.clone(), theme_id.clone()))
+            .collect(),
         _ => HashMap::new(),
     };
 
@@ -259,6 +272,53 @@ mod tests {
                 "MONITOR#1".to_string(),
                 "MONITOR#2".to_string(),
             ]
+        );
+    }
+
+    #[test]
+    fn leaving_unified_keeps_the_other_monitors() {
+        let mode = fixed(MonitorSpecificWallpapers::All("Sunrise".to_string()));
+
+        let resolved = resolve(
+            &mode,
+            &monitors(&["MONITOR#1", "MONITOR#2"]),
+            Some(&change("MONITOR#1", "Sunrise", false, true)),
+        );
+
+        assert!(!resolved.unified);
+        assert_eq!(resolved.configured, vec!["MONITOR#2".to_string()]);
+        assert_eq!(
+            resolved.themes,
+            vec![
+                theme(ALL_MONITORS, "Sunrise"),
+                theme("MONITOR#2", "Sunrise")
+            ],
+            "the monitor that was stopped must not clear its sibling",
+        );
+    }
+
+    #[test]
+    fn applying_one_monitor_after_unified_keeps_the_rest() {
+        let mode = fixed(MonitorSpecificWallpapers::All("Sunrise".to_string()));
+
+        let resolved = resolve(
+            &mode,
+            &monitors(&["MONITOR#1", "MONITOR#2"]),
+            Some(&change("MONITOR#1", "Catalina", false, false)),
+        );
+
+        assert!(!resolved.unified);
+        assert_eq!(
+            resolved.configured,
+            vec!["MONITOR#1".to_string(), "MONITOR#2".to_string()]
+        );
+        assert_eq!(
+            resolved.themes,
+            vec![
+                theme(ALL_MONITORS, "Catalina"),
+                theme("MONITOR#1", "Catalina"),
+                theme("MONITOR#2", "Sunrise"),
+            ],
         );
     }
 
