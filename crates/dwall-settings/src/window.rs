@@ -72,10 +72,11 @@ pub fn set_color_mode(
 }
 
 /// Caption colours of the two appearances: the window's own background, so the title bar
-/// and the window read as one surface. Taken from the frontend's `--background` token
-/// (`src/index.css`): light `oklch(1 0 0)` and dark `oklch(0.145 0 0)`, in sRGB.
-const LIGHT_CAPTION_COLOR: u32 = color_ref(0xFF_FF_FF);
-const DARK_CAPTION_COLOR: u32 = color_ref(0x0A_0A_0A);
+/// and the window read as one surface. These are the sRGB forms of the frontend's
+/// `--background` token (`src/styles/index.css`): light `oklch(0.973 0.004 255)`
+/// (#F4F6F9) and dark `oklch(0.135 0.012 260)` (#06080D).
+const LIGHT_CAPTION_COLOR: u32 = color_ref(0xF4_F6_F9);
+const DARK_CAPTION_COLOR: u32 = color_ref(0x06_08_0D);
 
 /// Converts an `0xRRGGBB` colour to the `COLORREF` (`0x00BBGGRR`) DWM expects.
 const fn color_ref(rgb: u32) -> u32 {
@@ -153,7 +154,7 @@ mod tests {
     fn the_caption_colours_are_the_window_background() {
         // Neutral values, so writing them either way looks the same: this pins that the
         // literals are the sRGB form of `--background` and not a leftover of the old palette.
-        assert_eq!(LIGHT_CAPTION_COLOR, 0x00FF_FFFF);
-        assert_eq!(DARK_CAPTION_COLOR, 0x000A_0A0A);
+        assert_eq!(LIGHT_CAPTION_COLOR, 0x00F9_F6F4);
+        assert_eq!(DARK_CAPTION_COLOR, 0x000D_0806);
     }
 }
