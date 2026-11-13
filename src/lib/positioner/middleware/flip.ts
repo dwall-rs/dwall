@@ -9,7 +9,7 @@ import {
 export interface FlipOptions {
   padding?: number;
   boundary?: Boundary;
-  /** Ordered list of candidate placements to try when flipping; by default only flips to the opposite side */
+  /** 翻转候选 placement 列表，按顺序尝试，默认只翻转到正对面 */
   fallbackPlacements?: Placement[];
 }
 
@@ -35,7 +35,7 @@ function getSideOverflow(
   };
 }
 
-/** The overflow amount along a placement's main axis (positive = pixels overflowing) */
+/** 取某个 placement 主轴方向对应的溢出量（正数代表溢出了多少像素） */
 function getMainAxisOverflow(side: Side, overflow: SideOverflow): number {
   switch (side) {
     case "top":
@@ -49,7 +49,7 @@ function getMainAxisOverflow(side: Side, overflow: SideOverflow): number {
   }
 }
 
-/** When the main axis has insufficient room, flip to the opposite placement (e.g. bottom -> top) */
+/** 当主轴方向空间不够时，翻转到相对的 placement（如 bottom -> top） */
 export function flip(options: FlipOptions = {}): Middleware {
   return {
     name: "flip",
@@ -64,7 +64,7 @@ export function flip(options: FlipOptions = {}): Middleware {
         initialPlacement,
       } = state;
 
-      // Already flipped once; don't flip again to avoid oscillating back and forth
+      // 已经翻转过一次就不再继续翻，避免来回震荡
       if (middlewareData.flip?.flipped) return {};
 
       const { padding = 0 } = options;
@@ -83,7 +83,7 @@ export function flip(options: FlipOptions = {}): Middleware {
         currentOverflow,
       );
 
-      // The current direction fits; no flip needed
+      // 当前方向够放，不需要翻
       if (currentMainOverflow <= 0) return {};
 
       const candidates = options.fallbackPlacements ?? [
@@ -95,9 +95,8 @@ export function flip(options: FlipOptions = {}): Middleware {
       for (const candidate of candidates) {
         if (candidate === placement) continue;
 
-        // The key fix: actually compute the candidate placement's coordinates
-        // and its own real overflow, instead of wrongly mirroring the current
-        // (already overflowing) placement's overflow.
+        // 关键修复点：真正代入候选 placement 算出它的坐标，再算它自己的真实溢出量，
+        // 而不是用当前（本就溢出的）placement 的 overflow 去做错误的镜像估算。
         const candidateCoords = computeCoordsFromPlacement(rects, candidate);
         const candidateOverflow = getSideOverflow(
           candidateCoords.x,
@@ -113,14 +112,14 @@ export function flip(options: FlipOptions = {}): Middleware {
 
         if (candidateMainOverflow <= 0) {
           best = { placement: candidate, overflow: candidateMainOverflow };
-          break; // Found a candidate that doesn't overflow at all; take it
+          break; // 找到完全不溢出的候选，直接采用
         }
         if (!best || candidateMainOverflow < best.overflow) {
           best = { placement: candidate, overflow: candidateMainOverflow };
         }
       }
 
-      // No candidate, or flipping isn't better than the current state: don't flip
+      // 没有候选，或翻过去也不比现在好，就不翻
       if (!best || best.overflow >= currentMainOverflow) return {};
 
       return {
