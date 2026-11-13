@@ -4,6 +4,7 @@ import type {
   SwipeDirection,
   ToastIcons,
   ToastClassnames,
+  ToastVariant,
 } from "../Toast/Toast.types";
 
 export type Offset =
@@ -18,6 +19,8 @@ export type Offset =
 
 export interface ToastOptions {
   class?: string;
+
+  variant?: ToastVariant;
   closeButton?: boolean;
   descriptionClass?: string;
   style?: JSX.CSSProperties;
@@ -32,10 +35,13 @@ export interface ToastOptions {
 export interface ToasterProps {
   id?: string;
   invert?: boolean;
-  /** @deprecated Toast no longer sets the light/dark theme itself; set <html data-theme="..."> directly */
+
   theme?: "light" | "dark" | "system";
   position?: Position;
   hotkey?: string[];
+
+  variant?: ToastVariant;
+
   richColors?: boolean;
   expand?: boolean;
   duration?: number;

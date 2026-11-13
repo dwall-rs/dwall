@@ -9,6 +9,7 @@ export const ItemActions = (props: ItemActionsProps) => {
     <p
       data-slot="item-actions"
       class={clsx("flex items-center gap-2", local.class)}
+      classList={local.classList}
       {...others}
     />
   );

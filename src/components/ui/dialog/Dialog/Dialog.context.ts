@@ -9,11 +9,8 @@ interface DialogContextValue {
   show: Accessor<boolean>;
   setShow: Setter<boolean>;
   open: Accessor<boolean>;
-  /** 打开/关闭 Dialog；内部会同时处理受控与非受控模式 */
+
   setOpen: (open: boolean) => void;
-  /** 打开浮层的控件；关闭时把焦点交还给它 */
-  trigger: Accessor<HTMLElement | undefined>;
-  setTrigger: (element: HTMLElement | undefined) => void;
 }
 
 export const DialogContext = createContext<DialogContextValue>();

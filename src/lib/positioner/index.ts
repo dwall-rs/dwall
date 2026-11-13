@@ -13,10 +13,17 @@ export {
 export { autoUpdate } from "./auto-update";
 export type { AutoUpdateOptions } from "./auto-update";
 
+export * from "./utils/floating";
+export {
+  getOverflowAncestors,
+  getRectRelativeTo,
+  getViewportBoundary,
+  getViewportRect,
+  isOverflowElement,
+} from "./utils/dom";
+
 export { createVirtualElement } from "./virtual-element";
 export type { PointOptions } from "./virtual-element";
-
-export { getViewportBoundary } from "./utils/dom";
 
 export {
   offset,

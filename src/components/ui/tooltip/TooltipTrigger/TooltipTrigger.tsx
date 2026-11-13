@@ -21,7 +21,6 @@ export const TooltipTrigger = <
       ref={mergeRefs(ctx.setReference, props.ref, attachListeners)}
       aria-describedby={ctx.open() ? ctx.contentId : undefined}
       data-state={ctx.open() ? "open" : "closed"}
-      // data-disabled={props.disabled ? "" : undefined}
     />
   );
 };

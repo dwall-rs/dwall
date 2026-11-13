@@ -21,6 +21,7 @@ export const Field = (props: FieldProps) => {
         fieldVariants({ orientation: local.orientation }),
         local.class,
       )}
+      classList={local.classList}
       {...others}
     />
   );

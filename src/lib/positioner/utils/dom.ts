@@ -1,19 +1,18 @@
 import type { ReferenceElement, Rect, Strategy } from "../types";
 
-/** Convert a DOMRect to a plain data object (viewport coordinate system); also handles virtual reference elements */
+/** 把 DOMRect 转成纯数据对象（视口坐标系）；同时兼容虚拟参照元素 */
 export function getViewportRect(el: ReferenceElement): Rect {
   const rect = el.getBoundingClientRect();
   return { x: rect.x, y: rect.y, width: rect.width, height: rect.height };
 }
 
 /**
- * Get the rect participating in the computation for a strategy:
- * - fixed: use viewport coordinates directly (simplest and most reliable with position:fixed)
- * - absolute: add the page scroll offset to convert to "document coordinates"
- *   (assuming the floating element ends up mounted under <body>, i.e. the
- *    nearest positioned ancestor is body/html — the common Portal-to-body
- *    usage; if your floating element has a custom non-static positioned
- *    ancestor, prefer strategy: 'fixed')
+ * 根据 strategy 得到参与计算的矩形：
+ * - fixed：直接用视口坐标（配合 position:fixed 使用最简单可靠）
+ * - absolute：加上页面滚动偏移，换算成“文档坐标”
+ *   （假设 floating 元素最终被挂载在 <body> 下，即最近定位祖先是 body/html，
+ *    这是 Portal 到 body 的常见用法；如果你的 floating 元素有自定义的
+ *    非 static 定位祖先，请优先使用 strategy: 'fixed'）
  */
 export function getRectRelativeTo(
   el: ReferenceElement,
@@ -31,28 +30,41 @@ export function getRectRelativeTo(
   };
 }
 
-/** The current viewport as the default boundary (for shift / flip overflow detection); strategy decides the coordinate system */
+/** 当前视口作为默认边界（用于 shift / flip 的溢出检测），strategy 决定坐标系 */
 export function getViewportBoundary(strategy: Strategy, padding = 0): Rect {
-  const width = document.documentElement.clientWidth;
-  const height = document.documentElement.clientHeight;
+  // 移动端软键盘 / 地址栏变化会改变 visualViewport，但不会改变
+  // documentElement.clientHeight。用 visualViewport 作为边界，浮层才不会
+  // 被定位到键盘后面；没有 visualViewport 的环境回退到布局视口。
+  const viewport = window.visualViewport;
+  const width = viewport?.width ?? document.documentElement.clientWidth;
+  const height = viewport?.height ?? document.documentElement.clientHeight;
+  const offsetX = viewport?.offsetLeft ?? 0;
+  const offsetY = viewport?.offsetTop ?? 0;
   const scrollX =
     strategy === "fixed" ? 0 : (window.scrollX ?? window.pageXOffset);
   const scrollY =
     strategy === "fixed" ? 0 : (window.scrollY ?? window.pageYOffset);
   return {
-    x: scrollX + padding,
-    y: scrollY + padding,
+    x: scrollX + offsetX + padding,
+    y: scrollY + offsetY + padding,
     width: width - padding * 2,
     height: height - padding * 2,
   };
 }
 
-function isOverflowElement(el: Element): boolean {
+/**
+ * 元素自身是否建立了滚动容器。
+ *
+ * 导出原因:`hooks/useScrollLock` 需要用它判断页面滚动条长在 html 还是 body 上,
+ * 之前那里也有一份逐字重复的实现。两处口径必须一致(同一个正则、同样只看
+ * overflow 三属性),否则"锁哪个元素"和"哪些祖先要监听 scroll"会不一致。
+ */
+export function isOverflowElement(el: Element): boolean {
   const { overflow, overflowX, overflowY } = getComputedStyle(el);
   return /auto|scroll|overlay|hidden/.test(overflow + overflowX + overflowY);
 }
 
-/** Find all scrollable ancestors that may affect layout + window, for autoUpdate to listen to scroll/resize */
+/** 找到所有可能影响布局的可滚动祖先 + window，用于 autoUpdate 监听 scroll/resize */
 export function getOverflowAncestors(node: Element): Array<Element | Window> {
   const result: Array<Element | Window> = [];
   let el: Element | null = node.parentElement;

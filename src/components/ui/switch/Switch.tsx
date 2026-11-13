@@ -1,32 +1,31 @@
 import { createMemo, createSignal, mergeProps, splitProps } from "solid-js";
 import type { SwitchProps } from "./Switch.types";
-import { callEventHandler } from "~/utils/call-event-handler";
-import { clsx } from "~/utils";
+import { callEventHandler, clsx } from "~/utils";
 import { classes } from "./Switch.styles";
 
 export const Switch = (props: SwitchProps) => {
   const merged = mergeProps({ size: "md" } as const, props);
 
-  const [local, others] = splitProps(merged, [
-    "id",
-    "checked",
-    "defaultChecked",
-    "onCheckedChange",
-    "onClick",
-    "onKeyDown",
-    "size",
-    "disabled",
-    "class",
-    "classList",
-  ]);
+  const [local, events, others] = splitProps(
+    merged,
+    [
+      "id",
+      "checked",
+      "defaultChecked",
+      "onCheckedChange",
+      "size",
+      "disabled",
+      "class",
+      "classList",
+    ],
+    ["onClick", "onKeyDown"],
+  );
 
   const [internalChecked, setInternalChecked] = createSignal(
     local.defaultChecked ?? false,
   );
 
   const toggle = () => {
-    if (local.disabled) return;
-
     if (local.checked !== undefined) {
       setInternalChecked(local.checked);
       local.onCheckedChange?.(!local.checked);
@@ -36,6 +35,22 @@ export const Switch = (props: SwitchProps) => {
     const newChecked = !internalChecked();
     setInternalChecked(newChecked);
     local.onCheckedChange?.(newChecked);
+  };
+
+  const handleClick = (event: MouseEvent) => {
+    callEventHandler(events.onClick, event);
+    if (local.disabled) return;
+    toggle();
+  };
+
+  const handleKeyDown = (event: KeyboardEvent) => {
+    callEventHandler(events.onKeyDown, event);
+    if (event.defaultPrevented || local.disabled) return;
+    if (event.key !== " " && event.key !== "Enter") return;
+
+    event.preventDefault();
+    if (event.repeat) return;
+    toggle();
   };
 
   const checked = createMemo(() =>
@@ -49,29 +64,13 @@ export const Switch = (props: SwitchProps) => {
       data-checked={checked()}
       data-disabled={local.disabled}
       role="switch"
-      // A disabled switch cannot be operated, so it must not be a tab stop either:
-      // focus landed on it, Enter and Space did nothing, and the ring painted around
-      // a control that looks greyed out.
       tabIndex={local.disabled ? -1 : 0}
       aria-checked={checked()}
       aria-disabled={local.disabled}
       class={clsx(classes.switch, local.class)}
-      // `onClick`/`onKeyDown` are split out of `others` on purpose: spreading the
-      // rest after this handler used to overwrite it, which made the switch inert
-      // whenever a consumer passed `onClick` (e.g. to stop propagation inside a
-      // clickable card).
-      onClick={(event) => {
-        callEventHandler(local.onClick, event);
-        toggle();
-      }}
-      onKeyDown={(event) => {
-        callEventHandler(local.onKeyDown, event);
-
-        if (event.key === " " || event.key === "Enter") {
-          event.preventDefault();
-          toggle();
-        }
-      }}
+      classList={local.classList}
+      onClick={handleClick}
+      onKeyDown={handleKeyDown}
       {...others}
     >
       <span

@@ -30,6 +30,7 @@ export const InputGroupButton = (props: InputGroupButtonProps) => {
         }),
         local.class,
       )}
+      classList={local.classList}
     />
   );
 };

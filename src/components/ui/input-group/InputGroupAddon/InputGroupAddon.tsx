@@ -14,6 +14,7 @@ export const InputGroupAddon = (props: InputGroupAddonProps) => {
       data-slot="input-group-addon"
       data-align={local.align}
       class={clsx(inputGroupAddonVariants({ align: local.align }), local.class)}
+      classList={local.classList}
       onClick={(e) => {
         if ((e.target as HTMLElement).closest("button")) {
           return;

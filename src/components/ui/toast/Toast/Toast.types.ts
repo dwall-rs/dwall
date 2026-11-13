@@ -8,6 +8,8 @@ export type ToastTypes =
   | "loading"
   | "default";
 
+export type ToastVariant = "popover" | "semantic" | "colored";
+
 export type Position =
   | "top-left"
   | "top-right"
@@ -75,6 +77,9 @@ export interface ToastT {
   type?: ToastTypes;
   icon?: JSXElement;
   jsx?: JSXElement;
+
+  variant?: ToastVariant;
+
   richColors?: boolean;
   invert?: boolean;
   closeButton?: boolean;
@@ -109,6 +114,8 @@ export interface ToastProps {
   class?: string;
   icons?: ToastIcons;
   closeButtonAriaLabel?: string;
+
+  variant?: ToastVariant;
   defaultRichColors?: boolean;
   onRemove: (id: string) => void;
   index: number;
@@ -118,6 +125,8 @@ export interface ToastProps {
   gap: number;
 }
 
-export const isAction = (action: Action | JSXElement): action is Action => {
+export const isAction = (
+  action: Action | JSXElement | undefined,
+): action is Action => {
   return (action as Action)?.label !== undefined;
 };

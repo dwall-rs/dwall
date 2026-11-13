@@ -7,11 +7,6 @@ export interface TooltipArrowProps {
   class?: string;
 }
 
-/**
- * Arrow component; it must be rendered inside <TooltipContent>.
- * Uses shadcn Base UI's positioning approach: edge alignment is done through
- * data-side / data-align and CSS variables, without computing top/left manually.
- */
 export function TooltipArrow(props: TooltipArrowProps) {
   const ctx = useTooltipContentContext("TooltipArrow");
 

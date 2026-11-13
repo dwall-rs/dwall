@@ -11,6 +11,7 @@ export const ItemSeparator = (props: ItemSeparatorProps) => {
       data-slot="item-separator"
       orientation="horizontal"
       class={clsx("my-2", local.class)}
+      classList={local.classList}
       {...others}
     />
   );

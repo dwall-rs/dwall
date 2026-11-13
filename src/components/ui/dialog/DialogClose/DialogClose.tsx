@@ -19,7 +19,7 @@ export const DialogClose = (props: DialogCloseProps) => {
 
   const handleClick = (event: MouseEvent) => {
     setOpen(false);
-    // 透传事件（此前 `merged.onClick?.()` 会让用户回调收到 undefined）
+
     callEventHandler(merged.onClick, event);
   };
 

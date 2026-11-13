@@ -4,6 +4,10 @@ export type DialogContentProps = PolymorphicProps<
   "div",
   BaseProps & {
     showCloseButton?: boolean;
+
+    dismissOnOverlayClick?: boolean;
+
+    overlayClass?: string;
   },
   false
 >;

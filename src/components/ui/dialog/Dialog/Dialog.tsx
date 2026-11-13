@@ -21,23 +21,17 @@ export const Dialog = (props: DialogProps) => {
 
   const initialOpen = local.open ?? local.defaultOpen ?? false;
 
-  // 实际显示或卸载信号
   const [show, setShow] = createSignal(initialOpen);
-  // 内部动画控制信号（非受控模式）
+
   const [internalOpen, setInternalOpen] = createSignal(
     local.defaultOpen ?? false,
   );
-  // 实际动画控制状态：优先取受控 open，否则取内部状态
+
   const open = createMemo(() =>
     local.open === undefined ? internalOpen() : local.open,
   );
   const lockScroll = createMemo(() => props.lockScroll ?? true);
-  // 打开浮层的控件。放在这里而不是 DialogSurface，是因为它和 open 一样属于 Dialog
-  // 的生命周期：浮层卸载后仍要记得焦点该还给谁。
-  const [trigger, setTrigger] = createSignal<HTMLElement | undefined>();
 
-  // 打开期间默认锁定页面滚动：锁住文档滚动并拦截浮层之外的滚轮/触摸，
-  // 内容区自身仍可滚动。传 lockScroll={false} 可关闭该行为。
   useScrollLock(() => open() && lockScroll(), {
     allowedSelector: "[data-dialog-surface]",
   });
@@ -49,7 +43,6 @@ export const Dialog = (props: DialogProps) => {
     local.onOpenChange?.(next);
   };
 
-  // 打开期间按 Escape 关闭（与 Drawer 一致）
   createEffect(() => {
     if (!open() || local.dismissOnEscape === false) return;
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -61,8 +54,6 @@ export const Dialog = (props: DialogProps) => {
     onCleanup(() => document.removeEventListener("keydown", handleKeyDown));
   });
 
-  // 打开时立刻挂载；关闭时保留挂载直到动画结束，由 Content/Overlay 的
-  // onAnimationEnd 负责卸载，保证退场动画能完整播放。
   createEffect(() => {
     if (open()) {
       setShow(true);
@@ -76,8 +67,6 @@ export const Dialog = (props: DialogProps) => {
         setShow,
         open,
         setOpen,
-        trigger,
-        setTrigger,
       }}
     >
       <div data-slot="dialog" {...others}>

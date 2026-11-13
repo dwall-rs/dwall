@@ -5,13 +5,7 @@ import type { SelectTriggerProps } from "./SelectTrigger.types";
 export interface UseSelectTriggerResult {
   ctx: ReturnType<typeof useSelectContext>;
   isDisabled: () => boolean;
-  /**
-   * Attaches the native event listeners for opening/closing the dropdown to
-   * the real DOM element (invoked via ref). Using addEventListener instead of
-   * JSX onXxx props avoids consuming those prop names — callers can freely
-   * pass their own native handlers on <SelectTrigger onClick={...}>, and the
-   * two mechanisms are completely independent and never override each other.
-   */
+
   attachListeners: (el: Element) => void;
 }
 
@@ -23,7 +17,6 @@ export function useSelectTrigger<T extends ValidComponent>(
   const isDisabled = () => ctx.disabled() || !!props().disabled;
 
   const openAndHighlightSelected = () => {
-    if (isDisabled()) return;
     ctx.setActiveValue(
       ctx.value() ?? ctx.items.find((it) => !it.disabled)?.value,
     );

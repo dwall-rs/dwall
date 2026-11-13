@@ -75,8 +75,9 @@ export function getDefaultSwipeDirections(
 ): SwipeDirection[] {
   const [y, x] = position.split("-");
   const directions: SwipeDirection[] = [];
-  if (y) directions.push(y as SwipeDirection);
-  if (x) directions.push(x as SwipeDirection);
+  if (y === "top" || y === "bottom") directions.push(y);
+
+  if (x === "left" || x === "right") directions.push(x);
   return directions;
 }
 
@@ -90,4 +91,12 @@ export function getDocumentDirection(): "rtl" | "ltr" | "auto" {
       | "auto";
   }
   return dir as "rtl" | "ltr" | "auto";
+}
+
+export function getViewportLayoutClass(
+  position: Position,
+  expanded: boolean,
+): string {
+  if (!expanded) return "grid";
+  return position.startsWith("top") ? "flex flex-col" : "flex flex-col-reverse";
 }

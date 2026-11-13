@@ -12,6 +12,7 @@ export const ItemHeader = (props: ItemHeaderProps) => {
         "flex basis-full items-center justify-between gap-2",
         local.class,
       )}
+      classList={local.classList}
       {...others}
     />
   );

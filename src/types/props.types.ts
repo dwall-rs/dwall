@@ -1,4 +1,5 @@
-import type { JSX, ComponentProps, ValidComponent } from "solid-js";
+import type { ComponentProps, JSX, ValidComponent } from "solid-js";
+import type { DynamicProps } from "solid-js/web";
 
 export type EmptyObject = Record<never, never>;
 
@@ -16,17 +17,6 @@ export type TouchEventHandler<T extends keyof HTMLElementTagNameMap> = (
   },
 ) => void;
 
-type AsProp<
-  T extends ValidComponent,
-  Enable extends boolean,
-> = Enable extends true ? { as?: T } : EmptyObject;
-
-export type PolymorphicProps<
-  T extends ValidComponent,
-  P = EmptyObject,
-  EnableAs extends boolean = true,
-> = P & Omit<ComponentProps<T>, keyof P> & AsProp<T, EnableAs>;
-
 export interface BaseProps {
   class?: string;
   classList?: Record<string, boolean | undefined>;
@@ -39,19 +29,20 @@ export type NonNullableProps<T, K extends keyof T> = Omit<T, K> & {
 };
 
 /**
- * Resolve any polymorphic Props containing an `as` property into a concrete internal type
+ * 将任意含 `component` 属性的多态 Props 解析为内部确定类型
  *
- * - if TProps contains `as?: T`, expand into the ComponentProps for T
- * - otherwise fall back to the ComponentProps of TDefault
+ * - 若 TProps 含 `component?:T`，则展开 T 对应的 ComponentProps
+ * - 否则回退到 TDefault 的 ComponentProps
  */
 export type ResolvedProps<TProps, TDefault extends ValidComponent> = (
-  "as" extends keyof TProps
-    ? NonNullable<TProps["as"]>
+  "component" extends keyof TProps
+    ? NonNullable<TProps["component"]>
     : TDefault
 ) extends infer TComp
   ? TComp extends ValidComponent
-    ? Omit<TProps, "as"> & ComponentProps<TComp> & { as?: ValidComponent }
-    : TProps & { as?: ValidComponent }
+    ? Omit<TProps, "component"> &
+        ComponentProps<TComp> & { component?: ValidComponent }
+    : TProps & { component?: ValidComponent }
   : never;
 
 export type HTMLAttributes<T extends ValidComponent> = Omit<
@@ -59,3 +50,16 @@ export type HTMLAttributes<T extends ValidComponent> = Omit<
   keyof BaseProps
 > &
   BaseProps;
+
+type PolymorphicProp<
+  T extends ValidComponent,
+  Enable extends boolean,
+> = Enable extends true ? { component?: T } : EmptyObject;
+
+export type PolymorphicProps<
+  T extends ValidComponent,
+  O = EmptyObject,
+  EnableAs extends boolean = true,
+> = O &
+  Omit<DynamicProps<T>, keyof O | "component"> &
+  PolymorphicProp<T, EnableAs>;

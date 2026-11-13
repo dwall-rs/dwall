@@ -3,27 +3,25 @@ import { getSide, isVerticalSide } from "../core/placement";
 
 export interface ArrowOptions {
   /**
-   * The arrow DOM element, or a function returning it (in Solid, usually an
-   * accessor). The type is Element rather than HTMLElement to support arrows
-   * drawn with <svg> in SVG scenarios (SVGSVGElement is not an HTMLElement
-   * subtype).
+   * 箭头 DOM 元素，或返回该元素的函数（Solid 场景下常传一个访问器）。
+   * 类型是 Element 而不是 HTMLElement，是为了兼容 SVG 场景下用 <svg> 画箭头的写法
+   * （SVGSVGElement 不是 HTMLElement 的子类型）。
    */
   element: Element | undefined | (() => Element | undefined);
-  /** Minimum gap between the arrow and the floating's edge, default 4 */
+  /** 箭头距 floating 边缘的最小间距，默认 4 */
   padding?: number;
 }
 
 export interface ArrowData {
   x?: number;
   y?: number;
-  /** Which side of the floating the arrow should hug (the placement's main side of the floating) */
+  /** 箭头应贴靠 floating 的哪一侧（与 floating 的 placement 主边相同） */
   side: ReturnType<typeof getSide>;
 }
 
 /**
- * Compute the arrow's x/y offset relative to the floating element's top-left,
- * so it always points at the reference element's center while staying within
- * the floating's bounds.
+ * 计算箭头相对 floating 元素左上角的 x/y 偏移，
+ * 使其始终指向 reference 元素中心，同时不超出 floating 边界。
  */
 export function arrow(options: ArrowOptions): Middleware {
   return {
@@ -40,28 +38,27 @@ export function arrow(options: ArrowOptions): Middleware {
       const padding = options.padding ?? 4;
       const vertical = isVerticalSide(side);
 
-      // Use getBoundingClientRect rather than offsetWidth/offsetHeight: the
-      // latter exist only on HTMLElement; SVG elements (e.g. <svg>/<g>) have
-      // neither. getBoundingClientRect works for any Element as long as the
-      // arrow has no CSS transform (TooltipArrow avoids rotate for this).
+      // 用 getBoundingClientRect 而不是 offsetWidth/offsetHeight：后者只有
+      // HTMLElement 才有，SVG 元素（比如 <svg>/<g>）没有这两个属性；
+      // getBoundingClientRect 对所有 Element 都通用，只要箭头本身没有做
+      // CSS transform（本库的 TooltipArrow 就是特意不用 rotate 来避免这个问题）。
       const arrowRect = el.getBoundingClientRect();
       const arrowWidth = arrowRect.width || 0;
       const arrowHeight = arrowRect.height || 0;
 
-      // Key: read the floating's size fresh instead of using
-      // state.rects.floating (cached at the start of this computePosition
-      // pass). If a middleware like size, ahead of arrow, produces DOM side
-      // effects via its apply callback (e.g. reactively changing max-width)
-      // and they land synchronously, state.rects.floating holds the old
-      // pre-change size, so the arrow offset computed from it mismatches the
-      // finally rendered box width. Re-measuring always gets the current size.
+      // 关键：floating 的宽高现读现用，不用 state.rects.floating（那是这一轮
+      // computePosition 刚开始时缓存的值）。如果 arrow 前面排了 size 这类会
+      // 通过 apply 回调产生 DOM 副作用（比如响应式地改 max-width）的 middleware，
+      // 而且这次副作用刚好同步生效了，state.rects.floating 就会是“改之前”的
+      // 旧尺寸，用它算出来的箭头位置会带着一个固定的偏移量，跟最终实际渲染的
+      // 盒子宽度对不上。这里现场重新measure，保证永远拿到当下最新的尺寸。
       const freshFloatingRect = state.elements.floating.getBoundingClientRect();
       const axisLen = vertical
         ? freshFloatingRect.width
         : freshFloatingRect.height;
       const arrowLen = vertical ? arrowWidth : arrowHeight;
 
-      // Position of the reference's center relative to the floating's top-left
+      // reference 中心点相对 floating 左上角的位置
       const refCenter = vertical
         ? rects.reference.x + rects.reference.width / 2 - x
         : rects.reference.y + rects.reference.height / 2 - y;
