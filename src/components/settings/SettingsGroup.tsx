@@ -1,28 +1,36 @@
-// Responsibility: Settings group container — icon + title + card slot; pure presentation, staggered entrance.
-//       Note: do not destructure props (in Solid, destructuring loses reactivity, so language switches etc. cannot update).
-
+// Responsibility: one settings section — heading plus a single shared surface.
+// The surface belongs to the group, so rows divide with rules instead of each becoming
+// an identical card.
 import type { JSXElement } from "solid-js";
+import { clsx } from "@/utils";
 
 interface Props {
   icon: JSXElement;
   title: string;
-  delay?: number;
+  id?: string;
+  bare?: boolean;
   children: JSXElement;
 }
 
 export function SettingsGroup(props: Props) {
   return (
-    <div
-      class="mb-7.5 animate-rise"
-      style={{ "animation-delay": `${props.delay ?? 0}ms` }}
-    >
-      <h3 class="mb-3 flex items-center gap-2.25 font-display text-[11px] font-bold uppercase tracking-[1.6px] text-muted-foreground">
-        <span class="grid size-5.5 place-items-center rounded-[7px] bg-accent text-primary">
+    <section id={props.id} class="mb-10 scroll-mt-6">
+      <div class="mb-3 flex items-center gap-2.5">
+        <span class="grid size-7 shrink-0 place-items-center rounded-[9px] bg-accent text-accent-foreground">
           {props.icon}
         </span>
-        {props.title}
-      </h3>
-      {props.children}
-    </div>
+        <h2 class="font-display text-[18px] font-semibold tracking-[-0.015em]">
+          {props.title}
+        </h2>
+      </div>
+      <div
+        class={clsx(
+          !props.bare &&
+            "overflow-hidden rounded-[16px] border border-border bg-card shadow-[0_1px_2px_rgba(0,0,0,.03)]",
+        )}
+      >
+        {props.children}
+      </div>
+    </section>
   );
 }

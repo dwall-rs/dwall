@@ -92,35 +92,46 @@ const refresh = async () => {
   }
 };
 
+/** Terminates the daemon and mirrors the cleared mode into the settings draft. */
+const stop = async () => {
+  if (!engineStore.running) return;
+
+  if (engineStore.pendingTimer) clearTimeout(engineStore.pendingTimer);
+
+  try {
+    await stopEngine();
+    // The command cleared the theme in config.toml. Mirror only that: reloading
+    // the file here also discarded every unsaved edit in the settings page.
+    syncStoppedSettings();
+    // A deliberate stop is not a failure: there is no reason to show, and the log
+    // still holds whatever the last cycle wrote before it.
+    stoppedErrorRead = true;
+    setEngineStore({
+      running: false,
+      lastError: null,
+      pending: false,
+      pendingTimer: undefined,
+    });
+  } catch (e) {
+    notifyFailure("stop engine", e);
+    // The daemon may still be running: let the next poll read why.
+    stoppedErrorRead = false;
+    setEngineStore((prev) => ({
+      ...prev,
+      pending: false,
+      pendingTimer: undefined,
+    }));
+  }
+};
+
+/**
+ * Kept for keyboard/legacy callers: the UI now confirms with a dialog and calls
+ * `stop` directly, but the two-step form remains the store's contract.
+ */
 const toggle = async () => {
   if (engineStore.running) {
     if (engineStore.pending) {
-      // Second confirmation → actually terminate
-      if (engineStore.pendingTimer) clearTimeout(engineStore.pendingTimer);
-      try {
-        await stopEngine();
-        // The command cleared the theme in config.toml. Mirror only that: reloading
-        // the file here also discarded every unsaved edit in the settings page.
-        syncStoppedSettings();
-        // A deliberate stop is not a failure: there is no reason to show, and the log
-        // still holds whatever the last cycle wrote before it.
-        stoppedErrorRead = true;
-        setEngineStore({
-          running: false,
-          lastError: null,
-          pending: false,
-          pendingTimer: undefined,
-        });
-      } catch (e) {
-        notifyFailure("stop engine", e);
-        // The daemon may still be running: let the next poll read why.
-        stoppedErrorRead = false;
-        setEngineStore((prev) => ({
-          ...prev,
-          pending: false,
-          pendingTimer: undefined,
-        }));
-      }
+      await stop();
     } else {
       // First click → enter the pending state; auto-abandon if it is not confirmed within 2.2s
       const t = setTimeout(
@@ -148,4 +159,4 @@ const toggle = async () => {
   }
 };
 
-export { engineStore, toggle, refresh };
+export { engineStore, toggle, stop, refresh };

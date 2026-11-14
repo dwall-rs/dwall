@@ -4,7 +4,8 @@ import type { SolarPosition } from "@/ipc/types";
 export type { SolarPosition };
 
 export type Mode = "fixed" | "random";
-export type View = "main" | "settings";
+/** The four top-level surfaces of the settings window. */
+export type View = "wallpaper" | "themes" | "displays" | "settings";
 export type ThemeMode = "light" | "dark" | "system";
 export type ResolvedTheme = "light" | "dark";
 

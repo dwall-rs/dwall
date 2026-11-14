@@ -103,13 +103,32 @@ describe("ui store: the title bar separator", () => {
 });
 
 describe("ui store: view switching", () => {
-  test("switching to settings collapses the library drawer", async () => {
+  test("starts on the wallpaper surface", async () => {
     const store = await freshStore(fakeStorage());
 
-    store.setLibOpen(true);
+    expect(store.uiStore.view).toBe("wallpaper");
+  });
+
+  test("closing settings returns to the surface it was opened from", async () => {
+    const store = await freshStore(fakeStorage());
+
+    store.setView("themes");
     store.toggleView();
 
     expect(store.uiStore.view).toBe("settings");
-    expect(store.uiStore.libOpen).toBe(false);
+
+    store.toggleView();
+
+    expect(store.uiStore.view).toBe("themes");
+  });
+
+  test("opening settings from another working surface remembers that surface", async () => {
+    const store = await freshStore(fakeStorage());
+
+    store.setView("displays");
+    store.setView("settings");
+    store.toggleView();
+
+    expect(store.uiStore.view).toBe("displays");
   });
 });

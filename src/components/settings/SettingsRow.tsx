@@ -1,4 +1,5 @@
-// Responsibility: Settings row — built on Field, providing label/description semantics with horizontal/vertical layout.
+// Responsibility: one settings row — label, explanation and control, divided from
+// the next row by a rule rather than wrapped in its own card.
 //       Note: do not destructure props (in Solid, destructuring loses reactivity, so language switches etc. cannot update).
 import type { JSXElement } from "solid-js";
 import { Show } from "solid-js";
@@ -24,12 +25,12 @@ export function SettingsRow(props: Props) {
     <Field
       orientation={props.stacked ? "vertical" : "horizontal"}
       class={clsx(
-        "border-b border-border p-[16px_18px] transition-colors last:border-b-0 hover:bg-foreground/2",
+        "border-b border-border p-[15px_18px] transition-colors last:border-b-0 hover:bg-foreground/[0.015]",
         !props.stacked && "flex-wrap gap-y-3",
       )}
     >
       <FieldContent class="gap-1">
-        <FieldTitle class="text-[14.5px] font-bold!">
+        <FieldTitle class="flex items-center gap-1.5 text-[13.5px] font-semibold">
           {props.label}
           <Check
             class={clsx(
@@ -39,7 +40,7 @@ export function SettingsRow(props: Props) {
           />
         </FieldTitle>
         <Show when={props.desc}>
-          <FieldDescription class="max-w-110 text-[12px] leading-relaxed">
+          <FieldDescription class="max-w-[62ch] text-[11.5px] leading-relaxed">
             {props.desc}
           </FieldDescription>
         </Show>

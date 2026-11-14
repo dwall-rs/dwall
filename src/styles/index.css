@@ -5,7 +5,21 @@
 @custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
 
 @theme {
-    --radius: 0.625rem;
+    --radius: 0.75rem;
+
+    /* Windows-native type, chosen so the app reads as part of the operating system's
+       surface rather than a web page in a frame. Display weights are reserved for
+       page titles and theme names; data uses the mono face. */
+    --font-sans:
+        "Segoe UI Variable Text", "Segoe UI", "Noto Sans SC", "Noto Sans TC",
+        "Noto Sans JP", "Noto Sans KR", system-ui, sans-serif;
+    --font-display:
+        "Segoe UI Variable Display", "Segoe UI", "Noto Sans SC", "Noto Sans TC",
+        "Noto Sans JP", "Noto Sans KR", system-ui, sans-serif;
+    --font-mono:
+        "Cascadia Mono", "Cascadia Code", ui-monospace, "SFMono-Regular", Menlo,
+        Consolas, "Liberation Mono", "Noto Sans SC", "Noto Sans TC",
+        "Noto Sans JP", "Noto Sans KR", monospace;
 
     --animate-accordion-down: accordion-down
         var(--tw-animation-duration, var(--tw-duration, 0.2s))
@@ -25,8 +39,8 @@
        `animate-rise` / `animate-fade-up` / `animate-bdot` / `animate-breathe` /
        `animate-pulse-ring` classes used across the UI resolve at all — without
        them Tailwind emits nothing for those class names. */
-    --animate-rise: rise 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
-    --animate-fade-up: fade-up 0.26s ease-out both;
+    --animate-rise: rise 0.42s cubic-bezier(0.22, 1, 0.36, 1) both;
+    --animate-fade-up: fade-up 0.24s ease-out both;
     --animate-bdot: bdot 1.6s ease-in-out infinite;
     --animate-breathe: breathe 2.4s ease-in-out infinite;
     --animate-pulse-ring: pulse-ring 1.8s ease-out infinite;
@@ -34,7 +48,7 @@
     @keyframes rise {
         0% {
             opacity: 0;
-            transform: translateY(10px) scale(0.98);
+            transform: translateY(8px) scale(0.992);
         }
         100% {
             opacity: 1;
@@ -45,7 +59,7 @@
     @keyframes fade-up {
         0% {
             opacity: 0;
-            transform: translateY(6px);
+            transform: translateY(4px);
         }
         100% {
             opacity: 1;
@@ -109,12 +123,7 @@
 /* Every loop that runs for as long as its element is on screen — an engine status
    dot, the mark that settings are unsaved, a match badge, a loading spinner or a
    skeleton — is held at rest for a reader who asked their system for less motion.
-   The state each one signals is already spelled out in words or in the layout, so
-   stopping the loop loses no information.
-
-   Overriding the tokens rather than the classes keeps this working for anything that
-   animates through `--animate-*` later, without an `!important` or a class list that
-   has to be kept in step. */
+   Entrance animations are removed too: they are decoration, not feedback. */
 @media (prefers-reduced-motion: reduce) {
     :root {
         --animate-bdot: none;
@@ -122,6 +131,8 @@
         --animate-pulse-ring: none;
         --animate-spin: none;
         --animate-pulse: none;
+        --animate-rise: none;
+        --animate-fade-up: none;
     }
 }
 
@@ -140,6 +151,8 @@
     --color-muted-foreground: var(--muted-foreground);
     --color-accent: var(--accent);
     --color-accent-foreground: var(--accent-foreground);
+    --color-solar: var(--solar);
+    --color-solar-foreground: var(--solar-foreground);
     --color-destructive: var(--destructive);
     --color-destructive-foreground: var(--destructive-foreground);
     --color-destructive-dim: var(--destructive-dim);
@@ -171,82 +184,90 @@
 
 @layer base {
     :root {
-        --radius: 0.625rem;
-        --background: oklch(1 0 0);
-        --foreground: oklch(0.145 0 0);
-        --card: oklch(1 0 0);
-        --card-foreground: oklch(0.145 0 0);
+        --radius: 0.75rem;
+
+        /* Cool paper, deep ink, twilight indigo for action, solar amber for state.
+           The palette stays quiet so the wallpapers carry the colour. */
+        --background: oklch(0.973 0.004 255);
+        --foreground: oklch(0.215 0.018 258);
+        --card: oklch(0.995 0.001 255);
+        --card-foreground: oklch(0.215 0.018 258);
         --popover: oklch(1 0 0);
-        --popover-foreground: oklch(0.145 0 0);
-        --primary: oklch(0.205 0 0);
-        --primary-foreground: oklch(0.985 0 0);
-        --secondary: oklch(0.97 0 0);
-        --secondary-foreground: oklch(0.205 0 0);
-        --muted: oklch(0.97 0 0);
-        --muted-foreground: oklch(0.556 0 0);
-        --accent: oklch(0.97 0 0);
-        --accent-foreground: oklch(0.205 0 0);
-        --destructive: oklch(0.577 0.245 27.325);
-        --destructive-foreground: oklch(0.985 0 0);
-        --destructive-dim: oklch(0.577 0.245 27.325 / 0.1);
-        --border-2: oklch(0.87 0 0);
-        --border: oklch(0.922 0 0);
-        --input: oklch(0.922 0 0);
-        --ring: oklch(0.708 0 0);
+        --popover-foreground: oklch(0.215 0.018 258);
+        --primary: oklch(0.4 0.075 258);
+        --primary-foreground: oklch(0.985 0.002 255);
+        --secondary: oklch(0.946 0.006 255);
+        --secondary-foreground: oklch(0.26 0.02 258);
+        --muted: oklch(0.945 0.006 255);
+        --muted-foreground: oklch(0.51 0.014 255);
+        --accent: oklch(0.945 0.026 78);
+        --accent-foreground: oklch(0.3 0.035 62);
+        --solar: oklch(0.7 0.145 68);
+        --solar-foreground: oklch(0.22 0.03 55);
+        --destructive: oklch(0.56 0.2 26);
+        --destructive-foreground: oklch(0.985 0.002 255);
+        --destructive-dim: oklch(0.56 0.2 26 / 0.1);
+        --border-2: oklch(0.86 0.01 255);
+        --border: oklch(0.905 0.008 255);
+        --input: oklch(0.9 0.009 255);
+        --ring: oklch(0.64 0.115 72);
         --chart-1: oklch(0.646 0.222 41.116);
         --chart-2: oklch(0.6 0.118 184.704);
         --chart-3: oklch(0.398 0.07 227.392);
         --chart-4: oklch(0.828 0.189 84.429);
         --chart-5: oklch(0.769 0.188 70.08);
-        --sidebar: oklch(0.985 0 0);
-        --sidebar-foreground: oklch(0.145 0 0);
-        --sidebar-primary: oklch(0.205 0 0);
-        --sidebar-primary-foreground: oklch(0.985 0 0);
-        --sidebar-accent: oklch(0.97 0 0);
-        --sidebar-accent-foreground: oklch(0.205 0 0);
-        --sidebar-border: oklch(0.922 0 0);
-        --sidebar-ring: oklch(0.708 0 0);
+        --sidebar: oklch(0.955 0.006 255);
+        --sidebar-foreground: oklch(0.24 0.018 258);
+        --sidebar-primary: oklch(0.4 0.075 258);
+        --sidebar-primary-foreground: oklch(0.985 0.002 255);
+        --sidebar-accent: oklch(0.925 0.012 255);
+        --sidebar-accent-foreground: oklch(0.24 0.018 258);
+        --sidebar-border: oklch(0.895 0.009 255);
+        --sidebar-ring: oklch(0.64 0.115 72);
     }
 
     [data-theme="dark"] {
-        --background: oklch(0.145 0 0);
-        --foreground: oklch(0.985 0 0);
-        --card: oklch(0.205 0 0);
-        --card-foreground: oklch(0.985 0 0);
-        --popover: oklch(0.205 0 0);
-        --popover-foreground: oklch(0.985 0 0);
-        --primary: oklch(0.922 0 0);
-        --primary-foreground: oklch(0.205 0 0);
-        --secondary: oklch(0.269 0 0);
-        --secondary-foreground: oklch(0.985 0 0);
-        --muted: oklch(0.269 0 0);
-        --muted-foreground: oklch(0.708 0 0);
-        --accent: oklch(0.269 0 0);
-        --accent-foreground: oklch(0.985 0 0);
-        --destructive: oklch(0.704 0.191 22.216);
-        --destructive-foreground: oklch(0.985 0 0);
-        --destructive-dim: oklch(0.704 0.191 22.216 / 0.18);
-        --border-2: oklch(1 0 0 / 18%);
-        --border: oklch(1 0 0 / 10%);
-        --input: oklch(1 0 0 / 15%);
-        --ring: oklch(0.556 0 0);
+        --background: oklch(0.135 0.012 260);
+        --foreground: oklch(0.95 0.005 255);
+        --card: oklch(0.178 0.014 260);
+        --card-foreground: oklch(0.95 0.005 255);
+        --popover: oklch(0.195 0.015 260);
+        --popover-foreground: oklch(0.95 0.005 255);
+        --primary: oklch(0.855 0.035 255);
+        --primary-foreground: oklch(0.18 0.02 260);
+        --secondary: oklch(0.235 0.016 260);
+        --secondary-foreground: oklch(0.93 0.005 255);
+        --muted: oklch(0.225 0.014 260);
+        --muted-foreground: oklch(0.69 0.012 255);
+        --accent: oklch(0.26 0.028 72);
+        --accent-foreground: oklch(0.93 0.03 78);
+        --solar: oklch(0.8 0.135 72);
+        --solar-foreground: oklch(0.19 0.03 62);
+        --destructive: oklch(0.68 0.18 24);
+        --destructive-foreground: oklch(0.14 0.01 20);
+        --destructive-dim: oklch(0.68 0.18 24 / 0.16);
+        --border-2: oklch(1 0 0 / 0.19);
+        --border: oklch(1 0 0 / 0.105);
+        --input: oklch(1 0 0 / 0.16);
+        --ring: oklch(0.75 0.12 72);
         --chart-1: oklch(0.488 0.243 264.376);
         --chart-2: oklch(0.696 0.17 162.48);
         --chart-3: oklch(0.769 0.188 70.08);
         --chart-4: oklch(0.627 0.265 303.9);
         --chart-5: oklch(0.645 0.246 16.439);
-        --sidebar: oklch(0.205 0 0);
-        --sidebar-foreground: oklch(0.985 0 0);
-        --sidebar-primary: oklch(0.488 0.243 264.376);
-        --sidebar-primary-foreground: oklch(0.985 0 0);
-        --sidebar-accent: oklch(0.269 0 0);
-        --sidebar-accent-foreground: oklch(0.985 0 0);
-        --sidebar-border: oklch(1 0 0 / 10%);
-        --sidebar-ring: oklch(0.556 0 0);
+        --sidebar: oklch(0.112 0.01 260);
+        --sidebar-foreground: oklch(0.93 0.005 255);
+        --sidebar-primary: oklch(0.855 0.035 255);
+        --sidebar-primary-foreground: oklch(0.18 0.02 260);
+        --sidebar-accent: oklch(0.2 0.014 260);
+        --sidebar-accent-foreground: oklch(0.95 0.005 255);
+        --sidebar-border: oklch(1 0 0 / 0.08);
+        --sidebar-ring: oklch(0.75 0.12 72);
     }
 
     ::selection {
-        @apply bg-neutral-950 text-white;
+        background: color-mix(in oklab, var(--solar) 55%, transparent);
+        color: var(--foreground);
     }
 
     html {
@@ -255,28 +276,20 @@
     body {
         font-synthesis-weight: none;
         text-rendering: optimizeLegibility;
+        -webkit-font-smoothing: antialiased;
     }
     * {
-        @apply border-neutral-200;
-    }
-    @supports (font: -apple-system-body) and (-webkit-appearance: none) {
-        [data-wrapper] {
-            @apply min-[1800px]:border-t;
-        }
+        @apply border-border;
     }
 
     a:active,
     button:active {
-        @apply opacity-60 md:opacity-100;
+        @apply opacity-100;
     }
 
-    @variant dark {
-        ::selection {
-            @apply bg-neutral-200 text-neutral-900;
-        }
-        * {
-            @apply border-white/10;
-        }
+    /* The shell owns the window; focused controls get a solar ring everywhere. */
+    :focus-visible {
+        outline-color: var(--ring);
     }
 }
 
@@ -288,5 +301,9 @@
     .no-scrollbar {
         -ms-overflow-style: none;
         scrollbar-width: none;
+    }
+
+    .drag-none {
+        -webkit-user-drag: none;
     }
 }

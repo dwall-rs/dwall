@@ -275,7 +275,7 @@ const save = async () => {
  * Write wallpaper_mode and apply it to the engine (write the config file + restart the daemon).
  * Both fixed and random mode "apply/save" go through here.
  */
-const applyWallpaperMode = async (mode: WallpaperMode) => {
+const applyWallpaperModeNow = async (mode: WallpaperMode) => {
   const draft = settingsStore.config;
   const saved = settingsStore.saved;
   if (!draft || !saved) return;
@@ -284,9 +284,17 @@ const applyWallpaperMode = async (mode: WallpaperMode) => {
   // applying a theme from the stage must not write them to disk or mark them saved —
   // the old code applied `{ ...draft, wallpaper_mode }`, which committed them silently.
   const applied: Config = { ...saved, wallpaper_mode: mode };
+  const previousMode = draft.wallpaper_mode;
 
   // The mode itself is optimistic: the toggle reflects it before the daemon answers.
-  setSettingsStore("config", { ...draft, wallpaper_mode: mode });
+  // Assign inside produce so the tagged union is replaced instead of merged; a plain
+  // store set would keep the other variant's fields (pool vs monitor map).
+  setSettingsStore(
+    "config",
+    produce((config) => {
+      if (config) config.wallpaper_mode = mode;
+    }),
+  );
 
   try {
     await applyTheme(applied);
@@ -299,11 +307,34 @@ const applyWallpaperMode = async (mode: WallpaperMode) => {
       }),
     );
   } catch (e) {
+    // The optimistic mode is only a preview of the request. If the daemon rejects it,
+    // put the draft back so the UI does not keep a mode that was never applied.
+    setSettingsStore(
+      "config",
+      produce((config) => {
+        if (config) config.wallpaper_mode = previousMode;
+      }),
+    );
     setSettingsStore("saveError", String(e));
     // Also surface it: the caller usually discards the rejection (`void apply…`).
     toast.error(t("common.operationFailed"), { description: String(e) });
     throw e;
   }
+};
+
+/**
+ * Serialize mode applies across fixed and random callers.
+ *
+ * A fixed apply and a random save can otherwise overlap; the slower request's
+ * failure rollback would restore a mode that the newer request has already replaced.
+ * Each call reads the draft and saved snapshot only when its turn starts.
+ */
+let modeApplyChain: Promise<void> = Promise.resolve();
+
+const applyWallpaperMode = (mode: WallpaperMode): Promise<void> => {
+  const result = modeApplyChain.then(() => applyWallpaperModeNow(mode));
+  modeApplyChain = result.catch(() => {});
+  return result;
 };
 
 const discard = () =>

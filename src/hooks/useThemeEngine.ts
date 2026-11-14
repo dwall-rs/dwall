@@ -54,12 +54,19 @@ export function useThemeEngine() {
       };
 
       const doc = document as Document & {
-        startViewTransition?: (cb: () => void) => { finished: Promise<void> };
+        startViewTransition?: (cb: () => void) => {
+          ready: Promise<void>;
+          finished: Promise<void>;
+        };
       };
       if (doc.startViewTransition) {
         try {
-          // A transition interrupted by a later switch is harmless; swallow AbortError instead of letting it become an uncaught error
-          doc.startViewTransition(run).finished.catch(() => {});
+          // A transition interrupted by a later switch is harmless. Both promises
+          // reject with AbortError in that case — `ready` as well as `finished` — and
+          // an unhandled rejection surfaces in the console even though the UI is fine.
+          const transition = doc.startViewTransition(run);
+          transition.ready.catch(() => {});
+          transition.finished.catch(() => {});
         } catch {
           run();
         }

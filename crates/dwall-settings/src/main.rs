@@ -66,6 +66,7 @@ fn main() -> DwallSettingsResult<()> {
             commands::theme::validate_theme_cmd,
             commands::theme::apply_theme_cmd,
             commands::theme::get_applied_theme_id_cmd,
+            commands::system::get_system_locale,
             commands::system::check_auto_start,
             commands::system::disable_auto_start,
             commands::system::enable_auto_start,

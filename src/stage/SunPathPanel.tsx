@@ -1,5 +1,6 @@
-// Responsibility: Theme solar-path preview — the track is the real sun path for "observer position + today's date" (computed in Rust),
-//       with the theme's solar-angle entries overlaid on it as marker points only; the Y axis adapts to all nodes.
+// Responsibility: the signature sun-path instrument — the real daily arc for the
+// observer, with the theme's frames placed on it and the live sun on top. It is dark
+// in both appearances on purpose: it is an instrument, not another card.
 import type { SolarPosition, Wallpaper } from "@/models/types";
 import { getSolarPath } from "@/ipc";
 import { resourceValue } from "@/lib/resource";
@@ -8,7 +9,6 @@ import { settingsStore } from "@/store/settings.store";
 import { clsx, formatAngle } from "@/utils";
 import { createMemo, createResource, createSignal, For, Show } from "solid-js";
 import { Dynamic } from "solid-js/web";
-import { themeStore } from "~/store/theme.store";
 import {
   type AltitudeDomain,
   Y_BOT,
@@ -16,13 +16,11 @@ import {
   clampY,
   type Point,
   smoothPath,
+  splitAtAzimuthWrap,
+  splitAtHorizon,
   xForAzimuth,
   yForAltitude,
 } from "./sunPath";
-
-// Y_TOP leaves a band at the top for the info strip; Y_BOT leaves one at the bottom for the azimuth labels.
-const band = (alt: number) =>
-  alt < 0 ? "bg-muted-foreground" : alt < 20 ? "bg-(--warning)" : "bg-primary";
 
 interface Props {
   wallpapers: Wallpaper[];
@@ -32,31 +30,29 @@ interface Props {
   /** Entry the user picked; omit it, and `onSelect`, for a track that only reports. */
   selIndex?: number | null;
   onSelect?: (index: number | null) => void;
-  /**
-   * Fill the column instead of the fixed-mode card width. The random-mode stage is as wide as
-   * the window, and a narrow track centred in it reads as a floating island; there the track
-   * also becomes the day's own horizontal axis, so the azimuth labels spread out.
-   */
   fullWidth?: boolean;
 }
+
+/** Interpolate a heading across the 360°→0° seam. */
+const azimuthAtHorizon = (before: number, after: number, ratio: number) => {
+  const delta = ((after - before + 540) % 360) - 180;
+  return (before + delta * ratio + 360) % 360;
+};
 
 export function SunPathPanel(props: Props) {
   const [hover, setHover] = createSignal<number | null>(null);
   const [hoverSun, setHoverSun] = createSignal(false);
-  /** A track without a selector reports the frames; it does not choose them. */
   const interactive = () => props.onSelect !== undefined;
 
-  // Real sun path: recomputed as the observer's position changes (today's date).
   const [path] = createResource(
     () => settingsStore.config?.position_source,
     (ps) => getSolarPath(ps, Math.floor(Date.now() / 1000)),
   );
-  // A denied location permission (or any other failure) must not take the stage
-  // down: the track then falls back to the theme's own angles.
+  // Keep all 24 hours: the sun has to stay on the track after it sets, and the
+  // below-horizon theme frames need somewhere to sit. The split below is what keeps
+  // the loop from reading as one solid orbit.
   const pathPoints = createMemo(() => resourceValue(path) ?? []);
 
-  // Adaptive Y axis: anchored to the "real sun path" (theme-independent, so every theme sees the same track),
-  // covering the current position and the horizon (0)° with an 8% margin on both sides. Falls back to the theme's angles while the track is not loaded.
   const domain = createMemo<AltitudeDomain>(() => {
     const pathAlts = pathPoints().map((p) => p.altitude);
     return altitudeDomain([
@@ -80,88 +76,137 @@ export function SunPathPanel(props: Props) {
       : undefined,
   );
 
-  const track = createMemo(() =>
-    smoothPath(
-      pathPoints().map((p): Point => [xForAzimuth(p.azimuth), Yp(p.altitude)]),
+  const segments = createMemo(() =>
+    splitAtAzimuthWrap(pathPoints()).flatMap((run) =>
+      splitAtHorizon(run, (before, after, ratio) => ({
+        altitude: 0,
+        azimuth: azimuthAtHorizon(before.azimuth, after.azimuth, ratio),
+      })).map((segment) => ({
+        above: segment.above,
+        d: smoothPath(
+          segment.points.map(
+            (p): Point => [xForAzimuth(p.azimuth), Yp(p.altitude)],
+          ),
+        ),
+      })),
     ),
   );
 
   return (
-    <div
-      class={clsx("w-full shrink-0", !props.fullWidth && "mx-auto max-w-155")}
+    <section
+      aria-label={t("stage.sunPath")}
+      class={clsx(
+        "relative overflow-hidden rounded-[18px] border border-white/10 bg-[#0b121b] p-4 text-white shadow-[0_18px_40px_-24px_rgba(0,0,0,.65)]",
+        props.fullWidth ? "w-full" : "w-full",
+      )}
     >
-      <div class="relative h-28 shrink-0 overflow-hidden rounded-xl border border-border bg-card shadow-[0_1px_2px_rgba(0,0,0,.05),0_6px_18px_rgba(0,0,0,.06)]">
-        <div
-          class={clsx(
-            "pointer-events-none absolute inset-x-0 top-0",
-            themeStore.resolved === "light" &&
-              "bg-[radial-gradient(120%_80%_at_50%_-10%,color-mix(in_oklch,var(--color-sky-500),transparent_5%),transparent_60%)]",
-          )}
-          style={{ height: `${hor()}%` }}
-        />
+      {/* A faint dawn wash above the horizon; the grid and the arc carry the data. */}
+      <div class="pointer-events-none absolute inset-0 bg-[radial-gradient(120%_75%_at_72%_-10%,rgba(236,164,66,.16),transparent_55%)]" />
 
+      <div class="relative flex items-start justify-between gap-3">
+        <div class="min-w-0">
+          <div class="text-[10.5px] font-medium tracking-[0.02em] text-white/45">
+            {t("stage.sunPath")}
+          </div>
+          <div class="mt-1 flex flex-wrap items-baseline gap-x-2 gap-y-0.5 font-mono">
+            <span class="text-[22px] leading-none text-white">
+              {formatAngle(props.current.altitude)}°
+            </span>
+            <span class="text-[10px] text-white/45">
+              {t("app.engine.altitude")}
+            </span>
+            <span class="text-[22px] leading-none text-white">
+              {formatAngle(props.current.azimuth)}°
+            </span>
+            <span class="text-[10px] text-white/45">
+              {t("app.engine.azimuth")}
+            </span>
+          </div>
+        </div>
+        <span class="flex shrink-0 items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-2 py-1 font-mono text-[9.5px] text-white/65">
+          <span
+            class={clsx(
+              "size-1.5 rounded-full",
+              props.current.altitude < 0
+                ? "bg-white/45"
+                : "bg-solar shadow-[0_0_7px_var(--solar)]",
+            )}
+          />
+          {props.current.altitude < 0 ? "☾" : "☀"}
+        </span>
+      </div>
+
+      <div
+        class={clsx("relative mt-3 w-full", props.fullWidth ? "h-52" : "h-42")}
+      >
         <svg
           viewBox="0 0 100 100"
           preserveAspectRatio="none"
           class="absolute inset-0 h-full w-full"
-          aria-label={t("stage.sunPath")}
+          aria-hidden="true"
         >
           <defs>
             <linearGradient id="spArc" x1="0" y1="0" x2="1" y2="0">
-              <stop offset="0" stop-color="var(--warning)" />
-              <stop offset=".5" stop-color="var(--success)" />
-              <stop offset="1" stop-color="var(--warning)" />
+              <stop offset="0" stop-color="#d98d2f" />
+              <stop offset=".5" stop-color="#f2bd63" />
+              <stop offset="1" stop-color="#d98d2f" />
             </linearGradient>
             <linearGradient id="spGround" x1="0" y1="0" x2="0" y2="1">
-              <stop
-                offset="0"
-                stop-color="var(--muted-foreground)"
-                stop-opacity=".16"
-              />
-              <stop
-                offset="1"
-                stop-color="var(--muted-foreground)"
-                stop-opacity=".04"
-              />
+              <stop offset="0" stop-color="#ffffff" stop-opacity=".07" />
+              <stop offset="1" stop-color="#ffffff" stop-opacity=".01" />
             </linearGradient>
           </defs>
 
-          <Show when={track()}>
-            {(d) => (
-              <path
-                d={d()}
-                fill="none"
-                stroke="url(#spArc)"
-                stroke-width="1.5"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                opacity=".8"
+          {/* A 10° grid, so the arc is readable rather than decorative. */}
+          <For each={[20, 40, 60]}>
+            {(y) => (
+              <line
+                x1="0"
+                x2="100"
+                y1={y}
+                y2={y}
+                stroke="#ffffff"
+                stroke-opacity=".055"
                 vector-effect="non-scaling-stroke"
               />
             )}
-          </Show>
+          </For>
+
+          {/* The daytime arc is the path; the night half is a dashed continuation.
+              Feeding all 24h samples keeps the current position and the below-horizon
+              frames on the line instead of leaving them floating. */}
+          <For each={segments()}>
+            {(segment) => (
+              <Show when={segment.d}>
+                <path
+                  d={segment.d}
+                  fill="none"
+                  stroke={segment.above ? "url(#spArc)" : "#f2bd63"}
+                  stroke-width={segment.above ? 1.6 : 1.1}
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-dasharray={segment.above ? undefined : "3 4"}
+                  opacity={segment.above ? 0.9 : 0.38}
+                  vector-effect="non-scaling-stroke"
+                />
+              </Show>
+            )}
+          </For>
+
           <rect
             x="0"
             y={hor()}
             width="100"
-            height={100 - hor()}
-            fill="var(--card)"
-            opacity=".45"
-          />
-          <rect
-            x="0"
-            y={hor()}
-            width="100"
-            height={100 - hor()}
+            height={Math.max(0, 100 - hor())}
             fill="url(#spGround)"
           />
           <line
-            x1="2"
-            x2="98"
+            x1="0"
+            x2="100"
             y1={hor()}
             y2={hor()}
-            stroke="var(--muted-foreground)"
-            stroke-opacity=".5"
+            stroke="#ffffff"
+            stroke-opacity=".22"
             vector-effect="non-scaling-stroke"
           />
           <Show when={matched()}>
@@ -171,9 +216,9 @@ export function SunPathPanel(props: Props) {
                 y1={cy()}
                 x2={xForAzimuth(m().solar.azimuth)}
                 y2={clampY(m().solar.altitude, domain())}
-                stroke="var(--success)"
-                stroke-opacity=".55"
-                stroke-dasharray="3 4"
+                stroke="#f2bd63"
+                stroke-opacity=".5"
+                stroke-dasharray="2 4"
                 vector-effect="non-scaling-stroke"
               />
             )}
@@ -182,12 +227,10 @@ export function SunPathPanel(props: Props) {
 
         <For each={props.wallpapers}>
           {(wp, i) => {
-            const sel = createMemo(() => wp.index === props.selIndex),
-              mat = createMemo(() => i() === props.matchedEntry),
-              hov = createMemo(() => i() === hover());
+            const sel = createMemo(() => wp.index === props.selIndex);
+            const mat = createMemo(() => i() === props.matchedEntry);
+            const hov = createMemo(() => i() === hover());
             return (
-              // A marker is a button only when a selection would mean something; the
-              // read-only track renders the same dot as a span, so it is not focusable.
               <Dynamic
                 component={interactive() ? "button" : "span"}
                 {...(interactive() ? { type: "button" as const } : {})}
@@ -202,84 +245,76 @@ export function SunPathPanel(props: Props) {
                   top: `${clampY(wp.solar.altitude, domain())}%`,
                 }}
                 class={clsx(
-                  "absolute -translate-x-1/2 -translate-y-1/2 rounded-full ring-1 ring-card transition-all outline-none",
-                  // A 7px dot is hard to hit and a keyboard focus ring is the only
-                  // way to tell which marker Tab landed on. The pseudo-element
-                  // enlarges the hit area without changing the drawn dot.
-                  "before:absolute before:-inset-2 before:content-['']",
-                  "focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-card",
-                  band(wp.solar.altitude),
-                  hov() || sel() ? "size-2.5" : "size-1.75",
-                  (mat() || sel()) &&
-                    "shadow-[0_0_0_2px_var(--card),0_0_0_3.5px_var(--success)]",
+                  "absolute -translate-x-1/2 -translate-y-1/2 rounded-full border border-[#0b121b] transition-all outline-none",
+                  "before:absolute before:-inset-2.5 before:content-['']",
+                  "focus-visible:ring-2 focus-visible:ring-solar focus-visible:ring-offset-2 focus-visible:ring-offset-[#0b121b]",
+                  mat() || sel()
+                    ? "size-2.5 bg-solar shadow-[0_0_0_2px_#0b121b,0_0_0_3px_rgba(242,189,99,.8)]"
+                    : hov()
+                      ? "size-2.5 bg-white"
+                      : "size-1.5 bg-white/50",
                 )}
               />
             );
           }}
         </For>
 
-        {/* The sun: a 20px hit area around a 10px dot, because the dot alone is a hard thing
-            to point at — and pointing at it is what reveals the readout below. */}
         <div
           style={{ left: `${cx()}%`, top: `${cy()}%` }}
-          class="absolute flex size-5 -translate-x-1/2 -translate-y-1/2 items-center justify-center"
+          class="absolute flex size-6 -translate-x-1/2 -translate-y-1/2 items-center justify-center"
           onMouseEnter={() => setHoverSun(true)}
           onMouseLeave={() => setHoverSun(false)}
           title={`${t("stage.altitude")} ${formatAngle(props.current.altitude)}° · ${t("stage.azimuth")} ${formatAngle(props.current.azimuth)}°`}
         >
-          <div
+          <span
             class={clsx(
-              "size-2.5 rounded-full ring-2 ring-card transition-transform",
+              "size-2.5 rounded-full transition-transform",
               hoverSun() && "scale-125",
               props.current.altitude < 0
-                ? "bg-muted-foreground shadow-[0_0_6px_var(--muted-foreground)]"
-                : "bg-warning shadow-[0_0_8px_var(--warning)]",
+                ? "bg-white/55 ring-2 ring-white/15"
+                : "bg-solar shadow-[0_0_12px_2px_rgba(242,189,99,.65)] ring-2 ring-[#0b121b]",
             )}
           />
         </div>
 
-        {/* Horizon label: sits in the empty middle band (the track hangs high here, no path crosses it) */}
         <span
-          class="absolute left-1/2 -translate-x-1/2 -translate-y-1/2 whitespace-nowrap rounded bg-card/75 px-1 py-px font-mono text-[9px] text-muted-foreground"
+          class="absolute left-1/2 -translate-x-1/2 -translate-y-1/2 whitespace-nowrap rounded bg-[#0b121b]/80 px-1.5 py-0.5 font-mono text-[8.5px] text-white/40"
           style={{ top: `${hor()}%` }}
         >
           {t("stage.horizon")}
         </span>
         <span
-          class="absolute left-2 -translate-y-1/2 whitespace-nowrap rounded bg-card/75 px-1 py-px font-mono text-[9px] text-muted-foreground"
+          class="absolute -left-0.5 -translate-y-1/2 font-mono text-[8.5px] text-white/35"
           style={{ top: `${Y_BOT}%` }}
         >
-          {Math.round(domain().lo)}°
+          {(Math.round(domain().lo) || 0).toFixed(0)}°
         </span>
-        {[
-          { az: 90, label: t("stage.east"), anchor: "" },
-          { az: 180, label: t("stage.south"), anchor: "-translate-x-1/2" },
-          { az: 270, label: t("stage.west"), anchor: "-translate-x-full" },
-        ].map((m) => (
-          <span
-            class={clsx(
-              "absolute bottom-1 whitespace-nowrap font-mono text-[11px] text-muted-foreground",
-              m.anchor,
-            )}
-            style={{ left: `${xForAzimuth(m.az)}%` }}
-          >
-            {m.label}
-          </span>
-        ))}
-        {/* Hovering the sun reveals the readout, so it is not a permanent label sitting on
-            top of the marker it describes. */}
-        <Show when={hoverSun()}>
-          <span class="pointer-events-none absolute right-2 top-1.5 flex items-center gap-1 whitespace-nowrap rounded bg-card/85 px-1.5 py-0.5 font-mono text-[11px] text-muted-foreground shadow-[0_2px_8px_rgba(0,0,0,.12)] backdrop-blur-sm">
-            <span class={props.current.altitude < 0 ? "" : "text-warning"}>
-              {props.current.altitude < 0 ? "☾" : "☀"}
+
+        <For
+          each={[
+            { az: 90, label: t("stage.east") },
+            { az: 180, label: t("stage.south") },
+            { az: 270, label: t("stage.west") },
+          ]}
+        >
+          {(mark) => (
+            <span
+              class="absolute bottom-0 -translate-x-1/2 font-mono text-[9px] text-white/35"
+              style={{ left: `${xForAzimuth(mark.az)}%` }}
+            >
+              {mark.label}
             </span>
-            <span class="text-foreground">
-              {props.current.altitude.toFixed(1)}° ·{" "}
-              {props.current.azimuth.toFixed(1)}°
-            </span>
-          </span>
-        </Show>
+          )}
+        </For>
       </div>
-    </div>
+
+      <Show when={hoverSun()}>
+        <span class="pointer-events-none absolute right-3 top-3 rounded-md border border-white/10 bg-[#111b27]/95 px-2 py-1 font-mono text-[10px] text-white/80 shadow-lg backdrop-blur">
+          {props.current.altitude < 0 ? "☾" : "☀"}{" "}
+          {props.current.altitude.toFixed(1)}° ·{" "}
+          {props.current.azimuth.toFixed(1)}°
+        </span>
+      </Show>
+    </section>
   );
 }

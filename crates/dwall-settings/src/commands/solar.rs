@@ -33,7 +33,7 @@ pub async fn get_solar_position(
 ///
 /// Used to draw the diurnal sun-trajectory preview: unlike a theme's
 /// `solar.json` (which holds the wallpaper keyframes), this is the real path
-/// for the observer's location and date, so it always forms a smooth ellipse.
+/// for the observer's location and date, so it always forms a smooth 24-hour curve.
 #[tauri::command]
 pub async fn get_solar_path(
     position_source: PositionSource,
