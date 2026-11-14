@@ -34,8 +34,10 @@ export function PreviewPlate(props: Props) {
   const [outgoing, setOutgoing] = createSignal<Wallpaper | null>(null);
   const [entering, setEntering] = createSignal(true);
   let transitionTimer: ReturnType<typeof setTimeout> | undefined;
+  let transitionToken = 0;
 
   const clearTransition = () => {
+    transitionToken++;
     if (transitionTimer) {
       clearTimeout(transitionTimer);
       transitionTimer = undefined;
@@ -44,12 +46,22 @@ export function PreviewPlate(props: Props) {
 
   const finishTransition = () => {
     if (entering()) return;
-    setEntering(true);
+
+    // onLoad can fire in the same frame as the new layer is inserted, before the
+    // browser has painted its opacity:0 state. Two frames guarantee that initial
+    // state is visible, otherwise the opacity flip is coalesced and no fade runs.
     clearTransition();
-    transitionTimer = setTimeout(() => {
-      setOutgoing(null);
-      transitionTimer = undefined;
-    }, 520);
+    const token = transitionToken;
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        if (token !== transitionToken || entering()) return;
+        setEntering(true);
+        transitionTimer = setTimeout(() => {
+          setOutgoing(null);
+          transitionTimer = undefined;
+        }, 520);
+      });
+    });
   };
 
   // Keep the old frame underneath until the next thumbnail has decoded, then crossfade.
@@ -129,8 +141,11 @@ export function PreviewPlate(props: Props) {
               <Show when={outgoing()}>
                 {(old) => (
                   <div
-                    class="absolute inset-0 transition-opacity duration-500 ease-out"
-                    style={{ opacity: entering() ? 0 : 1 }}
+                    class="absolute inset-0 transition-[opacity,transform] duration-500 ease-out"
+                    style={{
+                      opacity: entering() ? 0 : 1,
+                      transform: entering() ? "scale(1.015)" : "scale(1)",
+                    }}
                   >
                     <ThemeThumbnail
                       themeId={props.themeId}
@@ -144,8 +159,11 @@ export function PreviewPlate(props: Props) {
               <Show when={displayed()}>
                 {(current) => (
                   <div
-                    class="absolute inset-0 transition-opacity duration-500 ease-out"
-                    style={{ opacity: entering() ? 1 : 0 }}
+                    class="absolute inset-0 transition-[opacity,transform] duration-500 ease-out"
+                    style={{
+                      opacity: entering() ? 1 : 0,
+                      transform: entering() ? "scale(1)" : "scale(0.985)",
+                    }}
                   >
                     <ThemeThumbnail
                       themeId={props.themeId}
