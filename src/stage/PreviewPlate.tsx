@@ -1,6 +1,14 @@
 // Responsibility: the large wallpaper plate. The image is the page; chrome sits on
 // its edges in translucent strips so the frame stays unobstructed.
-import { createMemo, createSignal, Show } from "solid-js";
+import {
+  createEffect,
+  createMemo,
+  createSignal,
+  on,
+  onCleanup,
+  Show,
+  untrack,
+} from "solid-js";
 import type { Wallpaper } from "@/models/types";
 import { t } from "@/i18n";
 import { ThemeThumbnail } from "@/scene/ThemeThumbnail";
@@ -20,6 +28,66 @@ interface Props {
 
 export function PreviewPlate(props: Props) {
   const [expanded, setExpanded] = createSignal(false);
+  const [displayed, setDisplayed] = createSignal<Wallpaper | null>(
+    props.wallpaper,
+  );
+  const [outgoing, setOutgoing] = createSignal<Wallpaper | null>(null);
+  const [entering, setEntering] = createSignal(true);
+  let transitionTimer: ReturnType<typeof setTimeout> | undefined;
+
+  const clearTransition = () => {
+    if (transitionTimer) {
+      clearTimeout(transitionTimer);
+      transitionTimer = undefined;
+    }
+  };
+
+  const finishTransition = () => {
+    if (entering()) return;
+    setEntering(true);
+    clearTransition();
+    transitionTimer = setTimeout(() => {
+      setOutgoing(null);
+      transitionTimer = undefined;
+    }, 520);
+  };
+
+  // Keep the old frame underneath until the next thumbnail has decoded, then crossfade.
+  // Without the decoded signal an uncached frame would flash the skeleton over the old
+  // one; without the fallback timer a broken frame would leave the old one frozen.
+  createEffect(
+    on(
+      () => props.wallpaper,
+      (next) => {
+        const current = untrack(displayed);
+        if (next?.index === current?.index) return;
+
+        clearTransition();
+        if (!next) {
+          setOutgoing(null);
+          setDisplayed(null);
+          setEntering(true);
+          return;
+        }
+
+        if (current) {
+          setOutgoing(current);
+          setEntering(false);
+        } else {
+          setOutgoing(null);
+          setEntering(true);
+        }
+        setDisplayed(next);
+        transitionTimer = setTimeout(finishTransition, 900);
+      },
+    ),
+  );
+
+  onCleanup(clearTransition);
+
+  const frameLoaded = (index: number) => {
+    if (untrack(displayed)?.index === index) finishTransition();
+  };
 
   const position = createMemo(() => {
     if (!props.wallpaper) return -1;
@@ -43,7 +111,7 @@ export function PreviewPlate(props: Props) {
       class="relative aspect-video w-full overflow-hidden rounded-[18px] border border-border bg-black shadow-[0_24px_60px_-30px_rgba(0,0,0,.55)]"
     >
       <Show
-        when={props.wallpaper}
+        when={displayed()}
         fallback={
           <div class="flex h-full w-full flex-col items-center justify-center gap-2 bg-card text-center">
             <span class="font-display text-[16px] font-semibold">
@@ -57,12 +125,39 @@ export function PreviewPlate(props: Props) {
       >
         {(wp) => (
           <>
-            <ThemeThumbnail
-              themeId={props.themeId}
-              index={wp().index}
-              fit="cover"
-              class="h-full w-full"
-            />
+            <div class="pointer-events-none absolute inset-0">
+              <Show when={outgoing()}>
+                {(old) => (
+                  <div
+                    class="absolute inset-0 transition-opacity duration-500 ease-out"
+                    style={{ opacity: entering() ? 0 : 1 }}
+                  >
+                    <ThemeThumbnail
+                      themeId={props.themeId}
+                      index={old().index}
+                      fit="cover"
+                      class="h-full w-full"
+                    />
+                  </div>
+                )}
+              </Show>
+              <Show when={displayed()}>
+                {(current) => (
+                  <div
+                    class="absolute inset-0 transition-opacity duration-500 ease-out"
+                    style={{ opacity: entering() ? 1 : 0 }}
+                  >
+                    <ThemeThumbnail
+                      themeId={props.themeId}
+                      index={current().index}
+                      fit="cover"
+                      class="h-full w-full"
+                      onLoad={() => frameLoaded(current().index)}
+                    />
+                  </div>
+                )}
+              </Show>
+            </div>
 
             {/* Edge scrims: they make the controls legible without covering the middle. */}
             <div class="pointer-events-none absolute inset-x-0 top-0 h-28 bg-linear-to-b from-black/58 to-transparent" />

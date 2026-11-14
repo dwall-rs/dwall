@@ -20,6 +20,8 @@ interface Props {
   fit?: "cover" | "contain";
   class?: string;
   fallback?: JSXElement;
+  /** Fired after the `<img>` has decoded; used by the preview crossfade. */
+  onLoad?: () => void;
 }
 
 export function WallpaperImage(props: Props) {
@@ -70,7 +72,10 @@ export function WallpaperImage(props: Props) {
               // 4K bitmaps for tiles the user has not scrolled to yet.
               loading="lazy"
               decoding="async"
-              onLoad={() => setLoaded(true)}
+              onLoad={() => {
+                setLoaded(true);
+                props.onLoad?.();
+              }}
               onError={() => setErrored(true)}
               class={clsx(
                 "block h-full w-full",
