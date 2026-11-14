@@ -25,6 +25,8 @@ interface Props {
   fit?: "cover" | "contain";
   class?: string;
   fallback?: JSXElement;
+  /** Fired after the thumbnail image has decoded. */
+  onLoad?: () => void;
 }
 
 export function ThemeThumbnail(props: Props) {
@@ -60,6 +62,7 @@ export function ThemeThumbnail(props: Props) {
       path={src.error ? null : (src() ?? null)}
       fit={props.fit}
       class={props.class}
+      onLoad={props.onLoad}
       fallback={
         props.fallback ??
         (showSkeleton() ? (
