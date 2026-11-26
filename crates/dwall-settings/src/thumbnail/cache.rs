@@ -1,6 +1,7 @@
 //! Thumbnail cache orchestrator.
 
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicBool, Ordering};
 
 use tokio::io::AsyncReadExt;
 
@@ -19,6 +20,26 @@ const MAGIC_BYTES_LEN: usize = 16;
 /// A thumbnail is a few hundred KB at most, so this only has to be generous enough
 /// that no real image reaches it; its job is to stop a server that streams forever.
 const MAX_THUMBNAIL_BYTES: u64 = 32 * 1024 * 1024;
+
+/// Whether a cleanup walk is already running.
+static CLEANUP_RUNNING: AtomicBool = AtomicBool::new(false);
+
+/// Clears the flag when the spawned cleanup ends, whether it succeeded or panicked.
+struct RunningCleanup;
+
+impl Drop for RunningCleanup {
+    fn drop(&mut self) {
+        CLEANUP_RUNNING.store(false, Ordering::Release);
+    }
+}
+
+/// Claims the single cleanup slot, or returns false when one is already running.
+fn begin_cleanup() -> Option<RunningCleanup> {
+    CLEANUP_RUNNING
+        .compare_exchange(false, true, Ordering::AcqRel, Ordering::Acquire)
+        .ok()
+        .map(|_| RunningCleanup)
+}
 
 /// Manages the thumbnail cache system
 pub struct ThumbnailCache {
@@ -63,11 +84,14 @@ impl ThumbnailCache {
         // for the in-flight download instead of fetching it twice.
         let (_lock, _guard) = lock_for_download(cache_key.clone()).await;
 
+        // Runs on a hit as well as a miss. Starting it only after a miss meant a warm
+        // library — exactly the one whose cache is large enough to need pruning — never
+        // enforced the age or size limits.
+        self.trigger_probabilistic_cleanup().await;
+
         if let Some(path) = self.try_get_cached_file(&cache_key).await {
             return Ok(path);
         }
-
-        self.trigger_probabilistic_cleanup().await;
 
         self.download_and_cache_image(&cache_key).await
     }
@@ -103,19 +127,31 @@ impl ThumbnailCache {
         Some(path)
     }
 
-    /// Trigger cache cleanup with a small probability
+    /// Trigger cache cleanup with a small probability.
+    ///
+    /// At most one cleanup runs at a time: the cache can be requested for many tiles
+    /// in one burst, and the old code could start a full-directory walk for every
+    /// request that happened to roll the 5% chance.
     async fn trigger_probabilistic_cleanup(&self) {
-        if rand::random::<f32>() < 0.05 {
-            tokio::spawn(async {
-                if let Err(e) = Cleanup::cleanup_expired_cache().await {
-                    error!(error = %e, "Failed to clean up expired cache");
-                }
-
-                if let Err(e) = Cleanup::enforce_cache_size_limit().await {
-                    error!(error = %e, "Failed to enforce cache size limit");
-                }
-            });
+        if rand::random::<f32>() >= 0.05 {
+            return;
         }
+
+        let Some(running) = begin_cleanup() else {
+            return;
+        };
+
+        tokio::spawn(async move {
+            let _running = running;
+
+            if let Err(e) = Cleanup::cleanup_expired_cache().await {
+                error!(error = %e, "Failed to clean up expired cache");
+            }
+
+            if let Err(e) = Cleanup::enforce_cache_size_limit().await {
+                error!(error = %e, "Failed to enforce cache size limit");
+            }
+        });
     }
 
     /// Download and cache an image
@@ -415,5 +451,14 @@ mod tests {
             Some("avif")
         );
         assert_eq!(get_url_extension("https://example.com/a/1"), None);
+    }
+
+    #[test]
+    fn only_one_cleanup_can_run_at_a_time() {
+        // Other tests in this binary do not start a cleanup, so the gate starts free.
+        let first = begin_cleanup().expect("the first cleanup claims the slot");
+        assert!(begin_cleanup().is_none(), "a second walk must not start");
+        drop(first);
+        assert!(begin_cleanup().is_some(), "the slot is released afterwards");
     }
 }
