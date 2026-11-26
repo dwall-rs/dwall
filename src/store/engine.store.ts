@@ -95,8 +95,12 @@ const refresh = async () => {
 
 /** Terminates the daemon and mirrors the cleared mode into the settings draft. */
 const stopNow = async () => {
-  if (!engineStore.running) return;
-
+  // No running check here: this task runs only after the writes queued before it, and
+  // by then the daemon may have exited on its own or been restarted by an apply. The
+  // Rust command clears wallpaper_mode before stopping and is idempotent when no
+  // process is left, so the stop has to go through even with a stale running flag;
+  // returning early would leave the persisted mode and the next window open would
+  // start the daemon again.
   if (engineStore.pendingTimer) clearTimeout(engineStore.pendingTimer);
 
   try {
@@ -130,7 +134,10 @@ const stopNow = async () => {
  *
  * The command clears `wallpaper_mode` in `config.toml`. If a save that was already
  * in flight wrote after it, the cleared mode came back and the next window open
- * started the daemon again; the shared queue makes the stop the last write.
+ * started the daemon again; the shared queue makes the stop the last write. Because
+ * the task is queued, the running flag is deliberately not checked when it runs:
+ * a poll can observe the daemon stopped during the wait, and the stop still has to
+ * clear the configuration.
  */
 const stop = () => queueConfigWrite(stopNow);
 
