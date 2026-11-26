@@ -21,12 +21,13 @@ import { SunPathPanel } from "./SunPathPanel";
 import { ThemeDownload } from "./ThemeDownload";
 import { ThemePanel } from "./ThemePanel";
 import { WallpaperRail } from "./WallpaperRail";
+import { StageError } from "./StageError";
 
 export function FixedStage() {
   const themeId = createMemo(() => themeForMon(scopeKey()) ?? "");
   const theme = createMemo(() => themeById(themeId()));
 
-  const [wallpapers] = createResource(
+  const [wallpapers, { refetch: refetchWallpapers }] = createResource(
     () => ({ id: themeId(), revision: catalogStore.installedRevision }),
     async ({ id }): Promise<Wallpaper[]> => {
       if (!id) return [];
@@ -87,17 +88,29 @@ export function FixedStage() {
   return (
     <div class="grid items-start gap-5 min-[1400px]:grid-cols-[minmax(0,1fr)_360px]">
       <div class="flex min-w-0 flex-col gap-4">
-        <PreviewPlate
-          themeId={themeId()}
-          themeName={theme().name}
-          scopeName={scopeName()}
-          wallpapers={unique()}
-          wallpaper={active()}
-          matchedIndex={matchedIndex()}
-          onSelect={selectWallpaper}
-        />
+        <Show
+          when={wallpapers.error}
+          fallback={
+            <PreviewPlate
+              themeId={themeId()}
+              themeName={theme().name}
+              scopeName={scopeName()}
+              wallpapers={unique()}
+              wallpaper={active()}
+              matchedIndex={matchedIndex()}
+              onSelect={selectWallpaper}
+            />
+          }
+        >
+          {(error) => (
+            <StageError
+              message={String(error())}
+              onRetry={() => void refetchWallpapers()}
+            />
+          )}
+        </Show>
 
-        <Show when={theme().needsDownload && !installed()}>
+        <Show when={!wallpapers.error && theme().needsDownload && !installed()}>
           <div class="flex items-center justify-between gap-4 rounded-[14px] border border-border bg-card px-4 py-3">
             <div class="min-w-0">
               <div class="text-[12.5px] font-medium">
@@ -111,7 +124,7 @@ export function FixedStage() {
           </div>
         </Show>
 
-        <Show when={installed()}>
+        <Show when={!wallpapers.error && installed()}>
           <WallpaperRail
             themeId={themeId()}
             wallpapers={unique()}

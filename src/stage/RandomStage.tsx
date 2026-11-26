@@ -22,6 +22,7 @@ import { Button } from "@/components/ui/button";
 import { clsx } from "@/utils";
 import { ThemeThumbnail } from "@/scene/ThemeThumbnail";
 import { PreviewPlate } from "./PreviewPlate";
+import { StageError } from "./StageError";
 import { SunPathPanel } from "./SunPathPanel";
 import { RandomCommitRow } from "./RandomCommitRow";
 import { CalendarDays, Images, Plus } from "lucide-solid";
@@ -37,7 +38,7 @@ export function RandomStage() {
   );
   const [previewIndex, setPreviewIndex] = createSignal<number | null>(null);
 
-  const [wallpapers] = createResource(
+  const [wallpapers, { refetch: refetchWallpapers }] = createResource(
     todayId,
     async (id): Promise<Wallpaper[]> => {
       if (!id) return [];
@@ -128,34 +129,56 @@ export function RandomStage() {
     <div class="grid items-start gap-5 min-[1400px]:grid-cols-[minmax(0,1fr)_360px]">
       <div class="flex min-w-0 flex-col gap-4">
         <Show
-          when={theme()}
+          when={!selection.error}
           fallback={
-            <div class="flex aspect-video w-full flex-col items-center justify-center gap-3 rounded-[18px] border border-dashed border-border-2 bg-card/50 text-center">
-              <CalendarDays class="size-8 text-muted-foreground/50" />
-              <div class="font-display text-[16px] font-semibold">
-                {t("workspace.noThemeYet")}
-              </div>
-              <p class="max-w-[42ch] px-4 text-[12px] leading-relaxed text-muted-foreground">
-                {t("workspace.noThemeDesc")}
-              </p>
-              <Button size="sm" onClick={() => setView("themes")}>
-                <Images class="size-3.5" />
-                {t("workspace.editPool")}
-              </Button>
-            </div>
+            <StageError
+              message={String(selection.error)}
+              onRetry={() => void refetchSelection()}
+            />
           }
         >
-          {(today) => (
-            <PreviewPlate
-              themeId={today().id}
-              themeName={today().name}
-              scopeName={t("workspace.today")}
-              wallpapers={unique()}
-              wallpaper={active()}
-              matchedIndex={matchedIndex()}
-              onSelect={setPreviewIndex}
-            />
-          )}
+          <Show
+            when={theme()}
+            fallback={
+              <div class="flex aspect-video w-full flex-col items-center justify-center gap-3 rounded-[18px] border border-dashed border-border-2 bg-card/50 text-center">
+                <CalendarDays class="size-8 text-muted-foreground/50" />
+                <div class="font-display text-[16px] font-semibold">
+                  {t("workspace.noThemeYet")}
+                </div>
+                <p class="max-w-[42ch] px-4 text-[12px] leading-relaxed text-muted-foreground">
+                  {t("workspace.noThemeDesc")}
+                </p>
+                <Button size="sm" onClick={() => setView("themes")}>
+                  <Images class="size-3.5" />
+                  {t("workspace.editPool")}
+                </Button>
+              </div>
+            }
+          >
+            {(today) => (
+              <Show
+                when={wallpapers.error}
+                fallback={
+                  <PreviewPlate
+                    themeId={today().id}
+                    themeName={today().name}
+                    scopeName={t("workspace.today")}
+                    wallpapers={unique()}
+                    wallpaper={active()}
+                    matchedIndex={matchedIndex()}
+                    onSelect={setPreviewIndex}
+                  />
+                }
+              >
+                {(error) => (
+                  <StageError
+                    message={String(error())}
+                    onRetry={() => void refetchWallpapers()}
+                  />
+                )}
+              </Show>
+            )}
+          </Show>
         </Show>
 
         <section class="min-w-0">
