@@ -22,6 +22,14 @@ const READ_TIMEOUT: Duration = Duration::from_secs(60);
 /// Sent with every request, in the form GitHub asks for.
 const USER_AGENT: &str = concat!("dwall/", env!("CARGO_PKG_VERSION"));
 
+/// How many HTTP requests may be in flight at once.
+///
+/// The library view requests one thumbnail per visible tile, and the theme downloader
+/// adds its own transfer; an unbounded burst opened one connection per tile and made
+/// a slow mirror (or a proxy) the bottleneck for the whole window. Eight covers the
+/// visible tiles and the two long transfers without letting the burst through.
+pub(crate) const MAX_CONCURRENT_REQUESTS: usize = 8;
+
 /// Generic HTTP downloader for files.
 ///
 /// Provides pure technical download functionality without business logic.
@@ -31,6 +39,8 @@ const USER_AGENT: &str = concat!("dwall/", env!("CARGO_PKG_VERSION"));
 /// took effect after restarting the window.
 pub struct HttpClient {
     client: Arc<RwLock<Arc<Client>>>,
+    /// Bounds the number of requests in flight; see MAX_CONCURRENT_REQUESTS.
+    requests: Arc<tokio::sync::Semaphore>,
 }
 
 fn build_client(network: Option<&dwall::config::Network>) -> DwallSettingsResult<Client> {
@@ -64,6 +74,7 @@ impl HttpClient {
     pub fn new(network: Option<&dwall::config::Network>) -> DwallSettingsResult<Self> {
         Ok(Self {
             client: Arc::new(RwLock::new(Arc::new(build_client(network)?))),
+            requests: Arc::new(tokio::sync::Semaphore::new(MAX_CONCURRENT_REQUESTS)),
         })
     }
 
@@ -83,6 +94,17 @@ impl HttpClient {
             .read()
             .unwrap_or_else(|e| e.into_inner())
             .clone()
+    }
+
+    /// Waits for a request slot, holding it until the guard is dropped.
+    ///
+    /// Acquired before the request is sent and kept through the body, so the bound is
+    /// on live transfers rather than just on connections.
+    async fn request_slot(&self) -> DwallSettingsResult<tokio::sync::SemaphorePermit<'_>> {
+        self.requests
+            .acquire()
+            .await
+            .map_err(|_| DwallSettingsError::Other("HTTP request limiter was closed".to_string()))
     }
 
     /// Streams a URL into `target_path`, returning the number of bytes on disk.
@@ -105,6 +127,7 @@ impl HttpClient {
         cancel_flag: Option<&Arc<AtomicBool>>,
         progress_callback: Option<Arc<dyn Fn(u64, u64) + Send + Sync>>,
     ) -> DwallSettingsResult<u64> {
+        let _slot = self.request_slot().await?;
         let mut request = self.current().get(url);
         if downloaded_bytes > 0 {
             request = request.header("Range", format!("bytes={downloaded_bytes}-"));
@@ -227,6 +250,7 @@ impl HttpClient {
     /// cannot make the process buffer something unbounded. Uses the same client as
     /// every other request, so the configured proxy applies.
     pub async fn get_text(&self, url: &str, max_bytes: usize) -> DwallSettingsResult<String> {
+        let _slot = self.request_slot().await?;
         let mut response = self.current().get(url).send().await?;
         response.error_for_status_ref()?;
 
@@ -305,6 +329,7 @@ impl Clone for HttpClient {
     fn clone(&self) -> Self {
         Self {
             client: self.client.clone(),
+            requests: self.requests.clone(),
         }
     }
 }
@@ -854,5 +879,82 @@ mod tests {
             Arc::ptr_eq(&before, &http.current()),
             "a failed reconfigure must not drop the working client"
         );
+    }
+
+    /// A burst of thumbnail requests has to queue behind the limiter instead of opening
+    /// one connection per tile. The server deliberately holds each response for a
+    /// moment so the requests overlap; without the bound its peak is the whole burst.
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+    async fn concurrent_requests_are_bounded() {
+        use std::io::{Read, Write};
+        use std::net::TcpListener;
+        use std::thread;
+        use std::time::Duration;
+
+        const REQUESTS: usize = 24;
+
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        let url = format!("http://{}", listener.local_addr().unwrap());
+        let state = Arc::new(Mutex::new((0usize, 0usize)));
+
+        let server_state = state.clone();
+        thread::spawn(move || {
+            for _ in 0..REQUESTS {
+                let Ok((mut stream, _)) = listener.accept() else {
+                    return;
+                };
+                let state = server_state.clone();
+
+                thread::spawn(move || {
+                    let mut head = [0u8; 1024];
+                    let _ = stream.read(&mut head);
+
+                    {
+                        let mut counts = state.lock().unwrap();
+                        counts.0 += 1;
+                        counts.1 = counts.1.max(counts.0);
+                    }
+
+                    thread::sleep(Duration::from_millis(50));
+                    let body = b"ok";
+                    let response = format!(
+                        "HTTP/1.1 200 OK\r\nContent-Length: {}\r\nConnection: close\r\n\r\n",
+                        body.len()
+                    );
+                    let _ = stream.write_all(response.as_bytes());
+                    let _ = stream.write_all(body);
+
+                    state.lock().unwrap().0 -= 1;
+                });
+            }
+        });
+
+        let client = HttpClient::new(None).unwrap();
+        let dir = scratch("concurrency");
+        let mut tasks = Vec::new();
+
+        for index in 0..REQUESTS {
+            let client = client.clone();
+            let url = url.clone();
+            let path = dir.join(format!("{index}.txt"));
+            tasks.push(tokio::spawn(async move {
+                client
+                    .download_file(&url, &path, 0, NO_LIMIT, None, None)
+                    .await
+            }));
+        }
+
+        for task in tasks {
+            task.await.unwrap().unwrap();
+        }
+
+        let peak = state.lock().unwrap().1;
+        assert!(
+            peak <= MAX_CONCURRENT_REQUESTS,
+            "peak of {peak} concurrent requests exceeds the {MAX_CONCURRENT_REQUESTS} limit"
+        );
+        assert!(peak > 1, "the test needs overlap to prove the bound");
+
+        let _ = fs::remove_dir_all(&dir);
     }
 }
