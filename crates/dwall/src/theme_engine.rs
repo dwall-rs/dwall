@@ -48,6 +48,13 @@ where
     last_position: Cell<Option<Position>>,
     /// AC/battery state, injected so the cycle is testable.
     power_status: fn() -> bool,
+    /// Whether a cycle has already reported that the configuration names no monitor.
+    ///
+    /// A fresh install has no monitor map at all, and the default interval is 15
+    /// seconds: reporting that state every cycle filled the log (and rotated its five
+    /// backups away) for a condition that is not a failure. Once per engine generation
+    /// at INFO, then DEBUG.
+    empty_cycle_reported: Cell<bool>,
     /// Set when the machine has just resumed, so the next cycle re-applies the lock
     /// screen even though the comparison says it is already right.
     ///
@@ -89,6 +96,7 @@ where
             color_scheme_applier: ColorSchemeApplier::new(color_scheme_provider, state_dir),
             last_position: Cell::new(None),
             power_status,
+            empty_cycle_reported: Cell::new(false),
             reapply_lock_screen: Cell::new(false),
         }
     }
@@ -273,11 +281,20 @@ where
         if outcome.applied == 0 && outcome.failed == 0 && !available_monitors.is_empty() {
             // Nothing was configured for these monitors, which is not a failure:
             // a default configuration has no monitor map at all, and `dwall --once`
-            // has to keep exiting 0 there.
-            warn!(
-                total_monitors = available_monitors.len(),
-                "No monitor received a wallpaper in this cycle"
-            );
+            // has to keep exiting 0 there. Reported once per configuration rather
+            // than once per interval: at the 15 s default this was 5 760 WARN lines a
+            // day for the state every fresh installation starts in.
+            if self.empty_cycle_reported.replace(true) {
+                debug!(
+                    total_monitors = available_monitors.len(),
+                    "No monitor received a wallpaper in this cycle"
+                );
+            } else {
+                info!(
+                    total_monitors = available_monitors.len(),
+                    "No monitor is configured for a wallpaper yet"
+                );
+            }
         }
 
         debug!(
