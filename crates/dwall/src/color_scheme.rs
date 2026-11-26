@@ -518,6 +518,14 @@ impl<T: ColorSchemeProvider> ColorSchemeApplier<T> {
             return Ok(());
         }
 
+        // A manual change is checked before the battery override: "dark on battery" is
+        // this applier's own policy, not a licence to overrule the user. The existing
+        // pause path records the one-hour truce here too.
+        let current_color_scheme = self.color_scheme_provider.get_current_scheme()?;
+        if self.someone_else_changed(current_color_scheme, now_seconds) {
+            return Ok(());
+        }
+
         let color_scheme = if config.dark_on_battery() && on_battery {
             debug!(
                 sun_altitude = solar_position.altitude(),
@@ -525,11 +533,6 @@ impl<T: ColorSchemeProvider> ColorSchemeApplier<T> {
             );
             ColorScheme::Dark
         } else {
-            let current_color_scheme = self.color_scheme_provider.get_current_scheme()?;
-            if self.someone_else_changed(current_color_scheme, now_seconds) {
-                return Ok(());
-            }
-
             let solar_based_color_scheme = self.scheme_at(
                 now,
                 geographic_position,
@@ -1492,9 +1495,21 @@ mod pause_tests {
     }
 
     fn run(applier: &ColorSchemeApplier<ControlledScheme>, now: &OffsetDateTime) {
+        run_with_power(applier, now, false);
+    }
+
+    fn run_on_battery(applier: &ColorSchemeApplier<ControlledScheme>, now: &OffsetDateTime) {
+        run_with_power(applier, now, true);
+    }
+
+    fn run_with_power(
+        applier: &ColorSchemeApplier<ControlledScheme>,
+        now: &OffsetDateTime,
+        on_battery: bool,
+    ) {
         let sun = SolarPosition::new(&position(), &now.assume_utc());
         applier
-            .update_color_scheme_with_power(&config(), now, &position(), &sun, false)
+            .update_color_scheme_with_power(&config(), now, &position(), &sun, on_battery)
             .unwrap();
     }
 
@@ -1537,6 +1552,59 @@ mod pause_tests {
         );
         // Still paused, so the file stays put.
         assert!(color_scheme_pause::read_from(&dir).unwrap().is_some());
+
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    /// The battery override is this applier's policy, not permission to overwrite a
+    /// switch the user made by hand: the one-hour pause wins over both.
+    #[test]
+    fn a_manual_switch_on_battery_wins_over_the_forced_dark() {
+        let dir = scratch("battery_manual");
+        let applier = ColorSchemeApplier::new(ControlledScheme::showing(ColorScheme::Light), &dir);
+
+        // Establish a baseline on AC: the solar answer at night is Dark.
+        run(&applier, &night());
+        assert_eq!(
+            applier.color_scheme_provider.applied(),
+            vec![ColorScheme::Dark]
+        );
+
+        // The user switches to Light while the machine is on battery.
+        applier
+            .color_scheme_provider
+            .switched_by_hand_to(ColorScheme::Light);
+        run_on_battery(&applier, &night());
+
+        assert_eq!(
+            applier.color_scheme_provider.applied(),
+            vec![ColorScheme::Dark],
+            "the forced dark must not overwrite the manual switch"
+        );
+        assert_eq!(
+            applier.color_scheme_provider.current.get(),
+            ColorScheme::Light
+        );
+        assert!(
+            color_scheme_pause::read_from(&dir).unwrap().is_some(),
+            "the manual change starts the one-hour truce"
+        );
+
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    /// Without a manual change the battery policy still applies.
+    #[test]
+    fn battery_still_forces_dark_without_a_manual_change() {
+        let dir = scratch("battery_forced");
+        let applier = ColorSchemeApplier::new(ControlledScheme::showing(ColorScheme::Light), &dir);
+
+        run_on_battery(&applier, &night());
+
+        assert_eq!(
+            applier.color_scheme_provider.applied(),
+            vec![ColorScheme::Dark]
+        );
 
         let _ = fs::remove_dir_all(&dir);
     }
