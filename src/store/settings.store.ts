@@ -110,6 +110,38 @@ const patch = (p: Partial<Config>) => {
   setSettingsStore("config", (prev) => (prev ? { ...prev, ...p } : prev));
 };
 
+/**
+ * Rounds a number field into the range the daemon accepts.
+ *
+ * The HTML `min`/`max` attributes only steer the spinner: a typed `1.5`, `0` or
+ * `4000` reaches `onChange` unchanged, and the configuration is typed as an integer
+ * (a fractional value fails serde in the backend). Doing the rounding here keeps the
+ * user's text out of the configuration file instead of surfacing a deserialization
+ * message.
+ */
+export const normalizeInteger = (
+  value: number,
+  min: number,
+  max: number,
+  fallback: number,
+): number => {
+  if (!Number.isFinite(value)) return fallback;
+
+  return Math.min(max, Math.max(min, Math.round(value)));
+};
+
+/** The decimal form of the same guard, for coordinates. */
+export const normalizeDecimal = (
+  value: number,
+  min: number,
+  max: number,
+  fallback: number,
+): number => {
+  if (!Number.isFinite(value)) return fallback;
+
+  return Math.min(max, Math.max(min, value));
+};
+
 /// The refresh window a machine gets when it switches to automatic coordinates.
 ///
 /// Two hours: a stationary machine wakes the location sensor 12 times a day instead of
@@ -240,8 +272,8 @@ const patchSocks5 = (p: Partial<Socks5>) => {
   );
 };
 
-const saveNow = async () => {
-  if (!settingsStore.config || settingsStore.saving) return;
+const saveNow = async (): Promise<boolean> => {
+  if (!settingsStore.config || settingsStore.saving) return false;
 
   setSettingsStore(
     produce((settings) => {
@@ -262,6 +294,7 @@ const saveNow = async () => {
         settings.saving = false;
       }),
     );
+    return true;
   } catch (e) {
     setSettingsStore(
       produce((settings) => {
@@ -270,6 +303,7 @@ const saveNow = async () => {
       }),
     );
     toast.error(t("common.operationFailed"), { description: String(e) });
+    return false;
   }
 };
 
@@ -280,7 +314,7 @@ const saveNow = async () => {
  * apply or a stop that was already running, and from writing a snapshot older than
  * the one the previous operation committed.
  */
-const save = () => queueConfigWrite(saveNow);
+const save = (): Promise<boolean> => queueConfigWrite(saveNow);
 
 /**
  * Write wallpaper_mode and apply it to the engine (write the config file + restart the daemon).

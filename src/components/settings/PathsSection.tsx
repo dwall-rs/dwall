@@ -4,6 +4,7 @@ import {
   changeThemesDirectory,
   type NetworkType,
   networkType,
+  normalizeInteger,
   patch,
   patchSocks5,
   save,
@@ -186,7 +187,11 @@ export function PathsSection() {
                       min={1}
                       max={65535}
                       value={socks().port}
-                      onChange={(v) => patchSocks5({ port: v })}
+                      onChange={(v) =>
+                        patchSocks5({
+                          port: normalizeInteger(v, 1, 65535, 1080),
+                        })
+                      }
                       class="font-mono text-[12px]"
                     />
                   </Field>
