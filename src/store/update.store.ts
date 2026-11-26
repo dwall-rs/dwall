@@ -181,15 +181,29 @@ const install = async () => {
         setUpdateStore("progress", 1);
       }
     });
-    setUpdateStore("status", "ready");
-    await relaunchApp();
   } catch (e) {
     log.error("Failed to install update", e);
     releasePending();
     setUpdateStore({ status: "error", error: String(e) });
+    return;
+  }
+
+  // The install itself succeeded; a relaunch that fails is a separate problem and must
+  // not report the new version as a failed install.
+  setUpdateStore("status", "ready");
+  await relaunchAfterInstall();
+};
+
+/** Relaunches the app after an update, reporting a failure instead of rejecting. */
+const relaunchAfterInstall = async () => {
+  try {
+    await relaunchApp();
+  } catch (e) {
+    log.error("Failed to relaunch after installing the update", e);
+    toast.error(t("common.operationFailed"), { description: String(e) });
   }
 };
 
-const restart = () => relaunchApp();
+const restart = () => relaunchAfterInstall();
 
 export { updateStore, check, checkOnStartup, install, restart };
