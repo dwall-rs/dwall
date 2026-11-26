@@ -136,33 +136,7 @@ impl ThumbnailCache {
 
         debug!(url = cache_key.url, image_path = %image_path.display(), "Downloading image from URL");
 
-        let written = self
-            .http_client
-            .download_file(
-                &cache_key.url,
-                &image_path,
-                0,
-                MAX_THUMBNAIL_BYTES,
-                None,
-                None,
-            )
-            .await?;
-
-        if written == 0 {
-            let _ = tokio::fs::remove_file(&image_path).await;
-            return Err(DwallSettingsError::Other(format!(
-                "Empty response downloading {}",
-                cache_key.url
-            )));
-        }
-
-        if !looks_like_image_file(&image_path).await {
-            let _ = tokio::fs::remove_file(&image_path).await;
-            return Err(DwallSettingsError::Other(format!(
-                "Response from {} is not an image",
-                cache_key.url
-            )));
-        }
+        download_thumbnail(&self.http_client, &cache_key.url, &image_path).await?;
 
         debug!(path = %image_path.display(), "Image successfully cached");
         Ok(image_path)
@@ -182,6 +156,69 @@ impl ThumbnailCache {
             extension,
         )
     }
+}
+
+/// The sibling file a download is streamed into before it becomes the cache entry.
+fn partial_file_path(path: &Path) -> PathBuf {
+    let mut name = path.as_os_str().to_os_string();
+    name.push(".part");
+
+    PathBuf::from(name)
+}
+
+/// Downloads one thumbnail and only publishes it once it is complete.
+///
+/// The HTTP client streams straight to the path it is given, so handing it the
+/// final name meant a transfer that died mid-body left a truncated file behind.
+/// The magic-byte check accepted it (a truncated JPEG still starts with a JPEG
+/// header), and it was then served and its access time refreshed on every hit,
+/// so the cache never healed and only "clear cache" could remove it.
+///
+/// The body therefore goes to a sibling `.part` file. The final name appears only
+/// after the download, the non-empty check and the image check have all passed;
+/// every failure removes the partial file.
+async fn download_thumbnail(
+    http_client: &HttpClient,
+    url: &str,
+    image_path: &Path,
+) -> DwallSettingsResult<()> {
+    let partial = partial_file_path(image_path);
+
+    // A crash between two attempts can leave one behind; it is ours by
+    // construction, and a resumed transfer is not wanted for a thumbnail.
+    let _ = tokio::fs::remove_file(&partial).await;
+
+    let written = match http_client
+        .download_file(url, &partial, 0, MAX_THUMBNAIL_BYTES, None, None)
+        .await
+    {
+        Ok(written) => written,
+        Err(error) => {
+            let _ = tokio::fs::remove_file(&partial).await;
+            return Err(error);
+        }
+    };
+
+    if written == 0 {
+        let _ = tokio::fs::remove_file(&partial).await;
+        return Err(DwallSettingsError::Other(format!(
+            "Empty response downloading {url}"
+        )));
+    }
+
+    if !looks_like_image_file(&partial).await {
+        let _ = tokio::fs::remove_file(&partial).await;
+        return Err(DwallSettingsError::Other(format!(
+            "Response from {url} is not an image"
+        )));
+    }
+
+    if let Err(error) = tokio::fs::rename(&partial, image_path).await {
+        let _ = tokio::fs::remove_file(&partial).await;
+        return Err(error.into());
+    }
+
+    Ok(())
 }
 
 /// Extract file extension from URL
@@ -284,7 +321,10 @@ pub async fn clear_thumbnail_cache() -> crate::error::DwallSettingsResult<u64> {
 
 #[cfg(test)]
 mod tests {
+    use std::fs;
+
     use super::*;
+    use crate::network::testing::{TestServer, response};
 
     #[test]
     fn recognises_the_shipped_image_formats() {
@@ -311,6 +351,57 @@ mod tests {
         assert!(!looks_like_image(b"{\"error\":\"rate limited\"}"));
         assert!(!looks_like_image(b""));
         assert!(!looks_like_image(b"RIFF"));
+    }
+
+    /// A truncated body is not a cache entry, no matter what the first bytes look
+    /// like: the next attempt has to download again instead of serving the partial
+    /// file for the rest of the cache's life.
+    #[test]
+    fn an_interrupted_thumbnail_is_not_kept_and_the_next_attempt_downloads_again() {
+        let image = {
+            let mut image = vec![0xFF, 0xD8, 0xFF, 0xE0, 0x00, 0x10, 0x4A, 0x46];
+            image.extend_from_slice(&[0u8; 56]);
+            image
+        };
+        let mut truncated =
+            b"HTTP/1.1 200 OK\r\nContent-Length: 1024\r\nConnection: close\r\n\r\n".to_vec();
+        truncated.extend_from_slice(&image);
+
+        let server = TestServer::scripted(vec![truncated, response("200 OK", &image)]);
+        let directory =
+            std::env::temp_dir().join(format!("dwall_thumbnail_atomic_{}", std::process::id()));
+        let _ = fs::remove_dir_all(&directory);
+        fs::create_dir_all(&directory).unwrap();
+        let image_path = directory.join("1-fingerprint.jpg");
+
+        let runtime = tokio::runtime::Runtime::new().unwrap();
+        let client = HttpClient::new(None).unwrap();
+
+        runtime
+            .block_on(download_thumbnail(&client, &server.url, &image_path))
+            .expect_err("the body ends before its declared length");
+
+        assert!(
+            !image_path.exists(),
+            "a failed download must not publish the final cache path"
+        );
+        assert!(
+            !partial_file_path(&image_path).exists(),
+            "the partial file must be removed when the transfer fails"
+        );
+
+        // The retry sees a clean slate and publishes the complete image.
+        runtime
+            .block_on(download_thumbnail(&client, &server.url, &image_path))
+            .expect("the second attempt completes");
+
+        assert_eq!(fs::read(&image_path).unwrap(), image);
+        assert!(
+            !partial_file_path(&image_path).exists(),
+            "a successful download renames the partial file away"
+        );
+
+        let _ = fs::remove_dir_all(&directory);
     }
 
     #[test]
