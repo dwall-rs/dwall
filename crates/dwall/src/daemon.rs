@@ -362,6 +362,10 @@ impl DaemonApplication {
         // the daemon keeps applying the previous one until the file parses again.
         let mut last_good_config: Option<Config> = None;
         let mut config_failure_log = ConfigFailureLog::default();
+        // Building the engine creates the COM wallpaper manager. At sign-in the shell
+        // can still be starting, so this is one more environmental failure that must be
+        // retried rather than turned into a process that exits without a supervisor.
+        let mut engine_failures = CycleFailureTracker::default();
 
         loop {
             let mut config = match self.load_config() {
@@ -406,7 +410,33 @@ impl DaemonApplication {
 
             self.apply_wallpaper_mode(&mut config)?;
 
-            let theme_engine = build_engine(&config, &self.state_dir())?;
+            let theme_engine = match build_engine(&config, &self.state_dir()) {
+                Ok(engine) => {
+                    engine_failures.record_success();
+                    engine
+                }
+                Err(e) => {
+                    let backoff = engine_failures.record_failure();
+                    error!(
+                        error = %e,
+                        consecutive_failures = engine_failures.consecutive_failures(),
+                        retry_in_seconds = backoff.as_secs(),
+                        "Failed to create the theme engine, retrying"
+                    );
+
+                    // Wait in slices so a configuration change can shorten the retry,
+                    // and consume its stamp: otherwise the same change would wake the
+                    // next attempt immediately and spin.
+                    if wait_for_config_change(&self.config_watcher, backoff)
+                        == WakeReason::ConfigChanged
+                        && let Err(e) = self.config_watcher.update_stamp()
+                    {
+                        warn!(error = %e, "Failed to record the configuration file stamp");
+                    }
+
+                    continue;
+                }
+            };
 
             info!(
                 update_interval_seconds = config.interval(),
