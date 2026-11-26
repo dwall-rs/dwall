@@ -45,6 +45,8 @@ const [engineStore, setEngineStore] = createStore<EngineState>({
 
 /** Set while a refresh is failing, so the 5 s poll reports the outage once per streak. */
 let refreshFailed = false;
+/** The same, for the log read: it is a different question from the process status. */
+let lastErrorReadFailed = false;
 /** Latest refresh issued; an older, slower one must not write its result over a newer one. */
 let refreshSeq = 0;
 /**
@@ -64,32 +66,50 @@ const readLastError = async (seq: number) => {
   setEngineStore("lastError", lastError);
 };
 
+/** Reads the daemon's last error, reporting a failure without blaming the status query. */
+const refreshLastError = async (seq: number) => {
+  try {
+    await readLastError(seq);
+    lastErrorReadFailed = false;
+  } catch (e) {
+    if (seq !== refreshSeq) return;
+    if (!lastErrorReadFailed) notifyFailure("read the daemon's last error", e);
+    lastErrorReadFailed = true;
+  }
+};
+
 /** In sync with the real daemon state */
 const refresh = async () => {
   const seq = ++refreshSeq;
-  try {
-    const running = await getEngineStatus();
-    // A newer refresh started while this one was in flight; its result is the current one.
-    if (seq !== refreshSeq) return;
-    refreshFailed = false;
-    setEngineStore("running", running);
 
-    // A stopped daemon used to drop its last error, which is exactly when the reason
-    // matters: the daemon stops for good when the user's own setting leaves it without
-    // a location, and the log line it wrote is the only explanation there is.
-    if (running) {
-      stoppedErrorRead = false;
-      await readLastError(seq);
-    } else if (!stoppedErrorRead) {
-      stoppedErrorRead = true;
-      await readLastError(seq);
-    }
+  // The status and the log are separate questions: a log read that fails must not make
+  // the window say the engine query failed, nor hold back the status it already has.
+  let running: boolean;
+  try {
+    running = await getEngineStatus();
   } catch (e) {
     if (seq !== refreshSeq) return;
     // The poll runs every few seconds; one toast per failure streak is a report, one
     // per tick is spam.
     if (!refreshFailed) notifyFailure("query engine status", e);
     refreshFailed = true;
+    return;
+  }
+
+  // A newer refresh started while this one was in flight; its result is the current one.
+  if (seq !== refreshSeq) return;
+  refreshFailed = false;
+  setEngineStore("running", running);
+
+  // A stopped daemon used to drop its last error, which is exactly when the reason
+  // matters: the daemon stops for good when the user's own setting leaves it without
+  // a location, and the log line it wrote is the only explanation there is.
+  if (running) {
+    stoppedErrorRead = false;
+    await refreshLastError(seq);
+  } else if (!stoppedErrorRead) {
+    stoppedErrorRead = true;
+    await refreshLastError(seq);
   }
 };
 

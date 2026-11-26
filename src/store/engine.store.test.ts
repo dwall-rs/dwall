@@ -110,6 +110,39 @@ describe("engine store: status refresh", () => {
     expect(store.engineStore.lastError).toContain("Location access");
   });
 
+  test("a failed log read is reported without hiding the status", async () => {
+    mocks.getEngineStatus.mockResolvedValue(true);
+    mocks.getDaemonLastError.mockRejectedValue(new Error("log locked"));
+
+    const store = await freshStore();
+    await store.refresh();
+
+    expect(store.engineStore.running).toBe(true);
+    expect(mocks.toastError).toHaveBeenCalledTimes(1);
+
+    // The poll keeps running; one toast per failure streak, like the status query.
+    await store.refresh();
+    expect(mocks.toastError).toHaveBeenCalledTimes(1);
+  });
+
+  test("a recovered log read is reported again when it fails later", async () => {
+    mocks.getEngineStatus.mockResolvedValue(true);
+    mocks.getDaemonLastError.mockRejectedValueOnce(new Error("log locked"));
+
+    const store = await freshStore();
+    await store.refresh();
+    expect(mocks.toastError).toHaveBeenCalledTimes(1);
+
+    mocks.getDaemonLastError.mockResolvedValueOnce(null);
+    await store.refresh();
+
+    mocks.getDaemonLastError.mockRejectedValueOnce(
+      new Error("log locked again"),
+    );
+    await store.refresh();
+    expect(mocks.toastError).toHaveBeenCalledTimes(2);
+  });
+
   test("a failed status query is surfaced instead of silently reporting stopped", async () => {
     mocks.getEngineStatus.mockRejectedValue(new Error("ipc down"));
 
