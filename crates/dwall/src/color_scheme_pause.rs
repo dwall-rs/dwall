@@ -130,14 +130,7 @@ pub fn write_to(directory: &Path, pause: &ColorSchemePause) -> DwallResult<()> {
     fs::create_dir_all(directory)?;
 
     let path = path_in(directory);
-    let temporary = path.with_extension("json.tmp");
-
-    fs::write(&temporary, content)?;
-
-    if let Err(e) = fs::rename(&temporary, &path) {
-        let _ = fs::remove_file(&temporary);
-        return Err(e.into());
-    }
+    crate::config::write_atomically(&path, content.as_bytes())?;
 
     Ok(())
 }
@@ -195,7 +188,11 @@ mod tests {
         assert_eq!(read_back, pause);
         assert!(dir.join("color_scheme_pause.json").is_file());
         assert!(
-            !dir.join("color_scheme_pause.json.tmp").exists(),
+            fs::read_dir(&dir).unwrap().all(|entry| !entry
+                .unwrap()
+                .file_name()
+                .to_string_lossy()
+                .ends_with(".tmp")),
             "the temporary file is renamed away"
         );
 
@@ -203,6 +200,34 @@ mod tests {
         assert!(read_from(&dir).unwrap().is_none());
         // Clearing twice is what a resumed cycle and a settings click can do.
         clear_from(&dir).unwrap();
+
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    /// The daemon and the settings window write this file independently. With one
+    /// fixed temporary name (the old `color_scheme_pause.json.tmp`) one rename could
+    /// consume the other writer's file, so one of the two pauses was lost.
+    #[test]
+    fn concurrent_writers_do_not_share_a_temporary_file() {
+        let dir = scratch("concurrent");
+        let pause = ColorSchemePause::for_seconds(1_000, 60, PauseCause::Manual);
+
+        std::thread::scope(|scope| {
+            for _ in 0..8 {
+                let dir = &dir;
+                let pause = &pause;
+                scope.spawn(move || write_to(dir, pause).unwrap());
+            }
+        });
+
+        assert_eq!(read_from(&dir).unwrap(), Some(pause));
+        assert!(fs::read_dir(&dir).unwrap().all(|entry| {
+            !entry
+                .unwrap()
+                .file_name()
+                .to_string_lossy()
+                .ends_with(".tmp")
+        }));
 
         let _ = fs::remove_dir_all(&dir);
     }

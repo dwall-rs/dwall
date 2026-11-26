@@ -91,14 +91,7 @@ pub fn write_to(directory: &Path, selection: &RandomSelection) -> DwallResult<()
     fs::create_dir_all(directory)?;
 
     let path = path_in(directory);
-    let temporary = path.with_extension("json.tmp");
-
-    fs::write(&temporary, content)?;
-
-    if let Err(e) = fs::rename(&temporary, &path) {
-        let _ = fs::remove_file(&temporary);
-        return Err(e.into());
-    }
+    crate::config::write_atomically(&path, content.as_bytes())?;
 
     Ok(())
 }
