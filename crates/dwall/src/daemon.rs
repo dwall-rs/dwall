@@ -34,6 +34,15 @@ const FAILURE_BACKOFF_MAX: Duration = Duration::from_secs(300);
 /// Backoff before retrying a configuration read that failed.
 const CONFIG_RETRY_DELAY: Duration = Duration::from_secs(5);
 
+/// How often the same configuration read failure may be reported at ERROR.
+///
+/// The retry runs every CONFIG_RETRY_DELAY and an unreadable file writes two error
+/// records each time; at 5 s that is 720 records an hour, which rotates the 5 MB live
+/// log (and its five backups) through in hours and destroys the history that would
+/// explain the failure. The first failure is always reported; repeats are debug!
+/// until this interval has passed.
+const CONFIG_FAILURE_LOG_INTERVAL: Duration = Duration::from_secs(5 * 60);
+
 /// How long random mode waits before trying again when no theme could be selected.
 ///
 /// An empty pool, a theme directory that has not been created yet, or a persisted
@@ -56,6 +65,32 @@ const RANDOM_SELECTION_RETRY: Duration = Duration::from_secs(60);
 /// changed. Saving a setting still takes effect well within the time it takes to look
 /// at the window.
 const CONFIG_POLL_INTERVAL: Duration = Duration::from_secs(5);
+
+/// Rate limit for repeated configuration read failures.
+#[derive(Debug, Default)]
+struct ConfigFailureLog {
+    last_report: Option<Instant>,
+}
+
+impl ConfigFailureLog {
+    /// Whether a failure at `now` may be written at ERROR.
+    fn should_report(&mut self, now: Instant) -> bool {
+        let due = self
+            .last_report
+            .is_none_or(|last| now.saturating_duration_since(last) >= CONFIG_FAILURE_LOG_INTERVAL);
+
+        if due {
+            self.last_report = Some(now);
+        }
+
+        due
+    }
+
+    /// Forgets the last report, so the next failure is reported immediately.
+    fn reset(&mut self) {
+        self.last_report = None;
+    }
+}
 
 /// Why the wait between two cycles ended.
 #[derive(Debug, PartialEq, Eq)]
@@ -322,21 +357,50 @@ impl DaemonApplication {
             warn!(error = %e, "Failed to read the initial configuration file stamp");
         }
 
+        // The last configuration that parsed. A save that leaves the file unreadable
+        // (a hand edit in progress, a half-copied file) must not freeze the wallpapers:
+        // the daemon keeps applying the previous one until the file parses again.
+        let mut last_good_config: Option<Config> = None;
+        let mut config_failure_log = ConfigFailureLog::default();
+
         loop {
             let mut config = match self.load_config() {
-                Ok(config) => config,
+                Ok(config) => {
+                    config_failure_log.reset();
+                    last_good_config = Some(config.clone());
+                    config
+                }
                 Err(e) => {
-                    // A hand-edited or half-written file must not kill the daemon:
-                    // keep running and retry, otherwise wallpapers silently stop
-                    // updating until the user restarts it manually.
-                    error!(
-                        error = %e,
-                        path = %self.config_watcher.config_path().display(),
-                        retry_in_seconds = CONFIG_RETRY_DELAY.as_secs(),
-                        "Failed to read configuration, retrying"
-                    );
-                    sleep(CONFIG_RETRY_DELAY);
-                    continue;
+                    // Rate-limited so a permanently unreadable file cannot rotate the
+                    // whole log budget away in a few hours.
+                    if config_failure_log.should_report(Instant::now()) {
+                        error!(
+                            error = %e,
+                            path = %self.config_watcher.config_path().display(),
+                            retry_in_seconds = CONFIG_RETRY_DELAY.as_secs(),
+                            "Failed to read configuration"
+                        );
+                    } else {
+                        debug!(
+                            error = %e,
+                            path = %self.config_watcher.config_path().display(),
+                            "Failed to read configuration, still retrying"
+                        );
+                    }
+
+                    match last_good_config.clone() {
+                        Some(config) => {
+                            warn!(
+                                path = %self.config_watcher.config_path().display(),
+                                "Keeping the last readable configuration"
+                            );
+                            config
+                        }
+                        None => {
+                            sleep(CONFIG_RETRY_DELAY);
+                            continue;
+                        }
+                    }
                 }
             };
 
@@ -803,6 +867,24 @@ impl Default for DaemonApplication {
 mod tests {
     use super::*;
     use crate::solar::GeolocationAccessError;
+
+    #[test]
+    fn repeated_config_read_failures_are_reported_at_most_every_five_minutes() {
+        let mut log = ConfigFailureLog::default();
+        let start = Instant::now();
+
+        assert!(log.should_report(start), "the first failure is reported");
+        assert!(!log.should_report(start + Duration::from_secs(1)));
+        assert!(!log.should_report(start + Duration::from_secs(299)));
+        assert!(log.should_report(start + Duration::from_secs(300)));
+        assert!(!log.should_report(start + Duration::from_secs(301)));
+
+        log.reset();
+        assert!(
+            log.should_report(start + Duration::from_secs(302)),
+            "a successful read makes the next failure reportable again"
+        );
+    }
 
     // ── cycle_failure ───────────────────────────────────────────────────────
 
