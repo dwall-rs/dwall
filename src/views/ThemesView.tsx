@@ -6,7 +6,8 @@ import { ModeToggle } from "@/layout/ModeToggle";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { t } from "@/i18n";
-import { catalogStore, load as loadCatalog } from "@/store/catalog.store";
+import { reloadCatalog } from "@/store/bootstrap";
+import { catalogStore } from "@/store/catalog.store";
 import {
   availableThemes,
   monitorById,
@@ -218,7 +219,7 @@ export function ThemesView() {
               variant="outline"
               size="sm"
               class="mt-2.5"
-              onClick={() => void loadCatalog()}
+              onClick={() => void reloadCatalog()}
             >
               {t("library.reload")}
             </Button>
@@ -248,7 +249,7 @@ export function ThemesView() {
           <Button
             variant="outline"
             size="sm"
-            onClick={() => void loadCatalog()}
+            onClick={() => void reloadCatalog()}
           >
             {t("library.reload")}
           </Button>
