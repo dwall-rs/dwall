@@ -14,6 +14,7 @@ import {
 import { isSocks5 } from "@/models/config";
 import { t } from "@/i18n";
 import { openDir, openUrl, pickDirectory } from "@/ipc";
+import { runExternalAction } from "@/lib/external-action";
 import { SettingsGroup } from "./SettingsGroup";
 import { SettingsRow } from "./SettingsRow";
 import { createMemo, Match, Switch } from "solid-js";
@@ -78,7 +79,11 @@ export function PathsSection() {
                 disabled={!settingsStore.config?.themes_directory}
                 onClick={() => {
                   const dir = settingsStore.config?.themes_directory;
-                  if (dir) void openDir(dir);
+                  if (dir) {
+                    void runExternalAction("open the themes directory", () =>
+                      openDir(dir),
+                    );
+                  }
                 }}
               >
                 <ExternalLink class="size-3.5" />
@@ -133,7 +138,11 @@ export function PathsSection() {
                 <button
                   type="button"
                   class="cursor-pointer text-primary underline"
-                  onClick={() => void openUrl(MIRROR_TEMPLATES_URL)}
+                  onClick={() =>
+                    void runExternalAction("open the mirror templates", () =>
+                      openUrl(MIRROR_TEMPLATES_URL),
+                    )
+                  }
                 >
                   {t("settings.paths.viewTemplates")}
                 </button>
