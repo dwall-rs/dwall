@@ -265,6 +265,13 @@ jobs:
       - name: Cargo test (logging)
         run: cargo test -p logging --all-features
 
+      # The shipped binary is a release build, and the file-logging implementation
+      # (Logger::with_file_path and the rotation branch) is cfg(not(debug_assertions)),
+      # so no debug test run compiles it. These two crates are cheap to exercise in the
+      # profile that actually ships.
+      - name: Cargo test (release logging and time)
+        run: cargo test -r -p logging -p time
+
       # The root run uses the default feature set. The daemon ships with all of
       # them, and --all-features also regenerates src/ipc/bindings through the ts
       # feature, which the stale-bindings check above then re-verifies.
