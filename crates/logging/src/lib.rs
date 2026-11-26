@@ -273,7 +273,9 @@ impl Log for Logger {
                 );
             } else {
                 // Redirected output (file, pipe, CI) must not receive escape codes.
-                let _ = write_record(&mut std::io::stderr(), &timestamp, record);
+                // The message body already carries the styling `__fmt_key` added at
+                // macro expansion, so writing the record as-is leaked it here.
+                let _ = write_record_without_escapes(&mut std::io::stderr(), &timestamp, record);
             }
         }
 
@@ -343,6 +345,48 @@ pub fn write_record(
     record: &log::Record<'_>,
 ) -> std::io::Result<()> {
     writeln!(out, "{}", format_record(timestamp, record))
+}
+
+/// Writes a record for redirected output, with the debug formatter's styling removed.
+///
+/// In debug builds every key in the message is wrapped by `__fmt_key` at macro
+/// expansion, independently of where stderr points. The terminal branch styles the
+/// whole line; a file or pipe must get the same text without the escape sequences.
+#[cfg(debug_assertions)]
+fn write_record_without_escapes(
+    out: &mut dyn std::io::Write,
+    timestamp: &str,
+    record: &log::Record<'_>,
+) -> std::io::Result<()> {
+    writeln!(
+        out,
+        "{}",
+        strip_ansi_escapes(&format_record(timestamp, record))
+    )
+}
+
+/// Removes ANSI CSI escape sequences from `text`.
+#[cfg(debug_assertions)]
+fn strip_ansi_escapes(text: &str) -> String {
+    let mut stripped = String::with_capacity(text.len());
+    let mut characters = text.chars().peekable();
+
+    while let Some(character) = characters.next() {
+        if character != '\u{1b}' || characters.peek() != Some(&'[') {
+            stripped.push(character);
+            continue;
+        }
+
+        // Consume "[...<final byte>"; the final byte is in the range 0x40..=0x7e.
+        characters.next();
+        for parameter in characters.by_ref() {
+            if ('@'..='~').contains(&parameter) {
+                break;
+            }
+        }
+    }
+
+    stripped
 }
 
 impl Default for Logger {
@@ -949,6 +993,23 @@ mod tests {
             String::from_utf8(out).unwrap(),
             "2026-06-01T01:27:42+08:00 INFO [dwall::config] loaded theme_id=Big Sur at src/config.rs:79\n"
         );
+    }
+
+    /// In a debug build the keys are styled before they reach the logger, so the
+    /// redirected (file/pipe/CI) path has to strip that styling itself; the terminal
+    /// path is not the only writer of a debug log.
+    #[cfg(debug_assertions)]
+    #[test]
+    fn redirected_output_drops_the_key_styling() {
+        let styled = format!("{}={}", crate::__fmt_key("theme_id"), "Big Sur");
+        assert!(
+            styled.contains('\u{1b}'),
+            "the debug formatter is expected to style the key"
+        );
+
+        let stripped = strip_ansi_escapes(&styled);
+        assert!(!stripped.contains('\u{1b}'));
+        assert_eq!(stripped, "theme_id=Big Sur");
     }
 
     /// With max-level-info on, the release build must not pay for the arguments of
