@@ -8,7 +8,31 @@ use windows::Foundation::TimeSpan;
 use crate::error::{DwallError, DwallResult};
 use crate::solar::{GeolocationAccessError, Position, PositionProvider};
 
-use super::async_operation;
+use super::async_operation::{self, AsyncWaitError};
+
+/// `E_ACCESSDENIED`, which WinRT reports when location access is switched off for the
+/// app (`HRESULT_FROM_WIN32(ERROR_ACCESS_DENIED)`).
+const E_ACCESSDENIED: u32 = 0x8007_0005;
+
+/// Classifies a Windows error at the geolocation boundary.
+///
+/// The daemon stops on "the user denied location", but a bare `E_ACCESSDENIED` from
+/// any other API (a display call, a file) must not be mistaken for that decision. The
+/// distinction is only available here, where the operation is known.
+fn geolocation_error(error: windows::core::Error) -> DwallError {
+    if error.code().0 as u32 == E_ACCESSDENIED {
+        GeolocationAccessError::Denied.into()
+    } else {
+        DwallError::Windows(error)
+    }
+}
+
+fn geolocation_wait_error(error: AsyncWaitError) -> DwallError {
+    match error {
+        AsyncWaitError::Failed(error) => geolocation_error(error),
+        timeout => timeout.into(),
+    }
+}
 
 /// Maximum acceptable age of a cached reading before a fresh sensor read is requested.
 const MAX_GEOPOSITION_AGE: Duration = Duration::from_secs(60);
@@ -48,7 +72,7 @@ where
         }
         Err(e) => {
             error!(error = e, "{} failed", operation);
-            Err(DwallError::Windows(e))
+            Err(geolocation_error(e))
         }
     }
 }
@@ -89,10 +113,11 @@ impl PositionProvider for Positioner {
             )
         })?;
 
-        let geoposition =
-            async_operation::wait(&operation, GEOPOSITION_TIMEOUT).inspect_err(|e| {
+        let geoposition = async_operation::wait(&operation, GEOPOSITION_TIMEOUT)
+            .inspect_err(|e| {
                 error!(error = %e, "Failed to retrieve geoposition");
-            })?;
+            })
+            .map_err(geolocation_wait_error)?;
 
         // Extract coordinate
         let coordinate = handle_windows_error("Extracting coordinate from geoposition", || {
@@ -128,10 +153,11 @@ impl PositionProvider for Positioner {
             Geolocator::RequestAccessAsync,
         )?;
 
-        let access_status =
-            async_operation::wait(&operation, ACCESS_REQUEST_TIMEOUT).inspect_err(|e| {
+        let access_status = async_operation::wait(&operation, ACCESS_REQUEST_TIMEOUT)
+            .inspect_err(|e| {
                 error!(error = %e, "Failed to get access status");
-            })?;
+            })
+            .map_err(geolocation_wait_error)?;
 
         match access_status {
             GeolocationAccessStatus::Allowed => {
@@ -163,6 +189,29 @@ impl PositionProvider for Positioner {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn an_access_denied_hresult_is_a_denied_location() {
+        let error = geolocation_error(windows::core::Error::from_hresult(
+            windows::core::HRESULT::from_win32(5),
+        ));
+
+        assert!(matches!(
+            error,
+            DwallError::GeolocationAccess(GeolocationAccessError::Denied)
+        ));
+        assert!(error.location_unavailable());
+    }
+
+    #[test]
+    fn another_windows_error_is_not_a_denied_location() {
+        let error = geolocation_error(windows::core::Error::from_hresult(
+            windows::core::HRESULT::from_win32(1053),
+        ));
+
+        assert!(matches!(error, DwallError::Windows(_)));
+        assert!(!error.location_unavailable());
+    }
 
     /// WinRT's `TimeSpan` counts 100-nanosecond ticks, and the two budgets the module
     /// hands it are whole seconds.

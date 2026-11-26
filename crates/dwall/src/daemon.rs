@@ -940,15 +940,17 @@ mod tests {
         );
     }
 
+    /// Only the geolocation module can tell that access was denied by the location
+    /// setting; a bare E_ACCESSDENIED from anywhere else is an ordinary failure.
     #[test]
-    fn an_access_denied_hresult_stops_the_daemon() {
+    fn an_access_denied_hresult_from_another_api_is_retried() {
         let error = DwallError::Windows(windows::core::Error::from_hresult(
             windows::core::HRESULT::from_win32(5),
         ));
 
         assert_eq!(
             cycle_failure(&error, FAILURE_BACKOFF_BASE),
-            CycleFailure::Stop
+            CycleFailure::Retry(FAILURE_BACKOFF_BASE)
         );
     }
 
@@ -977,10 +979,11 @@ mod tests {
     fn only_the_location_errors_are_classified_as_unavailable() {
         assert!(denied().location_unavailable());
         assert!(
-            DwallError::Windows(windows::core::Error::from_hresult(
+            !DwallError::Windows(windows::core::Error::from_hresult(
                 windows::core::HRESULT::from_win32(5)
             ))
-            .location_unavailable()
+            .location_unavailable(),
+            "only the geolocation boundary can attribute E_ACCESSDENIED to location"
         );
         assert!(
             !DwallError::Windows(windows::core::Error::from_hresult(

@@ -191,8 +191,9 @@ mod tests {
         .into();
         assert!(matches!(failed, crate::error::DwallError::Windows(_)));
         assert!(
-            failed.location_unavailable(),
-            "an access-denied wait is what makes the daemon stop for a missing location"
+            !failed.location_unavailable(),
+            "the generic conversion cannot know which API failed; the geolocation \
+             boundary maps its own E_ACCESSDENIED to a denied location"
         );
     }
 }
