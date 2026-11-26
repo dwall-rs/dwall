@@ -3,6 +3,7 @@
 import { ChevronRight, Code, FileText, ScrollText } from "lucide-solid";
 import { createResource, type JSXElement } from "solid-js";
 import { getAppInfo, openLogDir, openUrl } from "@/ipc";
+import { runExternalAction } from "@/lib/external-action";
 import { resourceValue } from "@/lib/resource";
 import { t } from "@/i18n";
 import Logo from "@/assets/dwall.svg";
@@ -44,19 +45,29 @@ export function AboutSection() {
             icon={<ScrollText class="size-4" />}
             title={t("settings.about.changelog")}
             sub={t("settings.about.changelogSub")}
-            onClick={() => void openUrl(CHANGELOG_URL)}
+            onClick={() =>
+              void runExternalAction("open the changelog", () =>
+                openUrl(CHANGELOG_URL),
+              )
+            }
           />
           <LinkRow
             icon={<Code class="size-4" />}
             title={t("settings.about.sourceCode")}
             sub={t("settings.about.sourceSub")}
-            onClick={() => void openUrl(SOURCE_URL)}
+            onClick={() =>
+              void runExternalAction("open the source repository", () =>
+                openUrl(SOURCE_URL),
+              )
+            }
           />
           <LinkRow
             icon={<FileText class="size-4" />}
             title={t("settings.about.logDir")}
             sub={t("settings.about.logDirSub")}
-            onClick={() => void openLogDir()}
+            onClick={() =>
+              void runExternalAction("open the log directory", openLogDir)
+            }
           />
         </div>
       </div>
