@@ -79,17 +79,18 @@ impl DwallError {
     /// timeout or a busy sensor is retried with a backoff, because a daemon that
     /// disappears at sign-in, before the location service is ready, is worse than one
     /// that keeps trying.
+    ///
+    /// The check is on the error variant, not on a Windows HRESULT: the geolocation
+    /// module converts `E_ACCESSDENIED` from its own calls into
+    /// [`GeolocationAccessError::Denied`] (that is the only place that knows the access
+    /// denied came from the location API). A bare `E_ACCESSDENIED` from a display or
+    /// file call is an ordinary failure and is retried.
     pub fn location_unavailable(&self) -> bool {
-        /// `E_ACCESSDENIED`, which is what the WinRT calls report when location access
-        /// is switched off for the app (`HRESULT_FROM_WIN32(ERROR_ACCESS_DENIED)`).
-        const E_ACCESSDENIED: u32 = 0x8007_0005;
-
-        match self {
+        matches!(
+            self,
             Self::GeolocationAccess(GeolocationAccessError::Denied)
-            | Self::GeolocationAccess(GeolocationAccessError::Unspecified) => true,
-            Self::Windows(e) => e.code().0 as u32 == E_ACCESSDENIED,
-            _ => false,
-        }
+                | Self::GeolocationAccess(GeolocationAccessError::Unspecified)
+        )
     }
 }
 
