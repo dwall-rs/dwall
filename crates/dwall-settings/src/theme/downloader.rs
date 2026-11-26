@@ -186,23 +186,19 @@ impl ThemeDownloader {
             return Err(e);
         }
 
-        // Swap: drop the previous installation only now that a complete replacement
-        // exists on disk.
-        if theme_dir.exists()
-            && let Err(e) = fs::remove_dir_all(&theme_dir).await
-        {
+        // Swap: keep the previous installation until the replacement is in place.
+        // Deleting it first meant a failed rename left the user with no theme at all;
+        // the staging directory the rename would have moved is cleaned up by the
+        // guard, so there was nothing left to recover from.
+        if let Err(e) = swap_staged_theme(&staging_dir, &theme_dir).await {
             cleanup_dir(&staging_dir).await;
-            return Err(e.into());
-        }
-
-        fs::rename(&staging_dir, &theme_dir).await.map_err(|e| {
             error!(
                 theme_dir = %theme_dir.display(),
                 error = %e,
                 "Failed to move the extracted theme into place"
             );
-            DwallSettingsError::from(e)
-        })?;
+            return Err(e.into());
+        }
 
         Ok(theme_dir)
     }
@@ -422,6 +418,60 @@ async fn cleanup_dir(dir: &std::path::Path) {
     }
 }
 
+/// The directory an installed theme is parked in while its replacement is moved in.
+fn backup_directory(theme_dir: &Path) -> PathBuf {
+    let mut name = theme_dir
+        .file_name()
+        .map(|name| name.to_os_string())
+        .unwrap_or_default();
+    name.push(".old");
+
+    theme_dir.with_file_name(name)
+}
+
+/// Moves `staging_dir` onto `theme_dir`, keeping the installed copy recoverable.
+///
+/// The previous directory is renamed aside first, so a failed move can put it back;
+/// it is deleted only after the replacement is in place. A backup left by a crash is
+/// removed before it is used again (the download lock rules out a live writer).
+async fn swap_staged_theme(staging_dir: &Path, theme_dir: &Path) -> std::io::Result<()> {
+    let backup_dir = backup_directory(theme_dir);
+    let had_previous = theme_dir.exists();
+
+    if backup_dir.exists() {
+        fs::remove_dir_all(&backup_dir).await?;
+    }
+
+    if had_previous {
+        fs::rename(theme_dir, &backup_dir).await?;
+    }
+
+    if let Err(error) = fs::rename(staging_dir, theme_dir).await {
+        if had_previous {
+            match fs::rename(&backup_dir, theme_dir).await {
+                Ok(()) => {}
+                Err(restore) => error!(
+                    theme_dir = %theme_dir.display(),
+                    error = %restore,
+                    "Failed to restore the previous theme after a failed swap"
+                ),
+            }
+        }
+        return Err(error);
+    }
+
+    if had_previous && let Err(error) = fs::remove_dir_all(&backup_dir).await {
+        // The new theme is already in place; a leftover backup only costs disk.
+        warn!(
+            backup_dir = %backup_dir.display(),
+            error = %error,
+            "Failed to remove the previous theme after a successful swap"
+        );
+    }
+
+    Ok(())
+}
+
 /// Whether a staging directory holds a theme the daemon can actually apply.
 ///
 /// Runs the daemon's own [`dwall::ThemeValidator`] against the staging directory,
@@ -616,6 +666,53 @@ azimuth = 20.0
         fs::write(staging.join("jpg").join("1.jpg"), b"image").unwrap();
 
         assert!(verify_staged_theme(&staging, &config_for(&root)).is_err());
+    }
+
+    // ── swap ────────────────────────────────────────────────────────────────
+
+    #[test]
+    fn a_swap_replaces_the_installed_theme_and_leaves_no_backup() {
+        let root = scratch_themes_directory("swap_ok");
+        let theme_dir = root.join("Demo");
+        let staging_dir = root.join("Demo.staging");
+        let backup_dir = root.join("Demo.old");
+
+        fs::create_dir_all(&theme_dir).unwrap();
+        fs::write(theme_dir.join("old.jpg"), b"old").unwrap();
+        fs::create_dir_all(&staging_dir).unwrap();
+        fs::write(staging_dir.join("new.jpg"), b"new").unwrap();
+        // A backup left by an earlier crash is cleaned before the swap.
+        fs::create_dir_all(&backup_dir).unwrap();
+        fs::write(backup_dir.join("stale.jpg"), b"stale").unwrap();
+
+        runtime()
+            .block_on(swap_staged_theme(&staging_dir, &theme_dir))
+            .unwrap();
+
+        assert!(theme_dir.join("new.jpg").is_file());
+        assert!(!theme_dir.join("old.jpg").exists());
+        assert!(!staging_dir.exists());
+        assert!(!backup_dir.exists());
+    }
+
+    /// The reason the swap keeps a backup at all: a failed move must put the
+    /// installed copy back instead of leaving the user with no theme.
+    #[test]
+    fn a_failed_swap_restores_the_installed_theme() {
+        let root = scratch_themes_directory("swap_restore");
+        let theme_dir = root.join("Demo");
+        let staging_dir = root.join("Demo.staging");
+        fs::create_dir_all(&theme_dir).unwrap();
+        fs::write(theme_dir.join("old.jpg"), b"old").unwrap();
+        // No staging directory: the second rename fails after the first succeeded.
+
+        let error = runtime()
+            .block_on(swap_staged_theme(&staging_dir, &theme_dir))
+            .expect_err("the staging directory does not exist");
+
+        assert_eq!(error.kind(), std::io::ErrorKind::NotFound);
+        assert!(theme_dir.join("old.jpg").is_file());
+        assert!(!root.join("Demo.old").exists());
     }
 
     // ── stage_archive ───────────────────────────────────────────────────────
