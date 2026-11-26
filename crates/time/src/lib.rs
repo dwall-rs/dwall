@@ -10,7 +10,14 @@ use std::time::{Duration, SystemTime};
 
 use self::consts::{SECONDS_PER_DAY, SECONDS_PER_HOUR, SECONDS_PER_MINUTE};
 use self::error::Result;
-use self::math::{days_since_epoch, days_to_ymd, is_leap_year};
+use self::math::{MAX_DAYS, days_since_epoch, days_to_ymd, is_leap_year};
+
+/// The last second this crate represents (9999-12-31 23:59:59).
+///
+/// Calendar math already clamps beyond `MAX_DAYS`; using the same bound here keeps
+/// the day helpers from wrapping on a bogus timestamp and reporting a time that does
+/// not belong to the date the crate says it clamps to.
+const MAX_TIMESTAMP_SECS: u64 = MAX_DAYS * SECONDS_PER_DAY + (SECONDS_PER_DAY - 1);
 
 pub use self::error::Error;
 pub use self::offset::Offset;
@@ -264,11 +271,20 @@ impl UtcDateTime {
     }
 
     /// Returns the end of the day (23:59:59).
+    ///
+    /// A timestamp beyond the crate's calendar range clamps to the last representable
+    /// second instead of overflowing the day arithmetic.
     #[inline]
     pub fn end_of_day(&self) -> Self {
         let days = self.inner.as_secs() / SECONDS_PER_DAY;
+        let last_second = days
+            .saturating_add(1)
+            .saturating_mul(SECONDS_PER_DAY)
+            .saturating_sub(1)
+            .min(MAX_TIMESTAMP_SECS);
+
         Self {
-            inner: Duration::from_secs(days.saturating_add(1) * SECONDS_PER_DAY - 1),
+            inner: Duration::from_secs(last_second),
         }
     }
 
@@ -277,7 +293,12 @@ impl UtcDateTime {
     /// Note: The result may be negative if `self < other`.
     #[inline]
     pub fn diff_seconds(&self, other: &Self) -> i64 {
-        self.inner.as_secs() as i64 - other.inner.as_secs() as i64
+        // Subtract in a wider type and only then narrow: casting both u64 values to
+        // i64 first turned every timestamp past 2^63 into a negative number, so
+        // u64::MAX was "one second before 1970".
+        let difference = i128::from(self.inner.as_secs()) - i128::from(other.inner.as_secs());
+
+        difference.clamp(i128::from(i64::MIN), i128::from(i64::MAX)) as i64
     }
 
     /// Computes the difference between this and another time in days.
@@ -606,14 +627,6 @@ impl OffsetDateTime {
             "{:04}-{:02}-{:02}T{:02}:{:02}:{:02}{}{:02}:{:02}",
             year, month as u8, day, hour, minute, second, offset_sign, offset_h, offset_m
         )
-    }
-}
-
-impl From<OffsetDateTime> for UtcDateTime {
-    /// Conversion from `LocalDateTime` may fail, so this implementation will panic.
-    /// In real projects, it is recommended to use the `to_utc()` method to obtain a `Result`.
-    fn from(local: OffsetDateTime) -> Self {
-        local.utc().expect("LocalDateTime to UtcDateTime overflow")
     }
 }
 
@@ -970,6 +983,24 @@ mod tests {
         // A bogus timestamp must not overflow the calendar math or produce garbage.
         let (year, month, day) = UtcDateTime::from_timestamp(u64::MAX).ymd();
         assert_eq!((year, month, day), (9999, Month::December, 31));
+    }
+
+    #[test]
+    fn end_of_day_saturates_on_the_largest_timestamp() {
+        let end = UtcDateTime::from_timestamp(u64::MAX).end_of_day();
+
+        assert_eq!(end.ymd(), (9999, Month::December, 31));
+        assert_eq!(end.hms(), (23, 59, 59));
+    }
+
+    #[test]
+    fn diff_seconds_saturates_instead_of_wrapping() {
+        let epoch = UtcDateTime::from_timestamp(0);
+        let largest = UtcDateTime::from_timestamp(u64::MAX);
+
+        assert_eq!(largest.diff_seconds(&epoch), i64::MAX);
+        assert_eq!(epoch.diff_seconds(&largest), i64::MIN);
+        assert_eq!(UtcDateTime::from_timestamp(100).diff_seconds(&epoch), 100);
     }
 
     #[test]
