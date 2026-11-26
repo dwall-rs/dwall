@@ -398,23 +398,44 @@ impl SolarCalc {
         if ha > 180.0 { ha - 360.0 } else { ha }
     }
 
-    fn atmospheric_refraction(apparent_altitude: f64, pressure_ratio: f64) -> f64 {
-        if apparent_altitude < -0.5 {
+    /// Refraction correction for a true altitude, in degrees.
+    ///
+    /// The standard formula is evaluated at the horizon for altitudes just below it and
+    /// then faded to zero by REFRACTION_FADE_END_DEG. Cutting the formula off at -0.5°
+    /// instead made the apparent altitude jump by the whole correction (about 0.575°) as
+    /// the sun crossed that line, enough to flip the selected frame of a densely spaced
+    /// theme.
+    fn atmospheric_refraction(true_altitude: f64, pressure_ratio: f64) -> f64 {
+        const REFRACTION_CUTOFF_DEG: f64 = -0.5;
+        const REFRACTION_FADE_END_DEG: f64 = -1.5;
+
+        if true_altitude < REFRACTION_FADE_END_DEG {
             return 0.0;
         }
 
-        let tan_h = (apparent_altitude + 7.31 / (apparent_altitude + 4.4))
+        // Below the cutoff the formula's own altitude term is clamped, so the fade
+        // multiplies a constant correction rather than a diverging one.
+        let reference_altitude = true_altitude.max(REFRACTION_CUTOFF_DEG);
+        let tan_h = (reference_altitude + 7.31 / (reference_altitude + 4.4))
             .to_radians()
             .tan();
 
-        let correction_deg = (1.0 / tan_h) / 60.0 * pressure_ratio;
+        let correction_deg = ((1.0 / tan_h) / 60.0 * pressure_ratio)
+            .clamp(0.0, constants::ATMOSPHERIC_REFRACTION_MAX);
         debug_assert!(
             correction_deg >= 0.0,
             "Atmospheric refraction correction must not be negative (elevation = {}°)",
-            apparent_altitude
+            true_altitude
         );
 
-        correction_deg.clamp(0.0, constants::ATMOSPHERIC_REFRACTION_MAX)
+        if true_altitude >= REFRACTION_CUTOFF_DEG {
+            return correction_deg;
+        }
+
+        let fade = (true_altitude - REFRACTION_FADE_END_DEG)
+            / (REFRACTION_CUTOFF_DEG - REFRACTION_FADE_END_DEG);
+
+        correction_deg * fade
     }
 }
 
@@ -532,6 +553,28 @@ mod tests {
         assert!(pressure_ratio(3_000.0) < 0.75);
         assert_eq!(pressure_ratio(f64::NAN), 1.0);
         assert_eq!(pressure_ratio(f64::INFINITY), 1.0);
+    }
+
+    /// A hard cutoff at -0.5° made the correction jump by its whole value (about
+    /// 0.575°) as the sun crossed it; two positions a thousandth of a degree apart must
+    /// not differ that much.
+    #[test]
+    fn refraction_is_continuous_across_the_horizon_cutoff() {
+        let below = SolarCalc::atmospheric_refraction(-0.500_001, 1.0);
+        let above = SolarCalc::atmospheric_refraction(-0.499_999, 1.0);
+
+        assert!(
+            (below - above).abs() < 0.01,
+            "below = {below}, above = {above}"
+        );
+    }
+
+    #[test]
+    fn refraction_fades_out_between_the_horizon_and_its_lower_bound() {
+        assert_eq!(SolarCalc::atmospheric_refraction(-1.6, 1.0), 0.0);
+        assert_eq!(SolarCalc::atmospheric_refraction(-1.5, 1.0), 0.0);
+        assert!(SolarCalc::atmospheric_refraction(-1.0, 1.0) > 0.0);
+        assert!(SolarCalc::atmospheric_refraction(-0.5, 1.0) > 0.5);
     }
 
     /// The observer's elevation has to reach the result: a higher station sees less
