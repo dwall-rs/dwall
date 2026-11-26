@@ -195,3 +195,42 @@ describe("update store: checking on request", () => {
     expect(first.close).toHaveBeenCalledTimes(1);
   });
 });
+
+describe("update store: install and restart", () => {
+  test("a successful install marks the update ready and relaunches", async () => {
+    const handle = updateHandle("0.3.0");
+    mocks.checkForUpdates.mockResolvedValue(handle);
+    mocks.relaunchApp.mockResolvedValue(undefined);
+
+    const store = await freshStore();
+    await store.check();
+    await store.install();
+
+    expect(handle.downloadAndInstall).toHaveBeenCalledTimes(1);
+    expect(store.updateStore.status).toBe("ready");
+    expect(mocks.relaunchApp).toHaveBeenCalledTimes(1);
+  });
+
+  test("a failed relaunch leaves the installed update ready instead of failed", async () => {
+    const handle = updateHandle("0.3.0");
+    mocks.checkForUpdates.mockResolvedValue(handle);
+    mocks.relaunchApp.mockRejectedValue(new Error("process busy"));
+
+    const store = await freshStore();
+    await store.check();
+    await store.install();
+
+    expect(store.updateStore.status).toBe("ready");
+    expect(store.updateStore.error).toBeNull();
+    expect(mocks.toastError).toHaveBeenCalledTimes(1);
+  });
+
+  test("a failed restart reports instead of rejecting", async () => {
+    mocks.relaunchApp.mockRejectedValue(new Error("process busy"));
+
+    const store = await freshStore();
+    await expect(store.restart()).resolves.toBeUndefined();
+
+    expect(mocks.toastError).toHaveBeenCalledTimes(1);
+  });
+});
