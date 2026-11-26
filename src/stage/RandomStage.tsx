@@ -234,7 +234,7 @@ export function RandomStage() {
               {t("workspace.pool")}
             </h2>
             <span class="rounded-full bg-accent px-2 py-0.5 font-mono text-[9.5px] text-accent-foreground">
-              24h
+              {t("stage.stats.periodValue")}
             </span>
           </div>
 
