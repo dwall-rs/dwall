@@ -530,6 +530,29 @@ describe("settings store: moving the themes directory", () => {
     expect(mocks.writeConfigFile).not.toHaveBeenCalled();
   });
 
+  /**
+   * Picking a folder is not "save the whole form": an unrelated draft edit must stay
+   * out of the file (and dirty) while the new directory is persisted immediately.
+   */
+  test("moving the themes directory does not commit unrelated unsaved edits", async () => {
+    mocks.readConfigFile.mockResolvedValue(config());
+    mocks.moveDirectory.mockResolvedValue(undefined);
+    mocks.writeConfigFile.mockResolvedValue(undefined);
+
+    const store = await freshStore();
+    await store.load();
+    store.patch({ interval: 30 });
+
+    await store.changeThemesDirectory("D:\\themes");
+
+    const written = mocks.writeConfigFile.mock.calls[0][0] as Config;
+    expect(written.interval).toBe(15);
+    expect(written.themes_directory).toBe("D:\\themes");
+    expect(store.settingsStore.config?.interval).toBe(30);
+    expect(store.settingsStore.saved?.interval).toBe(15);
+    expect(store.isConfigDirty(store.settingsStore)).toBe(true);
+  });
+
   test("a failed save moves the themes directory back", async () => {
     mocks.readConfigFile.mockResolvedValue(config());
     mocks.moveDirectory.mockResolvedValue(undefined);

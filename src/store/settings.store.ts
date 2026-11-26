@@ -401,14 +401,38 @@ const changeThemesDirectory = async (dir: string) => {
   }
 
   patch({ themes_directory: dir });
-  await save();
 
-  // `save` reports failure through the store instead of throwing. The directory is
-  // already at the new path, so leaving the old config behind would make the next
-  // start look at an empty directory; move it back and keep the old value.
-  if (settingsStore.saveError) {
+  // Persist only the directory, not the whole draft: picking a folder must not commit
+  // a half-typed proxy host or a coordinate the user has not saved yet. The write goes
+  // through the same queue as the other configuration writes, and reads the committed
+  // snapshot only when its turn starts.
+  let persisted = false;
+  try {
+    await queueConfigWrite(async () => {
+      const saved = settingsStore.saved;
+      if (!saved) throw new Error("configuration is not loaded");
+
+      const applied: Config = { ...saved, themes_directory: dir };
+      await writeConfigFile(applied);
+
+      setSettingsStore(
+        produce((settings) => {
+          settings.saved = snapshot(applied);
+          settings.saveError = null;
+        }),
+      );
+    });
+    persisted = true;
+  } catch (e) {
+    setSettingsStore("saveError", String(e));
+    log.error("Themes directory moved but the configuration was not saved", e);
+    toast.error(t("common.operationFailed"), { description: String(e) });
+  }
+
+  // The directory is already at the new path, so leaving the old config behind would
+  // make the next start look at an empty directory; move it back and keep the old value.
+  if (!persisted) {
     patch({ themes_directory: current });
-    log.error("Themes directory moved but the configuration was not saved");
 
     try {
       await moveDirectory(dir, current);
