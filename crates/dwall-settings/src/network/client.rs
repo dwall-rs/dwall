@@ -58,9 +58,29 @@ impl DownloadValidator {
         }
     }
 
-    /// The strongest validator the response offered, if any.
+    /// The strong ETag, when the response offered one.
+    ///
+    /// If-Range requires a strong validator: a weak ETag (the `W/` form) says only
+    /// that two representations are semantically equivalent, never that they are
+    /// byte-identical, so a conforming server cannot match it and ignores the header.
+    fn strong_etag(&self) -> Option<&str> {
+        self.etag
+            .as_deref()
+            .filter(|etag| !etag.trim_start().starts_with("W/"))
+    }
+
+    /// The validator to send in If-Range, if one is eligible.
+    ///
+    /// Falls back to Last-Modified when there is no strong ETag. If neither is
+    /// available the request carries no If-Range at all and resume falls back to the
+    /// range-start and size checks on the partial file.
     fn if_range(&self) -> Option<&str> {
-        self.etag.as_deref().or(self.last_modified.as_deref())
+        self.strong_etag().or(self.last_modified.as_deref())
+    }
+
+    /// Whether the response carried any validator at all.
+    fn is_empty(&self) -> bool {
+        self.etag.is_none() && self.last_modified.is_none()
     }
 }
 
@@ -206,10 +226,6 @@ impl HttpClient {
 
         let mut response = request.send().await?;
 
-        // Recorded before anything can fail: an aborted body still belongs to the
-        // resource the next retry will ask about.
-        *validator = Some(DownloadValidator::from_headers(response.headers()));
-
         // A partial file can already hold the whole resource: the process may have
         // been killed after the transfer and before extraction. The server then
         // answers `416 Range Not Satisfiable`; retrying the same range forever is
@@ -290,6 +306,37 @@ impl HttpClient {
         } else {
             tokio::fs::File::create(target_path).await?
         };
+
+        // Install the validator only now that the file receiving the body has been
+        // opened (and, for a full response, truncated). Recording it before that left
+        // an old partial file described by the new resource's validator when the open
+        // failed, and an error response used to clear a perfectly good validator before
+        // the retry could use it.
+        let response_validator = DownloadValidator::from_headers(response.headers());
+        if resume {
+            if let (Some(sent), Some(received)) = (
+                validator.as_ref().and_then(DownloadValidator::if_range),
+                response_validator.if_range(),
+            ) && sent != received
+            {
+                let _ = tokio::fs::remove_file(target_path).await;
+                return Err(DwallSettingsError::Other(format!(
+                    "the server answered with validator {received}, not {sent}; starting over"
+                )));
+            }
+
+            // A 206 without an eligible validator still belongs to the resource the
+            // If-Range (or the range start) identified; keep its identity.
+            if response_validator.if_range().is_some() {
+                *validator = Some(response_validator);
+            }
+        } else if response_validator.is_empty() {
+            // A full response without validators has truncated the old partial, so its
+            // identity no longer describes the file being written.
+            *validator = None;
+        } else {
+            *validator = Some(response_validator);
+        }
 
         let mut written = already_written;
 
@@ -574,6 +621,20 @@ mod tests {
         );
     }
 
+    fn download_with_validators(
+        http: &HttpClient,
+        url: &str,
+        target: &std::path::Path,
+        offset: u64,
+        validator: &mut Option<DownloadValidator>,
+    ) -> DwallSettingsResult<u64> {
+        tokio::runtime::Runtime::new().unwrap().block_on(
+            http.download_file_with_validators(
+                url, target, offset, NO_LIMIT, None, None, validator,
+            ),
+        )
+    }
+
     /// A retry must tell the server which version the partial belongs to: without
     /// If-Range, a replaced asset answers 206 for its new bytes and the old prefix is
     /// spliced onto them.
@@ -622,6 +683,152 @@ mod tests {
         let resume = requests[1].to_lowercase();
         assert!(resume.contains("if-range: \"v1\""), "{resume}");
         assert!(resume.contains("range: bytes=4-"), "{resume}");
+
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    /// A weak ETag is not an If-Range validator: RFC 9110 forbids sending it, and a
+    /// conforming server would ignore the header and restart the whole transfer.
+    #[test]
+    fn a_weak_etag_is_not_sent_in_if_range() {
+        let server = TestServer::scripted(vec![
+            response_with_headers("200 OK", &[("ETag", "W/\"v1\"")], b"aaaa"),
+            response_with_headers(
+                "206 Partial Content",
+                &[("Content-Range", "bytes 4-7/8")],
+                b"bbbb",
+            ),
+        ]);
+        let http = HttpClient::new(None).unwrap();
+        let dir = scratch("weak_etag");
+        let target = dir.join("theme.zip");
+        let mut validator = None;
+
+        download_with_validators(&http, &server.url, &target, 0, &mut validator).unwrap();
+        download_with_validators(&http, &server.url, &target, 4, &mut validator).unwrap();
+
+        let resume = server.requests()[1].to_lowercase();
+        assert!(resume.contains("range: bytes=4-"), "{resume}");
+        assert!(!resume.contains("if-range"), "{resume}");
+
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    /// With no strong ETag, Last-Modified is the next available validator.
+    #[test]
+    fn a_weak_etag_falls_back_to_last_modified() {
+        let date = "Wed, 21 Oct 2015 07:28:00 GMT";
+        let server = TestServer::scripted(vec![
+            response_with_headers(
+                "200 OK",
+                &[("ETag", "W/\"v1\""), ("Last-Modified", date)],
+                b"aaaa",
+            ),
+            response_with_headers(
+                "206 Partial Content",
+                &[("Content-Range", "bytes 4-7/8")],
+                b"bbbb",
+            ),
+        ]);
+        let http = HttpClient::new(None).unwrap();
+        let dir = scratch("weak_fallback");
+        let target = dir.join("theme.zip");
+        let mut validator = None;
+
+        download_with_validators(&http, &server.url, &target, 0, &mut validator).unwrap();
+        download_with_validators(&http, &server.url, &target, 4, &mut validator).unwrap();
+
+        let request = server.requests()[1].to_lowercase();
+        assert!(
+            request.contains("if-range: wed, 21 oct 2015 07:28:00 gmt"),
+            "{request}"
+        );
+
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    /// A transient error must not clear the identity the next retry needs.
+    #[test]
+    fn an_error_response_keeps_the_saved_validator() {
+        let server = TestServer::scripted(vec![
+            response_with_headers("200 OK", &[("ETag", "\"v1\"")], b"aaaa"),
+            response("503 Service Unavailable", b""),
+            response_with_headers(
+                "206 Partial Content",
+                &[("Content-Range", "bytes 4-7/8"), ("ETag", "\"v1\"")],
+                b"bbbb",
+            ),
+        ]);
+        let http = HttpClient::new(None).unwrap();
+        let dir = scratch("validator_after_error");
+        let target = dir.join("theme.zip");
+        let mut validator = None;
+
+        download_with_validators(&http, &server.url, &target, 0, &mut validator).unwrap();
+        let failed = download_with_validators(&http, &server.url, &target, 4, &mut validator);
+        assert!(failed.is_err(), "the 503 has to fail the attempt");
+        assert_eq!(
+            validator.as_ref().and_then(DownloadValidator::if_range),
+            Some("\"v1\""),
+            "the 503 carried no validator and must not clear the old one"
+        );
+
+        download_with_validators(&http, &server.url, &target, 4, &mut validator).unwrap();
+        let retry = server.requests()[2].to_lowercase();
+        assert!(retry.contains("if-range: \"v1\""), "{retry}");
+
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    /// A 206 that omits validators is still the representation If-Range matched.
+    #[test]
+    fn a_206_without_validators_keeps_the_saved_identity() {
+        let server = TestServer::scripted(vec![
+            response_with_headers("200 OK", &[("ETag", "\"v1\"")], b"aaaa"),
+            response_with_headers(
+                "206 Partial Content",
+                &[("Content-Range", "bytes 4-7/8")],
+                b"bbbb",
+            ),
+        ]);
+        let http = HttpClient::new(None).unwrap();
+        let dir = scratch("206_without_validator");
+        let target = dir.join("theme.zip");
+        let mut validator = None;
+
+        download_with_validators(&http, &server.url, &target, 0, &mut validator).unwrap();
+        download_with_validators(&http, &server.url, &target, 4, &mut validator).unwrap();
+
+        assert_eq!(
+            validator.as_ref().and_then(DownloadValidator::if_range),
+            Some("\"v1\""),
+            "a validator-less 206 must not erase the identity it was matched against"
+        );
+
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    /// A full 200 replaces the representation: the new validator is installed only
+    /// after the partial file has been truncated.
+    #[test]
+    fn a_full_response_replaces_the_validator() {
+        let server = TestServer::scripted(vec![
+            response_with_headers("200 OK", &[("ETag", "\"v1\"")], b"aaaa"),
+            response_with_headers("200 OK", &[("ETag", "\"v2\"")], b"cccc"),
+        ]);
+        let http = HttpClient::new(None).unwrap();
+        let dir = scratch("validator_replaced");
+        let target = dir.join("theme.zip");
+        let mut validator = None;
+
+        download_with_validators(&http, &server.url, &target, 0, &mut validator).unwrap();
+        download_with_validators(&http, &server.url, &target, 4, &mut validator).unwrap();
+
+        assert_eq!(read(&target), "cccc", "the full response replaces the file");
+        assert_eq!(
+            validator.as_ref().and_then(DownloadValidator::if_range),
+            Some("\"v2\"")
+        );
 
         let _ = fs::remove_dir_all(&dir);
     }
