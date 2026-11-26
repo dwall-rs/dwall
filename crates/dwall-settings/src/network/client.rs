@@ -30,6 +30,40 @@ const USER_AGENT: &str = concat!("dwall/", env!("CARGO_PKG_VERSION"));
 /// visible tiles and the two long transfers without letting the burst through.
 pub(crate) const MAX_CONCURRENT_REQUESTS: usize = 8;
 
+/// Identity of the remote resource a partial download belongs to.
+///
+/// A resume used to send only Range; if the asset had been replaced in between, the
+/// mirror could answer 206 for the new bytes and the old prefix was spliced to them.
+/// Keeping the response's ETag/Last-Modified lets the next attempt send If-Range, so
+/// the server answers a full 200 when the resource changed and the client starts over
+/// instead of appending.
+#[derive(Debug, Clone, Default)]
+pub struct DownloadValidator {
+    etag: Option<String>,
+    last_modified: Option<String>,
+}
+
+impl DownloadValidator {
+    fn from_headers(headers: &reqwest::header::HeaderMap) -> Self {
+        let value = |name: reqwest::header::HeaderName| {
+            headers
+                .get(name)
+                .and_then(|value| value.to_str().ok())
+                .map(str::to_owned)
+        };
+
+        Self {
+            etag: value(reqwest::header::ETAG),
+            last_modified: value(reqwest::header::LAST_MODIFIED),
+        }
+    }
+
+    /// The strongest validator the response offered, if any.
+    fn if_range(&self) -> Option<&str> {
+        self.etag.as_deref().or(self.last_modified.as_deref())
+    }
+}
+
 /// Generic HTTP downloader for files.
 ///
 /// Provides pure technical download functionality without business logic.
@@ -127,13 +161,54 @@ impl HttpClient {
         cancel_flag: Option<&Arc<AtomicBool>>,
         progress_callback: Option<Arc<dyn Fn(u64, u64) + Send + Sync>>,
     ) -> DwallSettingsResult<u64> {
+        let mut validator = None;
+
+        self.download_file_with_validators(
+            url,
+            target_path,
+            downloaded_bytes,
+            max_bytes,
+            cancel_flag,
+            progress_callback,
+            &mut validator,
+        )
+        .await
+    }
+
+    /// Like download_file, remembering the resource identity.
+    ///
+    /// The validator is written from the response before the body is read, so a retry
+    /// in the same process can send If-Range even when the previous attempt failed
+    /// part-way through the transfer. A restart after the process exits has no stored
+    /// validator and falls back to the range checks on the partial file itself.
+    // The signature mirrors download_file plus the validator; a request struct would
+    // make every caller and test spell out fields for the one extra argument.
+    #[allow(clippy::too_many_arguments)]
+    pub async fn download_file_with_validators(
+        &self,
+        url: &str,
+        target_path: &Path,
+        downloaded_bytes: u64,
+        max_bytes: u64,
+        cancel_flag: Option<&Arc<AtomicBool>>,
+        progress_callback: Option<Arc<dyn Fn(u64, u64) + Send + Sync>>,
+        validator: &mut Option<DownloadValidator>,
+    ) -> DwallSettingsResult<u64> {
         let _slot = self.request_slot().await?;
         let mut request = self.current().get(url);
         if downloaded_bytes > 0 {
             request = request.header("Range", format!("bytes={downloaded_bytes}-"));
+
+            if let Some(value) = validator.as_ref().and_then(DownloadValidator::if_range) {
+                request = request.header("If-Range", value);
+            }
         }
 
         let mut response = request.send().await?;
+
+        // Recorded before anything can fail: an aborted body still belongs to the
+        // resource the next retry will ask about.
+        *validator = Some(DownloadValidator::from_headers(response.headers()));
 
         // A partial file can already hold the whole resource: the process may have
         // been killed after the transfer and before extraction. The server then
@@ -497,6 +572,58 @@ mod tests {
             "a resuming client has to ask for the rest: {}",
             server.request_head()
         );
+    }
+
+    /// A retry must tell the server which version the partial belongs to: without
+    /// If-Range, a replaced asset answers 206 for its new bytes and the old prefix is
+    /// spliced onto them.
+    #[test]
+    fn a_resume_sends_the_previous_etag_as_if_range() {
+        let server = TestServer::scripted(vec![
+            response_with_headers("200 OK", &[("ETag", "\"v1\"")], b"aaaa"),
+            response_with_headers(
+                "206 Partial Content",
+                &[("Content-Range", "bytes 4-7/8"), ("ETag", "\"v1\"")],
+                b"bbbb",
+            ),
+        ]);
+        let http = HttpClient::new(None).unwrap();
+        let dir = scratch("if_range");
+        let target = dir.join("theme.zip");
+        let runtime = tokio::runtime::Runtime::new().unwrap();
+        let mut validator = None;
+
+        runtime
+            .block_on(http.download_file_with_validators(
+                &server.url,
+                &target,
+                0,
+                NO_LIMIT,
+                None,
+                None,
+                &mut validator,
+            ))
+            .unwrap();
+        assert!(validator.is_some(), "the response carried an ETag");
+
+        runtime
+            .block_on(http.download_file_with_validators(
+                &server.url,
+                &target,
+                4,
+                NO_LIMIT,
+                None,
+                None,
+                &mut validator,
+            ))
+            .unwrap();
+
+        let requests = server.requests();
+        let resume = requests[1].to_lowercase();
+        assert!(resume.contains("if-range: \"v1\""), "{resume}");
+        assert!(resume.contains("range: bytes=4-"), "{resume}");
+
+        let _ = fs::remove_dir_all(&dir);
     }
 
     /// A mirror that ignores the range request and sends the whole file: appending it to

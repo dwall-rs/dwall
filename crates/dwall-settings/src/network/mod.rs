@@ -7,5 +7,5 @@ pub mod tasks;
 #[cfg(test)]
 pub(crate) mod testing;
 
-pub use client::HttpClient;
+pub use client::{DownloadValidator, HttpClient};
 pub use mirror::MirrorUrlResolver;

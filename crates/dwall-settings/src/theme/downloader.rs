@@ -12,10 +12,9 @@ use tokio::time::sleep;
 use crate::archive;
 use crate::error::{DwallSettingsError, DwallSettingsResult};
 use crate::filesystem::create_dir_if_missing;
-use crate::network::HttpClient;
-use crate::network::MirrorUrlResolver;
 use crate::network::progress::{OwnedProgressEmitter, ProgressEmitter};
 use crate::network::tasks::DownloadTaskManager;
+use crate::network::{DownloadValidator, HttpClient, MirrorUrlResolver};
 use crate::theme::download_url::ThemeDownloadUrlBuilder;
 use crate::theme::paths::ThemePathResolver;
 
@@ -226,6 +225,10 @@ impl ThemeDownloader {
         let progress_callback = progress_emitter
             .map(|emitter| OwnedProgressEmitter::new(emitter.window()).throttled_callback(task_id));
 
+        // Kept across attempts so a retry can ask the server whether the resource is
+        // still the one the partial file was cut from.
+        let mut validator: Option<DownloadValidator> = None;
+
         for attempt in 0..MAX_RETRIES {
             if attempt > 0 {
                 warn!(attempt = attempt, "Retrying download");
@@ -240,13 +243,14 @@ impl ThemeDownloader {
 
             match self
                 .http_client
-                .download_file(
+                .download_file_with_validators(
                     url,
                     temp_path,
                     downloaded_bytes,
                     MAX_THEME_ARCHIVE_BYTES,
                     Some(cancel_flag),
                     progress_callback.clone(),
+                    &mut validator,
                 )
                 .await
             {
