@@ -3,19 +3,47 @@
 //       notices a theme change it did not make, so the window polls instead of owning it.
 import { createSignal } from "solid-js";
 
+import { toast } from "@/components/ui/toast";
+import { t } from "@/i18n";
 import { getColorSchemePause, setColorSchemePause } from "@/ipc";
 import type { ColorSchemePause } from "@/ipc";
+import { logger } from "@/utils";
+
+const log = logger.child("pause");
 
 const [pause, setPause] = createSignal<ColorSchemePause | null>(null);
 
-/** Re-reads the pause from the backend. */
+/**
+ * Re-reads the pause from the backend.
+ *
+ * The engine section polls this every 30 s. A failed read must not reject — the caller
+ * fires it with `void`, so a rejection becomes an unhandled promise rejection every
+ * half minute — and it must keep the last known pause rather than show "not paused"
+ * while the daemon may still be holding it.
+ */
 export const refreshColorSchemePause = async () => {
-  setPause(await getColorSchemePause());
+  try {
+    setPause(await getColorSchemePause());
+  } catch (error) {
+    log.error("Failed to refresh the colour-scheme pause", error);
+  }
 };
 
-/** Pauses automatic switching for `minutes`, or resumes it when `minutes` is 0. */
+/**
+ * Pauses automatic switching for `minutes`, or resumes it when `minutes` is 0.
+ *
+ * Returns whether the backend accepted the change. A failure keeps the previous pause
+ * and reports it, so the button is not silently inert.
+ */
 export const setColorSchemePauseFor = async (minutes: number) => {
-  setPause(await setColorSchemePause(minutes));
+  try {
+    setPause(await setColorSchemePause(minutes));
+    return true;
+  } catch (error) {
+    log.error("Failed to update the colour-scheme pause", error);
+    toast.error(t("common.operationFailed"), { description: String(error) });
+    return false;
+  }
 };
 
 /**
