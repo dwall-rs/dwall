@@ -3,13 +3,8 @@ import { AppShell } from "@/layout/AppShell";
 import { ErrorBoundary, onCleanup, onMount } from "solid-js";
 import { Button } from "@/components/ui/button";
 import { applySystemLocale, t } from "@/i18n";
-import { load as loadCatalog } from "./store/catalog.store";
-import { availableThemeIds } from "./store/catalog.selectors";
+import { bootstrap } from "./store/bootstrap";
 import { refresh as refreshEngine } from "./store/engine.store";
-import { syncFromConfig as syncFixed } from "./store/fixed.store";
-import { syncFromConfig as syncRandom } from "./store/random.store";
-import { load as loadSettings, settingsStore } from "./store/settings.store";
-import { setMode } from "./store/mode.store";
 import { checkOnStartup as checkUpdatesOnStartup } from "./store/update.store";
 import { getSystemLocale, showWindow } from "./ipc";
 
@@ -33,13 +28,9 @@ export default function App() {
     const timer = setInterval(refreshEngine, 5000);
     onCleanup(() => clearInterval(timer));
 
-    await Promise.all([loadSettings(), loadCatalog()]);
-
-    const config = settingsStore.config;
-    await syncFixed(config);
-    // Only themes on disk can be applied, so only those can enter the pool.
-    syncRandom(config, availableThemeIds());
-    if (config?.wallpaper_mode?.mode === "random") setMode("random");
+    // Loads both stores and derives the editing state. The same step runs again from
+    // either error panel's retry, so a failed load cannot leave the pool empty.
+    await bootstrap();
 
     // After the settings, because the check has to honour the configured proxy; not
     // awaited, so a slow network never delays the window.

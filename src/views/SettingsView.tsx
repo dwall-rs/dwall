@@ -8,7 +8,8 @@ import { EngineSection } from "@/components/settings/EngineSection";
 import { PathsSection } from "@/components/settings/PathsSection";
 import { AboutSection } from "@/components/settings/AboutSection";
 import { t } from "@/i18n";
-import { isConfigDirty, load, settingsStore } from "@/store/settings.store";
+import { reloadSettings } from "@/store/bootstrap";
+import { isConfigDirty, settingsStore } from "@/store/settings.store";
 import { clsx } from "@/utils";
 import {
   Check,
@@ -172,7 +173,7 @@ export function SettingsView() {
                     variant="outline"
                     size="sm"
                     class="mt-2.5"
-                    onClick={() => void load()}
+                    onClick={() => void reloadSettings()}
                   >
                     {t("settings.retry")}
                   </Button>
