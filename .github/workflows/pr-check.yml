@@ -26,6 +26,7 @@ on:
       - "tsconfig.json"
       - "tsconfig.node.json"
       - "vite.config.ts"
+      - "vitest.config.ts"
       - "index.html"
       - "biome.json"
       - ".cargo/**"
@@ -61,6 +62,7 @@ jobs:
               - 'tsconfig.json'
               - 'tsconfig.node.json'
               - 'vite.config.ts'
+              - 'vitest.config.ts'
               - 'index.html'
               - 'biome.json'
             backend:
