@@ -3,7 +3,6 @@ export const dict = {
     loading: "Loading",
     operationFailed: "Operation failed",
     cancel: "Cancel",
-    close: "Close",
     done: "Done",
   },
 
@@ -18,7 +17,6 @@ export const dict = {
     subtitle: "See the frame the sun is showing, then send it to your desktop.",
     editing: "Editing",
     allDisplays: "All displays",
-    eachDisplay: "Each display",
     liveOn: "Live on {{ name }}",
     readyOn: "Ready on {{ name }} · engine stopped",
     previewOnly: "Preview only · not applied",
@@ -35,10 +33,8 @@ export const dict = {
       "One theme is drawn from your pool each day and applied to every display.",
     editPool: "Edit pool",
     today: "Today's theme",
-    todayDesc: "Chosen by the engine from {{ n }} themes.",
     pool: "Daily pool",
     poolPreview: "Pool preview",
-    poolCount: "{{ selected }} of {{ total }} themes",
     noThemeYet: "No theme drawn yet",
     noThemeDesc:
       "Add themes to the daily pool to give the engine something to pick.",
@@ -66,7 +62,6 @@ export const dict = {
     applyTo: "Apply to {{ name }}",
     savePool: "Save pool",
     addToPool: "Add to pool",
-    removeFromPool: "Remove from pool",
   },
 
   displays: {
@@ -74,10 +69,8 @@ export const dict = {
     unified: "One theme for every display",
     unifiedDesc: "Turn off to give each display its own theme.",
     individual: "Per display",
-    individualDesc: "Each display keeps its own theme and apply state.",
     currentTheme: "Current theme",
     chooseTheme: "Choose theme",
-    applyHere: "Apply here",
     stopHere: "Stop here",
     applied: "Applied",
     notApplied: "Not applied",
@@ -100,18 +93,14 @@ export const dict = {
       randomHint: "One theme per day for every display.",
     },
     engine: {
-      notRunning: "Engine not running",
-      running: "Running · {{ mode }} · now",
       runningShort: "Engine running",
       stoppedShort: "Engine stopped",
       start: "Start engine",
       stop: "Stop engine",
-      confirmStop: "Confirm stop? The selected theme will be cleared.",
       confirmTitle: "Stop the engine?",
       confirmBody:
         "Wallpapers stay as they are, but Dwall stops matching new sun positions until you start it again.",
       confirmAction: "Stop engine",
-      lastError: "Last error:",
       openLocationSettings: "Open location settings",
       altitude: "alt",
       azimuth: "az",
@@ -125,34 +114,18 @@ export const dict = {
   },
 
   library: {
-    title: "Themes",
-    toggleOpen: "Collapse theme library",
-    toggleClosed: "Expand theme library",
-    hintFixed: "Click to assign to {{ name }}",
-    hintRandom: "Click to add / remove from the pool",
     search: "Search themes…",
     loadFailed: "Could not read the themes",
-    empty: "No themes yet",
-    emptyDesc: "Put themes in the themes directory, then reload.",
-    noMatch: "No theme matches “{{ query }}”",
     reload: "Reload",
   },
 
   scope: {
-    monitors: "Scope · Monitors",
     allMonitors: "All monitors",
     selectAll: "Select all",
     clearAll: "Clear",
-    individual: "Per monitor",
-    unified: "Unify all monitors",
-    unifiedOn:
-      "One theme applied to all monitors; per-monitor settings below are locked.",
-    unifiedOff: "Turn off to assign a theme to each monitor.",
     randomEmpty:
       "The pool is empty — the engine has no wallpaper to pick. Keep at least one.",
     randomDirty: "Pool {{ n }} themes · {{ excluded }} excluded · unsaved",
-    randomNormal:
-      "Pool {{ n }} themes · uncheck to exclude from the daily shuffle",
   },
 
   stage: {
@@ -161,52 +134,23 @@ export const dict = {
     downloading: "Downloading…",
     cancelDownload: "Cancel",
     downloadFailed: "Download failed:",
-    applyTo: "Write this theme to {{ name }}",
-    stop: "Stop",
-    apply: "Apply this theme",
     altitude: "alt",
     azimuth: "az",
     matched: "Matched",
     match: "Match",
-    stripTitle: "Wallpapers · matched by sun position",
-    stripHint: "Click to preview the wallpaper at that sun position",
     sunPath: "Sun path",
     horizon: "0° horizon",
     east: "E·90°",
     south: "S·180°",
     west: "W·270°",
-    randomSunPath: "Today's theme — {{ name }} — on the sun's path",
-    randomIntro:
-      "Every day one theme is shuffled out of the pool and applied to all monitors. The editor only picks the pool; which theme is drawn is decided by the engine at runtime.",
     stats: {
-      pool: "Pool / themes",
-      range: "Range",
-      all: "All",
-      exclude: "Exclude {{ n }}",
-      target: "Target monitors",
-      period: "Cycle",
-      today: "Today's theme",
-      targetValue: "ALL",
       periodValue: "24h",
     },
-    collageTitle: "Pool collage",
-    collageNote:
-      "{{ n }} themes in the daily shuffle · pool preview only, not the drawn result",
-    emptyTitle: "Pool is empty",
-    emptyDesc:
-      "All themes are excluded. Keep at least one theme so the daily shuffle has wallpapers.",
-    noThemesTitle: "No themes installed yet",
-    noThemesDesc: "Download a theme from the library, then add it to the pool.",
-    catalogErrorDesc:
-      "The theme catalog could not be read, so the pool is unavailable.",
   },
 
   commit: {
-    applied: "Applied {{ theme }}",
-    notApplied: "Not applied",
     discard: "Discard",
     saving: "Saving…",
-    save: "Save",
   },
 
   settings: {
@@ -221,8 +165,6 @@ export const dict = {
     discard: "Discard",
     save: "Save configuration",
     saving: "Saving…",
-    intro:
-      "Preferences control how the engine matches sun angles. Toggles are written immediately; fields with a save icon need confirmation.",
 
     appearance: {
       title: "Appearance & language",

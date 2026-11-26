@@ -5,7 +5,6 @@ export const dict: RawDictionary = {
     loading: "불러오는 중",
     operationFailed: "작업 실패",
     cancel: "취소",
-    close: "닫기",
     done: "완료",
   },
 
@@ -18,18 +17,14 @@ export const dict: RawDictionary = {
       randomHint: "매일 모든 디스플레이에 하나의 테마를.",
     },
     engine: {
-      notRunning: "엔진 중지됨",
-      running: "실행 중 · {{ mode }} · 현재",
       start: "엔진 시작",
       stop: "엔진 종료",
-      confirmStop: "종료할까요? 선택한 테마가 해제됩니다.",
       runningShort: "엔진 실행 중",
       stoppedShort: "엔진 중지됨",
       confirmTitle: "엔진을 중지할까요?",
       confirmBody:
         "배경은 그대로 유지되지만 다시 시작할 때까지 새로운 태양 위치 매칭을 멈춥니다.",
       confirmAction: "엔진 중지",
-      lastError: "최근 오류:",
       openLocationSettings: "위치 설정 열기",
       altitude: "고도",
       azimuth: "방위",
@@ -53,7 +48,6 @@ export const dict: RawDictionary = {
     subtitle: "태양이 지금 고른 프레임을 확인하고 데스크톱으로 보냅니다.",
     editing: "편집 중",
     allDisplays: "모든 디스플레이",
-    eachDisplay: "디스플레이별",
     liveOn: "{{ name }}에 적용 중",
     readyOn: "{{ name }}에 준비됨 · 엔진 중지됨",
     previewOnly: "미리보기만 · 적용 안 됨",
@@ -70,10 +64,8 @@ export const dict: RawDictionary = {
       "매일 풀에서 테마 하나를 뽑아 모든 디스플레이에 적용합니다.",
     editPool: "풀 편집",
     today: "오늘의 테마",
-    todayDesc: "엔진이 {{ n }}개 테마 중에서 골랐습니다.",
     pool: "일일 풀",
     poolPreview: "풀 미리보기",
-    poolCount: "{{ total }}개 중 {{ selected }}개 테마",
     noThemeYet: "아직 뽑힌 테마가 없습니다",
     noThemeDesc: "일일 풀에 테마를 추가하면 엔진이 고를 수 있습니다.",
   },
@@ -100,7 +92,6 @@ export const dict: RawDictionary = {
     applyTo: "{{ name }}에 적용",
     savePool: "풀 저장",
     addToPool: "풀에 추가",
-    removeFromPool: "풀에서 제거",
   },
 
   displays: {
@@ -108,10 +99,8 @@ export const dict: RawDictionary = {
     unified: "모든 디스플레이에 하나의 테마",
     unifiedDesc: "끄면 디스플레이마다 따로 설정할 수 있습니다.",
     individual: "디스플레이별",
-    individualDesc: "각 디스플레이가 자체 테마와 적용 상태를 유지합니다.",
     currentTheme: "현재 테마",
     chooseTheme: "테마 선택",
-    applyHere: "여기에 적용",
     stopHere: "여기서 중지",
     applied: "적용됨",
     notApplied: "적용 안 됨",
@@ -126,33 +115,18 @@ export const dict: RawDictionary = {
   },
 
   library: {
-    title: "테마 라이브러리",
-    toggleOpen: "테마 라이브러리 접기",
-    toggleClosed: "테마 라이브러리 펼치기",
-    hintFixed: "클릭하여 {{ name }}에 지정",
-    hintRandom: "클릭하여 풀에 추가/제거",
     search: "테마 검색…",
     loadFailed: "테마 목록을 읽지 못했습니다",
-    empty: "아직 테마가 없습니다",
-    emptyDesc: "테마 디렉터리에 테마를 넣고 다시 불러오세요.",
-    noMatch: "“{{ query }}”와 일치하는 테마가 없습니다",
     reload: "다시 불러오기",
   },
 
   scope: {
-    monitors: "범위 · 모니터",
     allMonitors: "모든 모니터",
     selectAll: "전체 선택",
     clearAll: "전체 해제",
-    individual: "개별 설정",
-    unified: "모든 모니터 통일",
-    unifiedOn:
-      "하나의 테마를 모든 모니터에 적용하며 아래 개별 설정은 잠깁니다.",
-    unifiedOff: "끄면 모니터마다 테마를 지정할 수 있습니다.",
     randomEmpty:
       "후보 풀이 비어 있어 엔진이 고를 배경이 없습니다. 최소 하나는 남겨 두세요.",
     randomDirty: "후보 풀 {{ n }}개 · {{ excluded }}개 제외 · 저장 안 됨",
-    randomNormal: "후보 풀 {{ n }}개 · 선택 해제 시 매일 셔플에서 제외",
   },
 
   stage: {
@@ -161,51 +135,23 @@ export const dict: RawDictionary = {
     downloading: "다운로드 중…",
     cancelDownload: "취소",
     downloadFailed: "다운로드 실패:",
-    applyTo: "이 테마를 {{ name }}에 기록",
-    stop: "중지",
-    apply: "이 테마 적용",
     altitude: "고도",
     azimuth: "방위",
     matched: "현재 일치",
     match: "일치",
-    stripTitle: "포함된 배경 · 태양 위치로 일치",
-    stripHint: "클릭하여 해당 태양 위치의 배경 미리보기",
     sunPath: "태양 경로",
     horizon: "0° 지평선",
     east: "동·90°",
     south: "남·180°",
     west: "서·270°",
-    randomSunPath: "오늘의 테마 「{{ name }}」의 태양 경로 위치",
-    randomIntro:
-      "매일 후보 풀에서 테마 하나를 셔플해 모든 모니터에 적용합니다. 편집기는 풀만 정하고, 어떤 테마가 뽑힐지는 엔진이 런타임에 결정합니다.",
     stats: {
-      pool: "후보 풀 / 개",
-      range: "범위",
-      all: "전체",
-      exclude: "{{ n }}개 제외",
-      target: "대상 모니터",
-      period: "전환 주기",
-      today: "오늘의 테마",
-      targetValue: "전체",
       periodValue: "24시간",
     },
-    collageTitle: "후보 풀 콜라주",
-    collageNote:
-      "{{ n }}개가 매일 셔플에 참여 · 풀 미리보기일 뿐, 추첨 결과가 아님",
-    emptyTitle: "후보 풀이 비어 있음",
-    emptyDesc:
-      "모든 테마를 제외했습니다. 매일 셔플에 쓸 배경을 최소 하나 남겨 두세요.",
-    noThemesTitle: "설치된 테마가 없습니다",
-    noThemesDesc: "라이브러리에서 테마를 내려받은 뒤 후보에 추가하세요.",
-    catalogErrorDesc: "테마 목록을 읽을 수 없어 후보 풀을 사용할 수 없습니다.",
   },
 
   commit: {
-    applied: "적용됨 {{ theme }}",
-    notApplied: "적용 안 됨",
     discard: "취소",
     saving: "저장 중…",
-    save: "설정 저장",
   },
 
   settings: {
@@ -220,8 +166,6 @@ export const dict: RawDictionary = {
     discard: "취소",
     save: "설정 저장",
     saving: "저장 중…",
-    intro:
-      "환경설정은 엔진의 태양각 매칭 동작을 제어합니다. 토글은 즉시 기록되고, 저장 아이콘이 있는 항목은 확인이 필요합니다.",
 
     appearance: {
       title: "모양 및 언어",

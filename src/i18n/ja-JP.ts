@@ -5,7 +5,6 @@ export const dict: RawDictionary = {
     loading: "読み込み中",
     operationFailed: "操作に失敗しました",
     cancel: "キャンセル",
-    close: "閉じる",
     done: "完了",
   },
 
@@ -18,18 +17,14 @@ export const dict: RawDictionary = {
       randomHint: "毎日すべてのディスプレイに1つのテーマを。",
     },
     engine: {
-      notRunning: "エンジン停止中",
-      running: "実行中 · {{ mode }} · 現在",
       start: "エンジンを起動",
       stop: "エンジンを停止",
-      confirmStop: "停止しますか？選択中のテーマは解除されます。",
       runningShort: "エンジン実行中",
       stoppedShort: "エンジン停止中",
       confirmTitle: "エンジンを停止しますか？",
       confirmBody:
         "壁紙はそのままですが、再起動するまで新しい太陽位置の照合を停止します。",
       confirmAction: "エンジンを停止",
-      lastError: "最新のエラー：",
       openLocationSettings: "位置情報の設定を開く",
       altitude: "高度",
       azimuth: "方位",
@@ -54,7 +49,6 @@ export const dict: RawDictionary = {
       "太陽がいま選んでいるフレームを確認して、デスクトップに送ります。",
     editing: "編集中",
     allDisplays: "すべてのディスプレイ",
-    eachDisplay: "ディスプレイごと",
     liveOn: "{{ name }} に適用中",
     readyOn: "{{ name }} に設定済み · エンジン停止中",
     previewOnly: "プレビューのみ · 未適用",
@@ -71,10 +65,8 @@ export const dict: RawDictionary = {
       "毎日プールから1つのテーマを選び、すべてのディスプレイに適用します。",
     editPool: "プールを編集",
     today: "今日のテーマ",
-    todayDesc: "エンジンが {{ n }} 個のテーマから選びました。",
     pool: "毎日のプール",
     poolPreview: "プールのプレビュー",
-    poolCount: "{{ total }} 個中 {{ selected }} 個のテーマ",
     noThemeYet: "まだテーマが選ばれていません",
     noThemeDesc: "毎日のプールにテーマを追加すると、エンジンが選べます。",
   },
@@ -101,7 +93,6 @@ export const dict: RawDictionary = {
     applyTo: "{{ name }} に適用",
     savePool: "プールを保存",
     addToPool: "プールに追加",
-    removeFromPool: "プールから削除",
   },
 
   displays: {
@@ -109,10 +100,8 @@ export const dict: RawDictionary = {
     unified: "すべてのディスプレイで1つのテーマ",
     unifiedDesc: "オフにするとディスプレイごとに設定できます。",
     individual: "ディスプレイごと",
-    individualDesc: "各ディスプレイが独自のテーマと適用状態を保ちます。",
     currentTheme: "現在のテーマ",
     chooseTheme: "テーマを選択",
-    applyHere: "ここに適用",
     stopHere: "ここで停止",
     applied: "適用済み",
     notApplied: "未適用",
@@ -128,34 +117,18 @@ export const dict: RawDictionary = {
   },
 
   library: {
-    title: "テーマライブラリ",
-    toggleOpen: "テーマライブラリを閉じる",
-    toggleClosed: "テーマライブラリを開く",
-    hintFixed: "クリックして{{ name }}に割り当て",
-    hintRandom: "クリックしてプールに追加/削除",
     search: "テーマを検索…",
     loadFailed: "テーマ一覧を読み込めませんでした",
-    empty: "テーマがまだありません",
-    emptyDesc: "テーマディレクトリにテーマを追加して、再読み込みしてください。",
-    noMatch: "「{{ query }}」に一致するテーマはありません",
     reload: "再読み込み",
   },
 
   scope: {
-    monitors: "スコープ · モニター",
     allMonitors: "すべてのモニター",
     selectAll: "すべて選択",
     clearAll: "選択を解除",
-    individual: "個別設定",
-    unified: "すべてのモニターを統一",
-    unifiedOn:
-      "1つのテーマを全モニターに適用します。下の個別設定はロックされます。",
-    unifiedOff: "オフにするとモニターごとにテーマを指定できます。",
     randomEmpty:
       "候補プールが空です。エンジンが選べる壁紙がありません。少なくとも1つ残してください。",
     randomDirty: "候補プール {{ n }} 件 · {{ excluded }} 件除外 · 未保存",
-    randomNormal:
-      "候補プール {{ n }} 件 · チェックを外すと毎日のシャッフルから除外",
   },
 
   stage: {
@@ -164,53 +137,23 @@ export const dict: RawDictionary = {
     downloading: "ダウンロード中…",
     cancelDownload: "キャンセル",
     downloadFailed: "ダウンロードに失敗しました：",
-    applyTo: "このテーマを{{ name }}に書き込み",
-    stop: "停止",
-    apply: "このテーマを適用",
     altitude: "高度",
     azimuth: "方位",
     matched: "現在一致",
     match: "一致",
-    stripTitle: "収録壁紙 · 太陽位置で一致",
-    stripHint: "クリックしてその太陽位置の壁紙をプレビュー",
     sunPath: "太陽の軌道",
     horizon: "0° 地平線",
     east: "東·90°",
     south: "南·180°",
     west: "西·270°",
-    randomSunPath: "本日のテーマ「{{ name }}」の太陽軌道上の位置",
-    randomIntro:
-      "毎日候補プールから1つのテーマをシャッフルして全モニターに適用します。エディターはプールを選ぶだけで、どのテーマが選ばれるかは実行時にエンジンが決定します。",
     stats: {
-      pool: "候補プール / 件",
-      range: "範囲",
-      all: "すべて",
-      exclude: "{{ n }} 件除外",
-      target: "対象モニター",
-      period: "切替周期",
-      today: "今日のテーマ",
-      targetValue: "すべて",
       periodValue: "24 時間",
     },
-    collageTitle: "候補プールのコラージュ",
-    collageNote:
-      "{{ n }} 件が毎日シャッフルに参加 · プールのプレビューのみ、抽選結果ではありません",
-    emptyTitle: "候補プールが空です",
-    emptyDesc:
-      "すべてのテーマを除外しました。毎日のシャッフル用に少なくとも1つ残してください。",
-    noThemesTitle: "テーマがまだありません",
-    noThemesDesc:
-      "ライブラリからテーマをダウンロードして、候補に追加してください。",
-    catalogErrorDesc:
-      "テーマ一覧を読み込めないため、候補プールを利用できません。",
   },
 
   commit: {
-    applied: "適用済み {{ theme }}",
-    notApplied: "未適用",
     discard: "破棄",
     saving: "保存中…",
-    save: "設定を保存",
   },
 
   settings: {
@@ -225,8 +168,6 @@ export const dict: RawDictionary = {
     discard: "破棄",
     save: "設定を保存",
     saving: "保存中…",
-    intro:
-      "設定はエンジンの太陽角マッチング動作を制御します。トグルは即時保存され、保存アイコン付きの項目は手動確認が必要です。",
 
     appearance: {
       title: "外観と言語",
