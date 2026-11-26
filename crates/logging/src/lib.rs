@@ -1,5 +1,6 @@
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
+use std::time::{Duration, Instant};
 use std::{env, io::Write, str::FromStr};
 
 // Only the debug formatter asks whether stderr is a terminal.
@@ -36,6 +37,14 @@ pub struct Logger {
 #[cfg_attr(debug_assertions, allow(dead_code))]
 const MAX_LOG_BYTES: u64 = 5 * 1024 * 1024;
 
+/// How long to keep logging into an oversized file after a rotation was refused.
+///
+/// Windows refuses to rename a file another handle has open without delete sharing
+/// (a log viewer, an antivirus scanner). Retrying the rename on every line would make
+/// logging expensive exactly while the log is already large; not retrying at all would
+/// grow the file without bound, which the rotation exists to prevent.
+const ROTATION_RETRY_INTERVAL: Duration = Duration::from_secs(60);
+
 /// The live log file, rotated once it grows past [`MAX_LOG_BYTES`].
 ///
 /// The handle lives behind a mutex because [`Log::log`] takes `&self`, and it is an
@@ -47,6 +56,8 @@ struct LogFile {
     file: std::sync::Mutex<Option<std::fs::File>>,
     /// Bytes written to the current file, so the size check needs no metadata call.
     written: AtomicU64,
+    /// When a refused rotation may be tried again; `None` means it may be tried now.
+    rotation_retry_at: std::sync::Mutex<Option<Instant>>,
 }
 
 #[cfg_attr(debug_assertions, allow(dead_code))]
@@ -59,6 +70,7 @@ impl LogFile {
             path,
             file: std::sync::Mutex::new(Some(file)),
             written: AtomicU64::new(written),
+            rotation_retry_at: std::sync::Mutex::new(None),
         }
     }
 
@@ -86,8 +98,9 @@ impl LogFile {
             return;
         };
 
-        if self.written.load(Ordering::Relaxed) >= MAX_LOG_BYTES {
-            self.rotate(&mut file);
+        let now = Instant::now();
+        if self.written.load(Ordering::Relaxed) >= MAX_LOG_BYTES && self.rotation_is_due(now) {
+            self.rotate(&mut file, now);
         }
 
         if let Some(file) = file.as_mut() {
@@ -97,21 +110,36 @@ impl LogFile {
         }
     }
 
+    /// Whether a refused rotation has waited long enough to be tried again.
+    fn rotation_is_due(&self, now: Instant) -> bool {
+        let Ok(retry_at) = self.rotation_retry_at.lock() else {
+            return true;
+        };
+
+        !matches!(*retry_at, Some(retry_at) if now < retry_at)
+    }
+
     /// Moves the live file into `backup/` and reopens a fresh one.
     ///
     /// The handle is closed first, then [`rotate_log_file`] applies the same
-    /// five-file cap the startup path uses. Failures are ignored: a log directory that
-    /// cannot be rotated must not stop the daemon from logging.
-    fn rotate(&self, slot: &mut Option<std::fs::File>) {
+    /// five-file cap the startup path uses. A refused rotation (another process holds
+    /// the file) keeps the size counter above the limit and schedules the next attempt
+    /// instead of pretending the file is fresh: resetting it made the file grow in
+    /// further five-megabyte steps without bound. The new handle is opened either way,
+    /// so logging continues.
+    fn rotate(&self, slot: &mut Option<std::fs::File>, now: Instant) {
         if let Some(mut file) = slot.take() {
             let _ = file.flush();
         }
 
-        let _ = rotate_log_file(&self.path);
-
-        // The counter restarts even when the reopen fails, so an unusable directory is
-        // retried once per limit instead of once per line.
-        self.written.store(0, Ordering::Relaxed);
+        if rotate_log_file(&self.path).is_ok() {
+            self.written.store(0, Ordering::Relaxed);
+            if let Ok(mut retry_at) = self.rotation_retry_at.lock() {
+                *retry_at = None;
+            }
+        } else if let Ok(mut retry_at) = self.rotation_retry_at.lock() {
+            *retry_at = Some(now + ROTATION_RETRY_INTERVAL);
+        }
 
         if let Ok(file) = Self::open_append(&self.path) {
             *slot = Some(file);
@@ -745,6 +773,50 @@ mod tests {
             .unwrap();
 
         LogFile::open(log_path).unwrap()
+    }
+
+    /// A log viewer or an antivirus scanner can hold the live file and make the rename
+    /// fail. The size counter must keep the file "full" and the retry must be scheduled,
+    /// not reset — resetting it let the file grow in further 5 MB steps without bound.
+    #[cfg(windows)]
+    #[test]
+    fn a_refused_rotation_keeps_the_size_and_is_retried_later() {
+        use std::os::windows::fs::OpenOptionsExt;
+
+        let dir = scratch("rotation_refused");
+        let log_path = dir.join("dwall.log");
+        let log_file = log_file_at_the_limit(&log_path);
+        log_file.written.store(MAX_LOG_BYTES + 1, Ordering::Relaxed);
+
+        let blocker = std::fs::OpenOptions::new()
+            .read(true)
+            // Share read/write with the appender but not delete: the rename fails.
+            .share_mode(0x1 | 0x2)
+            .open(&log_path)
+            .unwrap();
+
+        let mut slot = log_file.file.lock().unwrap().take();
+        let now = Instant::now();
+        log_file.rotate(&mut slot, now);
+
+        assert_eq!(
+            log_file.written.load(Ordering::Relaxed),
+            MAX_LOG_BYTES + 1,
+            "a refused rotation must not pretend the file is fresh"
+        );
+        assert!(!log_file.rotation_is_due(now + ROTATION_RETRY_INTERVAL - Duration::from_secs(1)));
+
+        drop(blocker);
+        assert!(log_file.rotation_is_due(now + ROTATION_RETRY_INTERVAL));
+
+        log_file.rotate(&mut slot, now + ROTATION_RETRY_INTERVAL);
+        assert_eq!(log_file.written.load(Ordering::Relaxed), 0);
+        assert!(
+            log_file.rotation_is_due(now + ROTATION_RETRY_INTERVAL + Duration::from_secs(1)),
+            "a successful rotation clears the retry deadline"
+        );
+
+        let _ = std::fs::remove_dir_all(&dir);
     }
 
     #[test]
