@@ -36,7 +36,9 @@ pub fn setup_app(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>>
     // Resolve the daemon path synchronously so engine commands work as soon as
     // the webview loads. Previously this ran in a spawned task and could race
     // with the frontend's first `get_engine_status` call.
-    let args: Vec<String> = env::args().collect();
+    // args_os, not args: env::args panics on a non-UTF-8 argument, and this runs
+    // before the window exists in a process where a panic is invisible.
+    let args: Vec<std::ffi::OsString> = env::args_os().collect();
     debug!(arguments = ?args, "Launch arguments");
 
     match resolve_daemon_path(&args) {
@@ -221,9 +223,9 @@ fn init_logging() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-fn resolve_daemon_path(args: &[String]) -> Result<PathBuf, Box<dyn std::error::Error>> {
+fn resolve_daemon_path(args: &[std::ffi::OsString]) -> Result<PathBuf, Box<dyn std::error::Error>> {
     let settings_exe_path = args.first().ok_or("Missing executable path in arguments")?;
-    let daemon_exe_path = PathBuf::from(settings_exe_path)
+    let daemon_exe_path = PathBuf::from(settings_exe_path.as_os_str())
         .parent()
         .ok_or("Failed to find parent directory of settings exe")?
         .join("dwall.exe");
@@ -278,16 +280,28 @@ mod tests {
     fn the_daemon_is_looked_for_next_to_the_settings_executable() {
         let settings = scratch("beside", true);
 
-        let resolved = resolve_daemon_path(&[settings.display().to_string()]).unwrap();
+        let resolved = resolve_daemon_path(&[settings.as_os_str().to_os_string()]).unwrap();
 
         assert_eq!(resolved, settings.parent().unwrap().join("dwall.exe"));
+    }
+
+    /// env::args() panics on a non-UTF-8 argument, and this runs before the window
+    /// exists; the OsString path has to stay usable.
+    #[cfg(windows)]
+    #[test]
+    fn a_non_utf8_argument_is_handled_instead_of_panicking() {
+        use std::os::windows::ffi::OsStringExt;
+
+        let args = [std::ffi::OsString::from_wide(&[0xD800, 0x002E])];
+
+        assert!(resolve_daemon_path(&args).is_err());
     }
 
     #[test]
     fn a_missing_daemon_is_an_error_rather_than_a_guess() {
         let settings = scratch("missing", false);
 
-        let error = resolve_daemon_path(&[settings.display().to_string()]).unwrap_err();
+        let error = resolve_daemon_path(&[settings.as_os_str().to_os_string()]).unwrap_err();
 
         assert!(
             error.to_string().contains("does not exist"),
@@ -301,7 +315,7 @@ mod tests {
         fs::create_dir(settings.parent().unwrap().join("dwall.exe")).unwrap();
 
         assert!(
-            resolve_daemon_path(&[settings.display().to_string()]).is_err(),
+            resolve_daemon_path(&[settings.as_os_str().to_os_string()]).is_err(),
             "an executable is a file, not a directory with that name"
         );
     }
