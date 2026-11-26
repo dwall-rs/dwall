@@ -95,18 +95,32 @@ struct SolarAngleCache {
     order: VecDeque<PathBuf>,
 }
 
+/// The identity of the file a theme's data was read from.
+///
+/// The modification time alone is not enough where the filesystem clock is coarse
+/// (FAT/exFAT store it with a two-second resolution, a network share can be no
+/// better): a rewrite inside the same tick keeps the old timestamp. The length comes
+/// from the same `fs::metadata` call and catches the common case — a replaced
+/// `solar.json` or `theme.toml` whose frame set changed size — for eight bytes and
+/// one comparison. `config.rs` uses the same pair for the configuration file.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct SourceStamp {
+    modified: Option<SystemTime>,
+    len: u64,
+}
+
 /// One theme's parsed data together with what it was read from.
 struct CacheEntry {
     data: Rc<ThemeData>,
     /// The file the data came from: `theme.toml` when the theme has one, otherwise
     /// `solar.json`.
     source: PathBuf,
-    /// That file's modification time when it was read.
+    /// That file's stamp when it was read.
     ///
     /// The cache used to be keyed by directory alone, so a theme whose files were
     /// replaced under an unchanged path — a re-downloaded theme, an edited custom
     /// theme — kept serving the previous contents for the life of the daemon.
-    modified: Option<SystemTime>,
+    stamp: Option<SourceStamp>,
 }
 
 impl SolarAngleCache {
@@ -122,11 +136,11 @@ impl SolarAngleCache {
         &mut self,
         key: &Path,
         source: &Path,
-        modified: Option<SystemTime>,
+        stamp: Option<SourceStamp>,
     ) -> Option<Rc<ThemeData>> {
         let entry = self.entries.get(key)?;
 
-        if entry.source != source || entry.modified != modified {
+        if entry.source != source || entry.stamp != stamp {
             debug!(
                 theme_directory = %key.display(),
                 "Theme data changed on disk, dropping the cached copy"
@@ -146,13 +160,13 @@ impl SolarAngleCache {
         &mut self,
         key: PathBuf,
         source: PathBuf,
-        modified: Option<SystemTime>,
+        stamp: Option<SourceStamp>,
         data: Rc<ThemeData>,
     ) {
         let entry = CacheEntry {
             data,
             source,
-            modified,
+            stamp,
         };
 
         if self.entries.contains_key(&key) {
@@ -185,19 +199,20 @@ impl SolarAngleCache {
     }
 }
 
-/// The file a theme's data is read from, and when it last changed.
-fn theme_data_source(theme_dir: &Path) -> (PathBuf, Option<SystemTime>) {
+/// The file a theme's data is read from, and the identity it last had.
+fn theme_data_source(theme_dir: &Path) -> (PathBuf, Option<SourceStamp>) {
     let source = if ThemeManifest::exists(theme_dir) {
         theme_dir.join(THEME_MANIFEST_FILENAME)
     } else {
         theme_dir.join(SOLAR_CONFIG_FILENAME)
     };
 
-    let modified = fs::metadata(&source)
-        .ok()
-        .and_then(|metadata| metadata.modified().ok());
+    let stamp = fs::metadata(&source).ok().map(|metadata| SourceStamp {
+        modified: metadata.modified().ok(),
+        len: metadata.len(),
+    });
 
-    (source, modified)
+    (source, stamp)
 }
 
 thread_local! {
@@ -294,13 +309,19 @@ pub(crate) fn load_cached_theme_data(theme_directory: &Path) -> DwallResult<Rc<T
     #[cfg(test)]
     loads::bump();
 
+    if !theme_directory.is_dir() {
+        return Err(
+            ThemeError::ThemeDirectoryNotFound(theme_directory.display().to_string()).into(),
+        );
+    }
+
     let theme_directory = theme_directory.canonicalize()?;
     debug!(path = %theme_directory.display(), "Loading theme data from canonical and absolute path");
 
-    let (source, modified) = theme_data_source(&theme_directory);
+    let (source, stamp) = theme_data_source(&theme_directory);
 
     if let Some(cached) =
-        SOLAR_CACHE.with(|cache| cache.borrow_mut().get(&theme_directory, &source, modified))
+        SOLAR_CACHE.with(|cache| cache.borrow_mut().get(&theme_directory, &source, stamp))
     {
         debug!("Using cached theme data");
         return Ok(cached);
@@ -308,12 +329,9 @@ pub(crate) fn load_cached_theme_data(theme_directory: &Path) -> DwallResult<Rc<T
 
     let data = Rc::new(read_theme_data(&theme_directory)?);
     SOLAR_CACHE.with(|cache| {
-        cache.borrow_mut().insert(
-            theme_directory.to_path_buf(),
-            source,
-            modified,
-            data.clone(),
-        );
+        cache
+            .borrow_mut()
+            .insert(theme_directory.to_path_buf(), source, stamp, data.clone());
     });
 
     Ok(data)
@@ -969,6 +987,72 @@ mode = "native"
             load_cached_theme_data(&theme_dir).unwrap().angles.len(),
             3,
             "the new frames must be read, not the cached ones"
+        );
+
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    /// The length half of the stamp: a rewrite that keeps the timestamp (coarse
+    /// filesystem clock, or a tool that preserves mtimes) but changes the frame set
+    /// must still be read again.
+    #[test]
+    fn a_same_timestamp_rewrite_with_a_different_length_is_read_again() {
+        let dir = scratch("cache_same_timestamp");
+        write_legacy(
+            &dir,
+            "Theme",
+            &[(0, -30.0, 0.0), (1, 30.0, 180.0)],
+            "jpg",
+            &[1, 2],
+        );
+        let theme_dir = dir.join("Theme");
+        let solar_path = theme_dir.join(SOLAR_CONFIG_FILENAME);
+
+        assert_eq!(load_cached_theme_data(&theme_dir).unwrap().angles.len(), 2);
+
+        let modified = fs::metadata(&solar_path).unwrap().modified().unwrap();
+        fs::write(
+            &solar_path,
+            solar_json(&[(0, -30.0, 0.0), (1, 0.0, 90.0), (2, 30.0, 180.0)]),
+        )
+        .unwrap();
+
+        // Put the old timestamp back, so only the length can tell the files apart.
+        fs::OpenOptions::new()
+            .write(true)
+            .open(&solar_path)
+            .unwrap()
+            .set_times(fs::FileTimes::new().set_modified(modified))
+            .unwrap();
+
+        assert_eq!(
+            load_cached_theme_data(&theme_dir).unwrap().angles.len(),
+            3,
+            "a same-timestamp rewrite must not be served from the cache"
+        );
+
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    /// A theme id from the configuration can point at a deleted directory; the error
+    /// has to name it instead of surfacing a bare `canonicalize` IO error.
+    #[test]
+    fn a_missing_theme_directory_is_named_in_the_error() {
+        let dir = scratch("cache_missing_directory");
+        let missing = dir.join("Gone");
+
+        let error = match load_cached_theme_data(&missing) {
+            Ok(_) => panic!("the directory does not exist"),
+            Err(error) => error.to_string(),
+        };
+
+        assert!(
+            error.contains("Gone"),
+            "the theme id is in the message: {error}"
+        );
+        assert!(
+            error.contains("does not exist"),
+            "the message says what is wrong: {error}"
         );
 
         let _ = fs::remove_dir_all(&dir);
