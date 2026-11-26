@@ -20,6 +20,9 @@ export const LANGUAGES = {
   "ko-KR": "한국어",
 } as const satisfies Record<Locale, string>;
 
+/** The six keys above; a Set has no prototype members to trip over. */
+const SUPPORTED_LOCALES = new Set<string>(Object.keys(LANGUAGES));
+
 /** Locale → font/line-height scheme (matches the [data-lang] rules in styles/i18n.css). */
 const DATA_LANG = {
   "en-US": "en",
@@ -127,7 +130,10 @@ const readSavedLocale = (): Locale | undefined => {
     }
 
     const saved = localStorage.getItem(LOCALE_KEY);
-    if (saved && saved in LANGUAGES) {
+    // `in` walks the prototype chain, so a stored "toString" or "constructor"
+    // would pass there and then make `dictionaries[locale]` undefined at module
+    // scope. A Set lookup only knows the six keys the table carries.
+    if (saved && SUPPORTED_LOCALES.has(saved)) {
       return saved as Locale;
     }
   } catch {
