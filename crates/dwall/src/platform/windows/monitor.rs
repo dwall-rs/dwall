@@ -329,8 +329,23 @@ fn get_device_path(
         let detail_data_size = mem::size_of::<SP_DEVICE_INTERFACE_DETAIL_DATA_W>() as u32;
         let buffer_size = required_size.max(detail_data_size);
 
-        let mut buffer = vec![0u8; buffer_size as usize];
-        let detail_data = buffer.as_mut_ptr() as *mut SP_DEVICE_INTERFACE_DETAIL_DATA_W;
+        // The struct contains a u32 and is written through this pointer, so the
+        // allocation has to be aligned for it. A Vec<u8> only guarantees alignment 1;
+        // the global allocator usually over-aligns enough for it to work, which is
+        // exactly the kind of undefined behaviour that stays invisible until it does
+        // not. A Vec<u64> gives the 8-byte alignment this and any Win32 detail struct
+        // needs, and rounds the byte budget up rather than down.
+        const DETAIL_ALIGNMENT: usize = mem::align_of::<u64>();
+        let buffer_bytes = (buffer_size as usize).div_ceil(DETAIL_ALIGNMENT) * DETAIL_ALIGNMENT;
+        let mut buffer = vec![0u64; buffer_bytes / mem::size_of::<u64>()];
+        let detail_data = buffer
+            .as_mut_ptr()
+            .cast::<SP_DEVICE_INTERFACE_DETAIL_DATA_W>();
+        debug_assert_eq!(
+            (detail_data as usize) % mem::align_of::<SP_DEVICE_INTERFACE_DETAIL_DATA_W>(),
+            0,
+            "the detail buffer must be aligned for the struct written through it"
+        );
         (*detail_data).cbSize = detail_data_size;
 
         if let Err(e) = SetupDiGetDeviceInterfaceDetailW(
