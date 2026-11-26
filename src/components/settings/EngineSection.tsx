@@ -5,9 +5,10 @@ import {
   patch,
   patchAutomatic,
   patchPosition,
+  normalizeDecimal,
+  normalizeInteger,
   positionCacheMode,
   type PositionCacheMode,
-  save,
   setAutoDetectColorScheme,
   setPositionCacheMode,
   setPositionType,
@@ -22,6 +23,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { SettingsRow } from "./SettingsRow";
+import { useSaveFlash } from "./useSaveFlash";
 import { t } from "@/i18n";
 import {
   createMemo,
@@ -52,7 +54,7 @@ import { colorSchemePauseStore } from "@/store/color-scheme-pause.store";
 import { toast } from "@/components/ui/toast";
 
 export function EngineSection() {
-  const [flash, setFlash] = createSignal<string | null>(null);
+  const { flash, ok } = useSaveFlash();
   // The countdown has to move without a backend round trip, and the pause can also
   // start while the window is open (the daemon notices a manual theme change), so the
   // state is polled rather than assumed.
@@ -69,12 +71,6 @@ export function EngineSection() {
     tick();
     return colorSchemePauseStore.remainingMinutes();
   });
-  const ok = async (k: string) => {
-    setFlash(k);
-    await save();
-    setFlash(null);
-  };
-
   const chooseBatteryWallpaper = async () => {
     const path = await pickImage();
     if (!path) return;
@@ -143,7 +139,7 @@ export function EngineSection() {
               max={3600}
               value={settingsStore.config?.interval}
               onChange={(v) => {
-                patch({ interval: v || 15 });
+                patch({ interval: normalizeInteger(v, 1, 3600, 15) });
               }}
             />
             <InputGroupAddon align="inline-end">
@@ -223,14 +219,8 @@ export function EngineSection() {
                     max={1440}
                     value={automatic().cache_minutes}
                     onChange={(v) =>
-                      // The field is a number input, so "1.5" arrives as a float and
-                      // the daemon reads the key as an integer: rounding here is what
-                      // keeps a fractional value out of the configuration file.
                       patchAutomatic({
-                        cache_minutes: Math.min(
-                          1440,
-                          Math.max(1, Math.round(Number(v))),
-                        ),
+                        cache_minutes: normalizeInteger(v, 1, 1440, 120),
                       })
                     }
                   />
@@ -276,7 +266,11 @@ export function EngineSection() {
                     max={90}
                     step={0.0001}
                     value={manual().latitude}
-                    onChange={(v) => patchPosition({ latitude: v })}
+                    onChange={(v) =>
+                      patchPosition({
+                        latitude: normalizeDecimal(v, -90, 90, 0),
+                      })
+                    }
                   />
                 </Field>
                 <Field>
@@ -287,7 +281,11 @@ export function EngineSection() {
                     max={180}
                     step={0.0001}
                     value={manual().longitude}
-                    onChange={(v) => patchPosition({ longitude: v })}
+                    onChange={(v) =>
+                      patchPosition({
+                        longitude: normalizeDecimal(v, -180, 180, 0),
+                      })
+                    }
                   />
                 </Field>
                 <Field>
@@ -298,7 +296,11 @@ export function EngineSection() {
                     max={9000}
                     step={1}
                     value={manual().altitude}
-                    onChange={(v) => patchPosition({ altitude: v })}
+                    onChange={(v) =>
+                      patchPosition({
+                        altitude: normalizeDecimal(v, -500, 9000, 875),
+                      })
+                    }
                   />
                 </Field>
               </FieldGroup>

@@ -62,6 +62,28 @@ beforeEach(() => {
   vi.clearAllMocks();
 });
 
+describe("settings store: numeric input guards", () => {
+  test("integer fields are rounded and clamped into the daemon's range", async () => {
+    const { normalizeInteger } = await import("./settings.store");
+
+    expect(normalizeInteger(1.5, 1, 3600, 15)).toBe(2);
+    expect(normalizeInteger(0, 1, 3600, 15)).toBe(1);
+    expect(normalizeInteger(4000, 1, 3600, 15)).toBe(3600);
+    expect(normalizeInteger(-5, 1, 3600, 15)).toBe(1);
+    expect(normalizeInteger(Number.NaN, 1, 3600, 15)).toBe(15);
+    expect(normalizeInteger(1080.4, 1, 65535, 1080)).toBe(1080);
+  });
+
+  test("coordinate fields are clamped without losing their decimals", async () => {
+    const { normalizeDecimal } = await import("./settings.store");
+
+    expect(normalizeDecimal(39.9042, -90, 90, 0)).toBe(39.9042);
+    expect(normalizeDecimal(-91, -90, 90, 0)).toBe(-90);
+    expect(normalizeDecimal(181, -180, 180, 0)).toBe(180);
+    expect(normalizeDecimal(Number.NaN, -90, 90, 0)).toBe(0);
+  });
+});
+
 describe("settings store: a configuration that is not loaded yet", () => {
   test("patch leaves a missing configuration missing instead of writing an empty one", async () => {
     const store = await freshStore();
@@ -223,6 +245,28 @@ describe("settings store: writing", () => {
     expect(mocks.writeConfigFile.mock.calls[0][0].interval).toBe(30);
     expect(store.settingsStore.saving).toBe(false);
     expect(store.isConfigDirty(store.settingsStore)).toBe(false);
+  });
+
+  test("save reports success only when the file was written", async () => {
+    mocks.readConfigFile.mockResolvedValue(config());
+    mocks.writeConfigFile.mockResolvedValue(undefined);
+
+    const store = await freshStore();
+    expect(
+      await store.save(),
+      "nothing to save without a loaded configuration",
+    ).toBe(false);
+
+    await store.load();
+    store.patch({ interval: 20 });
+    expect(await store.save()).toBe(true);
+
+    mocks.writeConfigFile.mockRejectedValueOnce(new Error("read-only file"));
+    store.patch({ interval: 25 });
+    expect(
+      await store.save(),
+      "a rejected write is not reported as saved",
+    ).toBe(false);
   });
 
   test("an edit made while the save is in flight stays dirty", async () => {

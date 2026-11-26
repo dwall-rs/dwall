@@ -4,20 +4,16 @@ import { SettingsRow } from "./SettingsRow";
 import { ThemeSegmented } from "./ThemeSegmented";
 import { LanguageRow } from "./LanguageRow";
 import { Switch } from "@/components/ui/switch";
-import { patch, save, settingsStore } from "@/store/settings.store";
+import { patch, settingsStore } from "@/store/settings.store";
 import { setTitlebarBorder, uiStore } from "@/store/ui.store";
 import { titleBarMatchesContent } from "@/store/ui.selectors";
 import { t } from "@/i18n";
 import { Sparkles } from "lucide-solid";
-import { createSignal, Show } from "solid-js";
+import { Show } from "solid-js";
+import { useSaveFlash } from "./useSaveFlash";
 
 export function AppearanceSection() {
-  const [flash, setFlash] = createSignal<string | null>(null);
-  const ok = async (key: string) => {
-    setFlash(key);
-    await save();
-    setFlash(null);
-  };
+  const { flash, ok } = useSaveFlash();
 
   return (
     <SettingsGroup
