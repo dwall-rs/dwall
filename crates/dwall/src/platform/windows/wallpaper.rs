@@ -86,6 +86,15 @@ pub(crate) struct WallpaperSetter {
     monitor_provider: Rc<DisplayMonitorProvider>,
 }
 
+/// Whether two wallpaper paths name the same file on Windows.
+///
+/// Comparisons are case-insensitive, like the filesystem: a path returned by
+/// `GetWallpaper` can differ in case from the one that was set, and treating that as
+/// "different" re-applied the same image every cycle.
+fn same_wallpaper_path(requested: &str, current: &str) -> bool {
+    requested.eq_ignore_ascii_case(current)
+}
+
 impl WallpaperSetter {
     /// Creates a new WallpaperSetter instance
     pub(crate) fn new(monitor_provider: Rc<DisplayMonitorProvider>) -> WallpaperResult<Self> {
@@ -314,7 +323,13 @@ impl WallpaperSetter {
             let owned = OwnedCoTaskMemString(current_wallpaper_ptr);
             owned.0.to_hstring()
         };
-        let is_same = *wallpaper_path == current_wallpaper_path;
+        // Windows resolves paths case-insensitively, and the shell may return the
+        // stored path in a different case than the one that was set. A byte
+        // comparison then re-set the wallpaper on every cycle and logged it at INFO.
+        let is_same = same_wallpaper_path(
+            &wallpaper_path.to_string_lossy(),
+            &current_wallpaper_path.to_string_lossy(),
+        );
 
         debug!(
             current = %current_wallpaper_path,
@@ -387,5 +402,20 @@ impl WallpaperProvider for WallpaperSetter {
 
     fn set_lock_screen_image(&self, image_path: &Path, force: bool) -> DwallResult<()> {
         Self::set_lock_screen_image_internal(image_path, force)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::same_wallpaper_path;
+
+    #[test]
+    fn wallpaper_paths_compare_the_way_windows_does() {
+        assert!(same_wallpaper_path(
+            r"C:\Themes\Big Sur\jpg\1.JPG",
+            r"c:\themes\big sur\jpg\1.jpg"
+        ));
+        assert!(same_wallpaper_path(r"C:\Themes\1.jpg", r"C:\Themes\1.jpg"));
+        assert!(!same_wallpaper_path(r"C:\Themes\1.jpg", r"C:\Themes\2.jpg"));
     }
 }
