@@ -99,7 +99,19 @@ pub fn select_release<'a>(current: &Version, releases: &'a [Release]) -> Option<
             continue;
         }
 
-        let slot = if release.prerelease {
+        // The channel is a property of the version, not of GitHub's flag: a release
+        // tagged `v0.4.0-alpha.1` whose checkbox was left unticked is still a
+        // pre-release, and treating it as stable let it beat the real stable release.
+        let is_prerelease = !version.pre.is_empty();
+        if release.prerelease != is_prerelease {
+            debug!(
+                tag = %release.tag_name,
+                flag = release.prerelease,
+                "GitHub's prerelease flag disagrees with the tag; following the tag"
+            );
+        }
+
+        let slot = if is_prerelease {
             &mut prerelease
         } else {
             &mut stable
@@ -240,6 +252,18 @@ mod tests {
 
         // Leaving the pre-release channel for a released build is the point, even when
         // a pre-release of a higher base exists.
+        assert_eq!(
+            selected("0.3.0-alpha.2", &releases),
+            Some("0.3.1".to_string())
+        );
+    }
+
+    /// The release channel is decided by the semver tag, not by GitHub's checkbox: a
+    /// pre-release tag mislabeled as stable must not beat a real stable release.
+    #[test]
+    fn a_mislabeled_prerelease_does_not_beat_a_stable_release() {
+        let releases = [release("v0.4.0-alpha.0", false), release("v0.3.1", false)];
+
         assert_eq!(
             selected("0.3.0-alpha.2", &releases),
             Some("0.3.1".to_string())
