@@ -1,5 +1,6 @@
 //! Zip archive extraction.
 
+use std::collections::HashSet;
 use std::fs::{self, File};
 use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
@@ -70,6 +71,10 @@ fn extract_with_limit(
     })?;
 
     let mut zip = ZipArchive::new(file)?;
+    // Windows resolves paths case-insensitively. Two archive entries whose paths differ
+    // only by case would overwrite each other, silently leaving one of them (and making
+    // the staged theme fail validation with no hint why), so they are refused.
+    let mut extracted_paths: HashSet<String> = HashSet::new();
 
     if zip.len() > MAX_ARCHIVE_ENTRIES {
         return Err(DwallSettingsError::Other(format!(
@@ -147,6 +152,13 @@ fn extract_with_limit(
         };
 
         let out_path = target_dir.join(&relative);
+        let normalized = out_path.to_string_lossy().to_lowercase();
+        if !extracted_paths.insert(normalized) {
+            return Err(DwallSettingsError::Other(format!(
+                "Archive contains entries that collide on a case-insensitive filesystem: '{}'",
+                relative.display()
+            )));
+        }
 
         if entry.is_dir() {
             fs::create_dir_all(&out_path)?;
@@ -474,6 +486,26 @@ mod tests {
 
             let _ = fs::remove_dir_all(&dir);
         }
+    }
+
+    /// Windows resolves paths case-insensitively, so these two entries would end up as
+    /// one file and the theme would fail validation with no hint about the archive.
+    #[test]
+    fn entries_that_collide_on_a_case_insensitive_filesystem_are_refused() {
+        let dir = scratch("case_collision");
+        let zip_path = write_archive(
+            &dir,
+            &archive(&[("Theme/Solar.json", b"one"), ("Theme/SOLAR.json", b"two")]),
+        );
+        let target = dir.join("out");
+
+        let error = extract_with_limit(&zip_path, &target, MAX_EXTRACTED_BYTES)
+            .expect_err("case-variant entries must be refused")
+            .to_string();
+
+        assert!(error.contains("case-insensitive"), "{error}");
+
+        let _ = fs::remove_dir_all(&dir);
     }
 
     /// The device names are reserved with an extension but only up to nine, and only as
