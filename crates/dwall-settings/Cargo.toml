@@ -2,6 +2,7 @@
 name = "dwall-settings"
 description = "Dwall settings"
 edition.workspace = true
+rust-version = "1.88"
 version.workspace = true
 repository.workspace = true
 license.workspace = true
