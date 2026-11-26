@@ -20,6 +20,7 @@ import {
 import { toast } from "@/components/ui/toast";
 import { t } from "@/i18n";
 import { logger } from "@/utils";
+import { queueConfigWrite } from "./config-write-queue";
 import { refresh as refreshEngine } from "./engine.store";
 import {
   registerSettingsReload,
@@ -238,7 +239,7 @@ const patchSocks5 = (p: Partial<Socks5>) => {
   );
 };
 
-const save = async () => {
+const saveNow = async () => {
   if (!settingsStore.config || settingsStore.saving) return;
 
   setSettingsStore(
@@ -270,6 +271,15 @@ const save = async () => {
     toast.error(t("common.operationFailed"), { description: String(e) });
   }
 };
+
+/**
+ * Saves the draft, after every earlier configuration write has finished.
+ *
+ * The write itself is `saveNow`; the queue is what keeps a save from overtaking an
+ * apply or a stop that was already running, and from writing a snapshot older than
+ * the one the previous operation committed.
+ */
+const save = () => queueConfigWrite(saveNow);
 
 /**
  * Write wallpaper_mode and apply it to the engine (write the config file + restart the daemon).
@@ -323,19 +333,16 @@ const applyWallpaperModeNow = async (mode: WallpaperMode) => {
 };
 
 /**
- * Serialize mode applies across fixed and random callers.
+ * Applies a wallpaper mode after every earlier configuration write.
  *
- * A fixed apply and a random save can otherwise overlap; the slower request's
- * failure rollback would restore a mode that the newer request has already replaced.
- * Each call reads the draft and saved snapshot only when its turn starts.
+ * This is the same queue as `save`: a fixed apply and a random save, or a save and a
+ * stop, can otherwise overlap. The slower request's failure rollback would restore a
+ * mode the newer request already replaced, and a save could commit a snapshot taken
+ * before the apply. Each call reads the draft and saved snapshot only when its turn
+ * starts.
  */
-let modeApplyChain: Promise<void> = Promise.resolve();
-
-const applyWallpaperMode = (mode: WallpaperMode): Promise<void> => {
-  const result = modeApplyChain.then(() => applyWallpaperModeNow(mode));
-  modeApplyChain = result.catch(() => {});
-  return result;
-};
+const applyWallpaperMode = (mode: WallpaperMode): Promise<void> =>
+  queueConfigWrite(() => applyWallpaperModeNow(mode));
 
 const discard = () =>
   setSettingsStore((s) =>

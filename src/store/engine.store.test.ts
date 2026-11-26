@@ -158,6 +158,47 @@ describe("engine store: start and stop", () => {
     expect(store.engineStore.pending).toBe(false);
   });
 
+  /**
+   * The queued stop runs after the writes before it. During that wait a poll can see
+   * the daemon gone (it crashed, or an apply was restarting it); the stop still has to
+   * clear wallpaper_mode, otherwise the next window open starts the daemon again.
+   */
+  test("a queued stop still clears the configuration after the daemon exits while waiting", async () => {
+    mocks.getEngineStatus.mockResolvedValue(true);
+    mocks.getDaemonLastError.mockResolvedValue(null);
+    mocks.stopEngine.mockResolvedValue(false);
+
+    const store = await freshStore();
+    await store.refresh();
+    const { queueConfigWrite } = await import("./config-write-queue");
+
+    let releaseBlocker!: () => void;
+    const blocker = queueConfigWrite(
+      () =>
+        new Promise<void>((resolve) => {
+          releaseBlocker = resolve;
+        }),
+    );
+
+    const stopping = store.stop();
+    expect(mocks.stopEngine).not.toHaveBeenCalled();
+
+    // The poll runs while the stop is still waiting and sees no daemon.
+    mocks.getEngineStatus.mockResolvedValue(false);
+    await store.refresh();
+    expect(store.engineStore.running).toBe(false);
+
+    releaseBlocker();
+    await blocker;
+    await stopping;
+
+    expect(
+      mocks.stopEngine,
+      "clearing the configuration is independent of the cached running flag",
+    ).toHaveBeenCalledTimes(1);
+    expect(mocks.syncStoppedSettings).toHaveBeenCalledTimes(1);
+  });
+
   test("a failed stop leaves the engine running and clears the pending state", async () => {
     mocks.getEngineStatus.mockResolvedValue(true);
     mocks.getDaemonLastError.mockResolvedValue(null);

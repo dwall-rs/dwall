@@ -24,7 +24,12 @@ impl ThemeApplier {
         // that never reached the disk.
         let config_path = dwall::DWALL_CONFIG_DIR.join("config.toml");
         let writer = dwall::config::ConfigWriter;
-        writer.write_to_path(&config_path, &config)?;
+        {
+            // A concurrent stop clears the mode with a read-modify-write; serializing
+            // the write keeps this call from landing in the middle of it.
+            let _guard = crate::config_file::lock();
+            writer.write_to_path(&config_path, &config)?;
+        }
 
         // Stop whichever daemon is running, wherever it was installed from, and wait
         // for it to release its mutex. Failing to stop it is not fatal any more: the

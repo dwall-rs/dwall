@@ -14,6 +14,7 @@ use crate::window::build_window;
 mod archive;
 mod autostart;
 mod commands;
+mod config_file;
 mod daemon;
 mod error;
 mod filesystem;
