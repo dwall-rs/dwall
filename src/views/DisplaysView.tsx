@@ -6,6 +6,7 @@ import { ModeToggle } from "@/layout/ModeToggle";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { t } from "@/i18n";
+import { reloadCatalog } from "@/store/bootstrap";
 import { catalogStore } from "@/store/catalog.store";
 import { monitorList, themeById } from "@/store/catalog.selectors";
 import {
@@ -21,7 +22,13 @@ import { modeStore } from "@/store/mode.store";
 import { setView } from "@/store/ui.store";
 import { ThemeThumbnail } from "@/scene/ThemeThumbnail";
 import { clsx } from "@/utils";
-import { ArrowRight, Monitor, MonitorOff, Square } from "lucide-solid";
+import {
+  ArrowRight,
+  Monitor,
+  MonitorOff,
+  RefreshCw,
+  Square,
+} from "lucide-solid";
 
 export function DisplaysView() {
   const monitors = createMemo(() =>
@@ -45,13 +52,43 @@ export function DisplaysView() {
         </Button>
       </PageHeader>
 
+      <Show when={catalogStore.status === "error"}>
+        <div class="mb-6 rounded-[16px] border border-destructive/30 bg-destructive-dim px-4 py-4">
+          <div class="flex items-start gap-3">
+            <MonitorOff class="mt-0.5 size-4.5 shrink-0 text-destructive" />
+            <div class="min-w-0 flex-1">
+              <p class="text-[13px] font-semibold">
+                {t("common.operationFailed")}
+              </p>
+              <p
+                data-selectable
+                class="mt-1 font-mono text-[11px] leading-relaxed text-destructive"
+              >
+                {catalogStore.error}
+              </p>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => void reloadCatalog()}
+            >
+              <RefreshCw class="size-3.5" />
+              {t("library.reload")}
+            </Button>
+          </div>
+        </div>
+      </Show>
+
       <Show when={modeStore.mode === "random"}>
         <div class="mb-5 rounded-[12px] border border-border bg-card/60 px-3.5 py-2.5 text-[11.5px] leading-relaxed text-muted-foreground">
           {t("displays.randomNote")}
         </div>
       </Show>
 
-      <section class="mb-6 overflow-hidden rounded-[16px] border border-border bg-card">
+      <section
+        class="mb-6 overflow-hidden rounded-[16px] border border-border bg-card"
+        classList={{ hidden: catalogStore.status === "error" }}
+      >
         <div class="flex flex-wrap items-center gap-4 px-4 py-4">
           <div class="grid size-9 shrink-0 place-items-center rounded-[10px] bg-accent text-primary">
             <Monitor class="size-4.5" />
@@ -134,7 +171,10 @@ export function DisplaysView() {
         </div>
       </section>
 
-      <div class="mb-3 flex items-baseline justify-between">
+      <div
+        class="mb-3 flex items-baseline justify-between"
+        classList={{ hidden: catalogStore.status === "error" }}
+      >
         <h2 class="text-[12px] font-semibold">{t("displays.individual")}</h2>
         <span class="font-mono text-[10px] text-muted-foreground">
           {t("displays.monitorCount", { n: monitors().length })}
@@ -144,7 +184,10 @@ export function DisplaysView() {
       <Show
         when={monitors().length > 0}
         fallback={
-          <div class="flex flex-col items-center justify-center gap-2 rounded-[16px] border border-dashed border-border-2 py-16 text-center">
+          <div
+            class="flex flex-col items-center justify-center gap-2 rounded-[16px] border border-dashed border-border-2 py-16 text-center"
+            classList={{ hidden: catalogStore.status === "error" }}
+          >
             <MonitorOff class="size-8 text-muted-foreground/40" />
             <p class="font-display text-[15px] font-semibold">
               {t("displays.noMonitors")}
@@ -155,7 +198,10 @@ export function DisplaysView() {
           </div>
         }
       >
-        <div class="grid gap-3 min-[1100px]:grid-cols-2">
+        <div
+          class="grid gap-3 min-[1100px]:grid-cols-2"
+          classList={{ hidden: catalogStore.status === "error" }}
+        >
           <For each={monitors()}>
             {(monitor) => {
               const displayThemeId = () =>
