@@ -15,6 +15,10 @@ import { ThemeThumbnail } from "@/scene/ThemeThumbnail";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { formatAngle } from "@/utils";
 import { ChevronLeft, ChevronRight, Maximize2, Sparkles } from "lucide-solid";
+import {
+  isSameDisplayedFrame,
+  type DisplayedFrame,
+} from "./preview-transition";
 
 interface Props {
   themeId: string;
@@ -28,10 +32,12 @@ interface Props {
 
 export function PreviewPlate(props: Props) {
   const [expanded, setExpanded] = createSignal(false);
-  const [displayed, setDisplayed] = createSignal<Wallpaper | null>(
-    props.wallpaper,
+  const [displayed, setDisplayed] = createSignal<DisplayedFrame | null>(
+    props.wallpaper
+      ? { themeId: props.themeId, wallpaper: props.wallpaper }
+      : null,
   );
-  const [outgoing, setOutgoing] = createSignal<Wallpaper | null>(null);
+  const [outgoing, setOutgoing] = createSignal<DisplayedFrame | null>(null);
   const [entering, setEntering] = createSignal(true);
   let transitionTimer: ReturnType<typeof setTimeout> | undefined;
   let transitionToken = 0;
@@ -69,10 +75,10 @@ export function PreviewPlate(props: Props) {
   // one; without the fallback timer a broken frame would leave the old one frozen.
   createEffect(
     on(
-      () => props.wallpaper,
-      (next) => {
+      () => [props.themeId, props.wallpaper] as const,
+      ([themeId, next]) => {
         const current = untrack(displayed);
-        if (next?.index === current?.index) return;
+        if (isSameDisplayedFrame(current, themeId, next)) return;
 
         clearTransition();
         if (!next) {
@@ -89,7 +95,7 @@ export function PreviewPlate(props: Props) {
           setOutgoing(null);
           setEntering(true);
         }
-        setDisplayed(next);
+        setDisplayed({ themeId, wallpaper: next });
         transitionTimer = setTimeout(finishTransition, 900);
       },
     ),
@@ -98,7 +104,7 @@ export function PreviewPlate(props: Props) {
   onCleanup(clearTransition);
 
   const frameLoaded = (index: number) => {
-    if (untrack(displayed)?.index === index) finishTransition();
+    if (untrack(displayed)?.wallpaper.index === index) finishTransition();
   };
 
   const position = createMemo(() => {
@@ -148,8 +154,8 @@ export function PreviewPlate(props: Props) {
                     }}
                   >
                     <ThemeThumbnail
-                      themeId={props.themeId}
-                      index={old().index}
+                      themeId={old().themeId}
+                      index={old().wallpaper.index}
                       fit="cover"
                       class="h-full w-full"
                     />
@@ -166,11 +172,11 @@ export function PreviewPlate(props: Props) {
                     }}
                   >
                     <ThemeThumbnail
-                      themeId={props.themeId}
-                      index={current().index}
+                      themeId={current().themeId}
+                      index={current().wallpaper.index}
                       fit="cover"
                       class="h-full w-full"
-                      onLoad={() => frameLoaded(current().index)}
+                      onLoad={() => frameLoaded(current().wallpaper.index)}
                     />
                   </div>
                 )}
@@ -187,7 +193,7 @@ export function PreviewPlate(props: Props) {
                   <h2 class="truncate font-display text-[21px] font-semibold leading-tight text-white drop-shadow-sm">
                     {props.themeName}
                   </h2>
-                  <Show when={wp().index === props.matchedIndex}>
+                  <Show when={wp().wallpaper.index === props.matchedIndex}>
                     <span class="flex shrink-0 items-center gap-1 rounded-full border border-white/20 bg-black/35 px-2 py-0.5 font-mono text-[9px] text-white/90 backdrop-blur-md">
                       <Sparkles class="size-3 text-solar" />
                       {t("stage.matched")}
@@ -201,8 +207,10 @@ export function PreviewPlate(props: Props) {
 
               <div class="flex shrink-0 items-center gap-1.5">
                 <span class="rounded-full border border-white/15 bg-black/35 px-2.5 py-1 font-mono text-[10px] text-white/80 backdrop-blur-md">
-                  {t("stage.altitude")} {formatAngle(wp().solar.altitude)}° ·{" "}
-                  {t("stage.azimuth")} {formatAngle(wp().solar.azimuth)}°
+                  {t("stage.altitude")}{" "}
+                  {formatAngle(wp().wallpaper.solar.altitude)}° ·{" "}
+                  {t("stage.azimuth")}{" "}
+                  {formatAngle(wp().wallpaper.solar.azimuth)}°
                 </span>
                 <button
                   type="button"
