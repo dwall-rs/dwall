@@ -369,6 +369,36 @@ describe("settings store: writing", () => {
   });
 });
 
+describe("settings store: a stopped engine", () => {
+  test("a stop clears the saved mode and returns the window to fixed editing", async () => {
+    mocks.readConfigFile.mockResolvedValue(
+      config({
+        wallpaper_mode: { mode: "random", pool: ["Big Sur"] },
+      }),
+    );
+
+    const store = await freshStore();
+    await store.load();
+    const { modeStore } = await import("./mode.store");
+    const { syncStoppedSettings } = await import("./settings-refresh");
+
+    syncStoppedSettings();
+
+    expect(store.settingsStore.config?.wallpaper_mode).toEqual({
+      mode: "fixed",
+      monitor_specific_wallpapers: {},
+    });
+    expect(store.settingsStore.saved?.wallpaper_mode).toEqual({
+      mode: "fixed",
+      monitor_specific_wallpapers: {},
+    });
+    expect(
+      modeStore.mode,
+      "the random stage must not stay on after the theme was cleared",
+    ).toBe("fixed");
+  });
+});
+
 describe("settings store: moving the themes directory", () => {
   test("a successful move patches the directory and saves", async () => {
     mocks.readConfigFile.mockResolvedValue(config());

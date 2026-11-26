@@ -9,6 +9,7 @@ import { logger } from "@/utils";
 import { catalogStore } from "./catalog.store";
 import { availableThemeIds, availableThemes } from "./catalog.selectors";
 import { engineStore } from "./engine.store";
+import { registerStoppedSync } from "./settings-refresh";
 import { applyWallpaperMode, settingsStore } from "./settings.store";
 
 const log = logger.child("fixed");
@@ -48,9 +49,27 @@ const toRecord = (themes: MonitorTheme[]): StrMap =>
     themes.map(({ monitorId, themeId }) => [monitorId, themeId]),
   );
 
-/** The config's effective themes; random mode has no monitor mapping. */
+/**
+ * The config's effective themes; random mode has no monitor mapping.
+ *
+ * "Stop engine" writes an empty fixed mapping to the file, but the resolved mapping
+ * this store keeps from the last apply is still in memory. Reading it then made the
+ * window claim a theme was "ready" that the configuration no longer contains, so a
+ * mapping the config has cleared reads as empty here too.
+ */
+const configMappingIsEmpty = (): boolean => {
+  const map = settingsStore.config?.wallpaper_mode;
+  if (map?.mode !== "fixed") return true;
+  if (typeof map.monitor_specific_wallpapers === "string") {
+    return map.monitor_specific_wallpapers.length === 0;
+  }
+
+  return Object.keys(map.monitor_specific_wallpapers).length === 0;
+};
+
 const configuredThemes = (): StrMap =>
-  settingsStore.config?.wallpaper_mode?.mode === "fixed"
+  settingsStore.config?.wallpaper_mode?.mode === "fixed" &&
+  !configMappingIsEmpty()
     ? fixedStore.configThemes
     : {};
 
@@ -93,6 +112,9 @@ const themeForMon = (monId: string): string | undefined =>
 /** Whether this scope has been written into the config (regardless of whether the engine is running). */
 const isConfigured = (key: string): boolean => {
   if (settingsStore.config?.wallpaper_mode?.mode !== "fixed") return false;
+  // The configuration may have been cleared by a stop without this store being
+  // notified; the resolved mapping is stale in that case, not evidence of a theme.
+  if (configMappingIsEmpty()) return false;
 
   const configured = fixedStore.configThemes[key];
   if (configured === undefined) return false;
@@ -205,6 +227,21 @@ const isDraftDirty = (key: string): boolean => {
   const draft = fixedStore.monitorThemes[key] ?? fixedStore.configThemes[key];
   return draft !== fixedStore.configThemes[key];
 };
+
+// A stopped engine has no configured theme left: clear the resolved mapping and the
+// draft so the stage, the library and Displays do not present the cleared theme as
+// configured. The settings store clears the file's mode in the same notification.
+registerStoppedSync(() => {
+  setFixedStore({
+    allUnified: true,
+    curMon: "all",
+    selIndex: null,
+    monitorThemes: {},
+    configThemes: {},
+    configUnified: false,
+    applying: false,
+  });
+});
 
 export {
   fixedStore,
