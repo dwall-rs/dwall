@@ -783,7 +783,7 @@ pub fn config_path() -> PathBuf {
 /// The configured file's own name is kept, so `--config foo.conf` does not turn
 /// into `foo.toml.tmp`, and the process id is appended so two instances pointed
 /// at the same directory cannot overwrite each other's temporary file.
-fn temporary_path(path: &Path) -> PathBuf {
+pub(crate) fn temporary_path(path: &Path) -> PathBuf {
     static SEQUENCE: AtomicU64 = AtomicU64::new(0);
 
     let name = path
@@ -799,7 +799,10 @@ fn temporary_path(path: &Path) -> PathBuf {
     path.with_file_name(format!("{name}.{}.{sequence}.tmp", std::process::id()))
 }
 
-fn write_atomically(path: &Path, contents: &[u8]) -> std::io::Result<()> {
+/// Writes `contents` through a unique sibling temporary file and renames it into
+/// place. Shared by the configuration and the small state files next to it, which are
+/// written by both binaries.
+pub(crate) fn write_atomically(path: &Path, contents: &[u8]) -> std::io::Result<()> {
     let temp_path = temporary_path(path);
 
     let mut file = fs::File::create(&temp_path)?;
