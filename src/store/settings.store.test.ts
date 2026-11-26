@@ -342,6 +342,51 @@ describe("settings store: writing", () => {
   });
 
   /**
+   * A save requested while an apply is in flight has to wait for it: otherwise the
+   * write that lands last is the one that carries the older mode (or the older
+   * snapshot), and the daemon and the form disagree about what was applied.
+   */
+  test("a save requested during an apply waits for it and writes the applied mode", async () => {
+    mocks.readConfigFile.mockResolvedValue(config());
+    let finishApply!: () => void;
+    mocks.applyTheme.mockImplementationOnce(
+      () =>
+        new Promise<void>((resolve) => {
+          finishApply = resolve;
+        }),
+    );
+    mocks.writeConfigFile.mockResolvedValue(undefined);
+
+    const store = await freshStore();
+    await store.load();
+    store.patch({ interval: 30 });
+
+    const applying = store.applyWallpaperMode({
+      mode: "random",
+      pool: ["Big Sur"],
+    });
+    const saving = store.save();
+
+    await vi.waitFor(() => expect(mocks.applyTheme).toHaveBeenCalledTimes(1));
+    expect(
+      mocks.writeConfigFile,
+      "the save must not overtake the apply",
+    ).not.toHaveBeenCalled();
+
+    finishApply();
+    await applying;
+    await saving;
+
+    expect(mocks.writeConfigFile).toHaveBeenCalledTimes(1);
+    const written = mocks.writeConfigFile.mock.calls[0][0] as Config;
+    expect(written.interval).toBe(30);
+    expect(written.wallpaper_mode).toEqual({
+      mode: "random",
+      pool: ["Big Sur"],
+    });
+  });
+
+  /**
    * Applying a theme from the stage is not "save the settings form": a draft edit the
    * user has not committed must stay out of the file and keep the form dirty.
    */

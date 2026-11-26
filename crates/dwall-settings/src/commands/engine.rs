@@ -64,6 +64,10 @@ fn clear_theme_config_at(path: &Path) -> DwallSettingsResult<()> {
         return Ok(());
     }
 
+    // Read and write are one operation: a save that landed between them would be
+    // overwritten with the pre-save configuration, or this clear would be undone.
+    let _guard = crate::config_file::lock();
+
     let mut config = match ConfigReader::read_from_path(path) {
         Ok(config) => config,
         Err(e) => {

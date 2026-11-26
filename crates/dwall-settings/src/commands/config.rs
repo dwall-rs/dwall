@@ -36,7 +36,12 @@ pub async fn write_config_file(
     );
     let config_path = dwall::DWALL_CONFIG_DIR.join("config.toml");
     let writer = ConfigWriter;
-    writer.write_to_path(&config_path, &config)?;
+    {
+        // The engine's stop command does a read-modify-write of the same file; both
+        // commands can run concurrently on the async runtime.
+        let _guard = crate::config_file::lock();
+        writer.write_to_path(&config_path, &config)?;
+    }
 
     // The themes directory may have just moved, and the asset protocol would still be
     // pointing at the old one: without this the library shows nothing until a restart.

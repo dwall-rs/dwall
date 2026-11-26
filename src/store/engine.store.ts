@@ -10,6 +10,7 @@ import {
 } from "@/ipc";
 import { toast } from "@/components/ui/toast";
 import { t } from "@/i18n";
+import { queueConfigWrite } from "./config-write-queue";
 import { syncStoppedSettings } from "./settings-refresh";
 import { logger } from "@/utils";
 
@@ -93,7 +94,7 @@ const refresh = async () => {
 };
 
 /** Terminates the daemon and mirrors the cleared mode into the settings draft. */
-const stop = async () => {
+const stopNow = async () => {
   if (!engineStore.running) return;
 
   if (engineStore.pendingTimer) clearTimeout(engineStore.pendingTimer);
@@ -123,6 +124,15 @@ const stop = async () => {
     }));
   }
 };
+
+/**
+ * Stops the engine after every earlier configuration write has finished.
+ *
+ * The command clears `wallpaper_mode` in `config.toml`. If a save that was already
+ * in flight wrote after it, the cleared mode came back and the next window open
+ * started the daemon again; the shared queue makes the stop the last write.
+ */
+const stop = () => queueConfigWrite(stopNow);
 
 /**
  * Kept for keyboard/legacy callers: the UI now confirms with a dialog and calls
