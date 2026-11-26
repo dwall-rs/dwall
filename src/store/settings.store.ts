@@ -22,6 +22,7 @@ import { t } from "@/i18n";
 import { logger } from "@/utils";
 import { queueConfigWrite } from "./config-write-queue";
 import { refresh as refreshEngine } from "./engine.store";
+import { setMode } from "./mode.store";
 import {
   registerSettingsReload,
   registerStoppedSync,
@@ -410,6 +411,10 @@ const syncStoppedEngine = () => {
       if (settings.saved) settings.saved.wallpaper_mode = cleared();
     }),
   );
+
+  // The engine now has no theme to apply, so the random stage must not keep showing
+  // "today's theme" and the next Start must not look like it will re-apply one.
+  setMode("fixed");
 };
 
 registerSettingsReload(load);

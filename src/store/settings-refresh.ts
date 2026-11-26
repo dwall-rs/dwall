@@ -25,12 +25,14 @@ export const reloadSettings = async () => {
  */
 type StoppedSync = () => void;
 
-let syncStopped: StoppedSync | undefined;
+// More than one store derives a view of the configuration that a stop invalidates:
+// the settings draft/snapshot, and the fixed mapping the stage and Displays read.
+const stoppedSyncs = new Set<StoppedSync>();
 
 export const registerStoppedSync = (fn: StoppedSync) => {
-  syncStopped = fn;
+  stoppedSyncs.add(fn);
 };
 
 export const syncStoppedSettings = () => {
-  syncStopped?.();
+  for (const sync of stoppedSyncs) sync();
 };
